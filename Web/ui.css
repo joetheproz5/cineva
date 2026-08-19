@@ -50,6 +50,9 @@
 .account span { color: #e50914; font-size: 10px; }
 .account:hover { border-color: #686868; background: #222; }
 
+.wordmark { display: inline-flex; align-items: center; gap: 8px; }
+.wordmark img { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
+
 @media (max-width: 650px) {
   .hero { min-height: 405px; padding-bottom: 58px; }
   .hero-nav { right: auto; bottom: 14px; left: 50%; gap: 12px; transform: translateX(-50%); }

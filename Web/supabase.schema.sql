@@ -1,4 +1,4 @@
--- Cineva application data. Supabase owns auth.users; do not create or edit it directly.
+-- SEVEN application data. Supabase owns auth.users; do not create or edit it directly.
 -- Run this entire file once in Supabase Dashboard → SQL Editor.
 
 create table if not exists public.profiles (

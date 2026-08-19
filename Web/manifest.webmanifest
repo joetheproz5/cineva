@@ -1,9 +1,9 @@
 {
-  "name": "Jovia",
-  "short_name": "Jovia",
+  "name": "SEVEN",
+  "short_name": "SEVEN",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#071018",
   "theme_color": "#071018",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [{ "src": "/assets/seven-logo-app.png", "sizes": "1280x1280", "type": "image/png", "purpose": "any" }]
 }
