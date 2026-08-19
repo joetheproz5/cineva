@@ -61,6 +61,9 @@
 .filter { flex: 0 0 auto; padding: 8px 13px; border: 1px solid #343434; border-radius: 999px; color: #c9c9c9; background: #151515; font-size: 12px; font-weight: 700; }
 .filter:hover { border-color: #727272; color: #fff; }
 .filter.active { border-color: #c91520; color: #fff; background: #70090f; }
+.explore-all { padding: 4px 0; color: #a9a9a9; background: transparent; font-size: 12px; font-weight: 650; }
+.explore-all:hover { color: #fff; text-decoration: underline; }
+.explore-grid { margin-top: 18px; }
 
 @media (max-width: 650px) {
   header { flex-wrap: wrap; gap: 8px; }
