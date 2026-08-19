@@ -1,0 +1,5 @@
+import SwiftUI
+
+struct DownloadsView: View { @EnvironmentObject private var library: LibraryStore; private let episodes = CatalogData.theGoodDoctor.allEpisodes
+    var body: some View { Group { if library.downloads.isEmpty { EmptyState(icon: "arrow.down.circle", title: "No downloads yet", message: "Download videos you have the right to store for offline viewing.") } else { List { ForEach(library.downloads) { item in let episode = episodes.first { $0.id == item.episodeID }; HStack { Image(systemName: item.state == .downloaded ? "checkmark.circle.fill" : "arrow.down.circle").foregroundStyle(AppTheme.accent); VStack(alignment: .leading) { Text(episode?.title ?? item.episodeID); Text(item.state.rawValue.capitalized).font(.caption).foregroundStyle(AppTheme.muted); if item.state == .downloading { ProgressView(value: item.progress) } }; Spacer(); Button(role: .destructive) { library.removeDownload(item) } label: { Image(systemName: "trash") } }.listRowBackground(AppTheme.panel) } } } }.background(AppTheme.background).navigationTitle("Downloads") }
+}

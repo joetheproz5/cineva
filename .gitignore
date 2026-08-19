@@ -1,0 +1,16 @@
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.moved-aside
+
+# Local configuration and credentials
+Config.xcconfig
+*.mobileprovision
+*.p12
+*.cer
+
+# macOS
+.DS_Store
