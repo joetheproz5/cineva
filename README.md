@@ -40,7 +40,7 @@ The [Web](Web) directory contains an installable Cineva web app. From this Windo
 1. Create a TMDB account and open its API settings.
 2. Copy the **API Read Access Token** (Bearer token), not your password.
 3. Copy [tmdb.config.example.json](Web/tmdb.config.example.json) to `Web/tmdb.local.json` and paste the token as `bearerToken`.
-4. Restart the local Cineva server.
+4. Refresh Cineva in Safari. The local server reads the token file on each request, so no restart is needed.
 
 The local config file is ignored by Git and the server keeps the token off the iPhone; the web app only calls its local `/api/tmdb` proxy. TMDB supplies the metadata, posters, descriptions, search, popular/trending lists, newly released movies, and correct season/episode names. Vidking remains the configured playback embed.
 
