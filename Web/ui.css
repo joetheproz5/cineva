@@ -96,6 +96,8 @@
 .cast-card { min-width: 0; }
 .cast-card img { display: block; width: 100px; height: 130px; margin-bottom: 7px; border-radius: 6px; object-fit: cover; background: #242424; }
 .cast-card b { display: block; overflow: hidden; color: #eee; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.resume-action { font-size: 12px; }
+#episodes-list .resume-action { display: block; margin: -3px 8px 9px auto; padding: 8px 11px; }
 .season-select { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; color: #cfcfcf; font-size: 12px; font-weight: 750; }
 .season-select select { min-width: 150px; padding: 9px 34px 9px 11px; border: 1px solid #414141; border-radius: 7px; outline: 0; color: #fff; background: #171717; font: inherit; }
 .season-select select:focus { border-color: #c91520; }
@@ -118,4 +120,5 @@
   .info-block { padding: 14px; }
   .cast-card img { width: 90px; height: 117px; }
   .cast-row { grid-auto-columns: 90px; }
+  #episodes-list .resume-action { margin-right: 4px; }
 }
