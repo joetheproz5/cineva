@@ -109,8 +109,8 @@
 
 @media (max-width: 650px) {
   header { flex-wrap: wrap; gap: 8px; }
-  header > nav { display: flex; order: 3; width: 100%; gap: 15px; overflow-x: auto; padding: 4px 0 1px; }
-  header > nav .nav-link { flex: 0 0 auto; font-size: 12px; }
+  header > nav { display: flex; align-items: center; justify-content: space-between; order: 3; width: 100%; gap: 0; overflow-x: auto; padding: 5px 1px 2px; }
+  header > nav .nav-link { display: inline-flex; align-items: center; min-height: 29px; padding: 5px 0; color: #dedede; font-size: 13px; font-weight: 750; line-height: 1; }
   .search { flex: 1; width: auto; margin-left: 0; }
   .hero { min-height: 405px; padding-bottom: 58px; }
   .hero-nav { right: auto; bottom: 14px; left: 50%; gap: 12px; transform: translateX(-50%); }
