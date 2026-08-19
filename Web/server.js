@@ -27,7 +27,9 @@ async function auth(request, response, action) {
     if (action === "login") route = "/auth/v1/token?grant_type=password";
     if (action === "refresh") route = "/auth/v1/token?grant_type=refresh_token";
     if (!route) return sendJSON(response, 404, { error:"Unknown auth action." });
-    const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify(payload) }); sendJSON(response, result.status, result.data);
+    const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+    if ((action === "login" || action === "refresh") && result.data?.access_token) result.data = { session:result.data, user:result.data.user };
+    sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Authentication request failed." }); }
 }
 async function progress(request, response) {
