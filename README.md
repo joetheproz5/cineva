@@ -46,7 +46,7 @@ The local config file is ignored by Git and the server keeps the token off the i
 
 ## Accounts and Supabase sync
 
-1. In Supabase, open **SQL Editor** and run [supabase.schema.sql](Web/supabase.schema.sql). It creates a private per-user playback-progress table with Row Level Security.
+1. In Supabase, open **SQL Editor** and run [supabase.schema.sql](Web/supabase.schema.sql). It uses Supabase's managed `auth.users` accounts, creates Cineva's linked `public.profiles` table automatically for each new account, and adds an RLS-protected per-user playback-progress table.
 2. Copy [supabase.config.example.json](Web/supabase.config.example.json) to `Web/supabase.local.json`.
 3. In Supabase **Settings → API Keys**, copy the Project URL and the **publishable/anon** key into that local file. Never use the `service_role` key.
 4. In **Authentication → Providers → Email**, enable Confirm email when you are ready to require email verification. If using a public HTTPS deployment, add its URL to the Supabase redirect allow-list and set `emailRedirectTo` in the local config.
