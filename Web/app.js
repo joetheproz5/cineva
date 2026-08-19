@@ -1,7 +1,7 @@
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const FEATURED_ID = 71712;
 const app = document.querySelector("#app");
-const state = { featured: null, catalog: {}, route: "home", search: "" };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, route: "home", search: "" };
 const watchKey = item => `cineva-progress-${item.type}-${item.id}-${item.season || 0}-${item.episode || 0}`;
 const titleOf = item => item.title || item.name || item.original_title || item.original_name || "Untitled";
 const yearOf = item => (item.release_date || item.first_air_date || "").slice(0, 4);
@@ -16,11 +16,12 @@ async function api(path, params = {}) {
 async function boot() {
   renderLoading();
   try {
-    const [featured, trending, movies, shows, recent] = await Promise.all([
-      api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing")
+    const [featured, trending, movies, shows, recent, airing] = await Promise.all([
+      api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air")
     ]);
-    state.featured = normalize(featured, "tv");
-    state.catalog = { "Trending now": results(trending), "Popular movies": results(movies), "Popular series": results(shows), "Newly added": results(recent) };
+    state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
+    state.featured = state.featuredPool[0] || normalize(featured, "tv");
+    state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows) };
   } catch (error) {
     state.featured = { id: FEATURED_ID, type: "tv", name: "The Good Doctor", overview: "Add a TMDB Read Access Token to enable posters, descriptions, categories, and search.", backdrop_path: null };
     state.catalog = {};
@@ -28,16 +29,22 @@ async function boot() {
   }
   render();
 }
+function shuffle(items) { const copy = [...items]; for (let index = copy.length - 1; index > 0; index -= 1) { const target = Math.floor(Math.random() * (index + 1)); [copy[index], copy[target]] = [copy[target], copy[index]]; } return copy; }
 function results(payload) { return (payload.results || []).filter(item => item.media_type !== "person").map(item => normalize(item)); }
 function normalize(item, fallbackType) { return { ...item, type: item.type || (item.media_type === "movie" || item.title ? "movie" : fallbackType || "tv") }; }
 function header() { return `<header><button class="wordmark" data-home aria-label="Cineva home">CINEVA</button><nav><button class="nav-link" data-home>Home</button><button class="nav-link" data-search-focus>Search</button></nav><label class="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="Titles, movies, series" autocomplete="off"></label></header>`; }
 function render() { if (state.route === "player") return renderPlayer(); if (state.route === "series") return renderSeries(); if (state.route === "search") return renderSearch(); renderHome(); }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark">CINEVA</span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function renderHome() {
+  clearInterval(state.heroTimer);
   const f = state.featured;
-  app.innerHTML = `${header()}<section class="hero" style="${f.backdrop_path ? `background-image:linear-gradient(90deg,#050505 5%,#050505bb 48%,#0505053d 100%),url(${TMDB_IMAGE}${f.backdrop_path})` : ""}"><div class="hero-copy"><span class="brand">CINEVA PRESENTS</span><h1>${escapeHTML(titleOf(f))}</h1><div class="meta"><span>${yearOf(f) || "2017"}</span><i></i><span>${f.vote_average ? `★ ${f.vote_average.toFixed(1)}` : "TV-14"}</span><i></i><span>${f.type === "tv" ? "Series" : "Movie"}</span></div><p>${escapeHTML(f.overview || "")}</p><div class="actions"><button class="primary" data-open="${f.type}:${f.id}"><b>▶</b> Play</button><button class="secondary" data-open="${f.type}:${f.id}"><b>ⓘ</b> More info</button></div></div></section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("")}</div>`;
-  bindCommon();
+  app.innerHTML = `${header()}<section class="hero" id="featured">${featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("")}</div>`;
+  bindCommon(); bindFeatured(); scheduleHero();
 }
+function featuredMarkup(item) { const dots = state.featuredPool.length > 1 ? `<div class="hero-nav"><button class="hero-arrow" data-hero-prev aria-label="Previous featured title">‹</button><span class="hero-dots">${state.featuredPool.map((_, index) => `<i class="${index === state.featuredIndex ? "active" : ""}"></i>`).join("")}</span><button class="hero-arrow" data-hero-next aria-label="Next featured title">›</button></div>` : ""; return `<div class="hero-image" style="${item.backdrop_path ? `background-image:linear-gradient(90deg,#050505 5%,#050505bb 48%,#0505053d 100%),url(${TMDB_IMAGE}${item.backdrop_path})` : ""}"></div><div class="hero-copy"><span class="brand">NEW ON CINEVA</span><h1>${escapeHTML(titleOf(item))}</h1><div class="meta"><span>${yearOf(item) || "New"}</span><i></i><span>${item.vote_average ? `★ ${item.vote_average.toFixed(1)}` : "TV-14"}</span><i></i><span>${item.type === "tv" ? "Series" : "Movie"}</span></div><p>${escapeHTML(item.overview || "A new title ready to discover on Cineva.")}</p><div class="actions"><button class="primary" data-open="${item.type}:${item.id}"><b>▶</b> Play</button><button class="secondary" data-open="${item.type}:${item.id}"><b>ⓘ</b> More info</button></div></div>${dots}`; }
+function bindFeatured() { document.querySelectorAll("#featured [data-open]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, id); }); document.querySelector("[data-hero-prev]")?.addEventListener("click", () => rotateHero(-1)); document.querySelector("[data-hero-next]")?.addEventListener("click", () => rotateHero(1)); }
+function rotateHero(direction = 1) { if (state.featuredPool.length < 2) return; state.featuredIndex = (state.featuredIndex + direction + state.featuredPool.length) % state.featuredPool.length; state.featured = state.featuredPool[state.featuredIndex]; const hero = document.querySelector("#featured"); if (!hero) return; hero.classList.remove("hero-swap"); void hero.offsetWidth; hero.innerHTML = featuredMarkup(state.featured); hero.classList.add("hero-swap"); bindFeatured(); }
+function scheduleHero() { if (state.featuredPool.length > 1) state.heroTimer = setInterval(() => { if (state.route === "home") rotateHero(); }, 8500); }
 function rail(name, items) { return `<section class="rail"><div class="rail-title"><h2>${name}</h2><span>Explore all</span></div><div class="cards">${items.map(card).join("")}</div></section>`; }
 function card(item) { return `<button class="card" data-open="${item.type}:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i></span><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"}${item.vote_average ? ` · ★ ${item.vote_average.toFixed(1)}` : ""}</small></button>`; }
 async function openItem(type, id) {
