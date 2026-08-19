@@ -82,6 +82,20 @@
 .filter-panel select:focus { border-color: #c91520; }
 .filter-note { margin: 16px 0 0; color: #a6a6a6; font-size: 12px; line-height: 1.45; }
 .filter-clear { display: block; width: 100%; margin-top: 13px; padding: 4px; color: #c7c7c7; background: transparent; font-size: 12px; text-decoration: underline; }
+.media-info { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0 0 34px; }
+.info-block { min-width: 0; padding: 17px; border: 1px solid #242424; border-radius: 9px; background: #101010; }
+.info-block .brand { margin-bottom: 12px; }
+.fact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 18px; }
+.fact-grid small, .cast-card small { display: block; color: #929292; font-size: 11px; }
+.fact-grid b { display: block; margin-top: 3px; overflow: hidden; color: #eee; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.tag-row span { padding: 6px 9px; border: 1px solid #343434; border-radius: 999px; color: #cfcfcf; background: #181818; font-size: 11px; }
+.creator-list { margin: 0; color: #d0d0d0; font-size: 13px; line-height: 1.6; }
+.cast-block { grid-column: 1 / -1; }
+.cast-row { display: grid; grid-auto-flow: column; grid-auto-columns: 100px; gap: 10px; overflow-x: auto; padding: 2px 1px 5px; }
+.cast-card { min-width: 0; }
+.cast-card img { display: block; width: 100px; height: 130px; margin-bottom: 7px; border-radius: 6px; object-fit: cover; background: #242424; }
+.cast-card b { display: block; overflow: hidden; color: #eee; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .season-select { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; color: #cfcfcf; font-size: 12px; font-weight: 750; }
 .season-select select { min-width: 150px; padding: 9px 34px 9px 11px; border: 1px solid #414141; border-radius: 7px; outline: 0; color: #fff; background: #171717; font: inherit; }
 .season-select select:focus { border-color: #c91520; }
@@ -100,4 +114,8 @@
   .card-play { opacity: 1; transform: none; }
   .account { width: 34px; height: 34px; justify-content: center; padding: 0; }
   .account b { display: none; }
+  .media-info { grid-template-columns: 1fr; gap: 10px; margin-bottom: 26px; }
+  .info-block { padding: 14px; }
+  .cast-card img { width: 90px; height: 117px; }
+  .cast-row { grid-auto-columns: 90px; }
 }
