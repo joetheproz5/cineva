@@ -51,7 +51,8 @@
 .account:hover { border-color: #686868; background: #222; }
 
 .wordmark { display: inline-flex; align-items: center; gap: 8px; }
-.wordmark img { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
+.wordmark img { width: 32px; height: 32px; border-radius: 9px; object-fit: cover; }
+.wordmark.logo-only { width: 36px; height: 36px; padding: 0; }
 
 @media (max-width: 650px) {
   .hero { min-height: 405px; padding-bottom: 58px; }

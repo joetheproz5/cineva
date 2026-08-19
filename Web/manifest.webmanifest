@@ -5,5 +5,5 @@
   "display": "standalone",
   "background_color": "#071018",
   "theme_color": "#071018",
-  "icons": [{ "src": "/assets/seven-logo-app.png", "sizes": "1280x1280", "type": "image/png", "purpose": "any" }]
+  "icons": [{ "src": "/assets/seven-logo-red.png", "sizes": "1280x1280", "type": "image/png", "purpose": "any" }]
 }
