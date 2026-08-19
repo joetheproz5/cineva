@@ -26,7 +26,6 @@ async function auth(request, response, action) {
     if (action === "signup") { route = `/auth/v1/signup${settings.emailRedirectTo ? `?redirect_to=${encodeURIComponent(settings.emailRedirectTo)}` : ""}`; payload = { email:body.email, password:body.password, data:{ display_name:body.displayName || "" } }; }
     if (action === "login") route = "/auth/v1/token?grant_type=password";
     if (action === "refresh") route = "/auth/v1/token?grant_type=refresh_token";
-    if (action === "resend") { route = `/auth/v1/resend${settings.emailRedirectTo ? `?redirect_to=${encodeURIComponent(settings.emailRedirectTo)}` : ""}`; payload = { type:"signup", email:body.email }; }
     if (!route) return sendJSON(response, 404, { error:"Unknown auth action." });
     const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify(payload) }); sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Authentication request failed." }); }
@@ -44,7 +43,6 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname.startsWith("/api/tmdb/")) return proxyTMDB(response, sourceURL);
   if (sourceURL.pathname === "/api/auth/signup") return auth(request, response, "signup");
   if (sourceURL.pathname === "/api/auth/login") return auth(request, response, "login");
-  if (sourceURL.pathname === "/api/auth/resend") return auth(request, response, "resend");
   if (sourceURL.pathname === "/api/auth/refresh") return auth(request, response, "refresh");
   if (sourceURL.pathname === "/api/auth/user") return auth(request, response, "user");
   if (sourceURL.pathname === "/api/account/progress") return progress(request, response);
