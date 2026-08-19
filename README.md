@@ -44,6 +44,15 @@ The [Web](Web) directory contains an installable Cineva web app. From this Windo
 
 The local config file is ignored by Git and the server keeps the token off the iPhone; the web app only calls its local `/api/tmdb` proxy. TMDB supplies the metadata, posters, descriptions, search, popular/trending lists, newly released movies, and correct season/episode names. Vidking remains the configured playback embed.
 
+## Accounts and Supabase sync
+
+1. In Supabase, open **SQL Editor** and run [supabase.schema.sql](Web/supabase.schema.sql). It creates a private per-user playback-progress table with Row Level Security.
+2. Copy [supabase.config.example.json](Web/supabase.config.example.json) to `Web/supabase.local.json`.
+3. In Supabase **Settings → API Keys**, copy the Project URL and the **publishable/anon** key into that local file. Never use the `service_role` key.
+4. In **Authentication → Providers → Email**, enable Confirm email when you are ready to require email verification. If using a public HTTPS deployment, add its URL to the Supabase redirect allow-list and set `emailRedirectTo` in the local config.
+
+The account system supports email/password sign-up and sign-in. When the user is signed in, Cineva writes watch position, duration, completion state, title, and timestamp to Supabase and reloads them on the next signed-in session. The private `supabase.local.json` config is ignored by Git.
+
 ## Project structure
 
 ```
