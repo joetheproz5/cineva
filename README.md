@@ -1,70 +1,43 @@
-# Drift — authorized streaming demo for iPhone
+# Cineva
 
-Drift is a native SwiftUI streaming-app starter with a polished dark interface, focused in version 1 on a single series catalog entry, *The Good Doctor*. It is an engineering demo: it does **not** include, discover, scrape, or bypass access controls for copyrighted episodes.
+Cineva is a personal iPhone and Android streaming client for content the account holder is authorized to show. Version 1 provides a premium dark catalog for *The Good Doctor*, episode browsing, watch-progress storage, and an embedded Vidking player.
 
-## What works
+## Platforms
 
-- Premium home, series, seasons, episode browsing, and search
-- AVPlayer / AVPlayerViewController playback (native seek, full screen, AirPlay and PiP controls when supported)
-- Resume progress stored in `UserDefaults`; episodes are marked finished at 90%
-- Previous/next episode routes and 10-second seek controls
-- Error and retry state for unavailable streams
-- Local favorites, settings, and download-library UI architecture
-- Provider abstraction: `LocalVideoProvider`, `DirectURLVideoProvider`, and `AuthorizedRemoteProvider`
+- **iPhone:** [GoodDoctor.xcodeproj](GoodDoctor.xcodeproj) — the Xcode target and on-device name are **Cineva**.
+- **Android:** [Android](Android) — a native Kotlin/Jetpack Compose project with the same player URL configuration.
 
-## Requirements
+## Embedded-player configuration
 
-- macOS with current Xcode (iOS 17.0+ deployment target)
-- An Apple ID for device signing
-
-## Open and install on an iPhone
-
-1. Copy the project to a Mac and open `GoodDoctor.xcodeproj` in Xcode.
-2. Select the **Drift** target, then set a unique Bundle Identifier and your Team under **Signing & Capabilities**.
-3. Connect your iPhone, choose it as the run destination, and press Run.
-4. If prompted on the device, trust the developer certificate in Settings → General → VPN & Device Management.
-
-Free Apple development signing is sufficient for personal testing, but provisions expire periodically and some capabilities may require a paid Apple Developer membership.
-
-## Configure authorized streams
-
-Edit [VideoSources.swift](GoodDoctor/Streaming/VideoSources.swift). The included Apple HLS URL is a **public development demo** so player UI works without a media account. Replace the mapping with URLs you are licensed/authorized to play:
-
-```swift
-"the-good-doctor-s01e01": StreamSource(
-    url: URL(string: "https://your-authorized-cdn.example/episode.m3u8")!,
-    headers: [:], subtitles: [], qualities: []
-)
-```
-
-Do not use the third-party host names displayed in the supplied image unless you independently control the content and have every necessary right to distribute it. Drift does not implement host extraction, scraping, DRM bypass, or embedded unauthorized streams.
-
-## Architecture
+The iPhone configuration is in [VidkingConfiguration.swift](GoodDoctor/Streaming/VidkingConfiguration.swift). It constructs the provider-documented TV route:
 
 ```
-GoodDoctor/
-  App/            app entry, navigation
-  Models/         catalog, episode, stream and persistence models
-  Home/ Series/ Episodes/  browsing features
-  Player/         AVPlayer integration and playback lifecycle
-  Streaming/      provider abstraction and authorized URL configuration
-  Downloads/      offline-library presentation architecture
-  Persistence/    UserDefaults-backed history, favorites, settings
-  Components/     reusable visual components
+https://www.vidking.net/embed/tv/{tmdbId}/{season}/{episode}
 ```
 
-### Add content
+The current `seriesTMDBID` is `71712` and the brand color is Cineva lime. Change only that identifier if you are authorized to display a different series. iOS passes the documented `color`, `autoPlay`, `nextEpisode`, `episodeSelector`, and saved `progress` parameters. The Android equivalent is in [MainActivity.kt](Android/app/src/main/java/com/example/cineva/MainActivity.kt).
 
-Add a `Series` plus `Season` and `Episode` records to a catalog source such as `CatalogData`. Map its episode identifiers in `VideoSources` (or provide them from your authorized backend). The UI uses generic models and is not coupled to a particular host.
+The embedded page controls native playback/full-screen behavior. Cineva listens for the documented browser player events and stores time/duration locally so an episode resumes from its last position.
 
-### Metadata and downloads
+## Run on iPhone
 
-For production, implement a `MetadataService` using a rights-compliant API and cache its Codable response on disk. Use `AVAssetDownloadURLSession` behind the existing downloads model for legitimate offline HLS downloads; entitlement and server support may be required.
+1. Copy the repository to a Mac and open `GoodDoctor.xcodeproj` with Xcode 16 or later.
+2. Select the **Cineva** target, set a unique bundle identifier, and choose your Apple ID under **Signing & Capabilities**.
+3. Connect your iPhone, select it as the run destination, and press Run.
 
-## Security
+## Run on Android
 
-Copy `Config.example.xcconfig` to `Config.xcconfig` for future secrets. The actual config is ignored by Git. Never commit signing certificates, provisioning profiles, or private stream credentials.
+1. Open the `Android` directory in current Android Studio and allow Gradle sync to download dependencies.
+2. If Android Studio asks, install Android SDK Platform 35.
+3. Connect an Android phone with USB debugging enabled, select it, then press Run.
 
-## Limitations
+## Project structure
 
-This repository intentionally ships placeholder artwork and public demo media only. Real-series artwork, metadata enrichment, content licenses, server authentication, and HLS offline download execution are external product responsibilities.
+```
+GoodDoctor/   SwiftUI iOS app, WebKit player bridge, persistence, catalog UI
+Android/      Kotlin/Compose Android app and WebView player bridge
+```
+
+## Important
+
+You are responsible for maintaining the necessary content rights and complying with the embedded provider’s terms. Cineva does not scrape sites, extract stream URLs, bypass DRM, or circumvent access controls.

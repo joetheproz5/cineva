@@ -12,7 +12,7 @@ struct HomeView: View {
             if !watchedEpisodes.isEmpty { EpisodeRail(title: "Recently Watched", episodes: watchedEpisodes) }
             VStack(alignment: .leading, spacing: 12) { Text("Featured").font(.title2.bold()); NavigationLink { SeriesView(series: series) } label: { SeriesCard(series: series) }.buttonStyle(.plain) }
         }.padding(.bottom, 38)
-    }.background(AppTheme.background.ignoresSafeArea()).navigationTitle("DRIFT").navigationBarTitleDisplayMode(.inline) }
+    }.background(AppTheme.background.ignoresSafeArea()).navigationTitle("CINEVA").navigationBarTitleDisplayMode(.inline) }
 }
 
 struct HeroView: View {

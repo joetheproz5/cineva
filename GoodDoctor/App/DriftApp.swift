@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct DriftApp: App {
+struct CinevaApp: App {
     @StateObject private var library = LibraryStore()
     @StateObject private var settings = SettingsStore()
     var body: some Scene {

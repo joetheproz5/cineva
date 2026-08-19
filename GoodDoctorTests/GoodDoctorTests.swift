@@ -1,5 +1,5 @@
 import XCTest
-@testable import Drift
+@testable import Cineva
 
 final class GoodDoctorTests: XCTestCase {
     func testCatalogHasEpisodesAndStableIdentifiers() {
