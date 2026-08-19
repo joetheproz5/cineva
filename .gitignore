@@ -8,6 +8,7 @@ xcuserdata/
 
 # Local configuration and credentials
 Config.xcconfig
+Web/tmdb.local.json
 *.mobileprovision
 *.p12
 *.cer
