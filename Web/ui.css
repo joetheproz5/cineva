@@ -1,0 +1,63 @@
+.card-play {
+  position: absolute;
+  z-index: 2;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid #ffffff55;
+  border-radius: 50%;
+  color: #fff;
+  background: #080808a8;
+  font-size: 11px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s, transform .2s;
+}
+
+.card:hover .card-play,
+.card:focus-visible .card-play { opacity: 1; transform: translateY(0); }
+
+.trailer-card {
+  position: relative;
+  width: min(920px, 100%);
+  padding: 0;
+  border: 1px solid #343434;
+  border-radius: 12px;
+  background: #000;
+  box-shadow: 0 24px 100px #000;
+}
+
+.trailer-card iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 12px; }
+.trailer-card .modal-close { z-index: 1; top: 7px; right: 7px; border-radius: 50%; color: #fff; background: #000a; }
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: 2px;
+  padding: 8px 11px;
+  border: 1px solid #333;
+  border-radius: 999px;
+  color: #e6e6e6;
+  background: #151515;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account span { color: #e50914; font-size: 10px; }
+.account:hover { border-color: #686868; background: #222; }
+
+@media (max-width: 650px) {
+  .hero { min-height: 405px; padding-bottom: 58px; }
+  .hero-nav { right: auto; bottom: 14px; left: 50%; gap: 12px; transform: translateX(-50%); }
+  .hero-arrow { width: 30px; height: 30px; }
+  .hero-dots { gap: 6px; }
+  .hero-dots i { width: 6px; height: 6px; }
+  .hero-dots i.active { width: 16px; }
+  .card-play { opacity: 1; transform: none; }
+  .account { width: 34px; height: 34px; justify-content: center; padding: 0; }
+  .account b { display: none; }
+}
