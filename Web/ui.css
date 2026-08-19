@@ -117,6 +117,24 @@
 .footer-inner small { display: block; max-width: 560px; margin: 0 auto; color: #798a93; font-size: 12px; line-height: 1.65; }
 .footer-inner a { color: #a7bac4; }
 .footer-inner a:hover { color: #fff; }
+.hero-image { animation: none; }
+.hero-peek { position: absolute; z-index: 0; top: 34px; bottom: 34px; width: 118px; overflow: hidden; padding: 0; border: 1px solid #ffffff24; border-radius: 10px; background: #131313; box-shadow: 0 16px 35px #0009; opacity: .72; transition: opacity .2s, transform .25s; }
+.hero-peek img { width: 100%; height: 100%; object-fit: cover; }
+.hero-peek:after { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, #000d); content: ""; }
+.hero-peek span { position: absolute; z-index: 1; right: 9px; bottom: 9px; left: 9px; overflow: hidden; color: #fff; font-size: 10px; font-weight: 750; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.hero-peek-prev { left: -58px; transform: rotate(-4deg); }
+.hero-peek-next { right: -58px; transform: rotate(4deg); }
+.hero-peek:hover { z-index: 2; opacity: 1; }
+.hero-peek-prev:hover { transform: translateX(20px) rotate(-2deg); }
+.hero-peek-next:hover { transform: translateX(-20px) rotate(2deg); }
+.hero-swap[data-direction="next"] .hero-image { animation: hero-drawer-next .48s cubic-bezier(.2,.75,.2,1); }
+.hero-swap[data-direction="prev"] .hero-image { animation: hero-drawer-prev .48s cubic-bezier(.2,.75,.2,1); }
+.hero-swap .hero-copy, .hero-swap .hero-nav { animation: hero-panel-in .42s cubic-bezier(.2,.75,.2,1); }
+.hero-swap .hero-peek { animation: hero-peek-in .44s cubic-bezier(.2,.75,.2,1); }
+@keyframes hero-drawer-next { from { opacity: .15; transform: translateX(9%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes hero-drawer-prev { from { opacity: .15; transform: translateX(-9%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes hero-panel-in { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes hero-peek-in { from { opacity: 0; } to { opacity: .72; } }
 .nav-icon { display: none; }
 
 @media (max-width: 650px) {
@@ -129,6 +147,10 @@
   header > nav .nav-link:first-child .nav-icon { fill: currentColor; stroke: currentColor; }
   .search { flex: 1; width: auto; margin-left: 0; }
   .hero { min-height: 405px; padding-bottom: 58px; }
+  .hero-peek { top: 48px; bottom: 82px; width: 74px; border-radius: 7px; opacity: .55; }
+  .hero-peek-prev { left: -53px; }
+  .hero-peek-next { right: -53px; }
+  .hero-peek span { display: none; }
   .hero-nav { right: auto; bottom: 14px; left: 50%; gap: 12px; transform: translateX(-50%); }
   .hero-arrow { width: 30px; height: 30px; }
   .hero-dots { gap: 6px; }
@@ -146,4 +168,8 @@
   .footer-wordmark { margin-bottom: 27px; font-size: clamp(70px, 24vw, 130px); }
   .footer-inner p { font-size: 13px; }
   .footer-links { gap: 9px 16px; margin: 18px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-swap .hero-image, .hero-swap .hero-copy, .hero-swap .hero-nav, .hero-swap .hero-peek { animation: none; }
 }
