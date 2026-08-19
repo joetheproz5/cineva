@@ -64,6 +64,12 @@
 .explore-all { padding: 4px 0; color: #a9a9a9; background: transparent; font-size: 12px; font-weight: 650; }
 .explore-all:hover { color: #fff; text-decoration: underline; }
 .explore-grid { margin-top: 18px; }
+.all-catalog { margin-top: 16px; padding: 9px 12px; border: 1px solid #4b4b4b; border-radius: 7px; color: #f4f4f4; background: #181818; font-size: 13px; font-weight: 750; }
+.all-catalog:hover { border-color: #c91520; background: #250a0c; }
+.all-catalog b { margin-left: 7px; color: #e31a25; font-size: 17px; line-height: 10px; }
+.load-more { display: block; min-width: 170px; margin: 28px auto 8px; padding: 12px 18px; border: 1px solid #555; border-radius: 7px; color: #fff; background: #191919; font-weight: 750; }
+.load-more:hover { border-color: #c91520; background: #26090c; }
+.catalog-loading { width: 170px; height: 42px; margin: 28px auto 8px; border-radius: 7px; }
 
 @media (max-width: 650px) {
   header { flex-wrap: wrap; gap: 8px; }
