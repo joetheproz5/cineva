@@ -56,6 +56,11 @@
 .browse-page { padding: 18px 0 2px; }
 .browse-page h2 { margin: 7px 0; font-size: 30px; letter-spacing: -.8px; }
 .browse-page p { max-width: 540px; margin: 0; color: #aaa; line-height: 1.5; }
+.filter-row { display: flex; gap: 8px; overflow-x: auto; margin-top: 18px; padding: 2px 0 4px; scrollbar-width: none; }
+.filter-row::-webkit-scrollbar { display: none; }
+.filter { flex: 0 0 auto; padding: 8px 13px; border: 1px solid #343434; border-radius: 999px; color: #c9c9c9; background: #151515; font-size: 12px; font-weight: 700; }
+.filter:hover { border-color: #727272; color: #fff; }
+.filter.active { border-color: #c91520; color: #fff; background: #70090f; }
 
 @media (max-width: 650px) {
   header { flex-wrap: wrap; gap: 8px; }
