@@ -31,6 +31,10 @@ The embedded page controls native playback/full-screen behavior. Cineva listens 
 2. If Android Studio asks, install Android SDK Platform 35.
 3. Connect an Android phone with USB debugging enabled, select it, then press Run.
 
+## Run on an iPhone without a Mac
+
+The [Web](Web) directory contains an installable Cineva web app. From this Windows PC, run `node Web/server.js`, then open `http://YOUR-PC-IP:4174` in Safari on an iPhone connected to the same Wi-Fi. Use Share → **Add to Home Screen** to create a Cineva home-screen app. A public HTTPS host is required for offline PWA caching; local Wi-Fi mode works for live use.
+
 ## Project structure
 
 ```
