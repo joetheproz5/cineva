@@ -231,7 +231,7 @@
 /* Desktop rails end cleanly at the content edge. The full catalog remains
    available through Explore all, while phones retain their horizontal swipe. */
 @media (min-width: 651px) {
-  .hero { min-height: 540px; }
+  .hero { min-height: 590px; }
   .cards {
     grid-auto-flow: row;
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -243,6 +243,9 @@
   .card img,
   .card-skeleton { width: 100%; height: auto; aspect-ratio: 2 / 3; }
 }
+
+#featured + .rail,
+#featured + #rails { margin-top: 54px; }
 
 /* Swiper owns the coverflow transforms. Keeping the cards in its layout avoids
    competing touch/transform handlers on iOS Safari. */
@@ -279,10 +282,10 @@ html, body { overflow-x: hidden; }
   overflow: visible;
   transition: transform .45s ease, filter .45s ease;
 }
-.seven-coverflow .cover-poster { position: relative; z-index: 0; border-radius: 8px; -webkit-box-reflect: below 4px linear-gradient(to bottom, rgb(0 0 0 / .3), transparent 48%); }
+.seven-coverflow .cover-poster { position: relative; z-index: 0; border-radius: 8px; -webkit-box-reflect: below 4px linear-gradient(to bottom, rgb(0 0 0 / .46), transparent 66%); }
 .seven-coverflow .hero-cover::after { z-index: 1; }
 .seven-coverflow .hero-cover span { z-index: 3; }
-.seven-coverflow .swiper-slide-active .hero-cover { box-shadow: 0 25px 58px #000e, 0 0 58px #dc15272e, 0 0 105px #c7111a16; transform: scale(1.07); filter: brightness(1.03); }
+.seven-coverflow .swiper-slide-active .hero-cover { box-shadow: 0 32px 70px #000f; transform: scale(1.1); filter: brightness(1.03); }
 
 @media (max-width: 650px) {
   #app { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
