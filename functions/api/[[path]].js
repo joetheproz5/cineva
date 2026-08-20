@@ -27,6 +27,13 @@ function supabase(env) {
   return env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY ? { url:env.SUPABASE_URL, publishableKey:env.SUPABASE_PUBLISHABLE_KEY, emailRedirectTo:env.SUPABASE_EMAIL_REDIRECT_TO || "" } : null;
 }
 
+function config(env) {
+  return json({
+    configured: Boolean(env.TMDB_BEARER_TOKEN && env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY),
+    supabase: supabase(env)
+  });
+}
+
 async function tmdb(endpoint, requestURL, env) {
   if (!tmdbAllowed.test(endpoint)) return json({ error:"Unsupported TMDB endpoint." }, 400);
   if (!env.TMDB_BEARER_TOKEN) return json({ error:"TMDB is not configured." }, 503);
@@ -103,6 +110,7 @@ export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
+  if (path === "config" && request.method === "GET") return config(env);
   if (path.startsWith("tmdb/")) return tmdb(path.slice(5), requestURL, env);
   if (path === "auth/signup" && request.method === "POST") return auth("signup", request, env);
   if (path === "auth/login" && request.method === "POST") return auth("login", request, env);
