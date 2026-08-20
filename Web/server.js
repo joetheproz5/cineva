@@ -41,6 +41,17 @@ async function progress(request, response) {
     const body = await readBody(request); const result = await upstream(`${settings.url}/rest/v1/playback_progress?on_conflict=user_id,content_key`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(body) }); sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Progress sync failed." }); }
 }
+async function myList(request, response, sourceURL) {
+  const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
+  try {
+    if (request.method === "GET") { const profile = sourceURL.searchParams.get("profile"), filter = profile ? `&profile_id=eq.${encodeURIComponent(profile)}` : "", result = await upstream(`${settings.url}/rest/v1/my_list?select=*&order=added_at.desc${filter}`, { headers }); return sendJSON(response, result.status, result.data); }
+    if (request.method === "DELETE") { const profile = sourceURL.searchParams.get("profile") || "main", type = sourceURL.searchParams.get("type"), id = Number(sourceURL.searchParams.get("id")); if (!(["movie", "tv"].includes(type) && Number.isInteger(id))) return sendJSON(response, 400, { error:"A valid list item is required." }); const result = await upstream(`${settings.url}/rest/v1/my_list?profile_id=eq.${encodeURIComponent(profile)}&content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } }); return sendJSON(response, result.status, result.data); }
+    const body = await readBody(request), payload = { profile_id:String(body.profile_id || "main"), content_type:body.content_type === "tv" ? "tv" : "movie", tmdb_id:Number(body.tmdb_id), title:String(body.title || "Untitled").slice(0, 500), poster_path:body.poster_path || null, backdrop_path:body.backdrop_path || null, release_date:body.release_date || null, vote_average:Number(body.vote_average) || null };
+    if (!Number.isInteger(payload.tmdb_id) || payload.tmdb_id < 1) return sendJSON(response, 400, { error:"A valid title is required." });
+    const result = await upstream(`${settings.url}/rest/v1/my_list?on_conflict=user_id,profile_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) }); sendJSON(response, result.status, result.data);
+  } catch (error) { sendJSON(response, 400, { error:error.message || "My List could not be synced." }); }
+}
 async function accountSettings(request, response) {
   const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
   try { const body = await readBody(request), payload = { data:{ seven_account:body.account || {} } }; if (body.password) payload.password = body.password; const result = await upstream(`${settings.url}/auth/v1/user`, { method:"PUT", headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, body:JSON.stringify(payload) }); sendJSON(response, result.status, result.data); } catch (error) { sendJSON(response, 400, { error:error.message || "Account settings could not be saved." }); }
@@ -53,6 +64,7 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/auth/refresh") return auth(request, response, "refresh");
   if (sourceURL.pathname === "/api/auth/user") return auth(request, response, "user");
   if (sourceURL.pathname === "/api/account/progress") return progress(request, response);
+  if (sourceURL.pathname === "/api/account/list") return myList(request, response, sourceURL);
   if (sourceURL.pathname === "/api/account/settings" && request.method === "PUT") return accountSettings(request, response);
   const requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
   if (!file.startsWith(root)) return response.writeHead(403).end();

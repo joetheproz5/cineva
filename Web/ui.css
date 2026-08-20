@@ -72,6 +72,9 @@
 .catalog-loading { width: 170px; height: 42px; margin: 28px auto 8px; border-radius: 7px; }
 .catalog-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
 .catalog-actions .all-catalog { margin-top: 0; }
+.list-action { border: 1px solid #545454; }
+.list-action.saved { border-color: #8f2028; color: #fff; background: #4d0c11; }
+.list-action.saved:hover { border-color: #ef2632; background: #681016; }
 .filter-trigger { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 1px solid #4b4b4b; border-radius: 7px; color: #f4f4f4; background: #181818; font-size: 13px; font-weight: 750; }
 .filter-trigger:hover { border-color: #c91520; background: #250a0c; }
 .filter-trigger svg { width: 17px; height: 17px; fill: none; stroke: #e21a26; stroke-linecap: round; stroke-width: 2; }

@@ -92,6 +92,44 @@ async function progress(request, requestURL, env) {
   } catch (error) { return json({ error:error.message || "Progress sync failed." }, 400); }
 }
 
+async function myList(request, requestURL, env) {
+  const settings = supabase(env);
+  const token = authorization(request);
+  if (!settings) return json({ error:"Supabase is not configured." }, 503);
+  if (!token) return json({ error:"Sign in required." }, 401);
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
+  try {
+    if (request.method === "GET") {
+      const profile = requestURL.searchParams.get("profile");
+      const filter = profile ? `&profile_id=eq.${encodeURIComponent(profile)}` : "";
+      const result = await upstream(`${settings.url}/rest/v1/my_list?select=*&order=added_at.desc${filter}`, { headers });
+      return json(result.data, result.status);
+    }
+    if (request.method === "DELETE") {
+      const profile = requestURL.searchParams.get("profile") || "main";
+      const type = requestURL.searchParams.get("type");
+      const id = Number(requestURL.searchParams.get("id"));
+      if (!(["movie", "tv"].includes(type) && Number.isInteger(id))) return json({ error:"A valid list item is required." }, 400);
+      const result = await upstream(`${settings.url}/rest/v1/my_list?profile_id=eq.${encodeURIComponent(profile)}&content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
+      return json(result.data, result.status);
+    }
+    const body = await readJSON(request);
+    const payload = {
+      profile_id:String(body.profile_id || "main"),
+      content_type:body.content_type === "tv" ? "tv" : "movie",
+      tmdb_id:Number(body.tmdb_id),
+      title:String(body.title || "Untitled").slice(0, 500),
+      poster_path:body.poster_path || null,
+      backdrop_path:body.backdrop_path || null,
+      release_date:body.release_date || null,
+      vote_average:Number(body.vote_average) || null
+    };
+    if (!Number.isInteger(payload.tmdb_id) || payload.tmdb_id < 1) return json({ error:"A valid title is required." }, 400);
+    const result = await upstream(`${settings.url}/rest/v1/my_list?on_conflict=user_id,profile_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
+    return json(result.data, result.status);
+  } catch (error) { return json({ error:error.message || "My List could not be synced." }, 400); }
+}
+
 async function accountSettings(request, env) {
   const settings = supabase(env);
   const token = authorization(request);
@@ -117,6 +155,7 @@ export async function onRequest(context) {
   if (path === "auth/refresh" && request.method === "POST") return auth("refresh", request, env);
   if (path === "auth/user" && request.method === "GET") return auth("user", request, env);
   if (path === "account/progress") return progress(request, requestURL, env);
+  if (path === "account/list") return myList(request, requestURL, env);
   if (path === "account/settings" && request.method === "PUT") return accountSettings(request, env);
   return json({ error:"Not found." }, 404);
 }
