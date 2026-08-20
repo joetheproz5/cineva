@@ -93,9 +93,27 @@
 .creator-list { margin: 0; color: #d0d0d0; font-size: 13px; line-height: 1.6; }
 .cast-block { grid-column: 1 / -1; }
 .cast-row { display: grid; grid-auto-flow: column; grid-auto-columns: 100px; gap: 10px; overflow-x: auto; padding: 2px 1px 5px; }
-.cast-card { min-width: 0; }
+.cast-card { min-width: 0; padding: 0; color: inherit; text-align: left; background: transparent; }
 .cast-card img { display: block; width: 100px; height: 130px; margin-bottom: 7px; border-radius: 6px; object-fit: cover; background: #242424; }
 .cast-card b { display: block; overflow: hidden; color: #eee; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.cast-card:hover img, .cast-card:focus-visible img { outline: 2px solid #d61a25; outline-offset: 2px; filter: brightness(1.1); }
+.person-hero { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 30px; align-items: start; margin: 6px 0 38px; padding: 25px; border: 1px solid #252525; border-radius: 12px; background: linear-gradient(130deg, #151515, #090909 68%); }
+.person-photo { display: block; width: 230px; aspect-ratio: 2 / 3; border-radius: 8px; object-fit: cover; background: #1d1d1d; box-shadow: 0 16px 36px #0009; }
+.person-main h1 { margin: 8px 0 10px; font-size: clamp(34px, 5vw, 53px); letter-spacing: -1.8px; }
+.person-biography { max-width: 810px; margin: 17px 0 22px; color: #d0d0d0; line-height: 1.62; }
+.person-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.person-links a { padding: 7px 10px; border: 1px solid #414141; border-radius: 999px; color: #e2e2e2; font-size: 12px; font-weight: 700; text-decoration: none; }
+.person-links a:hover { border-color: #d31b25; color: #fff; background: #2b0b0e; }
+.person-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px 18px; padding-top: 18px; border-top: 1px solid #303030; }
+.person-facts small { display: block; color: #929292; font-size: 11px; }
+.person-facts b { display: block; margin-top: 3px; color: #eee; font-size: 13px; line-height: 1.35; }
+.person-filmography { margin: 0 0 34px; }
+.person-filmography > .rail-title { margin-bottom: 0; }
+.person-filmography > .rail-title h2 { margin: 5px 0 0; font-size: 27px; }
+.person-rail { margin-top: 25px; }
+.person-loading { min-height: 330px; align-items: center; }
+.person-loading .skeleton-line { margin: 12px 0; }
+.person-loading p { color: #aaa; }
 .resume-action { font-size: 12px; }
 #episodes-list .resume-action { display: block; margin: -3px 8px 9px auto; padding: 8px 11px; }
 .continue-rail { margin-top: 30px; }
@@ -293,6 +311,13 @@ html, body { overflow-x: hidden; }
   .info-block { padding: 14px; }
   .cast-card img { width: 90px; height: 117px; }
   .cast-row { grid-auto-columns: 90px; }
+  .person-hero { grid-template-columns: 116px minmax(0, 1fr); gap: 17px; padding: 16px; margin-bottom: 27px; }
+  .person-photo { width: 116px; }
+  .person-main h1 { font-size: 31px; letter-spacing: -1.1px; }
+  .person-biography { margin: 14px 0 18px; font-size: 13px; }
+  .person-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 15px; }
+  .person-links a { padding: 6px 8px; font-size: 11px; }
+  .person-filmography > .rail-title h2 { font-size: 23px; }
   #episodes-list .resume-action { margin-right: 4px; }
   .series-tracker { margin-bottom: 13px; padding: 11px; }
   .episode-main { gap: 10px; }
