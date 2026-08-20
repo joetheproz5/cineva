@@ -10,6 +10,7 @@ const SESSION_KEY = "cineva.supabase.session";
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const ACCOUNT_KEY = "seven.account.settings";
 const MY_LIST_KEY = "seven.my-list";
+const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const activeProfileId = () => state.account?.activeProfileId || "main";
 const watchKey = item => `seven-progress-${activeProfileId()}-${item.type}-${item.id}-${item.season || 0}-${item.episode || 0}`;
 const titleOf = item => item.title || item.name || item.original_title || item.original_name || "Untitled";
@@ -48,21 +49,25 @@ async function loadNewEpisodes(airing = state.catalog["New series"] || []) { con
 async function toggleMyList(item) { const inList = isInMyList(item), key = listKey({ profileId:activeProfileId(), type:item.type, id:item.id }); if (inList) { state.myList = state.myList.filter(entry => listKey(entry) !== key); persistMyList(); if (state.session) try { await localAPI(`/api/account/list?profile=${encodeURIComponent(activeProfileId())}&type=${encodeURIComponent(item.type)}&id=${encodeURIComponent(item.id)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} } else { const entry = listRecord({ profileId:activeProfileId(), type:item.type, id:item.id, title:titleOf(item), poster_path:item.poster_path, backdrop_path:item.backdrop_path, release_date:item.release_date || item.first_air_date, vote_average:item.vote_average, addedAt:new Date().toISOString() }); state.myList = [entry, ...state.myList]; persistMyList(); if (state.session) try { await localAPI("/api/account/list", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ profile_id:entry.profileId, content_type:entry.type, tmdb_id:entry.id, title:entry.title, poster_path:entry.poster_path, backdrop_path:entry.backdrop_path, release_date:entry.release_date, vote_average:entry.vote_average }) }); } catch {} } if (item.type === "tv") void loadNewEpisodes(); render(); }
 
 async function api(path, params = {}) {
-  const query = new URLSearchParams(params); const response = await fetch(`/api/tmdb/${path}${query.size ? `?${query}` : ""}`);
+  const query = new URLSearchParams(params); if (!query.has("language")) query.set("language", DISPLAY_LANGUAGES[state.account?.preferences?.language] || DISPLAY_LANGUAGES.English); const response = await fetch(`/api/tmdb/${path}?${query}`);
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "TMDB is not configured");
   return response.json();
+}
+async function refreshCatalogForLanguage() {
+  const [featured, trending, movies, shows, recent, airing] = await Promise.all([
+    api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air")
+  ]);
+  state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
+  state.featured = state.featuredPool[0] || normalize(featured, "tv");
+  state.featuredIndex = 0;
+  state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows) };
+  await loadNewEpisodes(state.catalog["New series"]);
 }
 async function boot() {
   renderLoading();
   await restoreSession();
   try {
-    const [featured, trending, movies, shows, recent, airing] = await Promise.all([
-      api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air")
-    ]);
-    state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
-    state.featured = state.featuredPool[0] || normalize(featured, "tv");
-    state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows) };
-    await loadNewEpisodes(state.catalog["New series"]);
+    await refreshCatalogForLanguage();
   } catch (error) {
     state.featured = { id: FEATURED_ID, type: "tv", name: "The Good Doctor", overview: "Add a TMDB Read Access Token to enable posters, descriptions, categories, and search.", backdrop_path: null };
     state.catalog = {};
@@ -329,7 +334,7 @@ function renderAccount() {
   document.querySelector("[data-view-history]").onclick = () => { state.historyReturn = "account"; state.route = "history"; render(); };
   document.querySelector("[data-my-list]").onclick = () => { state.myListReturn = "account"; state.route = "my-list"; render(); };
   document.querySelector("[data-install-seven]").onclick = showInstallSEVEN;
-  document.querySelectorAll("[data-pref]").forEach(field => field.onchange = async () => { if (field.dataset.pref === "episodeAlerts" && field.checked && !await requestEpisodeAlerts()) field.checked = false; state.account.preferences[field.dataset.pref] = field.type === "checkbox" ? field.checked : field.value; await saveAccount(); if (field.dataset.pref === "episodeAlerts" && field.checked) notifyNewEpisodes(); });
+  document.querySelectorAll("[data-pref]").forEach(field => field.onchange = async () => { if (field.dataset.pref === "episodeAlerts" && field.checked && !await requestEpisodeAlerts()) field.checked = false; state.account.preferences[field.dataset.pref] = field.type === "checkbox" ? field.checked : field.value; await saveAccount(); if (field.dataset.pref === "episodeAlerts" && field.checked) notifyNewEpisodes(); if (field.dataset.pref === "language") { try { await refreshCatalogForLanguage(); } catch { /* The saved language is used by the next successful TMDB request. */ } } });
   document.querySelector("[data-clear-history]").onclick = async () => { if (!confirm(`Clear viewing history for ${currentProfile()?.name || "this profile"}?`)) return; Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).forEach(key => localStorage.removeItem(key)); try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(activeProfileId())}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} showAccount(); };
   document.querySelector("#password-form").onsubmit = async event => { event.preventDefault(); const message = event.currentTarget.querySelector(".account-message"), password = new FormData(event.currentTarget).get("password"); try { await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account:state.account, password }) }); message.textContent = "Password updated."; event.currentTarget.reset(); } catch (error) { message.textContent = error.message; } };
   document.querySelector("[data-signout]").onclick = () => { clearSession(); state.route = "home"; render(); };
