@@ -136,12 +136,12 @@
 .hero-cover-next-2 { z-index: 2; opacity: .47; filter: brightness(.48); transform: translate(105%, -45%) rotateZ(10deg) scale(.72); }
 .hero-moving-next .hero-cover-prev-2 { opacity: 0; transform: translate(-270%, -42%) rotateZ(-13deg) scale(.62); }
 .hero-moving-next .hero-cover-prev-1 { z-index: 2; opacity: .47; filter: brightness(.48); transform: translate(-205%, -45%) rotateZ(-10deg) scale(.72); }
-.hero-moving-next .hero-cover-center-0 { z-index: 5; width: 186px; opacity: .38; filter: brightness(.68); transform: translate(-138%, -48%) rotateZ(-6deg) scale(.88); }
+.hero-moving-next .hero-cover-center-0 { z-index: 5; width: 186px; opacity: .9; filter: brightness(.76); transform: translate(-138%, -48%) rotateZ(-6deg) scale(.88); }
 .hero-moving-next .hero-cover-next-1 { z-index: 4; width: 250px; opacity: 1; filter: none; transform: translate(-50%, -50%) scale(1.05); }
 .hero-moving-next .hero-cover-next-2 { z-index: 4; opacity: .9; filter: brightness(.76); transform: translate(38%, -48%) rotateZ(6deg) scale(.88); }
 .hero-moving-prev .hero-cover-next-2 { opacity: 0; transform: translate(270%, -42%) rotateZ(13deg) scale(.62); }
 .hero-moving-prev .hero-cover-next-1 { z-index: 2; opacity: .47; filter: brightness(.48); transform: translate(105%, -45%) rotateZ(10deg) scale(.72); }
-.hero-moving-prev .hero-cover-center-0 { z-index: 5; width: 186px; opacity: .38; filter: brightness(.68); transform: translate(38%, -48%) rotateZ(6deg) scale(.88); }
+.hero-moving-prev .hero-cover-center-0 { z-index: 5; width: 186px; opacity: .9; filter: brightness(.76); transform: translate(38%, -48%) rotateZ(6deg) scale(.88); }
 .hero-moving-prev .hero-cover-prev-1 { z-index: 4; width: 250px; opacity: 1; filter: none; transform: translate(-50%, -50%) scale(1.05); }
 .hero-moving-prev .hero-cover-prev-2 { z-index: 4; opacity: .9; filter: brightness(.76); transform: translate(-138%, -48%) rotateZ(-6deg) scale(.88); }
 .hero-cover:hover { z-index: 6; opacity: 1; filter: brightness(1.08); }
