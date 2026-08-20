@@ -167,6 +167,48 @@
 .profile-editor .kids-check { display: flex; align-items: center; gap: 8px; }
 .profile-editor .kids-check input { display: inline; width: auto; margin: 0; }
 
+/* Full-page account experience */
+.account-page { width: min(1120px, calc(100% - 40px)); min-height: calc(100vh - 120px); margin: 0 auto; padding: 32px 0 76px; }
+.account-page-top { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: end; padding: 26px 0 32px; border-bottom: 1px solid #292929; }
+.account-back { justify-self: start; grid-column: 1 / -1; padding: 0; color: #b8b8b8; background: transparent; font-size: 13px; font-weight: 700; }
+.account-back:hover { color: #fff; }
+.account-heading h1 { margin: 7px 0 4px; color: #fff; font-size: clamp(32px, 4vw, 46px); letter-spacing: -1.8px; }
+.account-heading p { margin: 0; color: #a5a5a5; font-size: 14px; }
+.account-active-profile { display: flex; align-items: center; gap: 12px; min-width: 180px; padding: 10px 14px 10px 10px; border: 1px solid #353535; border-radius: 10px; background: linear-gradient(135deg, #1c1c1c, #101010); }
+.account-active-profile .profile-avatar { width: 46px; height: 46px; margin: 0; border-radius: 8px; font-size: 18px; }
+.account-active-profile b, .account-active-profile small { display: block; }
+.account-active-profile b { color: #f4f4f4; font-size: 13px; }
+.account-active-profile small { margin-top: 3px; color: #979797; font-size: 11px; }
+.account-page .account-section { margin-top: 28px; padding: 26px; border: 1px solid #303030; border-radius: 12px; background: linear-gradient(145deg, #191919, #101010 72%); box-shadow: 0 18px 48px #0002; }
+.account-page .account-section-title { align-items: center; margin-bottom: 22px; }
+.account-page .account-section-title > div { min-width: 0; }
+.account-page .account-section-title .brand { display: block; margin-bottom: 7px; color: #ed1b27; font-size: 10px; letter-spacing: 1.7px; }
+.account-page .account-section-title h2 { margin: 0; color: #fff; font-size: 21px; letter-spacing: -.6px; }
+.account-page .account-section-title > span { color: #929292; font-size: 12px; text-align: right; }
+.account-page .profiles { gap: 20px; }
+.account-page .profile-card, .account-page .profile-add { width: 108px; }
+.account-page .profile-avatar, .account-page .profile-add span { width: 84px; height: 84px; }
+.account-page .profile-avatar { font-size: 32px; }
+.account-page .profile-card b { font-size: 13px; }
+.account-page .profile-card small { font-size: 11px; }
+.account-page .profile-edit { top: -4px; right: 8px; }
+.account-page .account-grid { gap: 22px; }
+.account-page .account-grid .account-section { margin-top: 0; }
+.account-page .account-toggle:first-of-type, .account-page .account-row:first-of-type { border-top: 0; }
+.account-page .account-toggle { padding: 14px 0; }
+.account-page .account-toggle span { font-size: 13px; }
+.account-page .account-toggle small, .account-page .account-row small { font-size: 11px; }
+.account-page .account-toggle i { top: 16px; }
+.account-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding-top: 4px; }
+.account-page .account-select { margin-top: 12px; font-size: 12px; }
+.account-page .account-select select { padding: 11px; }
+.account-page .account-row { padding: 15px 0; }
+.account-page .account-row b { font-size: 13px; }
+.account-page .password-form { padding: 16px 0; border-top: 1px solid #292929; }
+.account-page .password-form input { padding: 11px; }
+.account-page .account-signout { margin-top: 4px; }
+.account-page .account-signout em { color: #ef2832; }
+
 @media (max-width: 650px) {
   .account-hub { max-height: calc(100vh - 24px); padding: 25px 18px; border-radius: 12px; }
   .account-hub h2 { font-size: 25px; }
@@ -178,6 +220,19 @@
   .modal { padding: 12px; }
   .auth-card { padding: 25px 22px; }
   .auth-card input, .auth-card select { font-size: 16px; }
+  .account-page { width: min(100% - 28px, 600px); padding: 18px 0 48px; }
+  .account-page-top { grid-template-columns: 1fr; gap: 18px; padding: 12px 0 24px; }
+  .account-active-profile { justify-self: stretch; width: 100%; }
+  .account-page .account-section { margin-top: 18px; padding: 19px 16px; border-radius: 10px; }
+  .account-page .account-section-title { align-items: start; gap: 12px; margin-bottom: 18px; }
+  .account-page .account-section-title h2 { font-size: 19px; }
+  .account-page .account-section-title > span { font-size: 11px; }
+  .account-page .profiles { gap: 14px 9px; }
+  .account-page .profile-card, .account-page .profile-add { width: 76px; }
+  .account-page .profile-avatar, .account-page .profile-add span { width: 62px; height: 62px; }
+  .account-page .profile-avatar { font-size: 24px; }
+  .account-page .account-grid { grid-template-columns: 1fr; gap: 18px; }
+  .account-selects { grid-template-columns: 1fr; gap: 0; }
 }
 
 .profile-gate { min-height: 100vh; padding: 28px; color: #fff; background: radial-gradient(ellipse at 50% 10%, #301015 0%, #070707 42%, #030303 100%); text-align: center; }
