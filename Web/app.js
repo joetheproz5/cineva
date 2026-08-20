@@ -297,6 +297,11 @@ function renderProfileSettings() {
 }
 function renderAccount() {
   app.innerHTML = accountHub(); bindCommon();
+  const accountHeadings = document.querySelectorAll(".account-page .account-section-title h2");
+  accountHeadings[0].textContent = "Profile & parental controls";
+  accountHeadings[1].textContent = "Playback settings";
+  accountHeadings[2].textContent = "Security & privacy";
+  document.querySelector(".account-profiles .account-section-title > span").textContent = "Manage profiles and viewing access";
   document.querySelector("[data-account-back]").onclick = () => { state.route = state.accountReturn || "home"; state.accountReturn = null; render(); };
   document.querySelectorAll("[data-select-profile]").forEach(button => button.onclick = async () => { state.account.activeProfileId = button.dataset.selectProfile; await saveAccount(); render(); });
   document.querySelectorAll("[data-edit-profile]").forEach(button => button.onclick = () => showProfileEditor(button.dataset.editProfile));

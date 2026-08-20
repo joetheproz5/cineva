@@ -318,3 +318,60 @@
   .profile-choice { width: 82px; }
   .profile-choice .profile-avatar { width: 70px; height: 70px; font-size: 27px; }
 }
+
+/* Cleaner streaming-service account layout */
+.account-page { width: min(1080px, calc(100% - 48px)); padding-top: 18px; }
+.account-page-top { grid-template-columns: 1fr auto; gap: 20px; padding: 16px 0 28px; border-color: #303030; }
+.account-page-top .brand, .account-page .account-section-title .brand { display: none; }
+.account-back { color: #8c8c8c; font-size: 12px; font-weight: 600; }
+.account-heading h1 { margin: 0 0 7px; font-size: 42px; letter-spacing: -1.6px; }
+.account-active-profile { min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.account-active-profile .profile-avatar { width: 58px; height: 58px; border-radius: 4px; }
+.account-active-profile b { font-size: 12px; }
+.account-active-profile small { font-size: 10px; }
+.account-page .account-section { margin-top: 0; padding: 30px 0; border: 0; border-radius: 0; border-bottom: 1px solid #303030; background: transparent; box-shadow: none; }
+.account-page .account-section-title { margin-bottom: 20px; }
+.account-page .account-section-title h2 { font-size: 20px; font-weight: 700; letter-spacing: -.4px; }
+.account-page .account-section-title > span { color: #777; font-size: 11px; }
+.account-page .profiles { gap: 24px; }
+.account-page .profile-card, .account-page .profile-add { width: 92px; }
+.account-page .profile-avatar, .account-page .profile-add span { width: 74px; height: 74px; border-radius: 4px; }
+.account-page .profile-card b { margin-top: 2px; font-size: 12px; }
+.account-page .profile-card small { display: none; }
+.account-page .profile-edit { top: -8px; right: 4px; width: 20px; height: 20px; border-color: #5b5b5b; background: #1b1b1b; }
+.account-page .profile-add { gap: 7px; }
+.account-page .profile-add span { border-color: #555; border-radius: 4px; }
+.account-page .account-grid { grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 56px; padding: 0; }
+.account-page .account-grid .account-section { padding: 32px 0 24px; }
+.account-page .account-toggle { padding: 16px 0; }
+.account-page .account-toggle span, .account-page .account-row b { font-size: 12px; }
+.account-page .account-toggle small, .account-page .account-row small { color: #777; font-size: 10px; }
+.account-page .account-toggle i { top: 18px; width: 32px; height: 18px; }
+.account-page .account-toggle i:after { width: 12px; height: 12px; }
+.account-page .account-toggle input:checked + i:after { transform: translateX(14px); }
+.account-selects { gap: 12px; }
+.account-page .account-select { color: #bdbdbd; font-size: 11px; }
+.account-page .account-select select { border-color: #3b3b3b; border-radius: 3px; background: #151515; }
+.account-page .account-row { padding: 16px 0; }
+.account-page .password-form { padding: 16px 0; }
+.account-page .password-form input { border-radius: 3px; background: #151515; }
+.account-page .password-form .secondary { border-radius: 3px; background: #333; }
+.account-page .account-signout { border-bottom: 0; }
+
+@media (max-width: 650px) {
+  .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
+  .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
+  .account-back { grid-column: 1 / -1; }
+  .account-heading h1 { font-size: 34px; }
+  .account-active-profile .profile-avatar { width: 48px; height: 48px; }
+  .account-active-profile > span { display: none; }
+  .account-page .account-section { padding: 24px 0; }
+  .account-page .account-section-title { align-items: start; margin-bottom: 18px; }
+  .account-page .account-section-title h2 { font-size: 18px; }
+  .account-page .account-section-title > span { max-width: 130px; text-align: right; }
+  .account-page .profiles { gap: 15px 11px; }
+  .account-page .profile-card, .account-page .profile-add { width: 72px; }
+  .account-page .profile-avatar, .account-page .profile-add span { width: 60px; height: 60px; }
+  .account-page .account-grid { grid-template-columns: 1fr; gap: 0; }
+  .account-page .account-grid .account-section { padding: 26px 0; }
+}
