@@ -139,6 +139,16 @@
 .series-tracker > span { color: #e52833; font-size: 12px; font-weight: 850; }
 .series-tracker > i { grid-column: 1 / -1; display: block; height: 4px; overflow: hidden; border-radius: 99px; background: #343434; }
 .series-tracker > i em { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a90812, #ec2631); }
+.up-next { display: grid; grid-template-columns: 154px minmax(0, 1fr) auto; gap: 14px; align-items: center; width: min(620px, 100%); margin: 0 0 28px; padding: 8px; border: 1px solid #332124; border-radius: 10px; color: #fff; text-align: left; background: linear-gradient(105deg, #160a0d, #101010 62%); box-shadow: 0 12px 34px #0007; }
+.up-next:hover { border-color: #8e2229; background: linear-gradient(105deg, #1c0b0f, #151515 62%); }
+.up-next img { width: 154px; height: 87px; border-radius: 6px; object-fit: cover; background: #1c1c1c; }
+.up-next span { min-width: 0; }
+.up-next small, .up-next b, .up-next strong, .up-next em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.up-next small { color: #eb3039; font-size: 9px; font-weight: 850; letter-spacing: 1.5px; }
+.up-next b { margin-top: 5px; color: #d9d9d9; font-size: 12px; }
+.up-next strong { margin-top: 3px; font-size: 15px; }
+.up-next em { margin-top: 4px; color: #9d9d9d; font-size: 11px; font-style: normal; }
+.up-next > i { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: #fff; background: #c81420; font-size: 12px; font-style: normal; }
 .episode-main { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; padding: 0; color: inherit; text-align: left; background: transparent; }
 .episode.is-watched { border: 1px solid #432327; background: #161112; }
 .episode.is-watched .episode-main b { color: #d2d2d2; }
@@ -263,6 +273,10 @@ html, body { overflow-x: hidden; }
   .person-filmography > .rail-title h2 { font-size: 23px; }
   #episodes-list .resume-action { margin-right: 4px; }
   .series-tracker { margin-bottom: 13px; padding: 11px; }
+  .up-next { grid-template-columns: 112px minmax(0, 1fr) 30px; gap: 10px; margin-bottom: 22px; padding: 6px; }
+  .up-next img { width: 112px; height: 63px; }
+  .up-next strong { font-size: 13px; }
+  .up-next > i { width: 30px; height: 30px; font-size: 10px; }
   .episode-main { gap: 10px; }
   .episode-toggle { width: 30px; height: 30px; margin-left: 6px; }
   .player-stage { padding: 8px; border-radius: 11px; }
