@@ -35,6 +35,9 @@
 
 @media (max-width: 650px) {
   header > nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  header > nav .nav-link { white-space: nowrap; }
+  header > nav .nav-link[data-favourites] span { font-size: 0; }
+  header > nav .nav-link[data-favourites] span:after { font-size: 10px; content: "Favs"; }
 }
 
 .account {
