@@ -209,6 +209,47 @@
 .account-page .account-signout { margin-top: 4px; }
 .account-page .account-signout em { color: #ef2832; }
 
+/* Dedicated profile settings */
+.profile-settings-page { width: min(960px, calc(100% - 40px)); min-height: calc(100vh - 120px); margin: 0 auto; padding: 32px 0 76px; }
+.profile-settings-top { padding: 26px 0 30px; border-bottom: 1px solid #292929; }
+.profile-settings-top .account-back { display: block; margin-bottom: 28px; }
+.profile-settings-top h1 { margin: 8px 0 7px; color: #fff; font-size: clamp(32px, 4vw, 46px); letter-spacing: -1.8px; }
+.profile-settings-top p { margin: 0; color: #a8a8a8; font-size: 14px; }
+.profile-settings-hero { display: flex; align-items: center; gap: 22px; margin-top: 28px; padding: 24px; border: 1px solid #343434; border-radius: 12px; background: linear-gradient(135deg, #1c1c1c, #101010); }
+.profile-settings-avatar .profile-avatar { width: 94px; height: 94px; margin: 0; border-radius: 12px; font-size: 36px; }
+.profile-name-field { display: block; min-width: min(420px, 100%); color: #e7e7e7; font-size: 12px; font-weight: 750; }
+.profile-name-field input, .profile-pin-field input { display: block; width: 100%; margin-top: 7px; padding: 12px; border: 1px solid #3e3e3e; border-radius: 7px; outline: 0; color: #fff; background: #111; font: inherit; }
+.profile-name-field input:focus, .profile-pin-field input:focus { border-color: #d41520; }
+.profile-settings-hero small { display: block; margin-top: 8px; color: #929292; font-size: 11px; }
+.profile-settings-section { margin-top: 22px; padding: 25px; border: 1px solid #303030; border-radius: 12px; background: linear-gradient(145deg, #191919, #101010 72%); }
+.profile-settings-section-head .brand { display: block; margin-bottom: 7px; color: #ed1b27; font-size: 10px; letter-spacing: 1.7px; }
+.profile-settings-section-head h2 { margin: 0; color: #fff; font-size: 21px; letter-spacing: -.6px; }
+.profile-settings-section-head p { margin: 7px 0 0; color: #979797; font-size: 12px; line-height: 1.45; }
+.profile-avatar-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.profile-avatar-grid button { overflow: hidden; padding: 0 0 8px; border: 1px solid #363636; border-radius: 9px; color: #bdbdbd; background: #111; font-size: 10px; font-weight: 700; transition: border-color .18s, transform .18s, box-shadow .18s; }
+.profile-avatar-grid button:hover { border-color: #888; transform: translateY(-2px); }
+.profile-avatar-grid button.selected { border-color: #e21a26; color: #fff; box-shadow: 0 0 0 1px #e21a26, 0 9px 24px #7c0b1238; }
+.profile-avatar-grid img { display: block; width: 100%; aspect-ratio: 1; margin-bottom: 8px; object-fit: cover; }
+.profile-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.profile-settings-grid .profile-settings-section { min-height: 212px; }
+.profile-setting-toggle { position: relative; display: flex; margin-top: 22px; padding: 15px 46px 15px 0; border-top: 1px solid #2a2a2a; cursor: pointer; }
+.profile-setting-toggle b, .profile-setting-toggle small { display: block; }
+.profile-setting-toggle b { color: #f0f0f0; font-size: 13px; }
+.profile-setting-toggle small { margin-top: 4px; color: #929292; font-size: 11px; line-height: 1.4; }
+.profile-setting-toggle input { position: absolute; opacity: 0; }
+.profile-setting-toggle i { position: absolute; top: 17px; right: 0; width: 36px; height: 20px; border-radius: 99px; background: #4a4a4a; }
+.profile-setting-toggle i:after { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #ddd; content: ""; transition: transform .18s; }
+.profile-setting-toggle input:checked + i { background: #c9101a; }
+.profile-setting-toggle input:checked + i:after { transform: translateX(16px); }
+.profile-pin-field { display: block; margin-top: 21px; color: #e7e7e7; font-size: 12px; font-weight: 750; }
+.profile-remove-pin { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: #bdbdbd; font-size: 11px; }
+.profile-remove-pin input { width: 15px; height: 15px; accent-color: #d41520; }
+.profile-settings-error { margin-top: 14px !important; }
+.profile-settings-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 20px; }
+.profile-settings-actions .primary { min-width: 170px; padding: 12px 18px; }
+.profile-delete { padding: 10px 0; color: #e64c55; background: transparent; font-size: 12px; font-weight: 750; }
+.profile-delete:hover { color: #fff; text-decoration: underline; }
+
 @media (max-width: 650px) {
   .account-hub { max-height: calc(100vh - 24px); padding: 25px 18px; border-radius: 12px; }
   .account-hub h2 { font-size: 25px; }
@@ -233,6 +274,21 @@
   .account-page .profile-avatar { font-size: 24px; }
   .account-page .account-grid { grid-template-columns: 1fr; gap: 18px; }
   .account-selects { grid-template-columns: 1fr; gap: 0; }
+  .profile-settings-page { width: min(100% - 28px, 600px); padding: 18px 0 48px; }
+  .profile-settings-top { padding: 12px 0 24px; }
+  .profile-settings-top .account-back { margin-bottom: 24px; }
+  .profile-settings-hero { gap: 16px; margin-top: 18px; padding: 17px; }
+  .profile-settings-avatar .profile-avatar { width: 68px; height: 68px; border-radius: 9px; font-size: 26px; }
+  .profile-name-field { min-width: 0; }
+  .profile-settings-section { margin-top: 18px; padding: 19px 16px; border-radius: 10px; }
+  .profile-settings-section-head h2 { font-size: 19px; }
+  .profile-avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+  .profile-settings-grid { grid-template-columns: 1fr; gap: 0; }
+  .profile-settings-grid .profile-settings-section { min-height: 0; }
+  .profile-settings-grid .profile-settings-section + .profile-settings-section { margin-top: 18px; }
+  .profile-settings-actions { align-items: stretch; flex-direction: column; }
+  .profile-settings-actions .primary { width: 100%; }
+  .profile-delete { order: 2; }
 }
 
 .profile-gate { min-height: 100vh; padding: 28px; color: #fff; background: radial-gradient(ellipse at 50% 10%, #301015 0%, #070707 42%, #030303 100%); text-align: center; }

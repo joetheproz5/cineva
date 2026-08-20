@@ -1,4 +1,4 @@
-const VERSION = "seven-v86";
+const VERSION = "seven-v88";
 const SHELL = ["/", "/index.html", "/styles.css", "/auth.css", "/ui.css", "/app.js", "/manifest.webmanifest", "/icon.svg", "/assets/seven-logo-red.png", "/assets/avatars/red-panda.png", "/assets/avatars/black-cat.png", "/assets/avatars/astronaut.png", "/assets/avatars/dino.png", "/assets/avatars/duck.png", "/assets/avatars/robot.png"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL).then(() => self.skipWaiting()))));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== VERSION).map(key => caches.delete(key)))).then(() => self.clients.claim())));
