@@ -171,6 +171,12 @@
   .hero-cover-prev-1 { transform: translate(-132%, -46%) rotateZ(-6deg) scale(.82); }
   .hero-cover-next-1 { transform: translate(32%, -46%) rotateZ(6deg) scale(.82); }
   .hero-cover-prev-2, .hero-cover-next-2 { display: none; }
+  .hero-moving-next .hero-cover-prev-1 { opacity: 0; transform: translate(-190%, -44%) rotateZ(-10deg) scale(.66); }
+  .hero-moving-next .hero-cover-center-0 { width: 132px; transform: translate(-132%, -46%) rotateZ(-6deg) scale(.82); }
+  .hero-moving-next .hero-cover-next-1 { width: 166px; transform: translate(-50%, -48%) scale(1.05); }
+  .hero-moving-prev .hero-cover-next-1 { opacity: 0; transform: translate(90%, -44%) rotateZ(10deg) scale(.66); }
+  .hero-moving-prev .hero-cover-center-0 { width: 132px; transform: translate(32%, -46%) rotateZ(6deg) scale(.82); }
+  .hero-moving-prev .hero-cover-prev-1 { width: 166px; transform: translate(-50%, -48%) scale(1.05); }
   .hero-cover span { right: 5px; bottom: 6px; left: 5px; font-size: 8px; }
   .hero-nav { right: auto; bottom: 14px; left: 50%; gap: 12px; transform: translateX(-50%); }
   .hero-arrow { width: 30px; height: 30px; }
