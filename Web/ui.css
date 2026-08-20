@@ -33,13 +33,6 @@
 .trailer-card iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 12px; }
 .trailer-card .modal-close { z-index: 1; top: 7px; right: 7px; border-radius: 50%; color: #fff; background: #000a; }
 
-@media (max-width: 650px) {
-  header > nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  header > nav .nav-link { white-space: nowrap; }
-  header > nav .nav-link[data-favourites] span { font-size: 0; }
-  header > nav .nav-link[data-favourites] span:after { font-size: 10px; content: "Favs"; }
-}
-
 .account {
   display: flex;
   align-items: center;
@@ -324,4 +317,11 @@ html, body { overflow-x: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   .coverflow-card { transition: none; }
+}
+
+@media (max-width: 650px) {
+  header > nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  header > nav .nav-link { white-space: nowrap; }
+  header > nav .nav-link[data-favourites] span { font-size: 0; }
+  header > nav .nav-link[data-favourites] span:after { font-size: 10px; content: "Favs"; }
 }
