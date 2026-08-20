@@ -189,6 +189,10 @@
 .search-all:hover { background: #221114; }
 .search-all b { float: right; font-size: 15px; line-height: 9px; }
 .search-empty { margin: 0; padding: 13px; color: #aaa; font-size: 12px; }
+.cards { grid-auto-columns: 166px; gap: 14px; }
+.card img { width: 166px; height: 249px; }
+.card-skeleton { width: 166px; height: 249px; }
+.poster-wrap { border-radius: 8px; }
 
 /* Swiper owns the coverflow transforms. Keeping the cards in its layout avoids
    competing touch/transform handlers on iOS Safari. */
@@ -244,6 +248,9 @@ html, body { overflow-x: hidden; }
   .search { flex: 1; width: auto; margin-left: 0; }
   .search input { font-size: 16px; }
   .search-suggestions { right: auto; left: 0; width: min(330px, calc(100vw - 28px)); }
+  .cards { grid-auto-columns: 132px; gap: 11px; }
+  .card img { width: 132px; height: 198px; }
+  .card-skeleton { width: 132px; height: 198px; }
   .hero { min-height: 410px; padding: 0; }
   .hero-coverflow { display: block; }
   .hero-kicker { top: 20px; font-size: 9px; }
