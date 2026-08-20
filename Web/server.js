@@ -8,7 +8,7 @@ const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_
 function config(name) { try { return JSON.parse(fs.readFileSync(path.join(root, name), "utf8")); } catch { return {}; } }
 function sendJSON(response, status, payload) { response.writeHead(status, { "Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store" }); response.end(JSON.stringify(payload)); }
 function readBody(request) { return new Promise((resolve, reject) => { let body = ""; request.on("data", chunk => { body += chunk; if (body.length > 50_000) request.destroy(); }); request.on("end", () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error("Invalid JSON.")); } }); request.on("error", reject); }); }
-function supabase() { const settings = config("supabase.local.json"); return settings.url && settings.publishableKey ? settings : null; }
+function supabase() { const local = config("supabase.local.json"), settings = { url:local.url || process.env.SUPABASE_URL, publishableKey:local.publishableKey || process.env.SUPABASE_PUBLISHABLE_KEY, emailRedirectTo:local.emailRedirectTo || process.env.SUPABASE_EMAIL_REDIRECT_TO }; return settings.url && settings.publishableKey ? settings : null; }
 function authToken(request) { const header = request.headers.authorization || ""; return header.startsWith("Bearer ") ? header.slice(7) : null; }
 async function upstream(url, options = {}) { const response = await fetch(url, options); const text = await response.text(); let data; try { data = text ? JSON.parse(text) : {}; } catch { data = { error:text }; } return { status:response.status, data }; }
 async function proxyTMDB(response, sourceURL) {
