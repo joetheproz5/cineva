@@ -82,7 +82,8 @@ async function progress(request, requestURL, env) {
     }
     if (request.method === "DELETE") {
       const profile = requestURL.searchParams.get("profile");
-      const filter = profile ? `content_key=like.${encodeURIComponent(`seven-progress-${profile}-*`)}` : "content_key=not.is.null";
+      const key = requestURL.searchParams.get("key");
+      const filter = key ? `content_key=eq.${encodeURIComponent(key)}` : profile ? `content_key=like.${encodeURIComponent(`seven-progress-${profile}-*`)}` : "content_key=not.is.null";
       const result = await upstream(`${settings.url}/rest/v1/playback_progress?${filter}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
       return json(result.data, result.status);
     }
