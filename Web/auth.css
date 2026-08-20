@@ -293,7 +293,7 @@
 
 .profile-gate { min-height: 100vh; padding: 28px; color: #fff; background: radial-gradient(ellipse at 50% 10%, #301015 0%, #070707 42%, #030303 100%); text-align: center; }
 .profile-gate-logo { position: absolute; top: 22px; left: 24px; padding: 0; background: transparent; }
-.profile-gate-logo img { width: 37px; height: 37px; border-radius: 10px; }
+.profile-gate-logo img { display: block; width: 102px; height: auto; }
 .profile-gate section { max-width: 680px; margin: 14vh auto 0; }
 .profile-gate h1 { margin: 8px 0; font-size: clamp(34px, 5vw, 52px); letter-spacing: -1.8px; }
 .profile-gate p { max-width: 430px; margin: 0 auto; color: #a9a9a9; font-size: 14px; line-height: 1.5; }
