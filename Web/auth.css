@@ -367,6 +367,12 @@
 .my-list-page > .account-back { display: block; margin-bottom: 28px; }
 .my-list-page h1 { margin: 8px 0 7px; color: #fff; font-size: clamp(32px, 4vw, 44px); letter-spacing: -1.5px; }
 .my-list-page > p { margin: 0; color: #9b9b9b; font-size: 14px; }
+.favourites-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 26px; }
+.favourites-filters { display: flex; gap: 7px; }
+.favourites-filters button { min-width: 58px; padding: 8px 11px; border: 1px solid #383838; border-radius: 4px; color: #bdbdbd; background: #121212; font-size: 12px; font-weight: 700; }
+.favourites-filters button:hover, .favourites-filters button.active { border-color: #d31b25; color: #fff; background: #310d10; }
+.favourites-toolbar > label { display: flex; align-items: center; gap: 7px; color: #9c9c9c; font-size: 11px; font-weight: 700; }
+.favourites-toolbar select { padding: 8px 9px; border: 1px solid #383838; border-radius: 4px; color: #ececec; background: #121212; font-size: 12px; }
 .my-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 22px 16px; margin-top: 32px; }
 .my-list-card { min-width: 0; }
 .my-list-open { display: block; width: 100%; overflow: hidden; padding: 0; color: #ededed; background: transparent; text-align: left; }
@@ -401,6 +407,9 @@
   .account-page .account-grid .account-section { padding: 26px 0; }
   .my-list-page { width: min(100% - 28px, 600px); padding: 18px 0 48px; }
   .my-list-page > .account-back { margin-bottom: 24px; }
+  .favourites-toolbar { align-items: flex-start; flex-direction: column; margin-top: 20px; }
+  .favourites-toolbar > label { width: 100%; justify-content: space-between; }
+  .favourites-toolbar select { flex: 1; max-width: 168px; }
   .my-list-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 10px; margin-top: 24px; }
   .my-list-open b { font-size: 11px; }
   .my-list-open small, .my-list-remove { font-size: 9px; }
