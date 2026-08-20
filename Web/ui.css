@@ -99,6 +99,9 @@
 .resume-action { font-size: 12px; }
 #episodes-list .resume-action { display: block; margin: -3px 8px 9px auto; padding: 8px 11px; }
 .continue-rail { margin-top: 30px; }
+.rail-heading { display: inline-flex; align-items: center; gap: 8px; }
+.rail-icon { display: inline-grid; width: 22px; height: 22px; place-items: center; border: 1px solid #3b2023; border-radius: 6px; color: #f02531; background: #1b0a0c; }
+.rail-icon svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.9; }
 .continue-card { position: relative; padding-bottom: 7px; }
 .continue-card .poster-wrap { border: 1px solid #5d1015; }
 .continue-progress { display: block; height: 3px; overflow: hidden; margin: 7px 2px 0; border-radius: 99px; background: #343434; }
@@ -188,6 +191,9 @@
   .hero-dots i { width: 6px; height: 6px; }
   .hero-dots i.active { width: 16px; }
   .card-play { opacity: 1; transform: none; }
+  .rail-heading { gap: 6px; }
+  .rail-icon { width: 20px; height: 20px; border-radius: 5px; }
+  .rail-icon svg { width: 12px; height: 12px; }
   .account { width: 34px; height: 34px; justify-content: center; padding: 0; }
   .account b { display: none; }
   .media-info { grid-template-columns: 1fr; gap: 10px; margin-bottom: 26px; }
