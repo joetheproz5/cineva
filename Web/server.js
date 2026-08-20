@@ -37,8 +37,13 @@ async function progress(request, response) {
   const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
   try {
     if (request.method === "GET") { const result = await upstream(`${settings.url}/rest/v1/playback_progress?select=*&order=last_watched_at.desc`, { headers }); return sendJSON(response, result.status, result.data); }
+    if (request.method === "DELETE") { const profile = new URL(request.url, "http://localhost").searchParams.get("profile"), filter = profile ? `content_key=like.${encodeURIComponent(`seven-progress-${profile}-*`)}` : "content_key=not.is.null", result = await upstream(`${settings.url}/rest/v1/playback_progress?${filter}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } }); return sendJSON(response, result.status, result.data); }
     const body = await readBody(request); const result = await upstream(`${settings.url}/rest/v1/playback_progress?on_conflict=user_id,content_key`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(body) }); sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Progress sync failed." }); }
+}
+async function accountSettings(request, response) {
+  const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
+  try { const body = await readBody(request), payload = { data:{ seven_account:body.account || {} } }; if (body.password) payload.password = body.password; const result = await upstream(`${settings.url}/auth/v1/user`, { method:"PUT", headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, body:JSON.stringify(payload) }); sendJSON(response, result.status, result.data); } catch (error) { sendJSON(response, 400, { error:error.message || "Account settings could not be saved." }); }
 }
 const server = http.createServer((request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
@@ -48,6 +53,7 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/auth/refresh") return auth(request, response, "refresh");
   if (sourceURL.pathname === "/api/auth/user") return auth(request, response, "user");
   if (sourceURL.pathname === "/api/account/progress") return progress(request, response);
+  if (sourceURL.pathname === "/api/account/settings" && request.method === "PUT") return accountSettings(request, response);
   const requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
   if (!file.startsWith(root)) return response.writeHead(403).end();
   fs.readFile(file, (error, data) => { if (error) return response.writeHead(error.code === "ENOENT" ? 404 : 500).end("Not found"); response.writeHead(200, { "Content-Type":types[path.extname(file)] || "application/octet-stream", "Cache-Control":"no-cache" }); response.end(data); });

@@ -1,1 +1,166 @@
-.account{margin-left:2px;padding:8px 12px;border:1px solid #383838;border-radius:6px;color:#f3f3f3;background:#171717;font-size:12px;font-weight:700}.account:hover{border-color:#777;background:#222}.account.signed-in{display:grid;width:34px;height:34px;padding:0;place-items:center;border-color:#a80b14;border-radius:50%;background:#3a090d;color:#fff}.modal{position:fixed;z-index:20;inset:0;display:grid;place-items:center;padding:20px;background:#000b;backdrop-filter:blur(8px)}.auth-card{position:relative;width:min(100%,400px);padding:30px;border:1px solid #343434;border-radius:12px;background:linear-gradient(150deg,#1b1b1b,#0d0d0d);box-shadow:0 24px 100px #000}.auth-card h2{margin:8px 0;font-size:28px;letter-spacing:-.8px}.auth-card p{color:#aaa;line-height:1.45}.auth-card label{display:block;margin:16px 0 0;color:#d4d4d4;font-size:12px;font-weight:700}.auth-card input{display:block;width:100%;margin-top:7px;padding:12px;border:1px solid #3a3a3a;border-radius:6px;outline:0;color:#fff;background:#111}.auth-card input:focus{border-color:#9a1018}.auth-submit{width:100%;margin-top:12px}.auth-switch{display:block;width:100%;margin-top:14px;color:#c9c9c9;background:transparent;font-size:12px;text-decoration:underline}.modal-close{position:absolute;top:12px;right:14px;padding:4px;color:#aaa;background:transparent;font-size:23px;line-height:18px}.form-error{min-height:19px;margin:12px 0 0!important;color:#f1878c!important;font-size:12px}.account-card{min-height:230px}.sign-out{margin-top:10px}.account-card .secondary{margin:0}
+.account {
+  margin-left: 2px;
+  padding: 8px 12px;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  color: #f3f3f3;
+  background: #171717;
+  font-size: 12px;
+  font-weight: 700;
+}
+.account:hover {
+  border-color: #777;
+  background: #222;
+}
+.account.signed-in {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  border-color: #a80b14;
+  border-radius: 50%;
+  background: #3a090d;
+  color: #fff;
+}
+.modal {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #000b;
+  backdrop-filter: blur(8px);
+}
+.auth-card {
+  position: relative;
+  width: min(100%, 400px);
+  padding: 30px;
+  border: 1px solid #343434;
+  border-radius: 12px;
+  background: linear-gradient(150deg, #1b1b1b, #0d0d0d);
+  box-shadow: 0 24px 100px #000;
+}
+.auth-card h2 {
+  margin: 8px 0;
+  font-size: 28px;
+  letter-spacing: -0.8px;
+}
+.auth-card p {
+  color: #aaa;
+  line-height: 1.45;
+}
+.auth-card label {
+  display: block;
+  margin: 16px 0 0;
+  color: #d4d4d4;
+  font-size: 12px;
+  font-weight: 700;
+}
+.auth-card input {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 12px;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  outline: 0;
+  color: #fff;
+  background: #111;
+}
+.auth-card input:focus {
+  border-color: #9a1018;
+}
+.auth-submit {
+  width: 100%;
+  margin-top: 12px;
+}
+.auth-switch {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  color: #c9c9c9;
+  background: transparent;
+  font-size: 12px;
+  text-decoration: underline;
+}
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  padding: 4px;
+  color: #aaa;
+  background: transparent;
+  font-size: 23px;
+  line-height: 18px;
+}
+.form-error {
+  min-height: 19px;
+  margin: 12px 0 0 !important;
+  color: #f1878c !important;
+  font-size: 12px;
+}
+.account-card {
+  min-height: 230px;
+}
+.sign-out {
+  margin-top: 10px;
+}
+.account-card .secondary {
+  margin: 0;
+}
+
+.account.signed-in { border-color: var(--profile-color, #a80b14); background: var(--profile-color, #3a090d); }
+.account-hub { position: relative; width: min(100%, 760px); max-height: min(780px, calc(100vh - 40px)); overflow: auto; padding: 31px; border: 1px solid #393939; border-radius: 14px; background: linear-gradient(145deg, #1d1d1d, #0b0b0b 58%); box-shadow: 0 28px 100px #000; }
+.account-hub h2 { margin: 7px 0 2px; font-size: 29px; letter-spacing: -1px; }
+.account-email { margin: 0; color: #aaa; font-size: 13px; }
+.account-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid #2d2d2d; }
+.account-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.account-section-title h3 { margin: 0; color: #f5f5f5; font-size: 15px; }
+.account-section-title span { color: #929292; font-size: 11px; }
+.profiles { display: flex; flex-wrap: wrap; gap: 12px; }
+.profile-card { position: relative; width: 94px; }
+.profile-card > button:first-child { display: grid; width: 100%; gap: 6px; padding: 0; color: #cfcfcf; background: transparent; text-align: center; }
+.profile-card.active > button:first-child { color: #fff; }
+.profile-avatar { display: grid; width: 72px; height: 72px; margin: auto; place-items: center; border: 2px solid transparent; border-radius: 9px; background: var(--profile-color); color: #fff; font-size: 29px; font-weight: 850; box-shadow: inset 0 -18px 25px #0003; }
+.profile-card.active .profile-avatar { border-color: #fff; box-shadow: 0 0 0 2px #e21a26, inset 0 -18px 25px #0003; }
+.profile-card b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-card small { color: #909090; font-size: 10px; }
+.profile-edit { position: absolute; top: -6px; right: 4px; width: 22px; height: 22px; border: 1px solid #555; border-radius: 50%; color: #eee; background: #202020; font-size: 12px; }
+.profile-add { display: grid; width: 94px; gap: 7px; place-items: center; padding: 0; color: #aaa; background: transparent; font-size: 12px; }
+.profile-add span { display: grid; width: 72px; height: 72px; place-items: center; border: 1px dashed #666; border-radius: 9px; font-size: 30px; }
+.account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.account-toggle { position: relative; display: flex; margin: 0; padding: 11px 0; border-top: 1px solid #292929; cursor: pointer; }
+.account-toggle span { padding-right: 48px; color: #eee; font-size: 12px; font-weight: 700; }
+.account-toggle small, .account-row small { display: block; margin-top: 4px; color: #929292; font-size: 10px; font-weight: 400; line-height: 1.35; }
+.account-toggle input { position: absolute; opacity: 0; }
+.account-toggle i { position: absolute; top: 13px; right: 0; width: 34px; height: 19px; border-radius: 99px; background: #4a4a4a; }
+.account-toggle i:after { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: #ddd; content: ""; transition: transform .18s; }
+.account-toggle input:checked + i { background: #c9101a; }
+.account-toggle input:checked + i:after { transform: translateX(15px); }
+.account-select { display: block; margin-top: 14px; color: #cfcfcf; font-size: 11px; font-weight: 700; }
+.account-select select { width: 100%; margin-top: 6px; padding: 9px; border: 1px solid #3a3a3a; border-radius: 6px; color: #fff; background: #141414; }
+.account-row { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 0; border-top: 1px solid #292929; color: #eee; background: transparent; text-align: left; }
+.account-row b { font-size: 12px; }
+.account-row em { color: #e3232e; font-size: 11px; font-style: normal; font-weight: 800; }
+.password-form { margin: 0 0 6px; }
+.password-form label { display: block; color: #cfcfcf; font-size: 11px; font-weight: 700; }
+.password-form input { width: 100%; margin: 6px 0 8px; padding: 9px; border: 1px solid #3a3a3a; border-radius: 6px; color: #fff; background: #141414; }
+.password-form .secondary { padding: 8px 10px; font-size: 11px; }
+.account-message { display: block; margin-top: 7px; color: #a7d8b0; font-size: 10px; }
+.profile-editor .kids-check { display: flex; align-items: center; gap: 8px; }
+.profile-editor .kids-check input { display: inline; width: auto; margin: 0; }
+
+@media (max-width: 650px) {
+  .account-hub { max-height: calc(100vh - 24px); padding: 25px 18px; border-radius: 12px; }
+  .account-hub h2 { font-size: 25px; }
+  .account-grid { grid-template-columns: 1fr; gap: 0; }
+  .profiles { gap: 10px; }
+  .profile-card, .profile-add { width: 76px; }
+  .profile-avatar, .profile-add span { width: 62px; height: 62px; }
+  .profile-avatar { font-size: 24px; }
+  .modal { padding: 12px; }
+  .auth-card { padding: 25px 22px; }
+  .auth-card input, .auth-card select { font-size: 16px; }
+}
