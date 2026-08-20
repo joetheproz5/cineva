@@ -109,6 +109,20 @@
 .season-select { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; color: #cfcfcf; font-size: 12px; font-weight: 750; }
 .season-select select { min-width: 150px; padding: 9px 34px 9px 11px; border: 1px solid #414141; border-radius: 7px; outline: 0; color: #fff; background: #171717; font: inherit; }
 .season-select select:focus { border-color: #c91520; }
+.series-tracker { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: end; max-width: 620px; margin: 3px 0 16px; padding: 13px 14px; border: 1px solid #352125; border-radius: 9px; background: linear-gradient(105deg, #160b0d, #111); }
+.series-tracker .brand { margin-bottom: 5px; }
+.series-tracker b { display: block; color: #e7e7e7; font-size: 13px; }
+.series-tracker > span { color: #e52833; font-size: 12px; font-weight: 850; }
+.series-tracker > i { grid-column: 1 / -1; display: block; height: 4px; overflow: hidden; border-radius: 99px; background: #343434; }
+.series-tracker > i em { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a90812, #ec2631); }
+.episode-main { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; padding: 0; color: inherit; text-align: left; background: transparent; }
+.episode.is-watched { border: 1px solid #432327; background: #161112; }
+.episode.is-watched .episode-main b { color: #d2d2d2; }
+.episode-toggle { flex: 0 0 auto; width: 32px; height: 32px; margin-left: 9px; border: 1px solid #4b4b4b; border-radius: 50%; color: #c8c8c8; background: #1b1b1b; font-size: 17px; line-height: 1; }
+.episode-toggle:hover { border-color: #e2202c; color: #fff; }
+.episode-toggle.done { border-color: #a8121b; color: #fff; background: #791017; }
+.player-next { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 9px 12px; font-size: 12px; }
+.player-next b { margin: 0; color: #ef2731; font-size: 16px; line-height: 10px; }
 .player-stage { max-width: 1060px; margin: 0 auto; padding: 12px; border: 1px solid #2b2b2b; border-radius: 14px; background: linear-gradient(145deg, #171717, #080808 58%); box-shadow: 0 22px 70px #000a; }
 .player-stage-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 3px 10px; color: #a8a8a8; font-size: 11px; font-weight: 750; }
 .player-stage-bar .brand { margin: 0; }
@@ -266,6 +280,9 @@ html, body { overflow-x: hidden; }
   .cast-card img { width: 90px; height: 117px; }
   .cast-row { grid-auto-columns: 90px; }
   #episodes-list .resume-action { margin-right: 4px; }
+  .series-tracker { margin-bottom: 13px; padding: 11px; }
+  .episode-main { gap: 10px; }
+  .episode-toggle { width: 30px; height: 30px; margin-left: 6px; }
   .player-stage { padding: 8px; border-radius: 11px; }
   .player-stage-bar { padding: 1px 2px 8px; font-size: 10px; }
   .player-frame { border-radius: 7px; }
