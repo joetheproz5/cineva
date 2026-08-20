@@ -97,8 +97,8 @@ function initCoverflow() { const stage = document.querySelector("#featured .cove
 }
 function rotateHero(direction = 1) { if (state.featuredPool.length < 2 || state.coverflowGesture?.pointerId !== null) return; setFeaturedIndex(state.featuredIndex + direction); }
 function scheduleHero() { if (state.featuredPool.length > 1 && state.account?.preferences?.autoplayPreviews !== false) state.heroTimer = setInterval(() => { if (state.route === "home") rotateHero(); }, 8500); }
-function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(name)}</h2>`; }
-function rail(name, items) { const key = `${state.route}:${name}`; state.explorable ||= {}; state.explorable[key] = { name, items, fromRoute:state.route }; return `<section class="rail"><div class="rail-title">${railTitle(name)}<button class="explore-all" data-explore="${escapeHTML(key)}">Explore all</button></div><div class="cards">${items.map(card).join("")}</div></section>`; }
+function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(name === "My List" ? "Favourites" : name)}</h2>`; }
+function rail(name, items) { const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name; state.explorable ||= {}; state.explorable[key] = { name:displayName, items, fromRoute:state.route }; return `<section class="rail"><div class="rail-title">${railTitle(displayName)}<button class="explore-all" data-explore="${escapeHTML(key)}">Explore all</button></div><div class="cards">${items.map(card).join("")}</div></section>`; }
 function newEpisodeRail(items) { return `<section class="rail new-episode-rail"><div class="rail-title">${railTitle("New episodes")}<span>From My List</span></div><div class="cards">${items.map(item => `<button class="card" data-open="tv:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>NEW EPISODE</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>S${item.episode.season_number} · E${item.episode.episode_number} · ${escapeHTML(item.episode.name || "New episode")}</small></button>`).join("")}</div></section>`; }
 function card(item) { return `<button class="card" data-open="${item.type}:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"}${item.vote_average ? ` · ★ ${item.vote_average.toFixed(1)}` : ""}</small></button>`; }
 function progressEntries() { return Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).map(key => { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return null; } }).filter(Boolean); }
@@ -324,4 +324,21 @@ function bindCommon() { document.querySelectorAll("[data-home]").forEach(button 
 window.addEventListener("message", event => { let payload; try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; } if (state.route !== "player" || payload?.type !== "PLAYER_EVENT") return; const data = payload.data || {}, duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0; if (!duration) return; const progress = Math.min(100, currentTime / duration * 100); localStorage.setItem(watchKey(state.player), JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()})); queueProgressSync(state.player, currentTime, duration, progress); const bar = document.querySelector("#bar"), time = document.querySelector("#time"); if (bar) bar.style.width = `${progress}%`; if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`; });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js?v=84");
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });
+function keepFavouritesUI() {
+  const navigation = app.querySelector("header nav");
+  if (navigation && !navigation.querySelector("[data-favourites]")) navigation.insertAdjacentHTML("beforeend", `<button class="nav-link" data-favourites><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.4a5.5 5.5 0 0 0-.1-7.8Z"/></svg><span>Favourites</span></button>`);
+  app.querySelectorAll("[data-toggle-my-list]").forEach(button => { button.textContent = button.classList.contains("saved") ? "♥ In Favourites" : "♡ Add to Favourites"; });
+  const favouritePage = app.querySelector(".my-list-page");
+  if (favouritePage) {
+    favouritePage.querySelector(".brand").textContent = "FAVOURITES";
+    favouritePage.querySelector("h1").textContent = `${currentProfile()?.name || "Your"} Favourites`;
+    favouritePage.querySelectorAll(".my-list-remove").forEach(button => { button.setAttribute("aria-label", button.getAttribute("aria-label").replace("My List", "Favourites")); });
+  }
+  app.querySelector(".new-episode-rail .rail-title span")?.replaceChildren("From Favourites");
+  const favouriteRow = app.querySelector("[data-my-list]");
+  if (favouriteRow) { favouriteRow.querySelector("b").textContent = "Favourites"; favouriteRow.querySelector("small").textContent = `Browse the titles saved by ${currentProfile()?.name || "this profile"}`; }
+}
+const favouritesObserver = new MutationObserver(keepFavouritesUI);
+favouritesObserver.observe(app, { childList:true });
+app.addEventListener("click", event => { const button = event.target.closest("[data-favourites]"); if (!button) return; event.preventDefault(); state.myListReturn = state.route; state.route = "my-list"; scrollToTop(); render(); });
 boot();
