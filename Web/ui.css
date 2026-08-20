@@ -231,6 +231,7 @@
 /* Desktop rails end cleanly at the content edge. The full catalog remains
    available through Explore all, while phones retain their horizontal swipe. */
 @media (min-width: 651px) {
+  .hero { min-height: 540px; }
   .cards {
     grid-auto-flow: row;
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -249,9 +250,9 @@ html, body { overflow-x: hidden; }
 .seven-coverflow {
   position: absolute;
   z-index: 1;
-  top: 44px;
+  top: 30px;
   right: 0;
-  bottom: 58px;
+  bottom: 100px;
   left: 0;
   overflow: visible;
   perspective: 1100px;
@@ -260,7 +261,7 @@ html, body { overflow-x: hidden; }
 }
 .seven-coverflow::before, .seven-coverflow::after { position: absolute; z-index: 0; pointer-events: none; content: ""; }
 .seven-coverflow::before { inset: 0; background: radial-gradient(ellipse 34% 52% at 50% 49%, #e5252d25 0%, #bf12191a 31%, transparent 71%), linear-gradient(113deg, transparent 18%, #e11d2710 48%, transparent 78%), linear-gradient(247deg, transparent 18%, #e11d2710 48%, transparent 78%); filter: blur(2px); animation: seven-stage-ambience 6.5s ease-in-out infinite; }
-.seven-coverflow::after { right: 15%; bottom: 8px; left: 15%; height: 30px; border-radius: 50%; background: radial-gradient(ellipse, #ef24301b 0%, #8210180c 43%, transparent 72%); filter: blur(7px); }
+.seven-coverflow::after { right: 15%; bottom: 0; left: 15%; height: 92px; border-radius: 50%; background: radial-gradient(ellipse, #ef243028 0%, #82101811 37%, transparent 71%); filter: blur(11px); }
 .seven-coverflow .swiper-wrapper { position: relative; z-index: 1; align-items: center; }
 .seven-coverflow .swiper-slide { width: 250px; height: 375px; }
 .seven-coverflow .hero-cover {
@@ -276,8 +277,12 @@ html, body { overflow-x: hidden; }
   filter: none;
   transform: scale(.92);
   transform-origin: center;
+  overflow: visible;
   transition: transform .45s ease, filter .45s ease;
 }
+.seven-coverflow .cover-poster { position: relative; z-index: 0; border-radius: 8px; }
+.seven-coverflow .cover-reflection { position: absolute; z-index: 0; top: calc(100% + 5px); right: 0; left: 0; width: 100%; height: 34%; border-radius: 8px; object-fit: cover; object-position: top; opacity: .16; pointer-events: none; transform: scaleY(-1); filter: brightness(.7) saturate(.75) blur(.35px); -webkit-mask-image: linear-gradient(to bottom, #0009 0%, #0005 35%, transparent 100%); mask-image: linear-gradient(to bottom, #0009 0%, #0005 35%, transparent 100%); }
+.seven-coverflow .swiper-slide-active .cover-reflection { opacity: .34; }
 .seven-coverflow .hero-cover::after { z-index: 1; }
 .seven-coverflow .hero-cover span { z-index: 3; }
 .seven-coverflow .hero-cover::before { position: absolute; z-index: 2; top: -15%; bottom: -15%; left: -115%; width: 48%; background: linear-gradient(105deg, transparent 15%, #fff0 28%, #ffffff40 49%, #fff0 70%, transparent 85%); content: ""; pointer-events: none; transform: skewX(-18deg); }
@@ -358,6 +363,8 @@ html, body { overflow-x: hidden; }
   .seven-coverflow .swiper-slide { width: 166px; height: 249px; }
   .seven-coverflow .hero-cover { width: 100%; height: 100%; transform: scale(.91); }
   .seven-coverflow .swiper-slide-active .hero-cover { transform: scale(1.06); }
+  .seven-coverflow .cover-reflection { top: calc(100% + 3px); height: 25%; opacity: .13; }
+  .seven-coverflow .swiper-slide-active .cover-reflection { opacity: .26; }
 }
 
 @media (prefers-reduced-motion: reduce) {
