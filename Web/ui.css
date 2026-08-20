@@ -155,6 +155,11 @@
 @keyframes hero-drawer-prev { from { opacity: .15; transform: translateX(-9%); } to { opacity: 1; transform: translateX(0); } }
 .hero-index { display: inline-flex; align-items: center; gap: 6px; min-width: 48px; justify-content: center; color: #b7b7ba; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
 .hero-index i { width: 12px; height: 1px; background: #d41520; }
+.spotlight-info { position: absolute; z-index: 3; right: 18px; bottom: 28px; max-width: 180px; padding-right: 11px; border-right: 2px solid #d41420; color: #d2d2d2; text-align: right; text-shadow: 0 2px 10px #000; }
+.spotlight-info span { display: block; margin-bottom: 4px; color: #e62430; font-size: 8px; font-weight: 900; letter-spacing: 1.8px; }
+.spotlight-info strong { display: block; overflow: hidden; color: #fff; font-size: 14px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.spotlight-info small { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 5px; color: #b6b6b6; font-size: 9px; font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
+.spotlight-info small i { width: 3px; height: 3px; border-radius: 50%; background: #d41420; }
 .nav-icon { display: none; }
 
 /* Swiper owns the coverflow transforms. Keeping the cards in its layout avoids
@@ -220,6 +225,11 @@ html, body { overflow-x: hidden; }
   .hero-moving-prev .hero-cover-prev-2 { z-index: 4; width: 132px; opacity: .9; filter: brightness(.76); transform: translate(-132%, -46%) rotateZ(-6deg) scale(.82); }
   .hero-cover span { right: 5px; bottom: 6px; left: 5px; font-size: 8px; }
   .hero-nav { right: auto; bottom: 14px; left: 50%; gap: 12px; transform: translateX(-50%); }
+  .spotlight-info { right: 12px; bottom: 18px; max-width: 104px; padding-right: 8px; }
+  .spotlight-info span { margin-bottom: 3px; font-size: 7px; letter-spacing: 1.25px; }
+  .spotlight-info strong { font-size: 10px; }
+  .spotlight-info small { gap: 4px; margin-top: 3px; font-size: 7px; }
+  .spotlight-info small i { width: 2px; height: 2px; }
   .hero-arrow { width: 30px; height: 30px; }
   .hero-dots { gap: 6px; }
   .hero-dots i { width: 6px; height: 6px; }
