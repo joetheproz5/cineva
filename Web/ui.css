@@ -137,7 +137,8 @@
 .hero-nav { right: auto; bottom: 25px; left: 50%; transform: translateX(-50%); }
 .hero-swap[data-direction="next"] .hero-image { animation: hero-drawer-next .48s cubic-bezier(.2,.75,.2,1); }
 .hero-swap[data-direction="prev"] .hero-image { animation: hero-drawer-prev .48s cubic-bezier(.2,.75,.2,1); }
-.hero-swap .hero-copy, .hero-swap .hero-nav { animation: hero-panel-in .42s cubic-bezier(.2,.75,.2,1); }
+.hero-swap .hero-copy { animation: hero-panel-in .42s cubic-bezier(.2,.75,.2,1); }
+.hero-swap .hero-nav { animation: none; }
 .hero-swap .hero-coverflow:not(.hero-coverflow-outgoing) { animation: hero-coverflow-in .36s ease-out; }
 .hero-coverflow-outgoing { z-index: 8; pointer-events: none; }
 .hero-swap[data-direction="next"] .hero-coverflow-outgoing { animation: hero-coverflow-out-next .54s cubic-bezier(.2,.75,.2,1) forwards; }
