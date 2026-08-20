@@ -138,20 +138,18 @@
 .hero-swap[data-direction="next"] .hero-image { animation: hero-drawer-next .48s cubic-bezier(.2,.75,.2,1); }
 .hero-swap[data-direction="prev"] .hero-image { animation: hero-drawer-prev .48s cubic-bezier(.2,.75,.2,1); }
 .hero-swap .hero-copy, .hero-swap .hero-nav { animation: hero-panel-in .42s cubic-bezier(.2,.75,.2,1); }
-.hero-swap .hero-coverflow { animation: hero-coverflow-in .5s cubic-bezier(.2,.75,.2,1); }
-.hero-swap[data-direction="next"] .hero-coverflow:not(.hero-coverflow-outgoing) { animation: hero-coverflow-in-next .54s cubic-bezier(.2,.75,.2,1); }
-.hero-swap[data-direction="prev"] .hero-coverflow:not(.hero-coverflow-outgoing) { animation: hero-coverflow-in-prev .54s cubic-bezier(.2,.75,.2,1); }
+.hero-swap .hero-coverflow:not(.hero-coverflow-outgoing) { animation: hero-coverflow-in .36s ease-out; }
 .hero-coverflow-outgoing { z-index: 8; pointer-events: none; }
 .hero-swap[data-direction="next"] .hero-coverflow-outgoing { animation: hero-coverflow-out-next .54s cubic-bezier(.2,.75,.2,1) forwards; }
 .hero-swap[data-direction="prev"] .hero-coverflow-outgoing { animation: hero-coverflow-out-prev .54s cubic-bezier(.2,.75,.2,1) forwards; }
 @keyframes hero-drawer-next { from { opacity: .15; transform: translateX(9%); } to { opacity: 1; transform: translateX(0); } }
 @keyframes hero-drawer-prev { from { opacity: .15; transform: translateX(-9%); } to { opacity: 1; transform: translateX(0); } }
 @keyframes hero-panel-in { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes hero-coverflow-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
-@keyframes hero-coverflow-in-next { from { opacity: 0; transform: translateX(7%) scale(.96); } to { opacity: 1; transform: translateX(0) scale(1); } }
-@keyframes hero-coverflow-in-prev { from { opacity: 0; transform: translateX(-7%) scale(.96); } to { opacity: 1; transform: translateX(0) scale(1); } }
+@keyframes hero-coverflow-in { from { opacity: .35; } to { opacity: 1; } }
 @keyframes hero-coverflow-out-next { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(-7%) scale(.96); } }
 @keyframes hero-coverflow-out-prev { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(7%) scale(.96); } }
+.hero-index { display: inline-flex; align-items: center; gap: 6px; min-width: 48px; justify-content: center; color: #b7b7ba; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+.hero-index i { width: 12px; height: 1px; background: #d41520; }
 .nav-icon { display: none; }
 
 @media (max-width: 650px) {
