@@ -358,6 +358,24 @@
 .account-page .password-form .secondary { border-radius: 3px; background: #333; }
 .account-page .account-signout { border-bottom: 0; }
 
+.my-list-page { width: min(1080px, calc(100% - 48px)); min-height: calc(100vh - 120px); margin: 0 auto; padding: 34px 0 70px; }
+.my-list-page > .account-back { display: block; margin-bottom: 28px; }
+.my-list-page h1 { margin: 8px 0 7px; color: #fff; font-size: clamp(32px, 4vw, 44px); letter-spacing: -1.5px; }
+.my-list-page > p { margin: 0; color: #9b9b9b; font-size: 14px; }
+.my-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 22px 16px; margin-top: 32px; }
+.my-list-card { min-width: 0; }
+.my-list-open { display: block; width: 100%; overflow: hidden; padding: 0; color: #ededed; background: transparent; text-align: left; }
+.my-list-open img { display: block; width: 100%; aspect-ratio: 2 / 3; border-radius: 4px; object-fit: cover; background: #151515; transition: transform .2s; }
+.my-list-open:hover img { transform: scale(1.025); }
+.my-list-open b, .my-list-open small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-list-open b { margin-top: 9px; font-size: 13px; }
+.my-list-open small { margin-top: 3px; color: #898989; font-size: 11px; }
+.my-list-remove { margin-top: 7px; padding: 0; color: #a0a0a0; background: transparent; font-size: 11px; text-decoration: underline; }
+.my-list-remove:hover { color: #ee313b; }
+.my-list-empty { max-width: 430px; margin: 54px 0; padding: 30px 0; border-top: 1px solid #333; border-bottom: 1px solid #333; }
+.my-list-empty b { color: #fff; font-size: 19px; }
+.my-list-empty p { margin: 8px 0 18px; color: #999; font-size: 13px; line-height: 1.5; }
+
 @media (max-width: 650px) {
   .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
   .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
@@ -374,4 +392,9 @@
   .account-page .profile-avatar, .account-page .profile-add span { width: 60px; height: 60px; }
   .account-page .account-grid { grid-template-columns: 1fr; gap: 0; }
   .account-page .account-grid .account-section { padding: 26px 0; }
+  .my-list-page { width: min(100% - 28px, 600px); padding: 18px 0 48px; }
+  .my-list-page > .account-back { margin-bottom: 24px; }
+  .my-list-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 10px; margin-top: 24px; }
+  .my-list-open b { font-size: 11px; }
+  .my-list-open small, .my-list-remove { font-size: 9px; }
 }
