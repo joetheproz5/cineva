@@ -324,4 +324,7 @@ html, body { overflow-x: hidden; }
   header > nav .nav-link { white-space: nowrap; }
   header > nav .nav-link[data-favourites] span { font-size: 0; }
   header > nav .nav-link[data-favourites] span:after { font-size: 10px; content: "Favs"; }
+  .detail .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .detail .actions .primary { grid-column: 1 / -1; width: 100%; }
+  .detail .actions .secondary { display: flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; padding: 10px 8px; text-align: center; }
 }
