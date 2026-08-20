@@ -2,7 +2,7 @@ const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const FEATURED_ID = 71712;
 const app = document.querySelector("#app");
 let searchRequest = 0;
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, coverflowSwiper: null, catalog: {}, route: "home", search: "", user: null, session: null, account: null, movie: null, trailer: null, progressTimer: null, pendingProgress: null };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, coverflowSwiper: null, catalog: {}, route: "home", search: "", user: null, session: null, account: null, movie: null, trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null };
 const SESSION_KEY = "cineva.supabase.session";
 const ACCOUNT_KEY = "seven.account.settings";
 const activeProfileId = () => state.account?.activeProfileId || "main";
@@ -77,7 +77,7 @@ function card(item) { return `<button class="card" data-open="${item.type}:${ite
 function progressEntries() { return Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).map(key => { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return null; } }).filter(Boolean); }
 function savedProgress(item) { try { return JSON.parse(localStorage.getItem(watchKey(item)) || "{}"); } catch { return {}; } }
 function isWatched(item) { const saved = savedProgress(item); return Boolean(saved.watched) || Number(saved.progress) >= 90; }
-function seriesTracking(series) { const entries = progressEntries().filter(item => item.type === "tv" && Number(item.id) === Number(series.id)), watched = entries.filter(item => item.watched || Number(item.progress) >= 90), latest = [...entries].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0))[0], resume = latest && !latest.watched && Number(latest.duration) > 0 && Number(latest.currentTime) > 0 ? latest : null; return { watched:watched.length, total:Number(series.number_of_episodes) || 0, resume }; }
+function seriesTracking(series) { const entries = progressEntries().filter(item => item.type === "tv" && Number(item.id) === Number(series.id)), watched = entries.filter(item => item.watched || Number(item.progress) >= 90), latest = [...entries].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0))[0], resume = latest && !latest.watched && Number(latest.duration) > 0 && Number(latest.currentTime) > 0 ? latest : null; return { watched:watched.length, total:Number(series.number_of_episodes) || 0, latest, resume }; }
 function nextEpisodeInSeason(series) { const tracking = seriesTracking(series), episodes = state.episodes?.episodes || []; if (tracking.resume && Number(tracking.resume.season) === Number(state.selectedSeason)) return episodes.find(episode => Number(episode.episode_number) === Number(tracking.resume.episode)) || null; return episodes.find(episode => !isWatched({ type:"tv", id:series.id, season:state.selectedSeason, episode:episode.episode_number })) || null; }
 function setEpisodeStatus(episode, watched) { const item = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:episode.episode_number, title:episode.name || titleOf(state.series), posterPath:episode.still_path || state.series.poster_path, genreIds:(state.series.genres || []).map(genre => genre.id) }, record = { currentTime:watched ? 1 : 0, duration:watched ? 1 : 0, progress:watched ? 100 : 0, watched, type:item.type, id:item.id, season:item.season, episode:item.episode, title:item.title, posterPath:item.posterPath, genreIds:item.genreIds, lastWatchedAt:new Date().toISOString() }; localStorage.setItem(watchKey(item), JSON.stringify(record)); queueProgressSync(item, record.currentTime, record.duration, record.progress); renderSeries(); }
 async function resumeSeries(record) { state.selectedSeason = Number(record.season) || 1; await loadEpisodes(); playEpisode(Number(record.episode), true); }
@@ -89,7 +89,7 @@ async function openItem(type, id) {
     const item = normalize(await api(`${type}/${id}`, { append_to_response:"credits,keywords,videos" }), type);
     state.trailer = trailerFrom(item.videos) || await loadTrailer(type, item.id);
     if (type === "movie") { state.movie = item; state.route = "movie"; }
-    else { state.series = item; state.selectedSeason = 1; state.route = "series"; await loadEpisodes(); }
+    else { state.series = item; const tracking = seriesTracking(item); state.selectedSeason = Number(tracking.resume?.season || tracking.latest?.season) || 1; state.route = "series"; await loadEpisodes(); }
   } catch (error) { state.error = error.message; state.route = "home"; }
   render(); scrollToTop();
 }
@@ -119,7 +119,48 @@ function resumeAction(item, attribute) { const seconds = savedStart(item); retur
 function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:episode.still_path || state.series.poster_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); }
 function playerURL(item) { const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`, preferences = state.account?.preferences || {}; return `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true" })}`; }
 function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; return (state.episodes?.episodes || []).find(episode => Number(episode.episode_number) === Number(item.episode) + 1) || null; }
-function renderPlayer() { const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>Next episode <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : ""; app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span></div><div class="player-frame"><iframe class="player" src="${playerURL(p)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${footer()}`; bindCommon(); document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); }; document.querySelector("[data-play-next]")?.addEventListener("click", () => playEpisode(next.episode_number, false)); }
+function playerEpisodePanel(player) {
+  if (player.type !== "tv") return "";
+  if (Number(state.series?.id) !== Number(player.id)) return `<section class="episode-section player-episodes player-episodes-loading" data-player-episode-panel><span class="brand">EPISODES</span><p>Loading Season ${player.season}…</p></section>`;
+
+  const seasons = (state.series.seasons || []).filter(season => season.season_number > 0);
+  const rows = (state.episodes?.episodes || []).map(episode => {
+    const item = { type:"tv", id:player.id, season:state.selectedSeason, episode:episode.episode_number };
+    const watched = isWatched(item);
+    const current = Number(state.selectedSeason) === Number(player.season) && Number(episode.episode_number) === Number(player.episode);
+    return `<article class="episode ${watched ? "is-watched" : ""} ${current ? "is-current" : ""}"><button class="episode-main" data-player-episode="${episode.episode_number}"><img src="${episode.still_path ? TMDB_IMAGE + episode.still_path : "/icon.svg"}" alt=""><span><b><em>${String(episode.episode_number).padStart(2, "0")}</em>${escapeHTML(episode.name)}</b><small>${current ? "Now playing" : watched ? "Watched" : savedStart(item) ? `Resume from ${timeLabel(savedStart(item))}` : escapeHTML(episode.overview || "No description available.")}</small></span><strong>›</strong></button>${current ? '<span class="episode-current">Playing</span>' : ""}</article>`;
+  }).join("");
+
+  return `<section class="episode-section player-episodes" data-player-episode-panel><div class="rail-title"><h2>Episodes</h2><span>${Number(state.selectedSeason) === Number(player.season) ? `Watching Season ${player.season}` : `Season ${state.selectedSeason}`}</span></div><label class="season-select">Season <select id="player-season-selector" aria-label="Choose season while watching">${seasons.map(season => `<option value="${season.season_number}" ${Number(season.season_number) === Number(state.selectedSeason) ? "selected" : ""}>Season ${season.season_number}</option>`).join("")}</select></label><div class="player-episodes-list">${rows || '<p class="episode-empty">No episodes are available for this season.</p>'}</div></section>`;
+}
+function bindPlayerEpisodes(player) {
+  document.querySelector("#player-season-selector")?.addEventListener("change", async event => {
+    state.selectedSeason = Number(event.currentTarget.value);
+    await loadEpisodes();
+    document.querySelector("[data-player-episode-panel]")?.replaceWith(document.createRange().createContextualFragment(playerEpisodePanel(player)));
+    bindPlayerEpisodes(player);
+  });
+  document.querySelectorAll("[data-player-episode]").forEach(button => button.onclick = () => playEpisode(Number(button.dataset.playerEpisode), false));
+}
+async function ensurePlayerContext(player) {
+  if (player.type !== "tv" || Number(state.series?.id) === Number(player.id) || state.playerContextKey) return;
+  const contextKey = `${player.id}:${player.season}`;
+  state.playerContextKey = contextKey;
+  try {
+    state.series = normalize(await api(`tv/${player.id}`, { append_to_response:"credits,keywords,videos" }), "tv");
+    state.selectedSeason = Number(player.season) || 1;
+    await loadEpisodes();
+    if (state.route === "player" && state.player?.type === "tv" && Number(state.player.id) === Number(player.id)) render();
+  } catch { /* The player remains available even if episode metadata cannot load. */ }
+  finally { state.playerContextKey = null; }
+}
+function renderPlayer() {
+  const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>Next episode <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : "";
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span></div><div class="player-frame"><iframe class="player" src="${playerURL(p)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${playerEpisodePanel(p)}${footer()}`;
+  bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
+  document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
+  document.querySelector("[data-play-next]")?.addEventListener("click", () => playEpisode(next.episode_number, false));
+}
 async function search(query) { state.search = query; if (query.trim().length < 2) { state.searchResults = []; state.route = "home"; render(); return; } try { state.searchResults = results(await api("search/multi", { query })); state.route = "search"; } catch (error) { state.error = error.message; state.route = "home"; } render(); }
 function hideSearchSuggestions(input) { const menu = input?.closest(".search")?.querySelector(".search-suggestions"); if (menu) { menu.hidden = true; menu.innerHTML = ""; } }
 function showSearchSuggestions(input, query, items) { const menu = input.closest(".search")?.querySelector(".search-suggestions"); if (!menu) return; const picks = items.slice(0, 5); menu.innerHTML = picks.length ? `${picks.map(item => `<button class="search-suggestion" data-search-result="${item.type}:${item.id}"><img src="${posterOf(item)}" alt=""><span><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`).join("")}<button class="search-all" data-search-all>See all results for “${escapeHTML(query)}” <b>›</b></button>` : `<p class="search-empty">No quick matches yet.</p>`; menu.hidden = false; menu.querySelectorAll("[data-search-result]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.searchResult.split(":"); openItem(type, id); }); menu.querySelector("[data-search-all]")?.addEventListener("click", () => { state.search = query; state.route = "search"; render(); }); }
