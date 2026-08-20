@@ -8,6 +8,7 @@ const titleOf = item => item.title || item.name || item.original_title || item.o
 const yearOf = item => (item.release_date || item.first_air_date || "").slice(0, 4);
 const posterOf = item => item.poster_path ? `${TMDB_IMAGE}${item.poster_path}` : "/icon.svg";
 const escapeHTML = value => String(value || "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
+function scrollToTop() { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; }
 
 async function localAPI(path, options = {}) { const response = await fetch(path, options); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || data.msg || "Request failed."); return data; }
 function authorizedHeaders() { return state.session?.access_token ? { Authorization:`Bearer ${state.session.access_token}` } : {}; }
@@ -62,13 +63,14 @@ function card(item) { return `<button class="card" data-open="${item.type}:${ite
 function continueWatching() { const seen = new Set(); return Object.keys(localStorage).filter(key => key.startsWith("cineva-progress-")).map(key => { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return null; } }).filter(item => item?.type && item.id && item.title && Number(item.duration) > 0 && Number(item.duration) - Number(item.currentTime) >= 600 && !item.watched).sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)).filter(item => { const key = `${item.type}:${item.id}`; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 16); }
 function continueRail(items) { return `<section class="rail continue-rail"><div class="rail-title"><h2>Continue watching</h2><span>Pick up where you left off</span></div><div class="cards">${items.map(item => `<button class="card continue-card" data-continue="${escapeHTML(`${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`)}"><span class="poster-wrap"><img src="${item.posterPath ? TMDB_IMAGE + item.posterPath : "/icon.svg"}" alt="" loading="lazy"><i>${item.type === "tv" ? `S${item.season} · E${item.episode}` : "MOVIE"}</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(item.title)}</b><small>Resume from ${timeLabel(Math.floor(item.currentTime || 0))}</small><em class="continue-progress"><i style="width:${Math.min(100, Number(item.progress) || 0)}%"></i></em></button>`).join("")}</div></section>`; }
 async function openItem(type, id) {
+  scrollToTop();
   try {
     const item = normalize(await api(`${type}/${id}`, { append_to_response:"credits,keywords,videos" }), type);
     state.trailer = trailerFrom(item.videos) || await loadTrailer(type, item.id);
     if (type === "movie") { state.movie = item; state.route = "movie"; }
     else { state.series = item; state.selectedSeason = 1; state.route = "series"; await loadEpisodes(); }
   } catch (error) { state.error = error.message; state.route = "home"; }
-  render();
+  render(); scrollToTop();
 }
 async function loadEpisodes() { state.episodes = await api(`tv/${state.series.id}/season/${state.selectedSeason}`); }
 function trailerFrom(videos) { return (videos?.results || []).find(video => video.site === "YouTube" && video.type === "Trailer") || (videos?.results || []).find(video => video.site === "YouTube") || null; }
