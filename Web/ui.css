@@ -53,6 +53,13 @@
 .wordmark { display: inline-flex; align-items: center; gap: 8px; }
 .wordmark img { display: block; width: 88px; height: auto; object-fit: contain; }
 .wordmark.logo-only { width: 92px; height: 32px; padding: 0; }
+.main-header .wordmark { animation: seven-wordmark-return .34s cubic-bezier(.2,.8,.2,1); }
+.settings-header { position: relative; justify-content: flex-start; }
+.settings-header .wordmark { position: absolute; z-index: 2; left: 50%; transform: translateX(-50%); animation: seven-wordmark-center .38s cubic-bezier(.2,.8,.2,1); }
+.settings-header .wordmark:hover img { filter: drop-shadow(0 0 8px #e5091475); transform: scale(1.055); }
+.settings-header .wordmark img { transition: filter .22s ease, transform .22s ease; }
+@keyframes seven-wordmark-center { from { opacity: 0; transform: translate(-50%, -8px) scale(.94); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes seven-wordmark-return { from { opacity: .35; transform: translateX(16px) scale(.96); } to { opacity: 1; transform: translateX(0) scale(1); } }
 .browse-page { padding: 18px 0 2px; }
 .browse-page h2 { margin: 7px 0; font-size: 30px; letter-spacing: -.8px; }
 .browse-page p { max-width: 540px; margin: 0; color: #aaa; line-height: 1.5; }
@@ -266,6 +273,8 @@ html, body { overflow-x: hidden; }
 @media (max-width: 650px) {
   #app { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
   header { gap: 8px; }
+  .settings-header { justify-content: center; }
+  .settings-header .wordmark { position: static; transform: none; animation: seven-wordmark-center-mobile .34s cubic-bezier(.2,.8,.2,1); }
   header > nav { position: fixed; z-index: 50; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; padding: 7px 8px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid #2a2a2a; background: #0b0b0bf5; box-shadow: 0 -10px 28px #0008; backdrop-filter: blur(16px); }
   header > nav .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 49px; padding: 3px 2px; color: #c9c9c9; font-size: 10px; font-weight: 760; line-height: 1; }
   header > nav .nav-link:active { color: #fff; }
@@ -322,6 +331,7 @@ html, body { overflow-x: hidden; }
   .coverflow-card { top: 48%; width: 166px; height: 249px; }
   .coverflow-card span { right: 6px; bottom: 7px; left: 6px; font-size: 9px; }
 }
+@keyframes seven-wordmark-center-mobile { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
   .coverflow-card { transition: none; }
