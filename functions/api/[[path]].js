@@ -152,6 +152,34 @@ async function accountSettings(request, env) {
   } catch (error) { return json({ error:error.message || "Account settings could not be saved." }, 400); }
 }
 
+async function parentAccess(request, env) {
+  const settings = supabase(env);
+  const token = authorization(request);
+  if (!settings) return json({ error:"Supabase is not configured." }, 503);
+  if (!token) return json({ error:"Sign in required." }, 401);
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
+  try {
+    if (request.method === "GET") {
+      const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_enabled`, { method:"POST", headers, body:"{}" });
+      return json({ enabled:result.data === true }, result.status);
+    }
+    const body = await readJSON(request);
+    if (request.method === "POST") {
+      const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_verify`, { method:"POST", headers, body:JSON.stringify({ code:String(body.code || "") }) });
+      return json({ verified:result.data === true }, result.status);
+    }
+    if (request.method === "PUT") {
+      const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_set`, { method:"POST", headers, body:JSON.stringify({ current_code:body.currentCode || null, new_code:String(body.newCode || "") }) });
+      return json({ enabled:result.data === true }, result.status);
+    }
+    if (request.method === "DELETE") {
+      const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_clear`, { method:"POST", headers, body:JSON.stringify({ current_code:String(body.currentCode || "") }) });
+      return json({ enabled:false }, result.status);
+    }
+    return json({ error:"Unsupported parent access action." }, 405);
+  } catch (error) { return json({ error:error.message || "Parent access could not be updated." }, 400); }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
@@ -165,5 +193,6 @@ export async function onRequest(context) {
   if (path === "account/progress") return progress(request, requestURL, env);
   if (path === "account/list") return myList(request, requestURL, env);
   if (path === "account/settings" && request.method === "PUT") return accountSettings(request, env);
+  if (path === "account/parent-access") return parentAccess(request, env);
   return json({ error:"Not found." }, 404);
 }

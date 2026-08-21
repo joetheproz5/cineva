@@ -68,6 +68,18 @@ async function accountSettings(request, response) {
     sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Account settings could not be saved." }); }
 }
+async function parentAccess(request, response) {
+  const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
+  try {
+    if (request.method === "GET") { const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_enabled`, { method:"POST", headers, body:"{}" }); return sendJSON(response, result.status, { enabled:result.data === true }); }
+    const body = await readBody(request);
+    if (request.method === "POST") { const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_verify`, { method:"POST", headers, body:JSON.stringify({ code:String(body.code || "") }) }); return sendJSON(response, result.status, { verified:result.data === true }); }
+    if (request.method === "PUT") { const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_set`, { method:"POST", headers, body:JSON.stringify({ current_code:body.currentCode || null, new_code:String(body.newCode || "") }) }); return sendJSON(response, result.status, { enabled:result.data === true }); }
+    if (request.method === "DELETE") { const result = await upstream(`${settings.url}/rest/v1/rpc/seven_parent_access_clear`, { method:"POST", headers, body:JSON.stringify({ current_code:String(body.currentCode || "") }) }); return sendJSON(response, result.status, { enabled:false }); }
+    return sendJSON(response, 405, { error:"Unsupported parent access action." });
+  } catch (error) { sendJSON(response, 400, { error:error.message || "Parent access could not be updated." }); }
+}
 const server = http.createServer((request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
   if (sourceURL.pathname.startsWith("/api/tmdb/")) return proxyTMDB(response, sourceURL);
@@ -78,6 +90,7 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/account/progress") return progress(request, response);
   if (sourceURL.pathname === "/api/account/list") return myList(request, response, sourceURL);
   if (sourceURL.pathname === "/api/account/settings" && request.method === "PUT") return accountSettings(request, response);
+  if (sourceURL.pathname === "/api/account/parent-access") return parentAccess(request, response);
   const requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
   if (!file.startsWith(root)) return response.writeHead(403).end();
   fs.readFile(file, (error, data) => { if (error) return response.writeHead(error.code === "ENOENT" ? 404 : 500).end("Not found"); response.writeHead(200, { "Content-Type":types[path.extname(file)] || "application/octet-stream", "Cache-Control":"no-cache" }); response.end(data); });
