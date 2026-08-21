@@ -546,6 +546,8 @@
 .profile-settings-mobile-top { display: grid; grid-template-columns: 32px 1fr 32px; align-items: center; margin-bottom: 24px; }
 .profile-settings-mobile-top .account-back { grid-column: auto; width: 32px; height: 32px; padding: 0; border-radius: 50%; color: #fff; font-size: 25px; line-height: 26px; }
 .profile-settings-mobile-top h1 { grid-column: 2; margin: 0; color: #fff; font-size: 24px; text-align: center; letter-spacing: -.6px; }
+.profile-settings-switch { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid #383838; border-radius: 50%; color: #e7e7e7; background: #151515; font-size: 16px; transition: border-color .18s, background .18s, transform .18s; }
+.profile-settings-switch:hover { border-color: #d92c36; background: #281114; transform: rotate(180deg); }
 .profile-mobile-identity { position: relative; display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 18px; align-items: center; padding: 0 0 24px; }
 .profile-mobile-identity .profile-settings-avatar, .profile-mobile-identity .profile-avatar { width: 88px; height: 88px; }
 .profile-avatar-change { position: absolute; top: 60px; left: 62px; display: grid; width: 28px; height: 28px; place-items: center; border: 2px solid #070707; border-radius: 5px; color: #111; background: #e9e9e9; font-size: 14px; }
