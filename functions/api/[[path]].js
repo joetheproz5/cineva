@@ -139,7 +139,14 @@ async function accountSettings(request, env) {
   try {
     const body = await readJSON(request);
     const payload = { data:{ seven_account:body.account || {} } };
-    if (body.password) payload.password = body.password;
+    if (body.password) {
+      if (!body.currentPassword) return json({ error:"Enter your current password." }, 400);
+      const user = await upstream(`${settings.url}/auth/v1/user`, { headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}` } });
+      if (!user.data?.email) return json({ error:"Your session has expired. Please sign in again." }, 401);
+      const verification = await upstream(`${settings.url}/auth/v1/token?grant_type=password`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify({ email:user.data.email, password:body.currentPassword }) });
+      if (!verification.data?.access_token) return json({ error:"Your current password is not correct." }, 401);
+      payload.password = body.password;
+    }
     const result = await upstream(`${settings.url}/auth/v1/user`, { method:"PUT", headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, body:JSON.stringify(payload) });
     return json(result.data, result.status);
   } catch (error) { return json({ error:error.message || "Account settings could not be saved." }, 400); }

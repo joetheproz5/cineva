@@ -54,7 +54,19 @@ async function myList(request, response, sourceURL) {
 }
 async function accountSettings(request, response) {
   const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
-  try { const body = await readBody(request), payload = { data:{ seven_account:body.account || {} } }; if (body.password) payload.password = body.password; const result = await upstream(`${settings.url}/auth/v1/user`, { method:"PUT", headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, body:JSON.stringify(payload) }); sendJSON(response, result.status, result.data); } catch (error) { sendJSON(response, 400, { error:error.message || "Account settings could not be saved." }); }
+  try {
+    const body = await readBody(request), payload = { data:{ seven_account:body.account || {} } };
+    if (body.password) {
+      if (!body.currentPassword) return sendJSON(response, 400, { error:"Enter your current password." });
+      const user = await upstream(`${settings.url}/auth/v1/user`, { headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}` } });
+      if (!user.data?.email) return sendJSON(response, 401, { error:"Your session has expired. Please sign in again." });
+      const verification = await upstream(`${settings.url}/auth/v1/token?grant_type=password`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify({ email:user.data.email, password:body.currentPassword }) });
+      if (!verification.data?.access_token) return sendJSON(response, 401, { error:"Your current password is not correct." });
+      payload.password = body.password;
+    }
+    const result = await upstream(`${settings.url}/auth/v1/user`, { method:"PUT", headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+    sendJSON(response, result.status, result.data);
+  } catch (error) { sendJSON(response, 400, { error:error.message || "Account settings could not be saved." }); }
 }
 const server = http.createServer((request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
