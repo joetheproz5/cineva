@@ -280,6 +280,8 @@
   .profile-settings-hero { gap: 16px; margin-top: 18px; padding: 17px; }
   .profile-settings-avatar .profile-avatar { width: 68px; height: 68px; border-radius: 9px; font-size: 26px; }
   .profile-name-field { min-width: 0; }
+  .profile-name-field input,
+  .profile-pin-field input { font-size: 16px; }
   .profile-settings-section { margin-top: 18px; padding: 19px 16px; border-radius: 10px; }
   .profile-settings-section-head h2 { font-size: 19px; }
   .profile-avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
