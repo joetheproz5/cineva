@@ -638,9 +638,13 @@
   .account-workspace-page .account-active-profile .profile-avatar { width: 45px; height: 45px; }
   .account-workspace-page .account-active-profile > span { display: none; }
   .account-workspace-page .account-workspace { display: block; position: relative; }
-  .account-sidebar { position: absolute; z-index: 4; top: 0; left: 0; width: 54px; padding: 7px; transition: width .22s ease, box-shadow .22s ease; }
-  .nav-open .account-sidebar { width: min(178px, calc(100vw - 58px)); box-shadow: 10px 14px 30px #000a; }
-  .account-workspace-content { margin-left: 66px; }
+  .account-workspace-page .account-sidebar, .account-workspace-page .nav-open .account-sidebar, .account-workspace-page .nav-closed .account-sidebar { position: static; width: 100%; margin: 0 0 10px; padding: 5px; box-shadow: none; }
+  .account-workspace-page .account-sidebar > nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin: 0; }
+  .account-workspace-page .account-nav-toggle { display: none; }
+  .account-workspace-page .account-nav-item, .account-workspace-page .nav-closed .account-nav-item { display: grid; min-width: 0; min-height: 52px; gap: 3px; padding: 5px 2px; place-items: center; text-align: center; }
+  .account-workspace-page .account-nav-item i { width: auto; flex: none; font-size: 15px; }
+  .account-workspace-page .account-nav-item span, .account-workspace-page .nav-closed .account-nav-item span { display: block; overflow: hidden; max-width: 100%; color: inherit; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+  .account-workspace-page .account-workspace-content { margin-left: 0; }
   .account-content-panel { min-height: 0; padding: 20px 16px; border-radius: 8px; }
   .account-content-heading { padding-bottom: 17px; }
   .account-content-heading h2 { font-size: 23px; }
