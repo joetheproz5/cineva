@@ -363,8 +363,53 @@ html, body { overflow-x: hidden; }
 }
 @keyframes seven-wordmark-center-mobile { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .coverflow-card { transition: none; }
+@keyframes splash-logo-in {
+  from { opacity: 0; transform: scale(.8) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes splash-text-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes splash-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #0b0c1e 0%, #1a1d3e 100%);
+}
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 24px;
+  background: url('/assets/seven-logo.png') center / contain no-repeat;
+  animation: splash-logo-in .6s cubic-bezier(.22,.68,.4,1);
+}
+.splash-text {
+  color: #e50914;
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  margin-top: 12px;
+  animation: splash-text-in .5s ease .3s forwards;
+  opacity: 0;
+}
+.splash-text .highlight { color: #d1ff47; }
+.splash-footer {
+  margin-top: 32px;
+  color: #aaa;
+  font-size: 12px;
+  letter-spacing: .5px;
+  animation: splash-fade-out .5s ease .9s forwards;
+  opacity: 0;
+}
+@media (max-width: 650px) {
+  .splash-text { font-size: 28px; }
 }
 
 @media (max-width: 650px) {
