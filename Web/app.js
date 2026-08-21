@@ -83,9 +83,16 @@ async function refreshCatalogForLanguage() {
   await loadNewEpisodes(state.catalog["New series"]);
 }
 async function boot() {
-  renderSplash();
-  await new Promise(resolve => setTimeout(resolve, 1200));
-  await restoreSession();
+  // Startup must never depend on an animation or a network request finishing.
+  // Render the app shell first, then safely fall through to browse on failure.
+  renderLoading();
+  try {
+    await restoreSession();
+  } catch {
+    clearSession();
+    state.account = defaultAccount();
+    state.myList = [];
+  }
   try {
     await refreshCatalogForLanguage();
   } catch (error) {
@@ -94,9 +101,9 @@ async function boot() {
     state.error = error.message;
   }
   const shared = sharedTitleTarget();
-  if (shared) { await openItem(shared.type, shared.id); hideSplash(); return; }
-  if (state.user) { state.route = "profiles"; void loadProfiles(); } else { void showAuthScreen(); }
-  hideSplash();
+  if (shared) { await openItem(shared.type, shared.id); return; }
+  if (state.user) { state.route = "profiles"; void loadProfiles(); }
+  render();
 }
 function shuffle(items) { const copy = [...items]; for (let index = copy.length - 1; index > 0; index -= 1) { const target = Math.floor(Math.random() * (index + 1)); [copy[index], copy[target]] = [copy[target], copy[index]]; } return copy; }
 function sharedTitleTarget() { const value = new URLSearchParams(window.location.search).get("title") || "", match = value.match(/^(movie|tv):(\d+)$/); return match ? { type:match[1], id:Number(match[2]) } : null; }
@@ -679,7 +686,7 @@ function showUpdatePrompt(registration) {
 }
 if ("serviceWorker" in navigator) {
   let refreshingForUpdate = false;
-  navigator.serviceWorker.register("/service-worker.js?v=145").then(registration => {
+  navigator.serviceWorker.register("/service-worker.js?v=146").then(registration => {
     showUpdatePrompt(registration);
     registration.addEventListener("updatefound", () => {
       const worker = registration.installing;
