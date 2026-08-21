@@ -541,6 +541,42 @@
 .password-card input { padding: 11px; border-color: #3a3a3a; border-radius: 5px; background: #0e0e0e; font-size: 13px; }
 .password-card .secondary { border-radius: 4px; background: #333; }
 
+/* Compact profile editor, designed around a phone-first settings flow */
+.profile-settings-mobile-first { width: min(620px, calc(100% - 40px)); }
+.profile-settings-mobile-top { display: grid; grid-template-columns: 32px 1fr 32px; align-items: center; margin-bottom: 24px; }
+.profile-settings-mobile-top .account-back { grid-column: auto; width: 32px; height: 32px; padding: 0; border-radius: 50%; color: #fff; font-size: 25px; line-height: 26px; }
+.profile-settings-mobile-top h1 { grid-column: 2; margin: 0; color: #fff; font-size: 24px; text-align: center; letter-spacing: -.6px; }
+.profile-mobile-identity { position: relative; display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 18px; align-items: center; padding: 0 0 24px; }
+.profile-mobile-identity .profile-settings-avatar, .profile-mobile-identity .profile-avatar { width: 88px; height: 88px; }
+.profile-avatar-change { position: absolute; top: 60px; left: 62px; display: grid; width: 28px; height: 28px; place-items: center; border: 2px solid #070707; border-radius: 5px; color: #111; background: #e9e9e9; font-size: 14px; }
+.profile-avatar-change:hover { background: #fff; }
+.profile-mobile-identity .profile-name-field { margin: 0; }
+.profile-mobile-identity .profile-name-field input { margin-top: 7px; padding: 13px; border-color: #4b4b4b; border-radius: 4px; background: #151515; font-size: 15px; }
+.profile-avatar-chooser { margin: 0 0 15px; padding: 16px; border: 1px solid #303030; border-radius: 8px; background: #121212; }
+.profile-avatar-chooser[hidden] { display: none; }
+.profile-avatar-chooser .brand { display: block; margin-bottom: 12px; }
+.profile-avatar-chooser .profile-avatar-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.profile-mobile-settings { display: grid; gap: 7px; }
+.profile-mobile-row { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 11px; align-items: center; min-height: 72px; padding: 12px; border: 1px solid #303030; border-radius: 7px; color: #eee; background: #191919; }
+.profile-mobile-row > i { display: grid; width: 28px; height: 28px; place-items: center; color: #d5d5d5; font-size: 15px; font-style: normal; }
+.profile-mobile-row b, .profile-mobile-row small { display: block; }
+.profile-mobile-row b { color: #f6f6f6; font-size: 12px; }
+.profile-mobile-row small { margin-top: 3px; color: #999; font-size: 10px; line-height: 1.3; }
+.profile-mobile-select select { width: auto; min-width: 64px; max-width: 100px; padding: 7px 5px; border: 1px solid #424242; border-radius: 4px; color: #f0f0f0; background: #111; font-size: 12px; }
+.profile-mobile-toggle input { position: absolute; opacity: 0; }
+.profile-mobile-toggle em { position: relative; width: 34px; height: 19px; border-radius: 999px; background: #626262; }
+.profile-mobile-toggle em:after { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: #eee; content: ""; transition: transform .18s ease; }
+.profile-mobile-toggle input:checked + em { background: #d11a25; }
+.profile-mobile-toggle input:checked + em:after { transform: translateX(15px); }
+.profile-pin-card { margin-top: 15px; padding: 17px; border: 1px solid #303030; border-radius: 7px; background: #151515; }
+.profile-pin-card .brand { display: block; margin-bottom: 7px; }
+.profile-pin-card h2 { margin: 0; color: #fff; font-size: 15px; }
+.profile-pin-card p { margin: 5px 0 14px; color: #999; font-size: 11px; }
+.profile-pin-card .profile-pin-field { margin: 0; }
+.profile-pin-card .profile-pin-field input { font-size: 15px; }
+.profile-settings-mobile-first .profile-settings-actions { margin-top: 18px; }
+.profile-settings-mobile-first .profile-delete { margin-top: 16px; }
+
 @media (max-width: 650px) {
   .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
   .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
@@ -616,4 +652,15 @@
   .account-security-layout { grid-template-columns: 1fr; gap: 0; }
   .settings-stack .account-selects { grid-template-columns: 1fr; gap: 0; }
   .settings-stack .account-select select, .password-card input { font-size: 16px; }
+  .profile-settings-mobile-first { width: min(100% - 28px, 480px); padding: 16px 0 48px; }
+  .profile-settings-mobile-top { margin-bottom: 21px; }
+  .profile-settings-mobile-top h1 { font-size: 18px; }
+  .profile-mobile-identity { grid-template-columns: 78px minmax(0, 1fr); gap: 14px; padding-bottom: 20px; }
+  .profile-mobile-identity .profile-settings-avatar, .profile-mobile-identity .profile-avatar { width: 78px; height: 78px; }
+  .profile-avatar-change { top: 52px; left: 54px; }
+  .profile-mobile-identity .profile-name-field input { font-size: 16px; }
+  .profile-avatar-chooser .profile-avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .profile-mobile-row { min-height: 70px; padding: 11px; }
+  .profile-mobile-select select { font-size: 16px; }
+  .profile-pin-card .profile-pin-field input { font-size: 16px; }
 }
