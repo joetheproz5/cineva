@@ -408,6 +408,34 @@
 .favourites-locked { display: grid; min-height: calc(100vh - 150px); place-items: center; }
 .favourites-locked .primary { min-width: 132px; }
 
+.profile-stats-page { width: min(980px, calc(100% - 40px)); min-height: calc(100vh - 120px); margin: 0 auto; padding: 32px 0 76px; }
+.profile-stats-page > .account-back { display: block; margin-bottom: 28px; }
+.profile-stats-page h1 { margin: 8px 0 7px; color: #fff; font-size: clamp(32px, 4vw, 44px); letter-spacing: -1.5px; }
+.profile-stats-page > p { margin: 0; color: #9b9b9b; font-size: 14px; }
+.stats-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 28px 0 18px; }
+.stats-summary > div, .stats-detail-grid article { padding: 18px; border: 1px solid #303030; border-radius: 10px; background: linear-gradient(145deg, #191919, #101010); }
+.stats-summary strong, .stats-summary span { display: block; }
+.stats-summary strong { color: #fff; font-size: clamp(21px, 3vw, 29px); letter-spacing: -.8px; }
+.stats-summary span { margin-top: 6px; color: #989898; font-size: 11px; font-weight: 700; }
+.stats-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stats-detail-grid article { min-height: 122px; }
+.stats-detail-grid article > strong { display: block; margin-top: 8px; color: #fff; font-size: 24px; }
+.stats-detail-grid article p { margin: 6px 0 0; color: #949494; font-size: 12px; line-height: 1.45; }
+.stats-genres { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+.stats-genres span { padding: 7px 9px; border: 1px solid #4a3033; border-radius: 999px; color: #e4e4e4; background: #211214; font-size: 11px; font-weight: 700; }
+.stats-genres small { color: #949494; font-size: 12px; }
+.stats-most-watched { margin-top: 27px; }
+.stats-title-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stats-title { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; overflow: hidden; padding: 8px; border: 1px solid #2f2f2f; border-radius: 8px; color: #fff; background: #121212; text-align: left; }
+.stats-title:hover { border-color: #7b272d; background: #181010; }
+.stats-title img { width: 92px; height: 52px; border-radius: 5px; object-fit: cover; background: #1d1d1d; }
+.stats-title b, .stats-title small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-title b { font-size: 13px; }
+.stats-title small { margin-top: 5px; color: #a5a5a5; font-size: 11px; }
+.stats-empty { max-width: 480px; margin: 48px 0; padding: 30px 0; border-top: 1px solid #333; border-bottom: 1px solid #333; }
+.stats-empty b { color: #fff; font-size: 19px; }
+.stats-empty p { margin: 8px 0 18px; color: #999; font-size: 13px; line-height: 1.5; }
+
 @media (max-width: 650px) {
   .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
   .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
@@ -432,4 +460,12 @@
   .my-list-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 10px; margin-top: 24px; }
   .my-list-open b { font-size: 11px; }
   .my-list-open small, .my-list-remove { font-size: 9px; }
+  .profile-stats-page { width: min(100% - 28px, 600px); padding: 18px 0 48px; }
+  .profile-stats-page > .account-back { margin-bottom: 24px; }
+  .stats-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 22px; }
+  .stats-summary > div, .stats-detail-grid article { padding: 15px; border-radius: 8px; }
+  .stats-detail-grid { grid-template-columns: 1fr; gap: 8px; }
+  .stats-title-grid { grid-template-columns: 1fr; gap: 8px; }
+  .stats-title { grid-template-columns: 86px minmax(0, 1fr); }
+  .stats-title img { width: 86px; height: 49px; }
 }
