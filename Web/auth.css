@@ -436,6 +436,52 @@
 .stats-empty b { color: #fff; font-size: 19px; }
 .stats-empty p { margin: 8px 0 18px; color: #999; font-size: 13px; line-height: 1.5; }
 
+/* Categorized account hub */
+.account-page-v2 { width: min(1120px, calc(100% - 48px)); padding-top: 24px; }
+.account-page-v2 .account-page-top { gap: 18px; padding: 8px 0 26px; }
+.account-page-v2 .account-page-top .brand, .account-page-v2 .account-section-title .brand { display: block; margin-bottom: 6px; color: #e41b27; font-size: 10px; letter-spacing: 1.55px; }
+.account-page-v2 .account-heading h1 { margin: 0 0 7px; font-size: 42px; }
+.account-page-v2 .account-heading p { margin: 0; color: #999; font-size: 13px; }
+.account-page-v2 .account-active-profile { display: flex; align-items: center; gap: 10px; min-width: 155px; padding: 7px; border: 1px solid #323232; border-radius: 8px; background: #121212; }
+.account-page-v2 .account-active-profile .profile-avatar { width: 48px; height: 48px; border-radius: 5px; }
+.account-page-v2 .account-active-profile > span { display: block; }
+.account-page-v2 .account-active-profile b { font-size: 12px; }
+.account-page-v2 .account-active-profile small { color: #9b9b9b; font-size: 10px; }
+.account-page-v2 .account-section { margin-top: 18px; padding: 22px; border: 1px solid #303030; border-radius: 10px; background: linear-gradient(145deg, #181818, #101010 78%); box-shadow: none; }
+.account-page-v2 .account-section-title { margin-bottom: 17px; }
+.account-page-v2 .account-section-title h2 { font-size: 20px; font-weight: 750; letter-spacing: -.5px; }
+.account-page-v2 .account-section-title > span { color: #929292; font-size: 11px; }
+.account-page-v2 .account-profiles { padding-bottom: 20px; }
+.account-page-v2 .profiles { gap: 18px; }
+.account-page-v2 .profile-card, .account-page-v2 .profile-add { width: 84px; }
+.account-page-v2 .profile-avatar, .account-page-v2 .profile-add span { width: 66px; height: 66px; border-radius: 5px; }
+.account-page-v2 .profile-card b { margin-top: 2px; font-size: 12px; }
+.account-page-v2 .profile-card small { display: none; }
+.account-page-v2 .profile-edit { top: -7px; right: 3px; width: 20px; height: 20px; }
+.account-page-v2 .profile-add { gap: 7px; }
+.account-page-v2 .profile-add span { border-color: #555; border-radius: 5px; }
+.account-dashboard { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+.account-page-v2 .account-dashboard .account-section { margin-top: 0; }
+.account-page-v2 .account-library, .account-page-v2 .account-playback { min-height: 354px; }
+.account-page-v2 .account-safety { grid-column: 1 / -1; }
+.account-page-v2 .account-row { padding: 14px 0; transition: color .16s, background .16s; }
+.account-page-v2 .account-row:hover b { color: #fff; }
+.account-page-v2 .account-row b { font-size: 13px; }
+.account-page-v2 .account-row small, .account-page-v2 .account-toggle small { color: #858585; font-size: 10px; }
+.account-page-v2 .account-row em { min-width: 38px; text-align: right; }
+.account-page-v2 .account-toggle { padding: 14px 0; }
+.account-page-v2 .account-toggle span { font-size: 13px; }
+.account-page-v2 .account-toggle i { top: 16px; }
+.account-page-v2 .account-selects { gap: 10px; }
+.account-page-v2 .account-select { color: #cfcfcf; font-size: 11px; }
+.account-page-v2 .account-select select, .account-page-v2 .password-form input { border-color: #3a3a3a; border-radius: 5px; background: #101010; }
+.account-security-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .9fr); gap: 34px; align-items: start; }
+.account-page-v2 .account-security-content .account-row:first-child { border-top: 0; }
+.account-page-v2 .password-form { margin: 0; padding: 0 0 2px; border-top: 0; }
+.account-page-v2 .password-form label { font-size: 12px; }
+.account-page-v2 .password-form input { padding: 11px; font-size: 13px; }
+.account-page-v2 .password-form .secondary { border-radius: 4px; background: #303030; }
+
 @media (max-width: 650px) {
   .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
   .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
@@ -468,4 +514,26 @@
   .stats-title-grid { grid-template-columns: 1fr; gap: 8px; }
   .stats-title { grid-template-columns: 86px minmax(0, 1fr); }
   .stats-title img { width: 86px; height: 49px; }
+  .account-page-v2 { width: min(100% - 28px, 600px); padding-top: 17px; }
+  .account-page-v2 .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
+  .account-page-v2 .account-heading h1 { font-size: 34px; }
+  .account-page-v2 .account-page-top .brand { display: block; }
+  .account-page-v2 .account-active-profile { min-width: 0; padding: 3px; border: 0; background: transparent; }
+  .account-page-v2 .account-active-profile .profile-avatar { width: 45px; height: 45px; }
+  .account-page-v2 .account-active-profile > span { display: none; }
+  .account-page-v2 .account-section { padding: 18px 15px; border-radius: 8px; }
+  .account-page-v2 .account-section-title { align-items: start; margin-bottom: 15px; }
+  .account-page-v2 .account-section-title h2 { font-size: 18px; }
+  .account-page-v2 .account-section-title > span { max-width: 120px; text-align: right; }
+  .account-page-v2 .profiles { gap: 14px 9px; }
+  .account-page-v2 .profile-card, .account-page-v2 .profile-add { width: 70px; }
+  .account-page-v2 .profile-avatar, .account-page-v2 .profile-add span { width: 58px; height: 58px; }
+  .account-dashboard { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+  .account-page-v2 .account-library, .account-page-v2 .account-playback { min-height: 0; }
+  .account-page-v2 .account-safety { grid-column: auto; }
+  .account-page-v2 .account-security-content { grid-template-columns: 1fr; gap: 19px; }
+  .account-page-v2 .account-row, .account-page-v2 .account-toggle { padding: 13px 0; }
+  .account-page-v2 .account-toggle i { top: 15px; }
+  .account-page-v2 .account-selects { grid-template-columns: 1fr; gap: 0; }
+  .account-page-v2 .account-select select, .account-page-v2 .password-form input { font-size: 16px; }
 }
