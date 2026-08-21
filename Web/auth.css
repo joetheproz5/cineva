@@ -576,6 +576,29 @@
 .profile-pin-card .profile-pin-field input { font-size: 15px; }
 .profile-settings-mobile-first .profile-settings-actions { margin-top: 18px; }
 .profile-settings-mobile-first .profile-delete { margin-top: 16px; }
+.profile-settings-hub { padding-top: 18px; }
+.profile-hub-hero { position: relative; display: grid; justify-items: center; padding: 26px 20px 22px; border: 1px solid #303030; border-radius: 10px; background: linear-gradient(145deg, #191919, #111); }
+.profile-hub-hero:before { position: absolute; z-index: 0; top: 0; width: 140px; height: 72px; border-radius: 0 0 80px 80px; background: radial-gradient(ellipse at center, #5b151bcc, transparent 70%); content: ""; filter: blur(14px); }
+.profile-hub-avatar { position: relative; z-index: 1; display: grid; width: 92px; height: 92px; margin-top: -52px; padding: 0; place-items: center; border: 3px solid #e02631; border-radius: 8px; background: #181818; box-shadow: 0 12px 32px #000a; }
+.profile-hub-avatar .profile-avatar { width: 100%; height: 100%; border: 0; border-radius: 5px; }
+.profile-hub-avatar i { position: absolute; right: -8px; bottom: -8px; display: grid; width: 28px; height: 28px; place-items: center; border: 2px solid #121212; border-radius: 50%; color: #111; background: #ededed; font-size: 13px; font-style: normal; }
+.profile-hub-hero h2 { position: relative; z-index: 1; margin: 14px 0 2px; color: #fff; font-size: 22px; }
+.profile-hub-hero p { position: relative; z-index: 1; margin: 0; color: #999; font-size: 11px; }
+.profile-category-list { display: grid; gap: 7px; margin-top: 16px; }
+.profile-category-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 11px; align-items: center; min-height: 68px; padding: 11px 13px; border: 1px solid #333; border-radius: 7px; color: #eee; background: #181818; text-align: left; transition: border-color .16s, background .16s; }
+.profile-category-row:hover { border-color: #82272e; background: #201113; }
+.profile-category-row > i { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: #f03843; background: #391215; font-size: 16px; font-style: normal; }
+.profile-category-row b, .profile-category-row small { display: block; }
+.profile-category-row b { color: #f5f5f5; font-size: 12px; }
+.profile-category-row small { margin-top: 4px; color: #939393; font-size: 10px; }
+.profile-category-row em { color: #d6d6d6; font-size: 22px; font-style: normal; }
+.profile-hub-note { margin: 16px 4px; color: #999; font-size: 11px; text-align: center; }
+.profile-category-back { display: block; margin: 0 0 15px; padding: 4px 0; color: #ddd; background: transparent; font-size: 12px; font-weight: 700; }
+.profile-detail-card { display: grid; gap: 7px; padding: 17px; border: 1px solid #303030; border-radius: 8px; background: #151515; }
+.profile-detail-card > .brand { display: block; margin-bottom: 5px; }
+.profile-detail-card .profile-mobile-identity { padding: 4px 0 0; }
+.profile-category-actions { display: grid; gap: 8px; margin-top: 15px; }
+.profile-category-actions .account-action-card { width: 100%; }
 
 @media (max-width: 650px) {
   .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
@@ -667,4 +690,8 @@
   .profile-mobile-row { min-height: 70px; padding: 11px; }
   .profile-mobile-select select { font-size: 16px; }
   .profile-pin-card .profile-pin-field input { font-size: 16px; }
+  .profile-settings-hub { padding-top: 43px; }
+  .profile-hub-hero { padding: 25px 16px 19px; }
+  .profile-hub-avatar { width: 84px; height: 84px; margin-top: -58px; }
+  .profile-category-row { min-height: 66px; }
 }
