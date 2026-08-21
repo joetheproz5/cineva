@@ -95,9 +95,8 @@ function renderHome() {
   clearInterval(state.heroTimer);
   const f = state.featured;
   const continuing = continueWatching();
-  const saved = listItems();
   const newEpisodes = state.newEpisodes || [];
-  app.innerHTML = `${header()}<section class="hero" id="featured">${featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}${saved.length ? rail("My List", saved) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("")}</div>${footer()}`;
+  app.innerHTML = `${header()}<section class="hero" id="featured">${featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("")}</div>${footer()}`;
   bindCommon(); initCoverflow(); scheduleHero();
 }
 function coverflowOffset(index, active, count) { let offset = index - active; if (offset > count / 2) offset -= count; if (offset < -count / 2) offset += count; return offset; }
