@@ -194,9 +194,9 @@
 .player-episodes-loading { min-height: 88px; padding: 17px; border: 1px solid #2b2b2b; border-radius: 9px; background: #101010; }
 .player-episodes-loading .brand { margin-bottom: 6px; }
 .player-episodes-loading p, .episode-empty { margin: 0; color: #9d9d9d; font-size: 13px; }
-.site-footer { position: relative; overflow: hidden; margin: 78px 0 0; padding: 50px 24px 44px; border-top: 1px solid #1e282d; color: #9eafb8; text-align: center; background: linear-gradient(180deg, #071016, #05090b); }
+.site-footer { position: relative; overflow: hidden; margin: 68px 0 0; padding: 32px 24px 28px; border-top: 1px solid #1e282d; color: #9eafb8; text-align: center; background: linear-gradient(180deg, #071016, #05090b); }
 .media-info + .site-footer { clear: both; isolation: isolate; margin-top: 102px; }
-.footer-wordmark { margin: 0 0 32px; color: #1a252b; font-size: clamp(76px, 16vw, 190px); font-weight: 950; letter-spacing: -0.09em; line-height: .78; user-select: none; }
+.footer-wordmark { margin: 0 0 19px; color: #1a252b; font-size: clamp(58px, 11vw, 118px); font-weight: 950; letter-spacing: -0.09em; line-height: .78; user-select: none; }
 .footer-inner { position: relative; max-width: 660px; margin: 0 auto; }
 .footer-inner .brand { margin-bottom: 16px; color: #e21a26; }
 .footer-inner p { max-width: 560px; margin: 0 auto; font-size: 14px; line-height: 1.6; }
@@ -206,6 +206,7 @@
 .footer-inner small { display: block; max-width: 560px; margin: 0 auto; color: #798a93; font-size: 12px; line-height: 1.65; }
 .footer-inner a { color: #a7bac4; }
 .footer-inner a:hover { color: #fff; }
+.footer-copyright { display: block; margin-top: 11px; color: #5f6c73; font-size: 10px; letter-spacing: .15px; }
 .hero { display: block; min-height: 510px; padding: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .hero:after { display: none; }
 .hero-kicker { position: absolute; z-index: 3; top: 28px; left: 50%; color: #d7dce3; font-size: 10px; font-weight: 850; letter-spacing: 2.2px; transform: translateX(-50%); }
@@ -311,9 +312,9 @@ html, body { overflow-x: hidden; }
   .player-stage-bar { padding: 1px 2px 8px; font-size: 10px; }
   .player-frame { border-radius: 7px; }
   .now { margin-top: 17px; padding: 0 2px; }
-  .site-footer { margin-top: 56px; padding: 42px 16px 31px; }
+  .site-footer { margin-top: 52px; padding: 28px 16px 24px; }
   .media-info + .site-footer { margin-top: 76px; }
-  .footer-wordmark { margin-bottom: 27px; font-size: clamp(70px, 24vw, 130px); }
+  .footer-wordmark { margin-bottom: 17px; font-size: clamp(56px, 20vw, 94px); }
   .footer-inner p { font-size: 13px; }
   .footer-links { gap: 9px 16px; margin: 18px 0; }
 
