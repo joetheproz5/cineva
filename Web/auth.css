@@ -587,7 +587,8 @@
 .profile-category-list { display: grid; gap: 7px; margin-top: 16px; }
 .profile-category-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 11px; align-items: center; min-height: 68px; padding: 11px 13px; border: 1px solid #333; border-radius: 7px; color: #eee; background: #181818; text-align: left; transition: border-color .16s, background .16s; }
 .profile-category-row:hover { border-color: #82272e; background: #201113; }
-.profile-category-row > i { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: #f03843; background: #391215; font-size: 16px; font-style: normal; }
+.profile-category-row > i { display: grid; width: 28px; height: 28px; place-items: center; color: #e1323d; font-size: 17px; font-style: normal; }
+.profile-category-row:hover > i { color: #ff5d66; }
 .profile-category-row b, .profile-category-row small { display: block; }
 .profile-category-row b { color: #f5f5f5; font-size: 12px; }
 .profile-category-row small { margin-top: 4px; color: #939393; font-size: 10px; }
@@ -599,6 +600,17 @@
 .profile-detail-card .profile-mobile-identity { padding: 4px 0 0; }
 .profile-category-actions { display: grid; gap: 8px; margin-top: 15px; }
 .profile-category-actions .account-action-card { width: 100%; }
+.profile-manager h2 { margin: 0; color: #fff; font-size: 19px; }
+.profile-manager > p { margin: 6px 0 17px; color: #989898; font-size: 11px; line-height: 1.45; }
+.profile-manager-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 16px 12px; }
+.profile-manager-card, .profile-manager-add { display: grid; gap: 6px; justify-items: center; padding: 0; color: #e8e8e8; background: transparent; text-align: center; }
+.profile-manager-card .profile-avatar, .profile-manager-add span { width: 68px; height: 68px; border-radius: 6px; }
+.profile-manager-card b, .profile-manager-card small, .profile-manager-add b { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+.profile-manager-card b, .profile-manager-add b { color: #ededed; font-size: 11px; }
+.profile-manager-card small { color: #929292; font-size: 9px; }
+.profile-manager-add span { display: grid; place-items: center; border: 1px dashed #666; border-radius: 6px; color: #ddd; font-size: 29px; }
+.profile-manager-card:hover .profile-avatar { box-shadow: 0 0 0 2px #e3232e; }
+.profile-manager-add:hover span { border-color: #df2430; color: #fff; background: #261012; }
 
 @media (max-width: 650px) {
   .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
@@ -688,6 +700,7 @@
   .profile-mobile-identity .profile-name-field input { font-size: 16px; }
   .profile-avatar-chooser .profile-avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .profile-mobile-row { min-height: 70px; padding: 11px; }
+  .profile-mobile-row > i { width: 25px; color: #d7d7d7; background: transparent; }
   .profile-mobile-select select { font-size: 16px; }
   .profile-pin-card .profile-pin-field input { font-size: 16px; }
   .profile-settings-hub { padding-top: 43px; }
