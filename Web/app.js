@@ -674,7 +674,7 @@ function showUpdatePrompt(registration) {
 }
 if ("serviceWorker" in navigator) {
   let refreshingForUpdate = false;
-  navigator.serviceWorker.register("/service-worker.js?v=85").then(registration => {
+  navigator.serviceWorker.register("/service-worker.js?v=86").then(registration => {
     showUpdatePrompt(registration);
     registration.addEventListener("updatefound", () => {
       const worker = registration.installing;
