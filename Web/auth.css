@@ -556,6 +556,11 @@
 .profile-avatar-chooser[hidden] { display: none; }
 .profile-avatar-chooser .brand { display: block; margin-bottom: 12px; }
 .profile-avatar-chooser .profile-avatar-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.profile-avatar-upload { position: relative; display: grid; overflow: hidden; min-height: 0; padding: 0 0 8px; place-items: center; border: 1px dashed #5a5a5a; border-radius: 9px; color: #bdbdbd; background: #111; font-size: 10px; font-weight: 700; cursor: pointer; }
+.profile-avatar-upload:hover { border-color: #e23a44; color: #fff; background: #211012; }
+.profile-avatar-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.profile-avatar-upload span { display: grid; width: 100%; aspect-ratio: 1; place-items: center; color: #e43a44; font-size: 30px; line-height: 1; }
+.profile-avatar-upload b { padding-bottom: 2px; font-size: 10px; }
 .profile-mobile-settings { display: grid; gap: 7px; }
 .profile-mobile-row { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 11px; align-items: center; min-height: 72px; padding: 12px; border: 1px solid #303030; border-radius: 7px; color: #eee; background: #191919; }
 .profile-mobile-row > i { display: grid; width: 28px; height: 28px; place-items: center; color: #d5d5d5; font-size: 15px; font-style: normal; }
