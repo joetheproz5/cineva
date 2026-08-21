@@ -482,6 +482,65 @@
 .account-page-v2 .password-form input { padding: 11px; font-size: 13px; }
 .account-page-v2 .password-form .secondary { border-radius: 4px; background: #303030; }
 
+/* Account workspace with collapsible categories */
+.account-workspace-page { width: min(1120px, calc(100% - 48px)); padding-top: 24px; }
+.account-workspace-page .account-page-top { gap: 18px; padding: 8px 0 26px; }
+.account-workspace-page .account-page-top .brand { display: block; margin-bottom: 6px; color: #e41b27; font-size: 10px; letter-spacing: 1.55px; }
+.account-workspace-page .account-heading h1 { margin: 0 0 7px; font-size: 42px; }
+.account-workspace-page .account-heading p { margin: 0; color: #999; font-size: 13px; }
+.account-workspace-page .account-active-profile { display: flex; align-items: center; gap: 10px; min-width: 155px; padding: 7px; border: 1px solid #323232; border-radius: 8px; background: #121212; }
+.account-workspace-page .account-active-profile .profile-avatar { width: 48px; height: 48px; border-radius: 5px; }
+.account-workspace-page .account-active-profile > span { display: block; }
+.account-workspace-page .account-workspace { display: grid; gap: 14px; align-items: start; transition: grid-template-columns .24s ease; }
+.account-workspace-page .account-workspace.nav-open { grid-template-columns: 210px minmax(0, 1fr); }
+.account-workspace-page .account-workspace.nav-closed { grid-template-columns: 58px minmax(0, 1fr); }
+.account-sidebar { position: sticky; top: 14px; overflow: hidden; padding: 8px; border: 1px solid #303030; border-radius: 10px; background: linear-gradient(145deg, #181818, #101010); }
+.account-sidebar > nav { display: grid; gap: 4px; margin-top: 8px; }
+.account-nav-toggle, .account-nav-item { display: flex; align-items: center; width: 100%; min-height: 42px; gap: 10px; overflow: hidden; padding: 0 10px; border-radius: 6px; color: #adadad; background: transparent; font-size: 12px; font-weight: 750; text-align: left; white-space: nowrap; }
+.account-nav-toggle { min-height: 36px; border-bottom: 1px solid #2c2c2c; color: #d5d5d5; font-size: 11px; }
+.account-nav-toggle:hover, .account-nav-item:hover { color: #fff; background: #242424; }
+.account-nav-item i { display: grid; width: 18px; flex: 0 0 18px; place-items: center; color: #b4b4b4; font-size: 16px; font-style: normal; }
+.account-nav-item.active { color: #fff; background: #3a1014; box-shadow: inset 2px 0 #db1a25; }
+.account-nav-item.active i { color: #fa3340; }
+.nav-closed .account-sidebar { padding: 8px; }
+.nav-closed .account-nav-toggle, .nav-closed .account-nav-item { justify-content: center; gap: 0; padding: 0; }
+.nav-closed .account-nav-toggle span, .nav-closed .account-nav-item span { display: none; }
+.nav-closed .account-nav-toggle { font-size: 17px; }
+.account-workspace-content { min-width: 0; }
+.account-content-panel { min-height: 430px; padding: 28px; border: 1px solid #303030; border-radius: 10px; background: linear-gradient(145deg, #191919, #101010 78%); }
+.account-content-heading { padding-bottom: 21px; border-bottom: 1px solid #303030; }
+.account-content-heading .brand, .password-card .brand { display: block; margin-bottom: 7px; color: #e41b27; font-size: 10px; letter-spacing: 1.55px; }
+.account-content-heading h2 { margin: 0; color: #fff; font-size: 27px; letter-spacing: -.8px; }
+.account-content-heading p { margin: 7px 0 0; color: #8f8f8f; font-size: 12px; line-height: 1.45; }
+.account-profiles-panel .profiles { gap: 22px; margin-top: 24px; }
+.account-profiles-panel .profile-card, .account-profiles-panel .profile-add { width: 94px; }
+.account-profiles-panel .profile-avatar, .account-profiles-panel .profile-add span { width: 74px; height: 74px; border-radius: 5px; }
+.account-profiles-panel .profile-card b { margin-top: 3px; font-size: 12px; }
+.account-profiles-panel .profile-edit { top: -7px; right: 3px; }
+.account-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 21px; }
+.account-action-card { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 11px; align-items: center; min-height: 84px; padding: 14px; border: 1px solid #353535; border-radius: 8px; color: #e8e8e8; background: #141414; text-align: left; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+.account-action-card:hover { border-color: #8d2931; background: #1d1214; transform: translateY(-1px); }
+.account-action-card > i { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: #ff3a45; background: #351114; font-size: 17px; font-style: normal; }
+.account-action-card b, .account-action-card small { display: block; }
+.account-action-card b { overflow: hidden; color: #fff; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.account-action-card small { margin-top: 5px; color: #969696; font-size: 10px; line-height: 1.35; }
+.account-action-card em { color: #e72a34; font-size: 10px; font-style: normal; font-weight: 800; white-space: nowrap; }
+.settings-stack { max-width: 670px; }
+.settings-stack .account-toggle:first-child { border-top: 0; }
+.settings-stack .account-toggle { padding: 17px 0; }
+.settings-stack .account-toggle span { font-size: 13px; }
+.settings-stack .account-toggle small { color: #8d8d8d; font-size: 10px; }
+.settings-stack .account-toggle i { top: 19px; }
+.settings-stack .account-selects { gap: 12px; margin-top: 5px; }
+.settings-stack .account-select { font-size: 11px; }
+.settings-stack .account-select select { border-color: #3a3a3a; border-radius: 5px; background: #101010; }
+.account-security-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 20px; align-items: start; }
+.account-security-layout .account-action-grid { grid-template-columns: 1fr; margin-top: 21px; }
+.password-card { margin-top: 21px; padding: 18px; border: 1px solid #353535; border-radius: 8px; background: #121212; }
+.password-card label { color: #d7d7d7; font-size: 12px; }
+.password-card input { padding: 11px; border-color: #3a3a3a; border-radius: 5px; background: #0e0e0e; font-size: 13px; }
+.password-card .secondary { border-radius: 4px; background: #333; }
+
 @media (max-width: 650px) {
   .account-page { width: min(100% - 28px, 600px); padding-top: 12px; }
   .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
@@ -536,4 +595,25 @@
   .account-page-v2 .account-toggle i { top: 15px; }
   .account-page-v2 .account-selects { grid-template-columns: 1fr; gap: 0; }
   .account-page-v2 .account-select select, .account-page-v2 .password-form input { font-size: 16px; }
+  .account-workspace-page { width: min(100% - 28px, 600px); padding-top: 17px; }
+  .account-workspace-page .account-page-top { grid-template-columns: 1fr auto; gap: 14px; padding-bottom: 22px; }
+  .account-workspace-page .account-heading h1 { font-size: 34px; }
+  .account-workspace-page .account-active-profile { min-width: 0; padding: 3px; border: 0; background: transparent; }
+  .account-workspace-page .account-active-profile .profile-avatar { width: 45px; height: 45px; }
+  .account-workspace-page .account-active-profile > span { display: none; }
+  .account-workspace-page .account-workspace { display: block; position: relative; }
+  .account-sidebar { position: absolute; z-index: 4; top: 0; left: 0; width: 54px; padding: 7px; transition: width .22s ease, box-shadow .22s ease; }
+  .nav-open .account-sidebar { width: min(178px, calc(100vw - 58px)); box-shadow: 10px 14px 30px #000a; }
+  .account-workspace-content { margin-left: 66px; }
+  .account-content-panel { min-height: 0; padding: 20px 16px; border-radius: 8px; }
+  .account-content-heading { padding-bottom: 17px; }
+  .account-content-heading h2 { font-size: 23px; }
+  .account-profiles-panel .profiles { gap: 17px 8px; margin-top: 20px; }
+  .account-profiles-panel .profile-card, .account-profiles-panel .profile-add { width: 68px; }
+  .account-profiles-panel .profile-avatar, .account-profiles-panel .profile-add span { width: 56px; height: 56px; }
+  .account-action-grid { grid-template-columns: 1fr; gap: 8px; margin-top: 17px; }
+  .account-action-card { min-height: 72px; padding: 11px; }
+  .account-security-layout { grid-template-columns: 1fr; gap: 0; }
+  .settings-stack .account-selects { grid-template-columns: 1fr; gap: 0; }
+  .settings-stack .account-select select, .password-card input { font-size: 16px; }
 }
