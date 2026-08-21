@@ -1,8 +1,13 @@
 {
   "name": "SEVEN",
   "short_name": "SEVEN",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "background_color": "#071018",
   "theme_color": "#071018",
   "icons": [{ "src": "/assets/seven-logo-red.png", "sizes": "1280x1280", "type": "image/png", "purpose": "any" }]
