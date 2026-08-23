@@ -1,0 +1,84 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [master]
+    paths: ["Android/**", ".github/workflows/android-build.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Prepare Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+
+      - name: Restore or create signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          mkdir -p Android
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > Android/seven.keystore
+            printf 'storeFile=seven.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > Android/keystore.properties
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+            echo "Using signing key from repository secrets."
+          else
+            PASS="$(head -c 24 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 20)"
+            keytool -genkeypair -v -keystore Android/seven.keystore -alias seven -keyalg RSA -keysize 2048 -validity 10000 -storepass "$PASS" -keypass "$PASS" -dname "CN=SEVEN, OU=Cineva, O=Cineva, C=US"
+            printf 'storeFile=seven.keystore\nstorePassword=%s\nkeyAlias=seven\nkeyPassword=%s\n' "$PASS" "$PASS" > Android/keystore.properties
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+            echo "No signing secret found — generated a new key. Upload it to repository secrets to keep future updates installable over this build."
+          fi
+
+      - name: Build release APK
+        run: gradle -p Android assembleRelease --no-daemon
+
+      - name: Publish APK to download site
+        run: |
+          mkdir -p Web/downloads
+          cp Android/app/build/outputs/apk/release/app-release.apk Web/downloads/seven.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Web/downloads/seven.apk
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Android APK build"
+            git push
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-apk
+          path: Android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+
+      - name: Upload newly generated signing key
+        if: steps.signing.outputs.generated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-key-one-time
+          path: |
+            Android/seven.keystore
+            Android/keystore.properties
+          retention-days: 1
