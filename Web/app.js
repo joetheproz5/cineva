@@ -358,10 +358,21 @@ function renderPlayer() {
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
   document.querySelector("[data-play-next]")?.addEventListener("click", () => playEpisode(next.episode_number, false));
 }
-async function search(query) { state.search = query; state.searchFilter = "all"; if (query.trim().length < 2) { state.searchResults = []; state.route = "home"; render(); return; } try { state.searchResults = results(await api("search/multi", { query })); state.route = "search"; } catch (error) { state.error = error.message; state.route = "home"; } render(); }
+async function search(query) { state.search = query; state.searchFilter = "all"; if (query.trim().length < 2) { state.searchResults = []; state.route = "home"; render(); return; } void addRecentSearch(query.trim()); try { state.searchResults = results(await api("search/multi", { query })); state.route = "search"; } catch (error) { state.error = error.message; state.route = "home"; } render(); }
 function hideSearchSuggestions(input) { const menu = input?.closest(".search")?.querySelector(".search-suggestions"); if (menu) { menu.hidden = true; menu.innerHTML = ""; } }
-function showSearchSuggestions(input, query, items) { const menu = input.closest(".search")?.querySelector(".search-suggestions"); if (!menu) return; const picks = items.slice(0, 5); menu.innerHTML = picks.length ? `${picks.map(item => `<button class="search-suggestion" data-search-result="${item.type}:${item.id}"><img src="${posterOf(item)}" alt=""><span><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`).join("")}<button class="search-all" data-search-all>See all results for “${escapeHTML(query)}” <b>›</b></button>` : `<p class="search-empty">No quick matches yet.</p>`; menu.hidden = false; menu.querySelectorAll("[data-search-result]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.searchResult.split(":"); openItem(type, id); }); menu.querySelector("[data-search-all]")?.addEventListener("click", () => { state.search = query; state.route = "search"; render(); }); }
-async function suggestSearch(input) { const query = input.value.trim(), request = ++searchRequest; state.search = input.value; if (query.length < 2) return hideSearchSuggestions(input); try { const found = results(await api("search/multi", { query })); if (request !== searchRequest || input.value.trim() !== query) return; state.searchResults = found; showSearchSuggestions(input, query, found); } catch { if (request === searchRequest) hideSearchSuggestions(input); } }
+function showRecentSearches(input) {
+  const menu = input?.closest(".search")?.querySelector(".search-suggestions");
+  if (!menu) return;
+  const list = recentSearches();
+  if (!list.length) return hideSearchSuggestions(input);
+  menu.innerHTML = `<div class="search-recent-header"><span>RECENT SEARCHES</span><button type="button" class="search-recent-clear-all" data-clear-recent-searches>Clear</button></div><div class="search-recent-list">${list.slice(0, 3).map(query => `<div class="search-recent-item"><button type="button" class="search-recent-query" data-search-recent="${escapeHTML(query)}"><svg class="search-recent-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 3M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z"/></svg><span>${escapeHTML(query)}</span></button><button type="button" class="search-recent-remove" data-remove-recent-search="${escapeHTML(query)}" aria-label="Remove ${escapeHTML(query)}">×</button></div>`).join("")}</div>`;
+  menu.hidden = false;
+  menu.querySelectorAll("[data-search-recent]").forEach(button => { button.onmousedown = event => event.preventDefault(); button.onclick = () => { const query = button.dataset.searchRecent; if (input) input.value = query; hideSearchSuggestions(input); search(query); }; });
+  menu.querySelectorAll("[data-remove-recent-search]").forEach(button => { button.onmousedown = event => event.preventDefault(); button.onclick = async () => { await removeRecentSearch(button.dataset.removeRecentSearch); if (input && input.value.trim().length < 2) showRecentSearches(input); }; });
+  menu.querySelector("[data-clear-recent-searches]")?.addEventListener("click", async event => { event.preventDefault(); await clearRecentSearches(); hideSearchSuggestions(input); });
+}
+function showSearchSuggestions(input, query, items) { const menu = input.closest(".search")?.querySelector(".search-suggestions"); if (!menu) return; const picks = items.slice(0, 5); menu.innerHTML = picks.length ? `${picks.map(item => `<button class="search-suggestion" data-search-result="${item.type}:${item.id}"><img src="${posterOf(item)}" alt=""><span><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`).join("")}<button class="search-all" data-search-all>See all results for “${escapeHTML(query)}” <b>›</b></button>` : `<p class="search-empty">No quick matches yet.</p>`; menu.hidden = false; menu.querySelectorAll("[data-search-result]").forEach(button => button.onclick = () => { void addRecentSearch(query.trim()); const [type, id] = button.dataset.searchResult.split(":"); openItem(type, id); }); menu.querySelector("[data-search-all]")?.addEventListener("click", () => { void addRecentSearch(query.trim()); state.search = query; state.route = "search"; render(); }); }
+async function suggestSearch(input) { const query = input.value.trim(), request = ++searchRequest; state.search = input.value; if (query.length < 2) return showRecentSearches(input); try { const found = results(await api("search/multi", { query })); if (request !== searchRequest || input.value.trim() !== query) return; state.searchResults = found; showSearchSuggestions(input, query, found); } catch { if (request === searchRequest) hideSearchSuggestions(input); } }
 function renderSearch() { const filter = state.searchFilter || "all", items = state.searchResults.filter(item => filter === "all" || item.type === filter); app.innerHTML = `${header()}<section class="search-page"><span class="brand">DISCOVER</span><h2>Search results</h2>${state.searchResults.length ? `<div class="search-filters" role="group" aria-label="Filter search results">${[["all","All"],["movie","Movies"],["tv","Series"]].map(([value, label]) => `<button class="${filter === value ? "active" : ""}" data-search-filter="${value}">${label}</button>`).join("")}</div>${items.length ? `<div class="result-grid">${items.map(card).join("")}</div>` : `<p class="search-empty">No ${filter === "movie" ? "movies" : "series"} match this search.</p>`}` : "<p>No matches found. Try a movie, series, or actor name.</p>"}</section>${footer()}`; bindCommon(); document.querySelectorAll("[data-search-filter]").forEach(button => button.onclick = () => { state.searchFilter = button.dataset.searchFilter; renderSearch(); }); }
 const GENRES = { 12:"Adventure", 16:"Animation", 18:"Drama", 28:"Action", 35:"Comedy", 53:"Thriller", 80:"Crime", 99:"Documentary", 10749:"Romance", 878:"Science fiction", 9648:"Mystery", 10751:"Family", 10759:"Action & adventure", 10765:"Sci-fi & fantasy" };
 function watchedGenres(type = "") { const counts = {}; likedTitles().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 3; })); historyEntries().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; })); return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([id]) => Number(id)); }
@@ -443,6 +454,30 @@ const AVATAR_OPTIONS = [
 function isProfileAvatar(value) { return AVATAR_OPTIONS.some(([, path]) => path === value) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(value || "")); }
 function prepareUploadedAvatar(file) { return new Promise((resolve, reject) => { if (!file?.type?.startsWith("image/")) return reject(new Error("Choose an image file.")); if (file.size > 10 * 1024 * 1024) return reject(new Error("Choose an image smaller than 10 MB.")); const reader = new FileReader(); reader.onerror = () => reject(new Error("That image could not be read.")); reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("That image format is not supported.")); image.onload = () => { const edge = 120, canvas = document.createElement("canvas"), scale = Math.max(edge / image.naturalWidth, edge / image.naturalHeight), width = image.naturalWidth * scale, height = image.naturalHeight * scale; canvas.width = edge; canvas.height = edge; canvas.getContext("2d").drawImage(image, (edge - width) / 2, (edge - height) / 2, width, height); const avatar = canvas.toDataURL("image/jpeg", .78); if (avatar.length > 30000) return reject(new Error("Choose a simpler photo so it can sync with your profile.")); resolve(avatar); }; image.src = String(reader.result); }; reader.readAsDataURL(file); }); }
 function currentProfile() { return state.account?.profiles?.find(profile => profile.id === activeProfileId()) || state.account?.profiles?.[0]; }
+function recentSearches(profile = currentProfile()) {
+  if (Array.isArray(profile?.recentSearches)) return profile.recentSearches.filter(query => typeof query === "string" && query.trim());
+  try { const raw = JSON.parse(localStorage.getItem(`seven-recent-searches-${activeProfileId()}`) || "[]"); return Array.isArray(raw) ? raw.filter(query => typeof query === "string" && query.trim()) : []; } catch { return []; }
+}
+async function addRecentSearch(query, profile = currentProfile()) {
+  const clean = typeof query === "string" ? query.trim() : "";
+  if (clean.length < 2) return;
+  const updated = [clean, ...recentSearches(profile).filter(item => item.toLowerCase() !== clean.toLowerCase())].slice(0, 12);
+  if (profile) profile.recentSearches = updated;
+  localStorage.setItem(`seven-recent-searches-${activeProfileId()}`, JSON.stringify(updated));
+  if (state.user) await saveAccount();
+}
+async function removeRecentSearch(query, profile = currentProfile()) {
+  const clean = typeof query === "string" ? query.trim() : "";
+  const updated = recentSearches(profile).filter(item => item.toLowerCase() !== clean.toLowerCase());
+  if (profile) profile.recentSearches = updated;
+  localStorage.setItem(`seven-recent-searches-${activeProfileId()}`, JSON.stringify(updated));
+  if (state.user) await saveAccount();
+}
+async function clearRecentSearches(profile = currentProfile()) {
+  if (profile) profile.recentSearches = [];
+  localStorage.removeItem(`seven-recent-searches-${activeProfileId()}`);
+  if (state.user) await saveAccount();
+}
 function hiddenTitleKey(item) { return `${item.type}:${Number(item.id)}`; }
 function hiddenTitles() { return Array.isArray(currentProfile()?.hiddenTitles) ? currentProfile().hiddenTitles.filter(item => item?.type && item?.id) : []; }
 function isHiddenTitle(item) { return hiddenTitles().some(hidden => hiddenTitleKey(hidden) === hiddenTitleKey(item)); }
@@ -611,7 +646,7 @@ function bindCommon() {
     input.oninput = () => { clearTimeout(timer); timer = setTimeout(() => suggestSearch(input), 350); };
     input.onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); searchRequest++; hideSearchSuggestions(input); search(input.value); } };
     input.onblur = () => setTimeout(() => hideSearchSuggestions(input), 160);
-    input.onfocus = () => { if (input.value.trim().length >= 2 && state.searchResults?.length) showSearchSuggestions(input, input.value.trim(), state.searchResults); };
+    input.onfocus = () => { if (input.value.trim().length < 2) return showRecentSearches(input); if (state.searchResults?.length) showSearchSuggestions(input, input.value.trim(), state.searchResults); };
   }
   document.querySelectorAll("[data-search-focus]").forEach(button => button.onclick = () => input?.focus());
   document.querySelectorAll("[data-for-you]").forEach(button => button.onclick = openForYou);
