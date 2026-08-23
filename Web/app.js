@@ -58,6 +58,10 @@ async function api(path, params = {}) {
 }
 function useFamilyCatalog() { return currentProfile()?.kids || currentPreferences().familySafe === true; }
 async function refreshCatalogForLanguage() {
+  state.catalogRequest ||= refreshCatalogNow();
+  try { await state.catalogRequest; } finally { if (state.catalogRequest) state.catalogRequest = null; }
+}
+async function refreshCatalogNow() {
   if (useFamilyCatalog()) {
     const year = new Date().getFullYear(), certification = currentProfile()?.kids ? "PG" : "PG-13", movieParams = { certification_country:"US", "certification.lte":certification, with_genres:"16|10751", sort_by:"popularity.desc" }, showParams = { with_genres:"16|10751", sort_by:"popularity.desc" };
     const [movies, shows, recent, airing] = await Promise.all([
@@ -83,19 +87,35 @@ async function refreshCatalogForLanguage() {
   await loadNewEpisodes(state.catalog["New series"]);
 }
 async function boot() {
-  renderLoading();
   await restoreSession();
+  const shared = sharedTitleTarget();
+  if (shared) { await openItem(shared.type, shared.id); return; }
+  if (!navigator.onLine) return renderOfflineScreen();
+  if (state.user) { state.route = "profiles"; render(); } else renderLoading();
+  await loadStartupData();
+}
+async function loadStartupData() {
+  if (!navigator.onLine) return renderOfflineScreen();
   try {
     await refreshCatalogForLanguage();
+    state.error = null;
   } catch (error) {
+    const status = error.status || 0, message = String(error.message || "");
+    if (!navigator.onLine || [502, 503, 504].includes(status) || /failed to fetch|network/i.test(message)) return renderOfflineScreen();
     state.featured = { id: FEATURED_ID, type: "tv", name: "The Good Doctor", overview: "Add a TMDB Read Access Token to enable posters, descriptions, categories, and search.", backdrop_path: null };
     state.catalog = {};
     state.error = error.message;
   }
-  const shared = sharedTitleTarget();
-  if (shared) { await openItem(shared.type, shared.id); return; }
-  if (state.user) state.route = "profiles";
-  render();
+  if (!state.user || state.route !== "profiles") render();
+}
+function renderOfflineScreen() {
+  app.innerHTML = `<main class="offline-screen"><img class="offline-logo" src="/assets/seven-wordmark.png" alt="SEVEN"><span class="brand">NO CONNECTION</span><h1>You&rsquo;re offline</h1><p>SEVEN needs an internet connection to load titles and your profiles. Check your network and try again.</p><button class="offline-retry" data-retry-connection>Try again</button></main>`;
+  document.querySelector("[data-retry-connection]").onclick = retryConnection;
+}
+async function retryConnection() {
+  renderLoading();
+  if (state.user) { state.route = "profiles"; render(); }
+  await loadStartupData();
 }
 function shuffle(items) { const copy = [...items]; for (let index = copy.length - 1; index > 0; index -= 1) { const target = Math.floor(Math.random() * (index + 1)); [copy[index], copy[target]] = [copy[target], copy[index]]; } return copy; }
 function sharedTitleTarget() { const value = new URLSearchParams(window.location.search).get("title") || "", match = value.match(/^(movie|tv):(\d+)$/); return match ? { type:match[1], id:Number(match[2]) } : null; }
@@ -704,5 +724,6 @@ function keepFavouritesUI() {
 const favouritesObserver = new MutationObserver(keepFavouritesUI);
 favouritesObserver.observe(app, { childList:true });
 app.addEventListener("click", event => { const button = event.target.closest("[data-favourites]"); if (!button) return; event.preventDefault(); state.myListReturn = state.route; state.route = "my-list"; scrollToTop(); render(); });
+window.addEventListener("online", () => { if (document.querySelector(".offline-screen")) void retryConnection(); });
 renderLaunchIntro();
 boot();
