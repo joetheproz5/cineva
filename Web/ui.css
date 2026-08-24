@@ -257,7 +257,8 @@
 .search-recent-query span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-recent-remove { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; color: #777; background: transparent; font-size: 14px; line-height: 1; transition: color 0.16s, background 0.16s; }
 .search-recent-remove:hover { color: #fff; background: #333; }
-.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: #000; cursor: pointer; animation: intro-out .25s ease 2.75s forwards; }
+.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: #000; cursor: pointer; }
+.seven-intro.live { animation: intro-out .25s ease 2.75s forwards; }
 .seven-intro-glow { position: absolute; width: 72vmin; height: 72vmin; border-radius: 50%; background: radial-gradient(circle, rgba(229, 9, 20, 0.16) 0%, rgba(229, 9, 20, 0.05) 42%, transparent 68%); animation: intro-glow-life 3s ease both; }
 .seven-intro-streak { position: absolute; left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%) scaleX(0); background: linear-gradient(90deg, transparent, #ff4d52 18%, #fff 50%, #ff4d52 82%, transparent); box-shadow: 0 0 26px 5px rgba(229, 9, 20, 0.55); opacity: 0; animation: intro-streak 1.15s cubic-bezier(.7, 0, .3, 1) .05s forwards; }
 .seven-intro-logo-wrap { position: relative; width: min(64vw, 430px); aspect-ratio: 2172 / 724; will-change: transform, opacity, filter; backface-visibility: hidden; animation: intro-life 2.75s .25s both; }

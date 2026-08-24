@@ -398,21 +398,22 @@ function dismissIntro() {
 }
 function renderLaunchIntro() {
   if (prefersReducedMotion() || !launchIntroEnabled() || document.querySelector(".seven-intro")) return;
+  const overlay = document.createElement("div");
+  overlay.className = "seven-intro";
+  overlay.addEventListener("click", dismissIntro);
+  overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
+  document.documentElement.style.overflow = "hidden";
+  document.body.appendChild(overlay);
   const logo = new Image();
   logo.src = "/assets/seven-wordmark-v2.png";
-  const show = () => {
-    if (document.querySelector(".seven-intro")) return;
-    const overlay = document.createElement("div");
-    overlay.className = "seven-intro";
+  const fill = () => {
+    if (!document.querySelector(".seven-intro")) return;
+    overlay.classList.add("live");
     overlay.innerHTML = `<div class="seven-intro-glow" aria-hidden="true"></div><div class="seven-intro-streak" aria-hidden="true"></div><div class="seven-intro-logo-wrap" aria-hidden="true"><img class="seven-intro-logo" src="${logo.src}" alt=""></div>`;
-    overlay.addEventListener("click", dismissIntro);
-    overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
-    document.documentElement.style.overflow = "hidden";
-    document.body.appendChild(overlay);
     clearTimeout(state.introTimer);
     state.introTimer = setTimeout(dismissIntro, 3400);
   };
-  Promise.race([logo.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 2500))]).then(show);
+  Promise.race([logo.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 2500))]).then(fill);
 }
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>Next episode <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : "";
