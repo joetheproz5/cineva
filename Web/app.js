@@ -733,7 +733,7 @@ if ("serviceWorker" in navigator) {
       worker?.addEventListener("statechange", () => { if (worker.state === "installed" && navigator.serviceWorker.controller) showUpdatePrompt(registration); });
     });
   });
-  navigator.serviceWorker.addEventListener("controllerchange", () => { if (refreshingForUpdate) return; refreshingForUpdate = true; if (performance.now() < 5000) window.location.reload(); });
+  navigator.serviceWorker.addEventListener("controllerchange", () => { refreshingForUpdate = true; });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });
