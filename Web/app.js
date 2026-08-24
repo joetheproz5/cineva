@@ -412,7 +412,7 @@ function renderLaunchIntro() {
     clearTimeout(state.introTimer);
     state.introTimer = setTimeout(dismissIntro, 3400);
   };
-  Promise.race([logo.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 700))]).then(show);
+  Promise.race([logo.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 2500))]).then(show);
 }
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>Next episode <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : "";
