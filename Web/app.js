@@ -65,16 +65,21 @@ async function refreshCatalogForLanguage() {
 async function refreshCatalogNow() {
   if (useFamilyCatalog()) {
     const year = new Date().getFullYear(), certification = currentProfile()?.kids ? "PG" : "PG-13", movieParams = { certification_country:"US", "certification.lte":certification, with_genres:"16|10751", sort_by:"popularity.desc" }, showParams = { with_genres:"16|10751", sort_by:"popularity.desc" };
-    const [movies, shows, recent, airing] = await Promise.all([
+    const [movies, shows, recent, airing, upcoming, greatMovies, greatShows, adventureMovies, actionShows] = await Promise.all([
       api("discover/movie", movieParams), api("discover/tv", showParams),
       api("discover/movie", { ...movieParams, "primary_release_date.gte":`${year - 1}-01-01`, sort_by:"primary_release_date.desc" }),
-      api("discover/tv", { ...showParams, "first_air_date.gte":`${year - 1}-01-01`, sort_by:"first_air_date.desc" })
+      api("discover/tv", { ...showParams, "first_air_date.gte":`${year - 1}-01-01`, sort_by:"first_air_date.desc" }),
+      api("discover/movie", { ...movieParams, "primary_release_date.gte":new Date().toISOString().slice(0, 10), sort_by:"primary_release_date.asc" }),
+      api("discover/movie", { ...movieParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
+      api("discover/tv", { ...showParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
+      api("discover/movie", { certification_country:"US", "certification.lte":certification, with_genres:"12", sort_by:"popularity.desc" }),
+      api("discover/tv", { with_genres:"10759", sort_by:"popularity.desc" })
     ]);
     const movieList = results(movies), showList = results(shows), recentList = results(recent), airingList = results(airing), trending = shuffle([...recentList, ...airingList, ...movieList, ...showList]).filter((item, index, all) => all.findIndex(candidate => candidate.type === item.type && candidate.id === item.id) === index);
     state.featuredPool = shuffle([...recentList, ...airingList, ...movieList]).filter(item => item.backdrop_path).slice(0, 12);
     state.featured = state.featuredPool[0] || trending[0] || { id:FEATURED_ID, type:"tv", name:"SEVEN Kids", overview:"Family-friendly movies and series selected for this profile.", backdrop_path:null };
     state.featuredIndex = 0;
-    state.catalog = { "Trending now":trending, "New movies":recentList, "New series":airingList, "Popular movies":movieList, "Popular series":showList };
+    state.catalog = { "Trending now":trending, "New movies":recentList, "New series":airingList, "Popular movies":movieList, "Popular series":showList, "Coming soon":results(upcoming), "All-time greats":shuffle([...results(greatMovies), ...results(greatShows)]), "Action & adventure":shuffle([...results(adventureMovies), ...results(actionShows)]) };
     await loadNewEpisodes(state.catalog["New series"]);
     return;
   }
