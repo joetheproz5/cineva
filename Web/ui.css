@@ -262,8 +262,6 @@
 .seven-intro-logo-wrap { position: relative; animation: intro-logo .85s cubic-bezier(.22, 1, .36, 1) both; }
 .seven-intro-logo { display: block; width: min(64vw, 430px); height: auto; animation: intro-bloom 1.4s ease both; }
 .seven-intro-logo-wrap::after { content: ""; position: absolute; inset: -12% -35%; background: linear-gradient(105deg, transparent 43%, rgba(255, 255, 255, 0.22) 50%, transparent 57%); transform: translateX(-120%); mix-blend-mode: screen; animation: intro-sweep 1s cubic-bezier(.6, 0, .3, 1) .6s forwards; }
-.seven-intro-skip { position: absolute; right: 18px; bottom: calc(16px + env(safe-area-inset-bottom)); padding: 8px 15px; border: 1px solid #3a3a3a; border-radius: 99px; color: #b9b9b9; background: rgba(17, 17, 17, 0.72); font-size: 12px; font-weight: 650; letter-spacing: .2px; backdrop-filter: blur(6px); }
-.seven-intro-skip:hover { color: #fff; border-color: #5c1218; background: #2a1518; }
 @keyframes intro-fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes intro-logo { 0% { opacity: 0; transform: scale(.9); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes intro-bloom { 0% { filter: brightness(1.9) saturate(.7); } 55% { filter: brightness(1.18) saturate(1.05); } 100% { filter: brightness(1) saturate(1); } }
