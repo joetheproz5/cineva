@@ -137,6 +137,12 @@
 .continue-card .poster-wrap { border: 1px solid #5d1015; }
 .continue-progress { display: block; height: 3px; overflow: hidden; margin: 7px 2px 0; border-radius: 99px; background: #343434; }
 .continue-progress i { display: block; height: 100%; background: #d81924; }
+.continue-item { position: relative; }
+.continue-item .card { width: 100%; }
+.continue-remove { position: absolute; z-index: 5; top: 8px; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #eee; background: rgba(0, 0, 0, 0.74); font-size: 15px; line-height: 1; opacity: 0; transition: opacity .15s, background .15s; }
+.continue-item:hover .continue-remove, .continue-remove:focus-visible { opacity: 1; }
+.continue-remove:hover { background: #c91420; }
+@media (hover: none) { .continue-remove { opacity: 1; } }
 .season-select { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; color: #cfcfcf; font-size: 12px; font-weight: 750; }
 .season-select select { min-width: 150px; padding: 9px 34px 9px 11px; border: 1px solid #414141; border-radius: 7px; outline: 0; color: #fff; background: #171717; font: inherit; }
 .season-select select:focus { border-color: #c91520; }
