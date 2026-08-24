@@ -88,10 +88,17 @@ async function refreshCatalogNow() {
     api("movie/upcoming"), api("movie/top_rated"), api("tv/top_rated"),
     api("discover/movie", { with_genres:"28", sort_by:"popularity.desc" }), api("discover/tv", { with_genres:"10759", sort_by:"popularity.desc" })
   ]);
+  const month = new Date().getMonth(), year = new Date().getFullYear();
+  let seasonalName = "", seasonalParams = null;
+  if (month === 8 || month === 9) { seasonalName = "Spooky picks"; seasonalParams = { with_genres:"27", sort_by:"popularity.desc" }; }
+  else if (month === 11) { seasonalName = "Holiday favorites"; seasonalParams = { with_keywords:"1563", sort_by:"popularity.desc" }; }
+  else if (month === 1) { seasonalName = "Date night picks"; seasonalParams = { with_genres:"10749", sort_by:"popularity.desc" }; }
+  else if (month >= 5 && month <= 7) { seasonalName = "Summer blockbusters"; seasonalParams = { with_genres:"28", "primary_release_date.gte":`${year}-06-01`, "primary_release_date.lte":`${year}-08-31`, sort_by:"popularity.desc" }; }
+  const seasonalData = seasonalParams ? await api("discover/movie", seasonalParams).catch(() => null) : null;
   state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
   state.featured = state.featuredPool[0] || normalize(featured, "tv");
   state.featuredIndex = 0;
-  state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": results(upcoming), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]) };
+  state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": results(upcoming), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]), ...(seasonalName && seasonalData ? { [seasonalName]: results(seasonalData) } : {}) };
   await loadNewEpisodes(state.catalog["New series"]);
 }
 async function boot() {
