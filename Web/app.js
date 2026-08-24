@@ -78,13 +78,15 @@ async function refreshCatalogNow() {
     await loadNewEpisodes(state.catalog["New series"]);
     return;
   }
-  const [featured, trending, movies, shows, recent, airing] = await Promise.all([
-    api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air")
+  const [featured, trending, movies, shows, recent, airing, upcoming, topMovies, topShows, actionMovies, actionShows] = await Promise.all([
+    api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air"),
+    api("movie/upcoming"), api("movie/top_rated"), api("tv/top_rated"),
+    api("discover/movie", { with_genres:"28", sort_by:"popularity.desc" }), api("discover/tv", { with_genres:"10759", sort_by:"popularity.desc" })
   ]);
   state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
   state.featured = state.featuredPool[0] || normalize(featured, "tv");
   state.featuredIndex = 0;
-  state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows) };
+  state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": results(upcoming), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]) };
   await loadNewEpisodes(state.catalog["New series"]);
 }
 async function boot() {
