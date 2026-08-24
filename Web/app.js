@@ -232,8 +232,9 @@ function renderHome() {
   const f = state.featured, loadingCatalog = Boolean(state.catalogRequest) && !Object.keys(state.catalog || {}).length;
   const continuing = continueWatching();
   const newEpisodes = state.newEpisodes || [];
-  app.innerHTML = `${header()}<section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div>${footer()}`;
+  app.innerHTML = `${header()}<section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section><button class="play-something" data-trailers><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>Play something</button>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div>${footer()}`;
   bindCommon(); initCoverflow(); scheduleHero();
+  document.querySelectorAll("[data-trailers]").forEach(button => button.onclick = openTrailers);
   document.querySelectorAll("[data-remove-continue]").forEach(button => button.onclick = async () => {
     const [type, id, season, episode] = button.dataset.removeContinue.split(":"), item = { type, id:Number(id), season:Number(season), episode:Number(episode) };
     localStorage.removeItem(watchKey(item));
@@ -387,6 +388,37 @@ function bindPlayerEpisodes(player) {
     bindPlayerEpisodes(player);
   });
   document.querySelectorAll("[data-player-episode]").forEach(button => button.onclick = () => playEpisode(Number(button.dataset.playerEpisode), false));
+}
+async function openTrailers() {
+  state.route = "trailers";
+  state.trailerFeed = { loading: true };
+  render();
+  try {
+    const trending = results(await api("trending/all/week")).filter(item => item.overview).slice(0, 12);
+    const withVideos = await Promise.all(trending.map(async item => {
+      try {
+        const data = await api(`${item.type}/${item.id}/videos`);
+        const videos = (data.results || []).filter(video => video.site === "YouTube");
+        const video = videos.find(video => video.type === "Trailer") || videos.find(video => video.type === "Teaser") || videos[0];
+        return video ? { ...item, key: video.key } : null;
+      } catch { return null; }
+    }));
+    state.trailerFeed = { items: withVideos.filter(Boolean).slice(0, 8) };
+  } catch (error) { state.trailerFeed = { items: [], error: error.message }; }
+  if (state.route === "trailers") render();
+}
+function renderTrailers() {
+  const feed = state.trailerFeed || { loading: true };
+  const slides = feed.loading ? Array.from({ length: 4 }, () => `<div class="trailer-slide"><div class="trailer-skeleton skeleton"></div></div>`).join("") : feed.error && !feed.items.length ? `<div class="trailer-slide"><p class="trailer-error">${escapeHTML(feed.error)}</p></div>` : feed.items.map(item => `
+    <div class="trailer-slide">
+      ${item.key ? `<iframe class="trailer-frame" src="https://www.youtube-nocookie.com/embed/${item.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${item.key}" allow="autoplay; encrypted-media" loading="lazy" title="${escapeHTML(titleOf(item))} trailer"></iframe>` : `<div class="trailer-skeleton skeleton"></div>`}
+      <div class="trailer-shade" aria-hidden="true"></div>
+      <div class="trailer-info"><span class="brand">${item.type === "tv" ? "SERIES" : "MOVIE"} · ${yearOf(item) || "NEW"}</span><h2>${escapeHTML(titleOf(item))}</h2><p>${escapeHTML(item.overview || "")}</p><div class="trailer-actions"><button class="primary" data-open="${item.type}:${item.id}">Watch now</button><button class="ghost" data-trailer-next>Next trailer</button></div></div>
+    </div>`).join("");
+  app.innerHTML = `<div class="trailer-feed"><button class="trailer-close" data-trailer-close aria-label="Close trailers">×</button>${slides}</div>`;
+  bindCommon();
+  document.querySelector("[data-trailer-close]").onclick = () => { state.route = "home"; scrollToTop(); render(); };
+  document.querySelectorAll("[data-trailer-next]").forEach(button => button.onclick = () => { const next = button.closest(".trailer-slide")?.nextElementSibling; next?.scrollIntoView({ behavior: "smooth" }); });
 }
 async function ensurePlayerContext(player) {
   if (player.type !== "tv" || Number(state.series?.id) === Number(player.id) || state.playerContextKey) return;
