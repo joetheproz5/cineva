@@ -145,14 +145,14 @@
 .continue-remove:hover { background: rgba(58, 58, 58, 0.85); transform: scale(1.06); }
 @media (hover: none) { .continue-remove { opacity: 1; transform: none; } }
 .episode-score { margin-left: 9px; color: #d9b64a; font-size: 10.5px; font-weight: 750; font-style: normal; letter-spacing: .2px; }
-.play-something-banner { display: flex; align-items: center; gap: 16px; width: 100%; margin: 26px 0 6px; padding: 18px 22px; border: 1px solid #2c1417; border-radius: 14px; color: #fff; background: linear-gradient(120deg, #1a0b0d 0%, #12090a 55%, #0d0d0d 100%); text-align: left; transition: border-color .18s ease, transform .18s ease; }
-.play-something-banner:hover { border-color: #5c1218; transform: translateY(-2px); }
-.play-something-icon { display: grid; place-items: center; flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(180deg, #e21a26, #bd0c16); box-shadow: 0 10px 26px rgba(229, 9, 20, 0.35); }
-.play-something-icon svg { width: 18px; height: 18px; fill: #fff; }
+.play-something-banner { display: flex; align-items: center; gap: 15px; width: 100%; margin: 26px 0 6px; padding: 14px 18px; border: 1px solid #232323; border-radius: 12px; color: #fff; background: #101010; text-align: left; transition: background .18s ease, border-color .18s ease; }
+.play-something-banner:hover { border-color: #3a3a3a; background: #161616; }
+.play-something-icon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(180deg, #e21a26, #bd0c16); box-shadow: 0 8px 22px rgba(229, 9, 20, 0.3); }
+.play-something-icon svg { width: 16px; height: 16px; fill: #fff; }
 .play-something-copy { flex: 1; min-width: 0; }
-.play-something-copy b { display: block; font-size: 15.5px; letter-spacing: -0.2px; }
-.play-something-copy small { display: block; margin-top: 3px; color: #a5a5a5; font-size: 12px; }
-.play-something-banner em { flex: 0 0 auto; color: #ff5259; font-size: 13px; font-weight: 800; font-style: normal; white-space: nowrap; }
+.play-something-copy b { display: block; font-size: 14.5px; letter-spacing: -0.1px; }
+.play-something-copy small { display: block; margin-top: 3px; color: #8a8a8a; font-size: 11.5px; }
+.play-something-banner em { flex: 0 0 auto; color: #5c5c5c; font-size: 20px; font-style: normal; line-height: 1; }
 .trailer-feed { position: fixed; z-index: 350; inset: 0; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; background: #000; }
 .trailer-slide { position: relative; height: 100vh; height: 100dvh; overflow: hidden; scroll-snap-align: start; scroll-snap-stop: always; background: #000; }
 .trailer-frame { position: absolute; top: 50%; left: 50%; width: 100vw; height: 56.25vw; min-width: 177.78vh; min-height: 100vh; transform: translate(-50%, -50%); border: 0; pointer-events: none; }
@@ -169,10 +169,6 @@
 .trailer-close { position: fixed; z-index: 360; top: calc(14px + env(safe-area-inset-top)); right: 16px; display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 50%; color: #fff; background: rgba(0, 0, 0, 0.6); font-size: 22px; line-height: 1; backdrop-filter: blur(4px); }
 .trailer-close:hover { background: rgba(40, 40, 40, 0.8); }
 .trailer-error { display: grid; place-items: center; height: 100%; margin: 0; padding: 24px; color: #aaa; text-align: center; }
-.mood-row { display: flex; flex-direction: column; gap: 12px; margin: 4px 0 30px; padding: 20px 22px; border: 1px solid #202020; border-radius: 14px; background: #101010; }
-.mood-chips { display: flex; flex-wrap: wrap; gap: 9px; }
-.mood-chip { padding: 10px 18px; border: 1px solid #3a3a3a; border-radius: 99px; color: #ddd; background: #181818; font-size: 12.5px; font-weight: 700; transition: border-color .16s ease, color .16s ease, background .16s ease, transform .16s ease; }
-.mood-chip:hover { border-color: #e21a26; color: #fff; background: #241416; transform: translateY(-1px); }
 .season-select { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; color: #cfcfcf; font-size: 12px; font-weight: 750; }
 .season-select select { min-width: 150px; padding: 9px 34px 9px 11px; border: 1px solid #414141; border-radius: 7px; outline: 0; color: #fff; background: #171717; font: inherit; }
 .season-select select:focus { border-color: #c91520; }
