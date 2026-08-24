@@ -145,9 +145,14 @@
 .continue-remove:hover { background: rgba(58, 58, 58, 0.85); transform: scale(1.06); }
 @media (hover: none) { .continue-remove { opacity: 1; transform: none; } }
 .episode-score { margin-left: 9px; color: #d9b64a; font-size: 10.5px; font-weight: 750; font-style: normal; letter-spacing: .2px; }
-.play-something { position: relative; z-index: 3; display: flex; align-items: center; gap: 9px; margin: -26px auto 24px; padding: 12px 26px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 99px; color: #fff; background: linear-gradient(180deg, #e21a26, #bd0c16); font-size: 14px; font-weight: 800; letter-spacing: .2px; box-shadow: 0 14px 34px rgba(229, 9, 20, 0.25); transition: transform .16s ease, filter .16s ease; }
-.play-something:hover { transform: translateY(-2px); filter: brightness(1.1); }
-.play-something svg { width: 16px; height: 16px; fill: currentColor; }
+.play-something-banner { display: flex; align-items: center; gap: 16px; width: 100%; margin: 26px 0 6px; padding: 18px 22px; border: 1px solid #2c1417; border-radius: 14px; color: #fff; background: linear-gradient(120deg, #1a0b0d 0%, #12090a 55%, #0d0d0d 100%); text-align: left; transition: border-color .18s ease, transform .18s ease; }
+.play-something-banner:hover { border-color: #5c1218; transform: translateY(-2px); }
+.play-something-icon { display: grid; place-items: center; flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(180deg, #e21a26, #bd0c16); box-shadow: 0 10px 26px rgba(229, 9, 20, 0.35); }
+.play-something-icon svg { width: 18px; height: 18px; fill: #fff; }
+.play-something-copy { flex: 1; min-width: 0; }
+.play-something-copy b { display: block; font-size: 15.5px; letter-spacing: -0.2px; }
+.play-something-copy small { display: block; margin-top: 3px; color: #a5a5a5; font-size: 12px; }
+.play-something-banner em { flex: 0 0 auto; color: #ff5259; font-size: 13px; font-weight: 800; font-style: normal; white-space: nowrap; }
 .trailer-feed { position: fixed; z-index: 350; inset: 0; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; background: #000; }
 .trailer-slide { position: relative; height: 100vh; height: 100dvh; overflow: hidden; scroll-snap-align: start; scroll-snap-stop: always; background: #000; }
 .trailer-frame { position: absolute; top: 50%; left: 50%; width: 100vw; height: 56.25vw; min-width: 177.78vh; min-height: 100vh; transform: translate(-50%, -50%); border: 0; pointer-events: none; }
