@@ -149,7 +149,7 @@ function header() {
   return `<header class="${settingsMode ? "settings-header" : "main-header"}"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="/assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-wordmark" aria-hidden="true">SEVEN</div><div class="footer-inner"><small>Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></footer>`; }
-function render() { if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); renderHome(); }
+function render() { if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "moods") return renderMoods(); renderHome(); }
 async function profileSecret(value) { if (!globalThis.crypto?.subtle) throw new Error("Profile locks need a modern browser."); const bytes = new TextEncoder().encode(value), hash = await globalThis.crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join(""); }
 const PARENT_ACCESS_KEY = "seven.parent-access";
 function hasParentAccess() { return !parentAccessConfigured(); }
@@ -234,14 +234,23 @@ function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div 
 function renderProfileGate() { const account = state.account || defaultAccount(); app.innerHTML = `<main class="profile-gate"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="/assets/seven-wordmark-v2.png" alt="SEVEN"></button><section><span class="brand">WHO’S WATCHING?</span><h1>Choose a profile</h1><p>Your progress, Continue Watching row, and playback settings stay with this profile.</p><div class="profile-chooser">${account.profiles.map(profile => `<button class="profile-choice" data-watch-profile="${profile.id}">${profileAvatar(profile)}<b>${escapeHTML(profile.name)}</b><small>${profile.kids ? "Kids profile" : profile.pinHash ? "Locked" : "Standard profile"}</small></button>`).join("")}</div><button class="manage-profiles" data-manage-profiles>Manage profiles</button></section></main>`; document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (profile?.pinHash && !profile.kids) showProfileUnlock(profile); else activateProfile(profile.id); }); document.querySelector("[data-manage-profiles]").onclick = showAccount; }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="/assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
+const MOODS = [
+  { name:"Funny", params:{ with_genres:"35", sort_by:"popularity.desc" } },
+  { name:"Spooky", params:{ with_genres:"27", sort_by:"popularity.desc" } },
+  { name:"Mind-bending", params:{ with_genres:"878,9648", sort_by:"popularity.desc" } },
+  { name:"Feel-good", params:{ with_genres:"10751,10749", sort_by:"popularity.desc" } },
+  { name:"Action-packed", params:{ with_genres:"28", sort_by:"popularity.desc" } },
+  { name:"Cozy & critically loved", params:{ with_genres:"10751", "vote_average.gte":7, "vote_count.gte":120, sort_by:"vote_average.desc" } }
+];
 function renderHome() {
   clearInterval(state.heroTimer);
   const f = state.featured, loadingCatalog = Boolean(state.catalogRequest) && !Object.keys(state.catalog || {}).length;
   const continuing = continueWatching();
   const newEpisodes = state.newEpisodes || [];
-  app.innerHTML = `${header()}<section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><b>Not sure what to watch?</b><small>Swipe through trailers and find something new.</small></span><em>Play something ›</em></button>${footer()}`;
+  app.innerHTML = `${header()}<section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><b>Not sure what to watch?</b><small>Swipe through trailers and find something new.</small></span><em>Play something ›</em></button><div class="mood-row"><span class="brand">WHAT'S YOUR VIBE?</span><div class="mood-chips">${MOODS.map(mood => `<button class="mood-chip" data-mood="${escapeHTML(mood.name)}">${escapeHTML(mood.name)}</button>`).join("")}</div></div>${footer()}`;
   bindCommon(); initCoverflow(); scheduleHero();
   document.querySelectorAll("[data-trailers]").forEach(button => button.onclick = openTrailers);
+  document.querySelectorAll("[data-mood]").forEach(chip => chip.onclick = () => openMood(chip.dataset.mood));
   document.querySelectorAll("[data-remove-continue]").forEach(button => button.onclick = async () => {
     const [type, id, season, episode] = button.dataset.removeContinue.split(":"), item = { type, id:Number(id), season:Number(season), episode:Number(episode) };
     localStorage.removeItem(watchKey(item));
@@ -395,6 +404,30 @@ function bindPlayerEpisodes(player) {
     bindPlayerEpisodes(player);
   });
   document.querySelectorAll("[data-player-episode]").forEach(button => button.onclick = () => playEpisode(Number(button.dataset.playerEpisode), false));
+}
+async function openMood(name) {
+  const mood = MOODS.find(entry => entry.name === name);
+  if (!mood) return;
+  state.route = "moods";
+  state.moodView = { name, loading: true };
+  render();
+  const family = useFamilyCatalog() ? { certification_country:"US", "certification.lte":currentProfile()?.kids ? "PG" : "PG-13" } : {};
+  try {
+    const [movies, shows] = await Promise.all([
+      api("discover/movie", { ...mood.params, ...family }),
+      api("discover/tv", { ...mood.params, ...family })
+    ]);
+    state.moodView = { name, items: shuffle([...results(movies), ...results(shows)]) };
+  } catch (error) { state.moodView = { name, items: [], error: error.message }; }
+  if (state.route === "moods") render();
+}
+function renderMoods() {
+  const view = state.moodView || { name:"", loading:true };
+  if (!view.name) { state.route = "home"; return renderHome(); }
+  const items = view.items || [];
+  app.innerHTML = `${header()}<button class="back" data-mood-back>‹ Back</button><section class="search-page"><span class="brand">MOOD PICKS</span><h2>${escapeHTML(view.name)}</h2>${view.loading ? `<div class="catalog-loading skeleton"></div>` : items.length ? `<div class="result-grid explore-grid">${items.map(card).join("")}</div>` : `<p class="search-empty">Nothing matched this vibe. Try another one.</p>`}</section>${footer()}`;
+  bindCommon();
+  document.querySelector("[data-mood-back]").onclick = () => { state.route = "home"; render(); };
 }
 async function openTrailers() {
   state.route = "trailers";
