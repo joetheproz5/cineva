@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -42,7 +42,7 @@ header img{height:22px}
 .steps{margin:0;padding:0;list-style:none;color:var(--muted);font-size:12.5px;line-height:1.9}
 .steps b{color:#ddd;font-weight:650}
 .steps li{padding-left:18px;position:relative}
-.steps li:before{content:"›";position:absolute;left:2px;color:var(--red);font-weight:800}
+.steps li:before{content:"â€º";position:absolute;left:2px;color:var(--red);font-weight:800}
 .note{margin:14px auto 0;max-width:560px;text-align:center;color:#777;font-size:12px;line-height:1.6}
 .note a{color:#bbb}
 footer{margin-top:44px;padding-top:18px;border-top:1px solid #1c1c1c;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;color:#666;font-size:11.5px}
@@ -51,12 +51,12 @@ footer .mark{color:#3a0d10;font-size:34px;font-weight:900;letter-spacing:6px;use
 </head>
 <body>
 <div class="wrap">
-  <header><img src="/assets/seven-wordmark.png" alt="SEVEN"></header>
+  <header><img src="/assets/seven-wordmark-v2.png" alt="SEVEN"></header>
 
   <section class="hero">
     <img class="appicon" src="/assets/seven-logo-red.png" alt="SEVEN app icon" width="104" height="104">
     <h1>Watch <em>SEVEN</em> everywhere</h1>
-    <p>Install the app on your phone and pick up where you left off — profiles, favourites, and your recent searches travel with you.</p>
+    <p>Install the app on your phone and pick up where you left off â€” profiles, favourites, and your recent searches travel with you.</p>
   </section>
 
   <div class="options">
@@ -72,21 +72,21 @@ footer .mark{color:#3a0d10;font-size:34px;font-weight:900;letter-spacing:6px;use
 
     <section class="card" id="androidCard">
       <div class="os"><i><svg viewBox="0 0 24 24" width="20" height="20" fill="#e6e6e6" aria-hidden="true"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 0 0-.1521-.5676.416.416 0 0 0-.5676.1521l-2.0223 3.503C15.5902 8.2439 13.8533 7.8508 12 7.8508s-3.5902.3931-5.1367 1.0989L4.841 5.4467a.4161.4161 0 0 0-.5677-.1521.4157.4157 0 0 0-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4396"/></svg></i><span><b>Android</b><small>Direct APK download</small></span></div>
-      <a class="btn primary" id="androidBtn" href="/downloads/seven.apk" download="seven.apk">⬇ Download APK</a>
+      <a class="btn primary" id="androidBtn" href="/downloads/seven.apk" download="seven.apk">â¬‡ Download APK</a>
       <ol class="steps">
         <li>Download the APK above.</li>
         <li>Open it and allow <b>Install unknown apps</b> if asked.</li>
-        <li>Tap <b>Install</b> — SEVEN appears in your apps.</li>
+        <li>Tap <b>Install</b> â€” SEVEN appears in your apps.</li>
       </ol>
     </section>
   </div>
 
-  <p class="note" id="statusNote">Version 1.0 · Requires Android 8.0+ · iOS 13+ · Free to install</p>
+  <p class="note" id="statusNote">Version 1.0 Â· Requires Android 8.0+ Â· iOS 13+ Â· Free to install</p>
 
   <footer>
     <span class="mark" aria-hidden="true">SEVEN</span>
     <span>Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB.</span>
-    <span>© 2026 SEVEN. All rights reserved.</span>
+    <span>Â© 2026 SEVEN. All rights reserved.</span>
   </footer>
 </div>
 
@@ -118,11 +118,11 @@ footer .mark{color:#3a0d10;font-size:34px;font-weight:900;letter-spacing:6px;use
   });
   fetch("/downloads/seven.apk", { method: "HEAD" }).then(function (response) {
     if (response.ok) {
-      note.textContent = "Version 1.0 · " + Math.round(Number(response.headers.get("content-length") || 0) / 1048576 * 10) / 10 + " MB · Requires Android 8.0+ · iOS 13+ · Free to install";
+      note.textContent = "Version 1.0 Â· " + Math.round(Number(response.headers.get("content-length") || 0) / 1048576 * 10) / 10 + " MB Â· Requires Android 8.0+ Â· iOS 13+ Â· Free to install";
     } else throw new Error("not ready");
   }).catch(function () {
     androidBtn.setAttribute("disabled", "");
-    androidBtn.textContent = "⏳ APK is building — check back soon";
+    androidBtn.textContent = "â³ APK is building â€” check back soon";
     androidBtn.classList.remove("primary");
     androidBtn.classList.add("ghost");
   });
