@@ -144,6 +144,7 @@
 .continue-item:hover .continue-remove, .continue-remove:focus-visible { opacity: 1; transform: scale(1); }
 .continue-remove:hover { background: rgba(58, 58, 58, 0.85); transform: scale(1.06); }
 @media (hover: none) { .continue-remove { opacity: 1; transform: none; } }
+.episode-score { margin-left: 9px; color: #d9b64a; font-size: 10.5px; font-weight: 750; font-style: normal; letter-spacing: .2px; }
 .season-select { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; color: #cfcfcf; font-size: 12px; font-weight: 750; }
 .season-select select { min-width: 150px; padding: 9px 34px 9px 11px; border: 1px solid #414141; border-radius: 7px; outline: 0; color: #fff; background: #171717; font: inherit; }
 .season-select select:focus { border-color: #c91520; }

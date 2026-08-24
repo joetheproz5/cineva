@@ -45,6 +45,11 @@ header img{height:22px}
 .steps li:before{content:"›";position:absolute;left:2px;color:var(--red);font-weight:800}
 .note{margin:14px auto 0;max-width:560px;text-align:center;color:#777;font-size:12px;line-height:1.6}
 .note a{color:#bbb}
+.qr-band{display:flex;align-items:center;justify-content:center;gap:20px;max-width:520px;margin:26px auto 0;padding:18px 22px;border:1px solid var(--line);border-radius:14px;background:#101010}
+.qr-band img{width:116px;height:116px;border-radius:10px;background:#121212}
+.qr-band b{display:block;font-size:15px;margin-bottom:5px}
+.qr-band p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.55}
+@media(max-width:480px){.qr-band{flex-direction:column;text-align:center;gap:12px}}
 footer{margin-top:44px;padding-top:18px;border-top:1px solid #1c1c1c;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;color:#666;font-size:11.5px}
 footer .mark{color:#3a0d10;font-size:34px;font-weight:900;letter-spacing:6px;user-select:none}
 </style>
@@ -80,6 +85,11 @@ footer .mark{color:#3a0d10;font-size:34px;font-weight:900;letter-spacing:6px;use
       </ol>
     </section>
   </div>
+
+  <section class="qr-band" id="qrBand">
+    <img id="qrImage" alt="QR code to open SEVEN on your phone" width="132" height="132">
+    <div><b>Scan to install</b><p>Point your phone's camera at the code to open this page and get SEVEN.</p></div>
+  </section>
 
   <p class="note" id="statusNote">Version 1.0 · Requires Android 8.0+ · iOS 13+ · Free to install</p>
 
@@ -126,6 +136,10 @@ footer .mark{color:#3a0d10;font-size:34px;font-weight:900;letter-spacing:6px;use
     androidBtn.classList.remove("primary");
     androidBtn.classList.add("ghost");
   });
+
+  var qr = document.getElementById("qrImage");
+  qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=264x264&margin=10&bgcolor=121212&color=f5f5f5&data=" + encodeURIComponent(location.origin + "/download.html");
+  qr.onerror = function () { document.getElementById("qrBand").style.display = "none"; };
 })();
 </script>
 </body>
