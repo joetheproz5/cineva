@@ -168,6 +168,7 @@ async function refreshCatalogNow() {
 async function boot() {
   await restoreSession();
   applyLocale();
+  state.pendingWatch = new URLSearchParams(location.search).get("watch") || null;
   const shared = sharedTitleTarget();
   if (shared) { await openItem(shared.type, shared.id); return; }
   if (!navigator.onLine) return renderOfflineScreen();
@@ -214,7 +215,7 @@ function header() {
   return `<header class="${settingsMode ? "settings-header" : "main-header"}"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="/assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-wordmark" aria-hidden="true">SEVEN</div><div class="footer-inner"><small>Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></footer>`; }
-function render() { if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); renderHome(); }
+function render() { if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); renderHome(); }
 async function profileSecret(value) { if (!globalThis.crypto?.subtle) throw new Error("Profile locks need a modern browser."); const bytes = new TextEncoder().encode(value), hash = await globalThis.crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join(""); }
 const PARENT_ACCESS_KEY = "seven.parent-access";
 function hasParentAccess() { return !parentAccessConfigured(); }
@@ -436,7 +437,7 @@ function timeLabel(seconds) { const minutes = Math.floor(seconds / 60), remainde
 function resumeAction(item, attribute) { const seconds = savedStart(item); return seconds ? `<button class="secondary resume-action" ${attribute}><b>↻</b> Resume from ${timeLabel(seconds)}</button>` : ""; }
 async function playSeriesEpisode(season, episode, resume = false) { if (Number(state.selectedSeason) !== Number(season)) { state.selectedSeason = Number(season); await loadEpisodes(); } playEpisode(Number(episode), resume); }
 function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:episode.still_path || state.series.poster_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
-function playerURL(item) { const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`, preferences = currentPreferences(); return `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true" })}`; }
+function playerURL(item, progress = 0) { const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`, preferences = currentPreferences(); return `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true", ...(progress > 0 ? { progress:String(Math.floor(progress)) } : {}) })}`; }
 function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; return (state.episodes?.episodes || []).find(episode => Number(episode.episode_number) === Number(item.episode) + 1) || null; }
 function playerEpisodePanel(player) {
   if (player.type !== "tv") return "";
@@ -592,10 +593,141 @@ function showScreenTimeBlock(profile, st) {
 function bindExtendButtons(overlay, profile) {
   overlay.querySelectorAll("[data-extend-time]").forEach(button => button.onclick = () => extendScreenTime(profile, Number(button.dataset.extendTime)));
 }
+const party = { code:null, role:null, socket:null, topic:null, ref:1, members:{}, hostKey:"", hostPosition:0, hostEvent:"", guestTime:0, lastHostTime:0, following:false, didInitialSync:false, outOfSync:false, chat:[], heartbeat:null, error:"" };
+function partyCode() { const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let code = ""; for (let index = 0; index < 6; index++) code += alphabet[Math.floor(Math.random() * alphabet.length)]; return code; }
+async function partySettings() { const data = await localAPI("/api/config"); if (data.supabase?.url && data.supabase?.publishableKey) return data.supabase; throw new Error("Watch parties are not configured."); }
+async function partyConnect(code, role) {
+  const settings = await partySettings();
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(`${settings.url.replace(/^http/, "ws")}/realtime/v1/websocket?vsn=1.0&apikey=${encodeURIComponent(settings.publishableKey)}`);
+    const timeout = setTimeout(() => { try { socket.close(); } catch {} reject(new Error("Watch party connection timed out.")); }, 9000);
+    socket.onopen = () => {
+      clearTimeout(timeout);
+      party.socket = socket; party.topic = `watch:${code}`; party.code = code; party.role = role; party.error = "";
+      socket.send(JSON.stringify({ topic:`watch:${code}`, event:"phx_join", ref:String(party.ref++), payload:{} }));
+      resolve();
+    };
+    socket.onmessage = event => { try { partyHandleMessage(JSON.parse(event.data)); } catch { /* Ignore malformed frames. */ } };
+    socket.onclose = () => { if (party.code === code) { party.socket = null; } };
+    socket.onerror = () => { clearTimeout(timeout); reject(new Error("Could not connect to the watch party.")); };
+  });
+}
+function partySend(data) { if (party.socket?.readyState === 1) party.socket.send(JSON.stringify({ topic:party.topic, event:"broadcast", ref:String(party.ref++), payload:{ type:"party", ...data } })); }
+function partyHandleMessage(message) {
+  if (message.event !== "broadcast") return;
+  const data = message.payload?.type === "party" ? message.payload : message.payload?.payload?.type === "party" ? message.payload.payload : null;
+  if (data) partyReceive(data);
+}
+function partyTouchMember(name, color) { if (name) party.members[name] = { color:color || "#e50914", at:Date.now() }; }
+function partyBroadcastState() {
+  const p = state.player;
+  if (!p || party.role !== "host") return;
+  partySend({ kind:"state", key:`${p.type}:${p.id}:${p.season || 0}:${p.episode || 0}`, position:Math.floor(party.lastHostTime || 0), event:party.hostEvent, name:currentProfile()?.name || "Host", color:currentProfile()?.color });
+}
+function partyReceive(data) {
+  if (!document.querySelector(".party-panel") && !document.querySelector("[data-party-start]")) return;
+  if (data.kind === "hello" && party.role === "host") { partyTouchMember(data.name, data.color); partyBroadcastState(); renderPartyPanel(); return; }
+  if (data.kind === "state" && party.role === "guest") {
+    party.hostKey = data.key || ""; party.hostPosition = Number(data.position) || 0; partyTouchMember(data.name, data.color);
+    const currentKey = state.player ? `${state.player.type}:${state.player.id}:${state.player.season || 0}:${state.player.episode || 0}` : "";
+    if (data.key && data.key !== currentKey) { party.outOfSync = false; renderPartyPanel(); return; }
+    const drift = Math.abs(party.guestTime - party.hostPosition);
+    if (party.didInitialSync && drift > 12 && !party.outOfSync) { party.outOfSync = true; }
+    else if (party.outOfSync && drift <= 8) { party.outOfSync = false; }
+    if (!party.didInitialSync) { party.didInitialSync = true; if (drift > 20) partySyncToHost(); }
+    renderPartyPanel();
+    return;
+  }
+  if (data.kind === "chat") { party.chat.push({ name:String(data.name || "Guest").slice(0, 24), color:data.color || "#e50914", text:String(data.text || "").slice(0, 300) }); party.chat = party.chat.slice(-50); partyTouchMember(data.name, data.color); renderPartyPanel(); return; }
+  if (data.kind === "join") { partyTouchMember(data.name, data.color); renderPartyPanel(); }
+}
+async function partyStart() {
+  try {
+    const code = partyCode();
+    await partyConnect(code, "host");
+    if (!party.heartbeat) party.heartbeat = setInterval(() => {
+      if (party.role === "host") partyBroadcastState();
+      Object.keys(party.members).forEach(name => { if (Date.now() - party.members[name].at > 45000) delete party.members[name]; });
+      renderPartyPanel();
+    }, 4000);
+    partySend({ kind:"join", name:currentProfile()?.name || "Host", color:currentProfile()?.color });
+    const url = new URL(location.href);
+    url.search = "";
+    url.searchParams.set("watch", code);
+    if (state.player) url.searchParams.set("title", state.player.type === "tv" ? `tv:${state.player.id}:${state.player.season}:${state.player.episode}` : `movie:${state.player.id}`);
+    history.replaceState(null, "", url);
+    renderPartyPanel();
+  } catch (error) { party.error = error.message; renderPartyPanel(); }
+}
+async function partyJoin(code) {
+  try {
+    await partyConnect(code, "guest");
+    partySend({ kind:"hello", name:currentProfile()?.name || "Guest", color:currentProfile()?.color });
+    renderPartyPanel();
+  } catch (error) { party.error = error.message; renderPartyPanel(); }
+}
+function partyLeave() {
+  try { party.socket?.close(); } catch {}
+  clearInterval(party.heartbeat);
+  party.code = null; party.role = null; party.socket = null; party.heartbeat = null; party.members = {}; party.chat = []; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.hostKey = ""; party.hostPosition = 0; party.guestTime = 0; party.lastHostTime = 0;
+  const url = new URL(location.href);
+  url.searchParams.delete("watch");
+  history.replaceState(null, "", url);
+}
+function partyFollowHost() {
+  const [type, id, season, episode] = (party.hostKey || "").split(":");
+  if (!type || !id) return;
+  party.following = true;
+  if (type === "movie") return openItem("movie", id);
+  openItem("tv", id).then(() => {
+    if (state.route === "series" && state.series && Number(state.series.id) === Number(id)) { state.selectedSeason = Number(season) || 1; playEpisode(Number(episode) || 1, false); }
+  });
+}
+function partySyncToHost() {
+  if (!state.player) return;
+  party.syncPosition = party.hostPosition;
+  party.outOfSync = false;
+  render();
+}
+function renderPartyPanel() {
+  const panel = document.querySelector(".party-panel");
+  if (!panel || !party.code) return;
+  const members = Object.entries(party.members);
+  const currentKey = state.player ? `${state.player.type}:${state.player.id}:${state.player.season || 0}:${state.player.episode || 0}` : "";
+  const differentTitle = party.role === "guest" && party.hostKey && party.hostKey !== currentKey;
+  const inviteURL = (() => { const url = new URL(location.href); url.searchParams.set("watch", party.code); return url.href; })();
+  panel.innerHTML = `
+    <div class="party-head"><span class="brand">WATCH PARTY${party.role === "host" ? " · YOU'RE HOSTING" : ""}</span><button class="party-leave" data-party-leave>Leave</button></div>
+    <div class="party-code-row"><code class="party-code">${party.code}</code><button class="party-copy" data-party-copy>Copy invite link</button></div>
+    <div class="party-members"><b>${members.length + 1} ${members.length ? "people" : "person"} here</b><span>${escapeHTML(["You", ...members.map(([name]) => name)].slice(0, 6).join(", "))}</span></div>
+    ${differentTitle ? `<button class="party-sync primary" data-party-follow>Play along with the host</button>` : party.role === "guest" && party.outOfSync ? `<button class="party-sync primary" data-party-sync>Sync with host</button>` : `<p class="party-status">${party.role === "host" ? "Share the invite link — friends join in one tap." : "You're watching in sync with the host."}</p>`}
+    <div class="party-chat-log" data-party-log>${party.chat.length ? party.chat.map(message => `<p><b style="color:${escapeHTML(message.color)}">${escapeHTML(message.name)}</b> ${escapeHTML(message.text)}</p>`).join("") : `<p class="party-chat-empty">Say hi to your party.</p>`}</div>
+    <form class="party-chat-form" data-party-chat><input type="text" maxlength="240" placeholder="Say something…" autocomplete="off"><button type="submit">Send</button></form>`;
+  panel.querySelector("[data-party-leave]").onclick = () => { partyLeave(); render(); };
+  panel.querySelector("[data-party-copy]").onclick = async event => { try { await navigator.clipboard.writeText(inviteURL); event.currentTarget.textContent = "Link copied!"; } catch { event.currentTarget.textContent = inviteURL; } };
+  panel.querySelector("[data-party-follow]")?.addEventListener("click", partyFollowHost);
+  panel.querySelector("[data-party-sync]")?.addEventListener("click", partySyncToHost);
+  const log = panel.querySelector("[data-party-log]");
+  log.scrollTop = log.scrollHeight;
+  panel.querySelector("[data-party-chat]").onsubmit = event => {
+    event.preventDefault();
+    const input = event.currentTarget.querySelector("input"), text = input.value.trim();
+    if (!text) return;
+    const message = { kind:"chat", name:currentProfile()?.name || "Guest", color:currentProfile()?.color || "#e50914", text };
+    party.chat.push({ name:message.name, color:message.color, text:message.text }); party.chat = party.chat.slice(-50);
+    partySend(message);
+    input.value = "";
+    renderPartyPanel();
+  };
+}
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>${t("Next episode")} <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : "";
-  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span></div><div class="player-frame"><iframe class="player" src="${playerURL(p)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${playerEpisodePanel(p)}${footer()}`;
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : `<button class="party-start" data-party-start>⇄ Watch together</button>`}</div><div class="player-frame"><iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
+  party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
+  if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
+  document.querySelector("[data-party-start]")?.addEventListener("click", partyStart);
+  renderPartyPanel();
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
   document.querySelector("[data-play-next]")?.addEventListener("click", () => playEpisode(next.episode_number, false));
 }
@@ -896,7 +1028,7 @@ function bindCommon() {
   document.querySelectorAll("[data-auth]").forEach(button => button.onclick = () => showAuth());
   document.querySelectorAll("[data-account]").forEach(button => button.onclick = showAccount);
 }
-window.addEventListener("message", event => { let payload; try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; } if (state.route !== "player" || payload?.type !== "PLAYER_EVENT") return; const data = payload.data || {}, duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0; if (!duration) return; const progress = Math.min(100, currentTime / duration * 100); localStorage.setItem(watchKey(state.player), JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()})); queueProgressSync(state.player, currentTime, duration, progress); const bar = document.querySelector("#bar"), time = document.querySelector("#time"); if (bar) bar.style.width = `${progress}%`; if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`; });
+window.addEventListener("message", event => { let payload; try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; } if (state.route !== "player" || payload?.type !== "PLAYER_EVENT") return; const data = payload.data || {}, duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0; if (!duration) return; if (party.code) { if (party.role === "host") { party.lastHostTime = currentTime; party.hostEvent = String(data.event || ""); } else { party.guestTime = currentTime; } } const progress = Math.min(100, currentTime / duration * 100); localStorage.setItem(watchKey(state.player), JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()})); queueProgressSync(state.player, currentTime, duration, progress); const bar = document.querySelector("#bar"), time = document.querySelector("#time"); if (bar) bar.style.width = `${progress}%`; if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`; });
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js?v=84").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
