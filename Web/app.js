@@ -371,7 +371,6 @@ async function ensurePlayerContext(player) {
   } catch { /* The player remains available even if episode metadata cannot load. */ }
   finally { state.playerContextKey = null; }
 }
-const INTRO_DURATION = 2300;
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
 function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"); return cached?.preferences?.introEnabled !== false; } catch { return true; } }
 function dismissIntro() { clearTimeout(state.introTimer); state.introTimer = null; document.querySelector(".seven-intro")?.remove(); }
@@ -381,10 +380,10 @@ function renderLaunchIntro() {
   overlay.className = "seven-intro";
   overlay.innerHTML = `<div class="seven-intro-glow" aria-hidden="true"></div><div class="seven-intro-streak" aria-hidden="true"></div><div class="seven-intro-logo-wrap" aria-hidden="true"><img class="seven-intro-logo" src="/assets/seven-wordmark.png" alt=""></div>`;
   overlay.addEventListener("click", dismissIntro);
-  overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-fade") dismissIntro(); });
+  overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
   document.body.appendChild(overlay);
   clearTimeout(state.introTimer);
-  state.introTimer = setTimeout(dismissIntro, INTRO_DURATION + 400);
+  state.introTimer = setTimeout(dismissIntro, 3400);
 }
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>Next episode <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : "";

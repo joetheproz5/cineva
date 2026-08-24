@@ -257,12 +257,13 @@
 .search-recent-query span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-recent-remove { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; color: #777; background: transparent; font-size: 14px; line-height: 1; transition: color 0.16s, background 0.16s; }
 .search-recent-remove:hover { color: #fff; background: #333; }
-.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: #000; cursor: pointer; animation: intro-fade 2.3s cubic-bezier(.4, 0, .2, 1) forwards; }
-.seven-intro-glow { position: absolute; width: 72vmin; height: 72vmin; border-radius: 50%; background: radial-gradient(circle, rgba(229, 9, 20, 0.16) 0%, rgba(229, 9, 20, 0.05) 42%, transparent 68%); animation: intro-glow 2.3s ease both; }
+.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: #000; cursor: pointer; animation: intro-out .22s ease 2.8s forwards; }
+.seven-intro-glow { position: absolute; width: 72vmin; height: 72vmin; border-radius: 50%; background: radial-gradient(circle, rgba(229, 9, 20, 0.16) 0%, rgba(229, 9, 20, 0.05) 42%, transparent 68%); animation: intro-glow 2.3s ease both, intro-exit .35s ease 2.45s forwards; }
 .seven-intro-streak { position: absolute; left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%) scaleX(0); background: linear-gradient(90deg, transparent, #ff4d52 18%, #fff 50%, #ff4d52 82%, transparent); box-shadow: 0 0 26px 5px rgba(229, 9, 20, 0.55); opacity: 0; animation: intro-streak 1.15s cubic-bezier(.7, 0, .3, 1) .05s forwards; }
-.seven-intro-logo-wrap { position: relative; width: min(64vw, 430px); aspect-ratio: 2172 / 724; animation: intro-logo .95s cubic-bezier(.16, 1, .3, 1) .38s both; }
+.seven-intro-logo-wrap { position: relative; width: min(64vw, 430px); aspect-ratio: 2172 / 724; animation: intro-logo .95s cubic-bezier(.16, 1, .3, 1) .38s both, intro-exit .35s ease 2.45s forwards; }
 .seven-intro-logo { display: block; width: 100%; height: auto; animation: intro-bloom 1.5s ease .38s both; }
-@keyframes intro-fade { 0% { opacity: 1; } 87% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes intro-out { to { opacity: 0; } }
+@keyframes intro-exit { to { opacity: 0; } }
 @keyframes intro-streak { 0% { transform: translateY(-50%) scaleX(0); opacity: 0; } 12% { opacity: 1; } 55% { transform: translateY(-50%) scaleX(1); opacity: 1; } 100% { transform: translateY(-50%) scaleX(1); opacity: 0; } }
 @keyframes intro-logo { 0% { opacity: 0; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes intro-bloom { 0% { filter: brightness(2.4) saturate(.6); } 60% { filter: brightness(1.25) saturate(1.05); } 100% { filter: brightness(1) saturate(1); } }
