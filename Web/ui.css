@@ -139,10 +139,11 @@
 .continue-progress i { display: block; height: 100%; background: #d81924; }
 .continue-item { position: relative; }
 .continue-item .card { width: 100%; }
-.continue-remove { position: absolute; z-index: 5; top: 8px; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #eee; background: rgba(0, 0, 0, 0.74); font-size: 15px; line-height: 1; opacity: 0; transition: opacity .15s, background .15s; }
-.continue-item:hover .continue-remove, .continue-remove:focus-visible { opacity: 1; }
-.continue-remove:hover { background: #c91420; }
-@media (hover: none) { .continue-remove { opacity: 1; } }
+.continue-remove { position: absolute; z-index: 5; top: 7px; right: 7px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 50%; color: #fff; background: rgba(18, 18, 18, 0.78); backdrop-filter: blur(4px); opacity: 0; transform: scale(.92); transition: opacity .16s ease, transform .16s ease, background .16s ease; }
+.continue-remove svg { width: 12px; height: 12px; display: block; }
+.continue-item:hover .continue-remove, .continue-remove:focus-visible { opacity: 1; transform: scale(1); }
+.continue-remove:hover { background: rgba(58, 58, 58, 0.85); transform: scale(1.06); }
+@media (hover: none) { .continue-remove { opacity: 1; transform: none; } }
 .season-select { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; color: #cfcfcf; font-size: 12px; font-weight: 750; }
 .season-select select { min-width: 150px; padding: 9px 34px 9px 11px; border: 1px solid #414141; border-radius: 7px; outline: 0; color: #fff; background: #171717; font: inherit; }
 .season-select select:focus { border-color: #c91520; }
