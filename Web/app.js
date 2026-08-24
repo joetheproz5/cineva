@@ -58,8 +58,8 @@ async function api(path, params = {}) {
 }
 function useFamilyCatalog() { return currentProfile()?.kids || currentPreferences().familySafe === true; }
 async function refreshCatalogForLanguage() {
-  state.catalogRequest ||= refreshCatalogNow();
-  try { await state.catalogRequest; } finally { if (state.catalogRequest) state.catalogRequest = null; }
+  state.catalogRequest ||= (profile => refreshCatalogNow().then(() => { state.catalogKey = profile; }))(activeProfileId());
+  try { await state.catalogRequest; } finally { state.catalogRequest = null; }
 }
 async function refreshCatalogNow() {
   if (useFamilyCatalog()) {
@@ -200,16 +200,31 @@ function showParentUnlock() {
     } catch (failure) { error.textContent = failure.message; } finally { submit.disabled = false; }
   };
 }
-async function activateProfile(id) { state.account.activeProfileId = id; await saveAccount(); try { await loadMyList(); await refreshCatalogForLanguage(); } catch {} state.route = "home"; scrollToTop(); render(); }
+function exitProfileGate(then) {
+  const gate = document.querySelector(".profile-gate");
+  if (!gate || gate.classList.contains("profile-gate-exit")) { then(); return; }
+  gate.classList.add("profile-gate-exit");
+  setTimeout(then, 430);
+}
+async function activateProfile(id) {
+  const catalogStale = state.catalogKey !== id;
+  state.account.activeProfileId = id;
+  void saveAccount();
+  exitProfileGate(() => { state.route = "home"; scrollToTop(); render(); });
+  if (catalogStale) state.catalogRequest = null;
+  try { await loadMyList(); await refreshCatalogForLanguage(); } catch {}
+  if (state.route === "home") render();
+}
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); activateProfile(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function renderProfileGate() { const account = state.account || defaultAccount(); app.innerHTML = `<main class="profile-gate"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="/assets/seven-wordmark.png" alt="SEVEN"></button><section><span class="brand">WHO’S WATCHING?</span><h1>Choose a profile</h1><p>Your progress, Continue Watching row, and playback settings stay with this profile.</p><div class="profile-chooser">${account.profiles.map(profile => `<button class="profile-choice" data-watch-profile="${profile.id}">${profileAvatar(profile)}<b>${escapeHTML(profile.name)}</b><small>${profile.kids ? "Kids profile" : profile.pinHash ? "Locked" : "Standard profile"}</small></button>`).join("")}</div><button class="manage-profiles" data-manage-profiles>Manage profiles</button></section></main>`; document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (profile?.pinHash && !profile.kids) showProfileUnlock(profile); else activateProfile(profile.id); }); document.querySelector("[data-manage-profiles]").onclick = showAccount; }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="/assets/seven-wordmark.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
+function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function renderHome() {
   clearInterval(state.heroTimer);
-  const f = state.featured;
+  const f = state.featured, loadingCatalog = Boolean(state.catalogRequest) && !Object.keys(state.catalog || {}).length;
   const continuing = continueWatching();
   const newEpisodes = state.newEpisodes || [];
-  app.innerHTML = `${header()}<section class="hero" id="featured">${featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("")}</div>${footer()}`;
+  app.innerHTML = `${header()}<section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div>${footer()}`;
   bindCommon(); initCoverflow(); scheduleHero();
 }
 function coverflowOffset(index, active, count) { let offset = index - active; if (offset > count / 2) offset -= count; if (offset < -count / 2) offset += count; return offset; }
