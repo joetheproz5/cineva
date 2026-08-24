@@ -259,17 +259,16 @@
 .search-recent-remove:hover { color: #fff; background: #333; }
 .seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: #000; cursor: pointer; animation: intro-fade 1.8s cubic-bezier(.4, 0, .2, 1) forwards; }
 .seven-intro-glow { position: absolute; width: 72vmin; height: 72vmin; border-radius: 50%; background: radial-gradient(circle, rgba(229, 9, 20, 0.16) 0%, rgba(229, 9, 20, 0.05) 42%, transparent 68%); animation: intro-glow 1.8s ease both; }
-.seven-intro-logo-wrap { position: relative; animation: intro-logo .85s cubic-bezier(.22, 1, .36, 1) both; }
-.seven-intro-logo { display: block; width: min(64vw, 430px); height: auto; animation: intro-bloom 1.4s ease both; }
-.seven-intro-logo-wrap::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.35) 50%, transparent 60%); transform: translateX(-120%); mix-blend-mode: screen; -webkit-mask: url("/assets/seven-wordmark.png") center / 100% 100% no-repeat; mask: url("/assets/seven-wordmark.png") center / 100% 100% no-repeat; animation: intro-sweep 1s cubic-bezier(.6, 0, .3, 1) .6s forwards; }
+.seven-intro-streak { position: absolute; left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%) scaleX(0); background: linear-gradient(90deg, transparent, #ff4d52 18%, #fff 50%, #ff4d52 82%, transparent); box-shadow: 0 0 26px 5px rgba(229, 9, 20, 0.55); opacity: 0; animation: intro-streak 1.15s cubic-bezier(.7, 0, .3, 1) .05s forwards; }
+.seven-intro-logo-wrap { position: relative; animation: intro-logo .95s cubic-bezier(.16, 1, .3, 1) .38s both; }
+.seven-intro-logo { display: block; width: min(64vw, 430px); height: auto; animation: intro-bloom 1.5s ease .38s both; }
 @keyframes intro-fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes intro-logo { 0% { opacity: 0; transform: scale(.9); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes intro-bloom { 0% { filter: brightness(1.9) saturate(.7); } 55% { filter: brightness(1.18) saturate(1.05); } 100% { filter: brightness(1) saturate(1); } }
-@keyframes intro-sweep { to { transform: translateX(120%); } }
+@keyframes intro-streak { 0% { transform: translateY(-50%) scaleX(0); opacity: 0; } 12% { opacity: 1; } 55% { transform: translateY(-50%) scaleX(1); opacity: 1; } 100% { transform: translateY(-50%) scaleX(1); opacity: 0; } }
+@keyframes intro-logo { 0% { opacity: 0; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes intro-bloom { 0% { filter: brightness(2.4) saturate(.6); } 60% { filter: brightness(1.25) saturate(1.05); } 100% { filter: brightness(1) saturate(1); } }
 @keyframes intro-glow { 0% { opacity: 0; transform: scale(.82); } 45% { opacity: 1; } 100% { opacity: .65; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
-  .seven-intro-logo-wrap, .seven-intro-logo, .seven-intro-glow { animation: none !important; }
-  .seven-intro-logo-wrap::after { display: none; }
+  .seven-intro-logo-wrap, .seven-intro-logo, .seven-intro-glow, .seven-intro-streak { animation: none !important; }
 }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }
 .offline-logo { width: min(52vw, 260px); height: auto; opacity: .92; margin-bottom: 18px; }

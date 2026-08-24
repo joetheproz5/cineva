@@ -379,7 +379,7 @@ function renderLaunchIntro() {
   if (prefersReducedMotion() || !launchIntroEnabled() || document.querySelector(".seven-intro")) return;
   const overlay = document.createElement("div");
   overlay.className = "seven-intro";
-  overlay.innerHTML = `<div class="seven-intro-glow" aria-hidden="true"></div><div class="seven-intro-logo-wrap" aria-hidden="true"><img class="seven-intro-logo" src="/assets/seven-wordmark.png" alt=""></div>`;
+  overlay.innerHTML = `<div class="seven-intro-glow" aria-hidden="true"></div><div class="seven-intro-streak" aria-hidden="true"></div><div class="seven-intro-logo-wrap" aria-hidden="true"><img class="seven-intro-logo" src="/assets/seven-wordmark.png" alt=""></div>`;
   overlay.addEventListener("click", dismissIntro);
   document.body.appendChild(overlay);
   state.introTimer = setTimeout(dismissIntro, INTRO_DURATION);
