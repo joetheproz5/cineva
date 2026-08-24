@@ -373,17 +373,30 @@ async function ensurePlayerContext(player) {
 }
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
 function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"); return cached?.preferences?.introEnabled !== false; } catch { return true; } }
-function dismissIntro() { clearTimeout(state.introTimer); state.introTimer = null; document.querySelector(".seven-intro")?.remove(); }
+function dismissIntro() {
+  if (!document.querySelector(".seven-intro")) return;
+  clearTimeout(state.introTimer);
+  state.introTimer = null;
+  document.documentElement.style.overflow = "";
+  document.querySelector(".seven-intro")?.remove();
+}
 function renderLaunchIntro() {
   if (prefersReducedMotion() || !launchIntroEnabled() || document.querySelector(".seven-intro")) return;
-  const overlay = document.createElement("div");
-  overlay.className = "seven-intro";
-  overlay.innerHTML = `<div class="seven-intro-glow" aria-hidden="true"></div><div class="seven-intro-streak" aria-hidden="true"></div><div class="seven-intro-logo-wrap" aria-hidden="true"><img class="seven-intro-logo" src="/assets/seven-wordmark.png" alt=""></div>`;
-  overlay.addEventListener("click", dismissIntro);
-  overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
-  document.body.appendChild(overlay);
-  clearTimeout(state.introTimer);
-  state.introTimer = setTimeout(dismissIntro, 3400);
+  const logo = new Image();
+  logo.src = "/assets/seven-wordmark.png";
+  const show = () => {
+    if (document.querySelector(".seven-intro")) return;
+    const overlay = document.createElement("div");
+    overlay.className = "seven-intro";
+    overlay.innerHTML = `<div class="seven-intro-glow" aria-hidden="true"></div><div class="seven-intro-streak" aria-hidden="true"></div><div class="seven-intro-logo-wrap" aria-hidden="true"><img class="seven-intro-logo" src="${logo.src}" alt=""></div>`;
+    overlay.addEventListener("click", dismissIntro);
+    overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
+    document.documentElement.style.overflow = "hidden";
+    document.body.appendChild(overlay);
+    clearTimeout(state.introTimer);
+    state.introTimer = setTimeout(dismissIntro, 3400);
+  };
+  Promise.race([logo.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 700))]).then(show);
 }
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>Next episode <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : "";
