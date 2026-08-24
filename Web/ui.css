@@ -424,3 +424,16 @@ html, body { overflow-x: hidden; }
   .detail .actions .primary { grid-column: 1 / -1; width: 100%; }
   .detail .actions .secondary { display: flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; padding: 10px 8px; text-align: center; }
 }
+.screen-time-block { position: fixed; z-index: 450; inset: 0; display: grid; place-items: center; background: #000; padding: 24px; }
+.screen-time-card { display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(420px, 100%); padding: 34px 28px; border: 1px solid #262626; border-radius: 16px; background: #121212; text-align: center; }
+.screen-time-lock { width: 34px; height: 34px; color: #e21a26; margin-bottom: 4px; }
+.screen-time-card h2 { margin: 2px 0; font-size: 24px; letter-spacing: -.5px; }
+.screen-time-card p { margin: 0 0 8px; color: #a3a3a3; font-size: 13px; line-height: 1.6; }
+.screen-time-code { display: block; width: 100%; margin-bottom: 4px; color: #a3a3a3; font-size: 11.5px; font-weight: 700; text-align: left; }
+.screen-time-code input { width: 100%; margin-top: 6px; padding: 12px; border: 1px solid #333; border-radius: 8px; outline: 0; color: #fff; background: #1a1a1a; font: inherit; letter-spacing: 2px; }
+.screen-time-code input:focus { border-color: #666; }
+.screen-time-error { margin: 0 0 4px; color: #ff5259; font-size: 11.5px; }
+.screen-time-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 6px; }
+.screen-time-actions button { padding: 11px 18px; border: 1px solid #3a3a3a; border-radius: 8px; color: #eee; background: #1f1f1f; font-size: 12.5px; font-weight: 700; transition: background .15s ease, border-color .15s ease; }
+.screen-time-actions button:hover { border-color: #666; background: #2a2a2a; }
+.screen-time-actions .screen-time-off { color: #999; }

@@ -11,20 +11,24 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 private const val APP_URL = "https://seven-9fm.pages.dev/"
 private const val APP_HOST = "seven-9fm.pages.dev"
 
 class MainActivity : Activity() {
     private lateinit var web: WebView
+    private lateinit var refreshLayout: SwipeRefreshLayout
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var fullScreenContainer: FrameLayout? = null
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var offline = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,8 +37,8 @@ class MainActivity : Activity() {
         window.statusBarColor = Color.BLACK
         window.navigationBarColor = Color.BLACK
 
-        val root = FrameLayout(this).setBackgroundColorSafe(Color.BLACK)
-        fullScreenContainer = FrameLayout(this).setBackgroundColorSafe(Color.BLACK)
+        val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        fullScreenContainer = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         root.addView(fullScreenContainer, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         web = WebView(this).apply {
@@ -50,6 +54,16 @@ class MainActivity : Activity() {
                     if (url.host == APP_HOST || url.host?.endsWith(".pages.dev") == true) return false
                     return runCatching { startActivity(Intent(Intent.ACTION_VIEW, url)); true }.getOrDefault(false)
                 }
+                override fun onPageFinished(view: WebView, finishedUrl: String) {
+                    offline = finishedUrl.startsWith("file://")
+                    refreshLayout.isRefreshing = false
+                }
+                override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                    if (request.isForMainFrame) {
+                        offline = true
+                        view.loadUrl("file:///android_asset/offline.html")
+                    }
+                }
             }
             webChromeClient = object : WebChromeClient() {
                 override fun onShowCustomView(view: View, callback: CustomViewCallback) {
@@ -60,14 +74,7 @@ class MainActivity : Activity() {
                     fullScreenContainer?.visibility = View.VISIBLE
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
-                override fun onHideCustomView() {
-                    fullScreenContainer?.removeAllViews()
-                    fullScreenContainer?.visibility = View.GONE
-                    customView = null
-                    customViewCallback?.onCustomViewHidden()
-                    customViewCallback = null
-                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                }
+                override fun onHideCustomView() { exitFullscreen() }
                 override fun onShowFileChooser(webView: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                     fileChooserCallback?.onReceiveValue(null)
                     fileChooserCallback = callback
@@ -76,18 +83,15 @@ class MainActivity : Activity() {
             }
             loadUrl(APP_URL)
         }
-        root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        setContentView(root)
-    }
 
-    private fun FrameLayout.setBackgroundColorSafe(color: Int): FrameLayout { setBackgroundColor(color); return this }
-
-    override fun onBackPressed() {
-        when {
-            customView != null -> exitFullscreen()
-            web.canGoBack() -> web.goBack()
-            else -> super.onBackPressed()
+        refreshLayout = SwipeRefreshLayout(this).apply {
+            setOnRefreshListener {
+                if (offline) web.loadUrl(APP_URL) else web.reload()
+            }
+            addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
+        root.addView(refreshLayout, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        setContentView(root)
     }
 
     private fun exitFullscreen() {
@@ -97,6 +101,14 @@ class MainActivity : Activity() {
         customViewCallback?.onCustomViewHidden()
         customViewCallback = null
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    override fun onBackPressed() {
+        when {
+            customView != null -> exitFullscreen()
+            web.canGoBack() -> web.goBack()
+            else -> super.onBackPressed()
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
