@@ -181,6 +181,28 @@ async function parentAccess(request, env) {
   } catch (error) { return json({ error:error.message || "Parent access could not be updated." }, 400); }
 }
 
+async function party(request, requestURL, env) {
+  const settings = supabase(env);
+  if (!settings) return json({ error:"Supabase is not configured." }, 503);
+  const headers = { apikey:settings.publishableKey, "Content-Type":"application/json" };
+  if (request.method === "GET") {
+    const code = (requestURL.searchParams.get("code") || "").toUpperCase(), since = requestURL.searchParams.get("since");
+    if (!/^[A-Z0-9]{4,8}$/.test(code)) return json({ error:"A valid party code is required." }, 400);
+    const filter = `code=eq.${code}&order=created_at.asc&limit=100` + (since ? `&created_at=gt.${encodeURIComponent(since)}` : "");
+    const result = await upstream(`${settings.url}/rest/v1/watch_party_messages?${filter}`, { headers });
+    return json(result.data, result.status);
+  }
+  if (request.method === "POST") {
+    const body = await readJSON(request);
+    const code = String(body.code || "").toUpperCase();
+    if (!/^[A-Z0-9]{4,8}$/.test(code) || !body.payload || typeof body.payload !== "object") return json({ error:"A valid party message is required." }, 400);
+    if (Math.random() < 0.1) await upstream(`${settings.url}/rest/v1/watch_party_messages?created_at=lt.${new Date(Date.now() - 15 * 60000).toISOString()}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
+    const result = await upstream(`${settings.url}/rest/v1/watch_party_messages`, { method:"POST", headers:{ ...headers, Prefer:"return=representation" }, body:JSON.stringify({ code, payload:body.payload }) });
+    return json(result.data, result.status);
+  }
+  return json({ error:"Unsupported party action." }, 405);
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
@@ -195,5 +217,6 @@ export async function onRequest(context) {
   if (path === "account/list") return myList(request, requestURL, env);
   if (path === "account/settings" && request.method === "PUT") return accountSettings(request, env);
   if (path === "account/parent-access") return parentAccess(request, env);
+  if (path === "party") return party(request, requestURL, env);
   return json({ error:"Not found." }, 404);
 }

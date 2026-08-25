@@ -595,33 +595,35 @@ function bindExtendButtons(overlay, profile) {
 }
 const party = { code:null, role:null, socket:null, topic:null, ref:1, members:{}, hostKey:"", hostPosition:0, hostEvent:"", guestTime:0, lastHostTime:0, following:false, didInitialSync:false, outOfSync:false, chat:[], heartbeat:null, error:"" };
 function partyCode() { const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let code = ""; for (let index = 0; index < 6; index++) code += alphabet[Math.floor(Math.random() * alphabet.length)]; return code; }
-async function partySettings() {
-  const data = await localAPI("/api/config");
-  if (data.realtimeKey && data.supabase?.url) return { url: data.supabase.url, publishableKey: data.realtimeKey };
-  if (data.supabase?.url && data.supabase?.publishableKey) return data.supabase;
-  throw new Error("Watch parties are not configured.");
-}
 async function partyConnect(code, role) {
-  const settings = await partySettings();
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(`${settings.url.replace(/^http/, "ws")}/realtime/v1/websocket?vsn=1.0&apikey=${encodeURIComponent(settings.publishableKey)}`);
-    const timeout = setTimeout(() => { try { socket.close(); } catch {} reject(new Error("Watch party connection timed out.")); }, 9000);
-    socket.onopen = () => {
-      clearTimeout(timeout);
-      party.socket = socket; party.topic = `watch:${code}`; party.code = code; party.role = role; party.error = "";
-      socket.send(JSON.stringify({ topic:`watch:${code}`, event:"phx_join", ref:String(party.ref++), payload:{} }));
-      resolve();
-    };
-    socket.onmessage = event => { try { partyHandleMessage(JSON.parse(event.data)); } catch { /* Ignore malformed frames. */ } };
-    socket.onclose = () => { if (party.code === code) { party.socket = null; } };
-    socket.onerror = () => { clearTimeout(timeout); reject(new Error("Could not connect to the watch party.")); };
-  });
+  await localAPI(`/api/party?code=${encodeURIComponent(code)}&limit=1`);
+  party.code = code; party.role = role; party.error = ""; party.cursor = new Date(Date.now() - 4000).toISOString(); party.clientId ||= Math.random().toString(36).slice(2, 10);
+  if (!party.pollTimer) party.pollTimer = setInterval(partyPoll, 2000);
+  if (!party.hostTimer) party.hostTimer = setInterval(() => {
+    if (party.role === "host") partyBroadcastState();
+    Object.keys(party.members).forEach(name => { if (Date.now() - party.members[name].at > 45000) delete party.members[name]; });
+    renderPartyPanel();
+  }, 4000);
+  void partyPoll();
 }
-function partySend(data) { if (party.socket?.readyState === 1) party.socket.send(JSON.stringify({ topic:party.topic, event:"broadcast", ref:String(party.ref++), payload:{ type:"party", ...data } })); }
-function partyHandleMessage(message) {
-  if (message.event !== "broadcast") return;
-  const data = message.payload?.type === "party" ? message.payload : message.payload?.payload?.type === "party" ? message.payload.payload : null;
-  if (data) partyReceive(data);
+async function partyPoll() {
+  if (!party.code || party.pollingBusy) return;
+  party.pollingBusy = true;
+  try {
+    const rows = await localAPI(`/api/party?code=${encodeURIComponent(party.code)}&since=${encodeURIComponent(party.cursor)}`);
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const data = row.payload;
+      if (row.created_at > party.cursor) party.cursor = row.created_at;
+      if (!data || data.sender === party.clientId) continue;
+      partyReceive(data);
+    }
+  } catch { /* Transient polling errors are retried on the next tick. */ }
+  party.pollingBusy = false;
+}
+function partySend(data) {
+  if (!party.code) return;
+  data = { ...data, sender: party.clientId };
+  void localAPI("/api/party", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ code:party.code, payload:data }) }).catch(() => {});
 }
 function partyTouchMember(name, color) { if (name) party.members[name] = { color:color || "#e50914", at:Date.now() }; }
 function partyBroadcastState() {
@@ -649,11 +651,6 @@ async function partyStart() {
   try {
     const code = partyCode();
     await partyConnect(code, "host");
-    if (!party.heartbeat) party.heartbeat = setInterval(() => {
-      if (party.role === "host") partyBroadcastState();
-      Object.keys(party.members).forEach(name => { if (Date.now() - party.members[name].at > 45000) delete party.members[name]; });
-      renderPartyPanel();
-    }, 4000);
     partySend({ kind:"join", name:currentProfile()?.name || "Host", color:currentProfile()?.color });
     const url = new URL(location.href);
     url.search = "";
@@ -672,8 +669,10 @@ async function partyJoin(code) {
 }
 function partyLeave() {
   try { party.socket?.close(); } catch {}
-  clearInterval(party.heartbeat);
-  party.code = null; party.role = null; party.socket = null; party.heartbeat = null; party.members = {}; party.chat = []; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.hostKey = ""; party.hostPosition = 0; party.guestTime = 0; party.lastHostTime = 0;
+  clearInterval(party.pollTimer);
+  clearInterval(party.hostTimer);
+  party.pollTimer = null; party.hostTimer = null;
+  party.code = null; party.role = null; party.socket = null; party.members = {}; party.chat = []; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.hostKey = ""; party.hostPosition = 0; party.guestTime = 0; party.lastHostTime = 0; party.cursor = null;
   const url = new URL(location.href);
   url.searchParams.delete("watch");
   history.replaceState(null, "", url);
