@@ -741,13 +741,28 @@ function renderPartyPanel() {
     renderPartyPanel();
   };
 }
+function showPartyModal() {
+  document.querySelector(".modal")?.remove();
+  app.insertAdjacentHTML("beforeend", `<div class="modal party-modal"><section class="auth-card"><button class="modal-close" type="button" data-party-modal-close>×</button><span class="brand">WATCH PARTY</span><h2>Watch together</h2><p>Start a party and share the code — or join a friend's with theirs.</p><button class="primary auth-submit" type="button" data-party-start-modal>Start a party</button><div class="party-join-row"><input type="text" maxlength="6" placeholder="CODE" aria-label="Party code" autocomplete="off" spellcheck="false"><button class="secondary" type="button" data-party-join-modal>Join</button></div><p class="form-error" data-party-modal-error hidden></p></section></div>`);
+  document.querySelector("[data-party-modal-close]").onclick = () => document.querySelector(".party-modal")?.remove();
+  document.querySelector(".party-modal").addEventListener("click", event => { if (event.target.classList.contains("party-modal")) document.querySelector(".party-modal")?.remove(); });
+  document.querySelector("[data-party-start-modal]").onclick = async () => { document.querySelector(".party-modal")?.remove(); await partyStart(); };
+  const join = async () => {
+    const input = document.querySelector(".party-join-row input"), error = document.querySelector("[data-party-modal-error]"), code = input.value.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4,8}$/.test(code)) { error.hidden = false; error.textContent = "Enter the 6-character party code."; return; }
+    document.querySelector(".party-modal")?.remove();
+    await partyJoin(code);
+  };
+  document.querySelector("[data-party-join-modal]").onclick = join;
+  document.querySelector(".party-join-row input").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); join(); } };
+}
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextAction = next ? `<button class="secondary player-next" data-play-next>${t("Next episode")} <b>›</b> ${escapeHTML(next.name || `Episode ${next.episode_number}`)}</button>` : "";
-  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : `<button class="party-start" data-party-start>⇄ Watch together</button>`}</div><div class="player-frame"><iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame"><iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
-  document.querySelector("[data-party-start]")?.addEventListener("click", partyStart);
+  document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
   renderPartyPanel();
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
   document.querySelector("[data-play-next]")?.addEventListener("click", () => playEpisode(next.episode_number, false));
