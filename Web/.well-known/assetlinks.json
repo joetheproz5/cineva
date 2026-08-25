@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.example.cineva",
+    "sha256_cert_fingerprints": ["57:6B:5D:DC:F9:15:3F:18:67:71:96:DA:83:3E:7B:63:37:F5:B9:2E:42:DA:CB:CD:EF:51:2C:13:9E:CA:83:51"]
+  }
+}]
