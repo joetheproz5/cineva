@@ -625,7 +625,6 @@ function partyBroadcastState() {
   partySend({ kind:"state", key:`${p.type}:${p.id}:${p.season || 0}:${p.episode || 0}`, position:Math.floor(party.lastHostTime || 0), event:party.hostEvent, name:currentProfile()?.name || "Host", color:currentProfile()?.color });
 }
 function partyReceive(data) {
-  if (!document.querySelector(".party-panel") && !document.querySelector("[data-party-start]")) return;
   if (data.kind === "hello" && party.role === "host") { partyTouchMember(data.name, data.color); partyBroadcastState(); renderPartyPanel(); return; }
   if (data.kind === "state" && party.role === "guest") {
     party.hostKey = data.key || ""; party.hostPosition = Number(data.position) || 0; partyTouchMember(data.name, data.color);
@@ -689,9 +688,19 @@ function partySyncToHost() {
   party.outOfSync = false;
   render();
 }
+function ensurePartyPanel() {
+  let panel = document.querySelector(".party-panel");
+  if (!panel && state.route === "player") {
+    document.querySelector(".now")?.insertAdjacentHTML("afterend", `<section class="party-panel"></section>`);
+    panel = document.querySelector(".party-panel");
+  }
+  return panel;
+}
 function renderPartyPanel() {
-  const panel = document.querySelector(".party-panel");
-  if (!panel || !party.code) return;
+  if (party.code) document.querySelector("[data-party-start]")?.remove();
+  const panel = ensurePartyPanel();
+  if (!panel) return;
+  if (!party.code) { if (party.error) panel.innerHTML = `<div class="party-head"><span class="brand">WATCH PARTY</span></div><p class="party-status">${escapeHTML(party.error)}</p>`; return; }
   const members = Object.entries(party.members);
   const currentKey = state.player ? `${state.player.type}:${state.player.id}:${state.player.season || 0}:${state.player.episode || 0}` : "";
   const differentTitle = party.role === "guest" && party.hostKey && party.hostKey !== currentKey;
@@ -857,7 +866,7 @@ function isHiddenTitle(item) { return hiddenTitles().some(hidden => hiddenTitleK
 function likedTitles() { return Array.isArray(currentProfile()?.likedTitles) ? currentProfile().likedTitles.filter(item => item?.type && item?.id) : []; }
 function isLikedTitle(item) { return likedTitles().some(liked => hiddenTitleKey(liked) === hiddenTitleKey(item)); }
 function hideAction() { return ""; }
-function ratingAction(item) { if (!state.user) return ""; const liked = isLikedTitle(item); return `<div class="title-feedback"><span>Rate this title</span><button type="button" class="${liked ? "liked" : ""}" data-like-title>${liked ? "♥ You liked this" : "♡ I like this"}</button><button type="button" data-hide-title>⊘ Not for me</button></div>`; }
+function ratingAction(item) { if (!state.user) return ""; const liked = isLikedTitle(item); return `<div class="title-feedback"><span>Rate this title</span><div class="rate-buttons"><button type="button" class="rate-btn up ${liked ? "selected" : ""}" data-like-title aria-label="I like this"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 21h3V9H2v12zM22 10c0-1.1-.9-2-2-2h-6.3l1-4.6c.1-.5-.1-1-.5-1.3l-1.1-1c-.4-.4-1-.4-1.4 0L6 7v14h11c.8 0 1.5-.5 1.8-1.3l2.1-7c.1-.2.1-.4.1-.7v-2z"/></svg></button><button type="button" class="rate-btn down" data-hide-title aria-label="Not for me"><svg viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(180deg)"><path d="M2 21h3V9H2v12zM22 10c0-1.1-.9-2-2-2h-6.3l1-4.6c.1-.5-.1-1-.5-1.3l-1.1-1c-.4-.4-1-.4-1.4 0L6 7v14h11c.8 0 1.5-.5 1.8-1.3l2.1-7c.1-.2.1-.4.1-.7v-2z"/></svg></button></div><em class="rate-note">${liked ? "Thanks — recommendations updated." : ""}</em></div>`; }
 async function likeTitle(item) {
   const profile = currentProfile();
   if (!profile) return showAuth();

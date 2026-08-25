@@ -360,11 +360,14 @@
 .account-page .password-form .secondary { border-radius: 3px; background: #333; }
 .account-page .account-signout { border-bottom: 0; }
 
-.title-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; color: #a5a5a5; font-size: 11px; }
-.title-feedback > span { margin-right: 2px; font-weight: 700; }
-.title-feedback button { padding: 7px 10px; border: 1px solid #3b3b3b; border-radius: 999px; color: #d4d4d4; background: #171717; font-size: 11px; font-weight: 750; }
-.title-feedback button:hover { border-color: #8c2730; color: #fff; background: #261013; }
-.title-feedback button.liked { border-color: #b31b25; color: #fff; background: #441116; }
+.title-feedback { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.title-feedback > span { color: #8c8c8c; font-size: 12px; font-weight: 600; }
+.rate-buttons { display: flex; gap: 8px; }
+.rate-btn { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1px solid #4d4d4d; border-radius: 50%; color: #fff; background: rgba(42, 42, 42, 0.6); transition: border-color .15s ease, background .15s ease, transform .1s ease; }
+.rate-btn svg { width: 17px; height: 17px; fill: currentColor; }
+.rate-btn:hover { border-color: #fff; transform: scale(1.06); }
+.rate-btn.selected { border-color: #fff; background: #fff; color: #141414; }
+.rate-note { color: #8c8c8c; font-size: 11.5px; font-style: normal; }
 .title-share { display: inline-flex; margin-top: 10px; padding: 4px 0; color: #bcbcbc; background: transparent; font-size: 11px; font-weight: 750; text-decoration: underline; text-underline-offset: 3px; }
 .title-share:hover { color: #fff; }
 .seven-toast { position: fixed; z-index: 30; right: max(18px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); max-width: min(320px, calc(100vw - 36px)); padding: 11px 14px; border: 1px solid #4a282b; border-radius: 8px; color: #f5f5f5; background: #1a1314; box-shadow: 0 12px 32px #0009; font-size: 12px; font-weight: 700; animation: seven-toast-in .2s ease-out; }
