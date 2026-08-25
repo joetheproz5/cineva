@@ -467,3 +467,6 @@ html, body { overflow-x: hidden; }
 .party-join-row input:focus { border-color: #666; }
 .party-join-row .secondary { padding: 0 18px; border-radius: 8px; background: #262626; }
 .party-modal .auth-submit { margin-top: 4px; }
+
+.screen-time-rows.row-disabled { opacity: .45; }
+.screen-time-rows.row-disabled .profile-mobile-row small { color: #7a7a7a; }
