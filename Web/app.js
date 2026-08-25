@@ -37,7 +37,7 @@ const UI_STRINGS = {
     "Unlock options":"فتح الخيارات", "+30 min":"+30 دقيقة", "+1 hour":"+1 ساعة", "Off for today":"إيقاف لهذا اليوم",
     "Watch now":"شاهد الآن", "Next trailer":"الإعلان التالي", "Next episode":"الحلقة التالية", "Back":"رجوع",
     "Continue watching":"متابعة المشاهدة", "New episodes":"حلقات جديدة", "Trending now":"الأكثر رواجاً الآن", "New movies":"أفلام جديدة", "New series":"مسلسلات جديدة", "Popular movies":"أفلام شائعة", "Popular series":"مسلسلات شائعة", "Coming soon":"قريباً", "All-time greats":"الأعظم على الإطلاق", "Action & adventure":"أكشن ومغامرة",
-    "RECENT SEARCHES":"عمليات البحث الأخيرة", "Clear":"مسح",
+    "RECENT SEARCHES":"عمليات البحث الأخيرة", "Top searches":"الأكثر بحثاً", "Clear":"مسح",
     "Password updated.":"تم تحديث كلمة المرور.", "Done":"تم"
   },
   French: {
@@ -65,7 +65,7 @@ const UI_STRINGS = {
     "Unlock options":"Débloquer les options", "+30 min":"+30 min", "+1 hour":"+1 heure", "Off for today":"Désactivé aujourd'hui",
     "Watch now":"Regarder", "Next trailer":"BA suivante", "Next episode":"Épisode suivant", "Back":"Retour",
     "Continue watching":"Reprendre", "New episodes":"Nouveaux épisodes", "Trending now":"Tendances", "New movies":"Nouveaux films", "New series":"Nouvelles séries", "Popular movies":"Films populaires", "Popular series":"Séries populaires", "Coming soon":"Prochainement", "All-time greats":"Les grands classiques", "Action & adventure":"Action et aventure",
-    "RECENT SEARCHES":"RECHERCHES RÉCENTES", "Clear":"Effacer",
+    "RECENT SEARCHES":"RECHERCHES RÉCENTES", "Top searches":"Recherches populaires", "Clear":"Effacer",
     "Password updated.":"Mot de passe mis à jour.", "Done":"Terminé"
   }
 };
@@ -219,12 +219,12 @@ function header() {
   const profile = currentProfile() || defaultAccount().profiles[0], settingsMode = ["account", "profile-settings"].includes(state.route);
   const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : ""
   const account = !settingsMode && state.user ? `<button class="account signed-in" data-account title="Account">${profileAvatar(profile)}<i class="account-caret" aria-hidden="true">▾</i></button>` : !settingsMode ? `<button class="account" data-auth aria-label="Open account"><span>◉</span><b>${t("Account")}</b></button>` : "";
-  const search = !settingsMode && currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="${t("Titles, movies, series")}" autocomplete="off" enterkeyhint="search" aria-label="Search titles"><div class="search-suggestions" hidden></div></div>` : "";
+  const search = !settingsMode && currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="${t("Titles, movies, series")}" autocomplete="off" enterkeyhint="search" aria-label="Search titles"><div class="search-suggestions" hidden></div></div><button class="msearch-open" data-msearch aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>` : "";
   const navigation = `<nav aria-label="Main navigation"><button class="nav-link ${activeNav === "home" ? "active" : ""}" data-home><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg><span>${t("Home")}</span></button><button class="nav-link ${activeNav === "for-you" ? "active" : ""}" data-for-you><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></svg><span>${t("For You")}</span></button><button class="nav-link ${activeNav === "movies" ? "active" : ""}" data-movies><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4Z M4 9h16 M8 5l3 4m2-4 3 4M8 20l3-4m2 4 3-4"/></svg><span>${t("Movies")}</span></button><button class="nav-link ${activeNav === "shows" ? "active" : ""}" data-shows><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 2 5m11-3 3 3m-7 4 4 3-4 3Z"/></svg><span>${t("Series")}</span></button></nav>`;
   return `<header class="${settingsMode ? "settings-header" : "main-header"}"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="/assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-wordmark" aria-hidden="true">SEVEN</div><div class="footer-inner"><small>Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></footer>`; }
-function render() { if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); renderHome(); }
+function render() { if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
 async function profileSecret(value) { if (!globalThis.crypto?.subtle) throw new Error("Profile locks need a modern browser."); const bytes = new TextEncoder().encode(value), hash = await globalThis.crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join(""); }
 const PARENT_ACCESS_KEY = "seven.parent-access";
 function hasParentAccess() { return !parentAccessConfigured(); }
@@ -470,6 +470,45 @@ function bindPlayerEpisodes(player) {
     bindPlayerEpisodes(player);
   });
   document.querySelectorAll("[data-player-episode]").forEach(button => button.onclick = () => playEpisode(Number(button.dataset.playerEpisode), false));
+}
+function openMobileSearch() {
+  if (state.route !== "msearch") state.mSearchReturn = state.route;
+  state.route = "msearch";
+  state.mSearch ||= { query: state.search || "", results: state.searchResults || [], trending: state.catalog["Trending now"]?.slice(0, 12) || null };
+  if (!state.mSearch.trending) api("trending/all/week").then(payload => { state.mSearch.trending = results(payload).slice(0, 12); if (state.route === "msearch" && (state.mSearch.query || "").trim().length < 2) renderMSearch(); }).catch(() => { state.mSearch.trending = []; });
+  render();
+  setTimeout(() => document.querySelector("#msearch-input")?.focus(), 80);
+}
+function renderMSearch() {
+  const view = state.mSearch || { query:"", results:[], trending:null };
+  app.innerHTML = `${header()}<div class="msearch-page"><div class="msearch-bar"><button class="msearch-back" data-msearch-back aria-label="${t("Back")}">‹</button><div class="msearch-input-wrap"><span class="msearch-magnifier" aria-hidden="true">⌕</span><input id="msearch-input" type="search" placeholder="${t("Titles, movies, series")}" value="${escapeHTML(view.query || "")}" autocomplete="off" enterkeyhint="search"><button class="msearch-clear" data-msearch-clear ${view.query ? "" : "hidden"} aria-label="Clear">×</button></div></div><div id="msearch-body"></div></div>`;
+  bindCommon();
+  const body = document.querySelector("#msearch-body"), input = document.querySelector("#msearch-input"), clearButton = document.querySelector("[data-msearch-clear]");
+  const renderIdle = () => {
+    const trending = view.trending;
+    body.innerHTML = `<h2 class="msearch-title">${t("Top searches")}</h2><div class="msearch-top">${!trending ? Array.from({ length: 8 }, () => `<div class="msearch-top-item"><div class="skeleton" style="aspect-ratio:16/9"></div></div>`).join("") : trending.length ? trending.map((item, index) => `<button class="msearch-top-item" data-open="${item.type}:${item.id}"><img src="${item.backdrop_path ? TMDB_IMAGE + item.backdrop_path : posterOf(item)}" alt="" loading="lazy"><b>${index + 1}</b><span>${escapeHTML(titleOf(item))}</span></button>`).join("") : `<p class="msearch-empty">Nothing to show yet.</p>`}</div>`;
+    bindCommon();
+  };
+  const renderResults = (items, loading, query) => {
+    body.innerHTML = loading ? `<div class="msearch-grid">${Array.from({ length: 6 }, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div>` : items.length ? `<div class="msearch-grid">${items.map(card).join("")}</div>` : `<p class="msearch-empty">No matches for “${escapeHTML(query)}”.</p>`;
+    bindCommon();
+  };
+  if ((view.query || "").trim().length >= 2) renderResults(view.results, false, view.query); else renderIdle();
+  clearButton.onclick = () => { input.value = ""; view.query = ""; view.results = []; clearButton.hidden = true; renderIdle(); input.focus(); };
+  document.querySelector("[data-msearch-back]").onclick = () => { state.route = state.mSearchReturn || "home"; state.mSearchReturn = null; render(); };
+  let timer;
+  input.oninput = () => {
+    view.query = input.value;
+    clearButton.hidden = !input.value;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const query = input.value.trim();
+      if (query.length < 2) { view.results = []; renderIdle(); return; }
+      renderResults([], true, query);
+      try { view.results = results(await api("search/multi", { query })); } catch { view.results = []; }
+      if (input.value.trim() === query && state.route === "msearch") renderResults(view.results, false, query);
+    }, 300);
+  };
 }
 async function openTrailers() {
   state.route = "trailers";
@@ -1064,6 +1103,7 @@ function bindCommon() {
   document.querySelectorAll("[data-movies]").forEach(button => button.onclick = () => openCatalog("movie"));
   document.querySelectorAll("[data-shows]").forEach(button => button.onclick = () => openCatalog("tv"));
   document.querySelectorAll("[data-auth]").forEach(button => button.onclick = () => showAuth());
+  document.querySelectorAll("[data-msearch]").forEach(button => button.onclick = openMobileSearch);
   document.querySelectorAll("[data-account]").forEach(button => button.onclick = showAccount);
 }
 function syncHeaderScroll() { document.querySelector("header.main-header")?.classList.toggle("scrolled", (window.scrollY || 0) > 12); }
