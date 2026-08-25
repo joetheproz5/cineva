@@ -484,6 +484,16 @@ function renderMSearch() {
   app.innerHTML = `${header()}<div class="msearch-page"><div class="msearch-bar"><button class="msearch-back" data-msearch-back aria-label="${t("Back")}">‹</button><div class="msearch-input-wrap"><span class="msearch-magnifier" aria-hidden="true">⌕</span><input id="msearch-input" type="search" placeholder="${t("Titles, movies, series")}" value="${escapeHTML(view.query || "")}" autocomplete="off" enterkeyhint="search"><button class="msearch-clear" data-msearch-clear ${view.query ? "" : "hidden"} aria-label="Clear">×</button></div></div><div id="msearch-body"></div></div>`;
   bindCommon();
   const body = document.querySelector("#msearch-body"), input = document.querySelector("#msearch-input"), clearButton = document.querySelector("[data-msearch-clear]");
+  const viewport = window.visualViewport;
+  const alignViewport = () => {
+    const page = document.querySelector(".msearch-page");
+    if (!page) { viewport?.removeEventListener("resize", alignViewport); viewport?.removeEventListener("scroll", alignViewport); return; }
+    page.style.top = `${viewport?.offsetTop || 0}px`;
+    page.style.height = `${viewport?.height || window.innerHeight}px`;
+  };
+  viewport?.addEventListener("resize", alignViewport);
+  viewport?.addEventListener("scroll", alignViewport);
+  alignViewport();
   const renderIdle = () => {
     const trending = view.trending;
     body.innerHTML = `<h2 class="msearch-title">${t("Top searches")}</h2><div class="msearch-top">${!trending ? Array.from({ length: 8 }, () => `<div class="msearch-top-item"><div class="skeleton" style="aspect-ratio:16/9"></div></div>`).join("") : trending.length ? trending.map((item, index) => `<button class="msearch-top-item" data-open="${item.type}:${item.id}"><img src="${item.backdrop_path ? TMDB_IMAGE + item.backdrop_path : posterOf(item)}" alt="" loading="lazy"><b>${index + 1}</b><span>${escapeHTML(titleOf(item))}</span></button>`).join("") : `<p class="msearch-empty">Nothing to show yet.</p>`}</div>`;
