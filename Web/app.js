@@ -37,7 +37,7 @@ const UI_STRINGS = {
     "Unlock options":"فتح الخيارات", "+30 min":"+30 دقيقة", "+1 hour":"+1 ساعة", "Off for today":"إيقاف لهذا اليوم",
     "Watch now":"شاهد الآن", "Next trailer":"الإعلان التالي", "Next episode":"الحلقة التالية", "Back":"رجوع",
     "Continue watching":"متابعة المشاهدة", "New episodes":"حلقات جديدة", "Trending now":"الأكثر رواجاً الآن", "New movies":"أفلام جديدة", "New series":"مسلسلات جديدة", "Popular movies":"أفلام شائعة", "Popular series":"مسلسلات شائعة", "Coming soon":"قريباً", "All-time greats":"الأعظم على الإطلاق", "Action & adventure":"أكشن ومغامرة",
-    "RECENT SEARCHES":"عمليات البحث الأخيرة", "Clear":"مسح",
+    "RECENT SEARCHES":"عمليات البحث الأخيرة", "Top searches":"الأكثر بحثاً", "Clear":"مسح",
     "Password updated.":"تم تحديث كلمة المرور.", "Done":"تم"
   },
   French: {
@@ -65,7 +65,7 @@ const UI_STRINGS = {
     "Unlock options":"Débloquer les options", "+30 min":"+30 min", "+1 hour":"+1 heure", "Off for today":"Désactivé aujourd'hui",
     "Watch now":"Regarder", "Next trailer":"BA suivante", "Next episode":"Épisode suivant", "Back":"Retour",
     "Continue watching":"Reprendre", "New episodes":"Nouveaux épisodes", "Trending now":"Tendances", "New movies":"Nouveaux films", "New series":"Nouvelles séries", "Popular movies":"Films populaires", "Popular series":"Séries populaires", "Coming soon":"Prochainement", "All-time greats":"Les grands classiques", "Action & adventure":"Action et aventure",
-    "RECENT SEARCHES":"RECHERCHES RÉCENTES", "Clear":"Effacer",
+    "RECENT SEARCHES":"RECHERCHES RÉCENTES", "Top searches":"Recherches populaires", "Clear":"Effacer",
     "Password updated.":"Mot de passe mis à jour.", "Done":"Terminé"
   }
 };
