@@ -486,3 +486,13 @@ html, body { overflow-x: hidden; }
   .account.signed-in { display: flex; align-items: center; gap: 7px; }
   .account-caret { color: #fff; font-size: 10px; font-style: normal; }
 }
+
+/* ---- Netflix-style mobile top header ---- */
+@media (max-width: 650px) {
+  header.main-header { position: sticky; z-index: 90; top: 0; width: 100vw; margin-left: calc(50% - 50vw); padding: calc(10px + env(safe-area-inset-top)) 16px 10px; background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%); transition: background .25s ease; }
+  header.main-header.scrolled { background: #0d0d0d; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+  header.main-header .search { border-color: transparent; background: rgba(255, 255, 255, 0.07); }
+  header.main-header .search:focus-within { border-color: #3a3a3a; background: #141414; }
+  .account.signed-in { display: flex; align-items: center; gap: 5px; }
+  .account-caret { color: #fff; font-size: 9px; font-style: normal; }
+}
