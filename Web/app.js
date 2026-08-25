@@ -595,7 +595,12 @@ function bindExtendButtons(overlay, profile) {
 }
 const party = { code:null, role:null, socket:null, topic:null, ref:1, members:{}, hostKey:"", hostPosition:0, hostEvent:"", guestTime:0, lastHostTime:0, following:false, didInitialSync:false, outOfSync:false, chat:[], heartbeat:null, error:"" };
 function partyCode() { const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let code = ""; for (let index = 0; index < 6; index++) code += alphabet[Math.floor(Math.random() * alphabet.length)]; return code; }
-async function partySettings() { const data = await localAPI("/api/config"); if (data.supabase?.url && data.supabase?.publishableKey) return data.supabase; throw new Error("Watch parties are not configured."); }
+async function partySettings() {
+  const data = await localAPI("/api/config");
+  if (data.realtimeKey && data.supabase?.url) return { url: data.supabase.url, publishableKey: data.realtimeKey };
+  if (data.supabase?.url && data.supabase?.publishableKey) return data.supabase;
+  throw new Error("Watch parties are not configured.");
+}
 async function partyConnect(code, role) {
   const settings = await partySettings();
   return new Promise((resolve, reject) => {

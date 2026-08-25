@@ -30,7 +30,8 @@ function supabase(env) {
 function config(env) {
   return json({
     configured: Boolean(env.TMDB_BEARER_TOKEN && env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY),
-    supabase: supabase(env)
+    supabase: supabase(env),
+    realtimeKey: env.SUPABASE_REALTIME_KEY || ""
   });
 }
 
