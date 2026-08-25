@@ -497,28 +497,3 @@ html, body { overflow-x: hidden; }
   .account-caret { color: #fff; font-size: 9px; font-style: normal; }
 }
 
-/* ---- Netflix-style mobile full-screen search ---- */
-.msearch-open { display: none; }
-@media (max-width: 650px) {
-  header.main-header .search { display: none; }
-  .msearch-open { display: grid; place-items: center; width: 38px; height: 38px; margin-left: auto; border: 0; border-radius: 8px; color: #fff; background: transparent; }
-  .msearch-open svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-  .msearch-page { min-height: 62vh; background: #0d0d0d; padding: 6px 16px 40px; }
-  .msearch-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
-  .msearch-back { width: 34px; height: 38px; flex: 0 0 auto; color: #fff; background: transparent; font-size: 26px; line-height: 1; }
-  .msearch-input-wrap { position: relative; display: flex; align-items: center; flex: 1; }
-  .msearch-magnifier { position: absolute; left: 12px; color: #888; font-size: 17px; }
-  #msearch-input { width: 100%; padding: 11px 38px 11px 36px; border: 0; border-radius: 8px; outline: 0; color: #fff; background: #1f1f1f; font: inherit; font-size: 16px; }
-  #msearch-input::-webkit-search-cancel-button { display: none; }
-  .msearch-clear { position: absolute; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; color: #ddd; background: #333; font-size: 15px; line-height: 1; }
-  .msearch-title { margin: 4px 0 14px; color: #fff; font-size: 19px; letter-spacing: -.4px; }
-  .msearch-top { display: grid; gap: 10px; }
-  .msearch-top-item { position: relative; overflow: hidden; padding: 0; border: 0; border-radius: 6px; background: #181818; }
-  .msearch-top-item img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
-  .msearch-top-item b { position: absolute; left: 10px; bottom: 9px; color: #fff; font-size: 24px; font-weight: 900; text-shadow: 0 2px 10px #000; }
-  .msearch-top-item span { position: absolute; left: 52px; bottom: 15px; overflow: hidden; max-width: calc(100% - 64px); color: #fff; font-size: 13.5px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 2px 10px #000; }
-  .msearch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .msearch-grid .card { width: 100%; }
-  .msearch-grid .card img { width: 100%; height: auto; }
-  .msearch-empty { color: #999; font-size: 13px; }
-}
