@@ -461,3 +461,4 @@ html, body { overflow-x: hidden; }
 .party-chat-form input:focus { border-color: #666; }
 .party-chat-form button { padding: 0 18px; border: 0; border-radius: 8px; color: #fff; background: #bd0c16; font-size: 12.5px; font-weight: 800; }
 .party-chat-form button:hover { background: #e21a26; }
+@media (max-width: 650px) { .party-chat-form input, .screen-time-code input { font-size: 16px; } }

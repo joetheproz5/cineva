@@ -165,12 +165,20 @@ async function refreshCatalogNow() {
   state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": results(upcoming), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]), ...(seasonalName && seasonalData ? { [seasonalName]: results(seasonalData) } : {}) };
   await loadNewEpisodes(state.catalog["New series"]);
 }
+function playMovieNow(movie) { state.player = { type:"movie", id:movie.id, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:0 }; state.route = "player"; render(); scrollToTop(); }
 async function boot() {
   await restoreSession();
   applyLocale();
-  state.pendingWatch = new URLSearchParams(location.search).get("watch") || null;
-  const shared = sharedTitleTarget();
-  if (shared) { await openItem(shared.type, shared.id); return; }
+  const params = new URLSearchParams(location.search);
+  state.pendingWatch = params.get("watch") || null;
+  const deep = (params.get("title") || "").match(/^(movie|tv):(\d+)(?::(\d+):(\d+))?$/);
+  if (state.pendingWatch && deep) {
+    if (deep[1] === "movie") { await openItem("movie", Number(deep[2])); if (state.movie) playMovieNow(state.movie); return; }
+    await openItem("tv", Number(deep[2]));
+    if (state.series) { state.selectedSeason = Number(deep[3]) || 1; playEpisode(Number(deep[4]) || 1, false); }
+    return;
+  }
+  if (deep) { await openItem(deep[1], Number(deep[2])); return; }
   if (!navigator.onLine) return renderOfflineScreen();
   if (state.user) { state.route = "profiles"; render(); } else renderLoading();
   await loadStartupData();
@@ -419,7 +427,7 @@ function renderPerson() {
 function renderMovie() {
   const movie = state.movie;
   app.innerHTML = `${header()}<button class="back" data-home>‹ Browse</button><section class="detail"><img src="${posterOf(movie)}" alt="${escapeHTML(titleOf(movie))}"><div><span class="brand">MOVIE</span><h1>${escapeHTML(titleOf(movie))}</h1><div class="meta"><span>${yearOf(movie)}</span><i></i><span>${movie.runtime ? `${movie.runtime} min` : "Movie"}</span><i></i><span>${movie.vote_average ? `★ ${movie.vote_average.toFixed(1)}` : "TV-14"}</span></div><p>${escapeHTML(movie.overview || "")}</p><div class="actions"><button class="primary" data-play-movie><b>▶</b> Play movie</button><button class="secondary list-action ${isInMyList(movie) ? "saved" : ""}" data-toggle-my-list>${isInMyList(movie) ? "✓ In My List" : "+ My List"}</button>${trailerAction()}${hideAction(movie)}</div></div></section>${mediaInfo(movie, "movie")}${footer()}`;
-  bindCommon(); document.querySelector(".detail > div")?.insertAdjacentHTML("beforeend", ratingAction(movie) + shareAction(movie)); document.querySelector("[data-play-movie]").onclick = () => { state.player = { type:"movie", id:movie.id, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:0 }; state.route = "player"; render(); scrollToTop(); }; document.querySelector("[data-toggle-my-list]")?.addEventListener("click", () => toggleMyList(movie)); document.querySelector("[data-trailer]")?.addEventListener("click", showTrailer); document.querySelector("[data-hide-title]")?.addEventListener("click", () => hideTitle(movie)); document.querySelector("[data-like-title]")?.addEventListener("click", () => likeTitle(movie)); document.querySelector("[data-share-title]")?.addEventListener("click", () => shareTitle(movie));
+  bindCommon(); document.querySelector(".detail > div")?.insertAdjacentHTML("beforeend", ratingAction(movie) + shareAction(movie)); document.querySelector("[data-play-movie]").onclick = () => playMovieNow(movie); document.querySelector("[data-toggle-my-list]")?.addEventListener("click", () => toggleMyList(movie)); document.querySelector("[data-trailer]")?.addEventListener("click", showTrailer); document.querySelector("[data-hide-title]")?.addEventListener("click", () => hideTitle(movie)); document.querySelector("[data-like-title]")?.addEventListener("click", () => likeTitle(movie)); document.querySelector("[data-share-title]")?.addEventListener("click", () => shareTitle(movie));
 }
 function renderSeries() {
   const s = state.series, seasons = (s.seasons || []).filter(x => x.season_number > 0), tracking = seriesTracking(s), upNext = state.seriesNext, next = upNext?.episode || nextEpisodeInSeason(s), nextSeason = upNext?.season || state.selectedSeason, episodeTotal = tracking.total || "—", progress = tracking.total ? Math.min(100, Math.round(tracking.watched / tracking.total * 100)) : 0;

@@ -54,15 +54,23 @@ jobs:
       - name: Build release APK
         run: gradle -p Android assembleRelease --no-daemon
 
+      - name: Publish assetlinks for app links
+        run: |
+          PASS=$(grep '^storePassword=' Android/keystore.properties | cut -d= -f2)
+          FPRINT=$(keytool -list -v -keystore Android/seven.keystore -alias seven -storepass "$PASS" 2>/dev/null | grep -m1 'SHA256:' | sed 's/.*SHA256: //')
+          mkdir -p Web/.well-known
+          printf '[{\n  "relation": ["delegate_permission/common.handle_all_urls"],\n  "target": {\n    "namespace": "android_app",\n    "package_name": "com.example.cineva",\n    "sha256_cert_fingerprints": ["%s"]\n  }\n}]\n' "$FPRINT" > Web/.well-known/assetlinks.json
+          cat Web/.well-known/assetlinks.json
+
       - name: Publish APK to download site
         run: |
           mkdir -p Web/downloads
           cp Android/app/build/outputs/apk/release/app-release.apk Web/downloads/seven.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Web/downloads/seven.apk
+          git add Web/downloads/seven.apk Web/.well-known/assetlinks.json
           if ! git diff --cached --quiet; then
-            git commit -m "Update Android APK build"
+            git commit -m "Update Android APK build and app links"
             git push
           fi
 
