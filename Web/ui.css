@@ -522,3 +522,5 @@ html, body { overflow-x: hidden; }
   .msearch-grid .card img { width: 100%; height: auto; }
   .msearch-empty { color: #999; font-size: 13px; }
 }
+.provider-toggle { padding: 7px 14px; border: 1px solid #3a3a3a; border-radius: 99px; color: #ccc; background: #1a1a1a; font-size: 11.5px; font-weight: 700; white-space: nowrap; transition: border-color .15s ease, background .15s ease; }
+.provider-toggle:hover { border-color: #666; background: #262626; color: #fff; }
