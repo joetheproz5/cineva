@@ -454,7 +454,7 @@ function playerURL(item, progress = 0) {
     return `https://vidsrc.sbs/embed/${base}?autoplay=1&color=b20710${progress > 0 ? `&t=${Math.floor(progress)}` : ""}`;
   }
   if (provider === "vidlink") {
-    const base = item.type === "movie" ? `movie/tmdb:${item.id}` : `tv/tmdb:${item.id}/${item.season || 1}/${item.episode || 1}`;
+    const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season || 1}/${item.episode || 1}`;
     return `https://vidlink.pro/${base}?${new URLSearchParams({ primaryColor:"B20710", secondaryColor:"170000", iconColor:"B20710", autoplay:"true", nextbutton:"true", ...(progress > 0 ? { startAt:String(Math.floor(progress)) } : {}) })}`;
   }
 
