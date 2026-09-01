@@ -45,6 +45,8 @@ class MainActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
+            settings.setSupportMultipleWindows(false)
+            settings.javaScriptCanOpenWindowsAutomatically = false
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             setBackgroundColor(Color.BLACK)
@@ -52,7 +54,9 @@ class MainActivity : Activity() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     val url = request.url
                     if (url.host == APP_HOST || url.host?.endsWith(".pages.dev") == true) return false
-                    return runCatching { startActivity(Intent(Intent.ACTION_VIEW, url)); true }.getOrDefault(false)
+                    // The app shell must never navigate to an advertiser's page. Cross-origin player
+                    // requests remain inside their iframe; top-level popups and redirects are cancelled.
+                    return request.isForMainFrame
                 }
                 override fun onPageFinished(view: WebView, finishedUrl: String) {
                     offline = finishedUrl.startsWith("file://")
@@ -66,6 +70,10 @@ class MainActivity : Activity() {
                 }
             }
             webChromeClient = object : WebChromeClient() {
+                override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
+                    // Do not create WebViews for window.open()/target=_blank advertising popups.
+                    return false
+                }
                 override fun onShowCustomView(view: View, callback: CustomViewCallback) {
                     if (customView != null) { callback.onCustomViewHidden(); return }
                     customView = view

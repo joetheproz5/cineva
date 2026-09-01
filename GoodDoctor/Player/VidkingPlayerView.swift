@@ -19,16 +19,27 @@ struct VidkingPlayerView: UIViewRepresentable {
         """, injectionTime: .atDocumentStart, forMainFrameOnly: false))
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.backgroundColor = .black; webView.isOpaque = false; webView.scrollView.isScrollEnabled = false
+        webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
         webView.load(URLRequest(url: url)); return webView
     }
     func updateUIView(_ webView: WKWebView, context: Context) { }
 
-    final class Coordinator: NSObject, WKScriptMessageHandler {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         let onPlayerEvent: (PlayerEvent) -> Void
         init(onPlayerEvent: @escaping (PlayerEvent) -> Void) { self.onPlayerEvent = onPlayerEvent }
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let text = message.body as? String, let data = text.data(using: .utf8), let envelope = try? JSONDecoder().decode(PlayerEventEnvelope.self, from: data), envelope.type == "PLAYER_EVENT" else { return }
             onPlayerEvent(envelope.data)
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            // Embedded players frequently use target=_blank/window.open for ads. Keep playback in this view.
+            decisionHandler(navigationAction.targetFrame == nil ? .cancel : .allow)
+        }
+
+        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            nil
         }
     }
 }
