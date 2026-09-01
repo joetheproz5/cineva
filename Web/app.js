@@ -842,11 +842,14 @@ function simplifiedTitleQuery(query) {
   const simplified = query.trim().replace(/\b(new|latest|series|tv\s+show|show|movie|film|gameplay|trailer|official)\b/gi, " ").replace(/\s+/g, " ").trim();
   return simplified.length >= 2 && simplified.toLowerCase() !== query.trim().toLowerCase() ? simplified : null;
 }
+function searchResults(payload) {
+  return (payload.results || []).filter(item => item.media_type !== "person").map(item => normalize(item));
+}
 async function findTitles(query) {
-  const primary = results(await api("search/multi", { query }), { directSearch:true });
+  const primary = searchResults(await api("search/multi", { query }));
   if (primary.length) return primary;
   const fallback = simplifiedTitleQuery(query);
-  return fallback ? results(await api("search/multi", { query:fallback }), { directSearch:true }) : primary;
+  return fallback ? searchResults(await api("search/multi", { query:fallback })) : primary;
 }
 async function search(query) { state.search = query; state.searchFilter = "all"; if (query.trim().length < 2) { state.searchResults = []; state.route = "home"; render(); return; } void addRecentSearch(query.trim()); try { state.searchResults = await findTitles(query); state.route = "search"; } catch (error) { state.error = error.message; state.route = "home"; } render(); }
 function hideSearchSuggestions(input) { const menu = input?.closest(".search")?.querySelector(".search-suggestions"); if (menu) { menu.hidden = true; menu.innerHTML = ""; } }
@@ -1152,7 +1155,7 @@ window.addEventListener("scroll", syncHeaderScroll, { passive: true });
 window.addEventListener("click", () => { const providerList = document.querySelector("[data-provider-list]"); if (providerList && !providerList.hidden) providerList.hidden = true; });
 window.addEventListener("message", event => { let payload; try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; } if (state.route !== "player" || payload?.type !== "PLAYER_EVENT") return; const data = payload.data || {}, duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0; if (!duration) return; if (party.code) { if (party.role === "host") { party.lastHostTime = currentTime; party.hostEvent = String(data.event || ""); } else { party.guestTime = currentTime; } } const progress = Math.min(100, currentTime / duration * 100); localStorage.setItem(watchKey(state.player), JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()})); queueProgressSync(state.player, currentTime, duration, progress); const bar = document.querySelector("#bar"), time = document.querySelector("#time"); if (bar) bar.style.width = `${progress}%`; if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`; });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js?v=192").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("/service-worker.js?v=193").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });
