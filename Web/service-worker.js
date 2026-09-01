@@ -1,4 +1,4 @@
-const VERSION = "seven-v189";
+const VERSION = "seven-v190";
 const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v1";
 const SHELL = ["/", "/index.html", "/styles.css", "/auth.css", "/ui.css", "/app.js", "/manifest.webmanifest", "/icon.svg", "/assets/seven-logo-red.png", "/assets/seven-wordmark-v2.png",  "/assets/avatars/red-panda.png", "/assets/avatars/black-cat.png", "/assets/avatars/astronaut.png", "/assets/avatars/dino.png", "/assets/avatars/duck.png", "/assets/avatars/robot.png"];
