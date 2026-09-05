@@ -735,7 +735,7 @@ body:has(.home-page) {
 .series-social-actions .rate-btn { width: 35px; height: 35px; background: rgba(21,23,25,.72); }
 .series-social-actions .title-share { margin: 0; padding: 8px 0; text-decoration: none; }
 
-.series-shell { width: min(1260px,calc(100% - 40px)); margin: -20px auto 0; }
+.series-shell { width: min(1400px,calc(100% - 56px)); margin: -20px auto 0; }
 .series-dashboard { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.45fr); gap: 14px; }
 .series-progress-card,.series-next { min-height: 164px; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; background: linear-gradient(145deg,rgba(24,26,29,.94),rgba(10,11,13,.96)); box-shadow: 0 20px 55px rgba(0,0,0,.3); }
 .series-progress-card { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 10px 18px; align-items: center; overflow: hidden; padding: 27px 28px 31px; }
@@ -794,6 +794,9 @@ body:has(.home-page) {
 
 @keyframes series-backdrop-in { from { opacity: .15; transform: scale(1.045); } to { opacity: 1; transform: scale(1.015); } }
 @keyframes series-copy-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@media (min-width: 651px) {
+  header.main-header.series-header { padding-right: max(28px,calc(50vw - 700px)); padding-left: max(28px,calc(50vw - 700px)); }
+}
 @media (max-width: 940px) {
   .series-hero { min-height: 660px; }
   .series-hero-content { grid-template-columns: 155px minmax(0,1fr); gap: 26px; }
