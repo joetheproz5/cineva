@@ -411,7 +411,7 @@ html, body { overflow-x: hidden; }
 }
 
 /* Home 2026 — cinematic, spacious, and designed around discovery. */
-body {
+body:has(.home-page) {
   background:
     radial-gradient(circle at 85% -10%, rgba(112, 18, 26, .15), transparent 31rem),
     radial-gradient(circle at 0 34%, rgba(22, 42, 58, .18), transparent 38rem),
@@ -708,6 +708,9 @@ body {
 .provider-list[hidden] { display: none; }
 .player-stage-bar .provider-menu { margin-left: auto; }
 .player-stage-bar .party-start { margin-left: 0; }
+
+/* Account gates must cover the viewport, independent of Home's content width. */
+.profile-gate { width: 100vw; margin-left: calc(50% - 50vw); }
 
 /* Keep the redesigned Home chrome above the legacy header variants below. */
 @media (min-width: 651px) {
