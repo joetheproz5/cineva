@@ -418,24 +418,24 @@ body:has(.home-page) {
     #050607;
 }
 #app { max-width: 1480px; padding-right: clamp(18px, 3vw, 44px); padding-left: clamp(18px, 3vw, 44px); }
-.home-header {
+.app-header {
   position: sticky; z-index: 90; top: 10px; min-height: 62px; margin: 0 0 18px; padding: 9px 12px 9px 18px;
   border: 1px solid rgba(255,255,255,.08); border-radius: 18px;
   background: rgba(7, 8, 10, .78); box-shadow: 0 14px 44px rgba(0,0,0,.32);
   -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
 }
-.home-header .wordmark.logo-only { width: 106px; }
-.home-header .wordmark img { width: 99px; }
-.home-header nav { gap: 6px; }
-.home-header .nav-link { position: relative; padding: 10px 13px; border-radius: 10px; color: #92979d; font-size: 12px; font-weight: 730; }
-.home-header .nav-link:hover { color: #fff; background: rgba(255,255,255,.06); }
-.home-header .nav-link.active { color: #fff; background: rgba(255,255,255,.085); }
-.home-header .nav-link.active::after { position: absolute; right: 13px; bottom: 5px; left: 13px; height: 2px; border-radius: 99px; background: #f32b36; content: ""; }
-.home-header .search { width: min(26vw, 310px); padding: 10px 13px; border-color: rgba(255,255,255,.11); border-radius: 12px; background: rgba(255,255,255,.055); }
-.home-header .search:focus-within { border-color: rgba(255,255,255,.32); background: rgba(255,255,255,.09); }
-.home-header .account { width: 40px; height: 40px; overflow: hidden; padding: 2px; border: 2px solid rgba(255,255,255,.12); background: #111; }
-.home-header .account .profile-avatar { width: 32px; height: 32px; }
-.home-header .account-caret { display: none; }
+.app-header .wordmark.logo-only { width: 106px; }
+.app-header .wordmark img { width: 99px; }
+.app-header nav { gap: 6px; }
+.app-header .nav-link { position: relative; padding: 10px 13px; border-radius: 10px; color: #92979d; font-size: 12px; font-weight: 730; }
+.app-header .nav-link:hover { color: #fff; background: rgba(255,255,255,.06); }
+.app-header .nav-link.active { color: #fff; background: rgba(255,255,255,.085); }
+.app-header .nav-link.active::after { position: absolute; right: 13px; bottom: 5px; left: 13px; height: 2px; border-radius: 99px; background: #f32b36; content: ""; }
+.app-header .search { width: min(26vw, 310px); padding: 10px 13px; border-color: rgba(255,255,255,.11); border-radius: 12px; background: rgba(255,255,255,.055); }
+.app-header .search:focus-within { border-color: rgba(255,255,255,.32); background: rgba(255,255,255,.09); }
+.app-header .account { width: 40px; height: 40px; overflow: hidden; padding: 2px; border: 2px solid rgba(255,255,255,.12); background: #111; }
+.app-header .account .profile-avatar { width: 32px; height: 32px; }
+.app-header .account-caret { display: none; }
 
 .home-page { display: block; }
 .home-page .hero {
@@ -538,17 +538,17 @@ body:has(.home-page) {
 @media (max-width: 920px) {
   .hero-queue { display: none; }
   .home-hero-content { width: min(650px,76%); }
-  .home-header .nav-link { padding-right: 9px; padding-left: 9px; }
-  .home-header .search { width: 220px; }
+  .app-header .nav-link { padding-right: 9px; padding-left: 9px; }
+  .app-header .search { width: 220px; }
 }
 @media (max-width: 650px) {
   #app { padding-right: 12px; padding-left: 12px; }
-  .home-header { position: sticky; top: 7px; min-height: 55px; margin-bottom: 11px; padding: 7px 8px 7px 12px; border-radius: 15px; }
-  .home-header .wordmark.logo-only { width: 89px; }
-  .home-header .wordmark img { width: 82px; }
-  .home-header .search { display: none; }
-  .home-header .msearch-open { margin-left: auto; }
-  .home-header > nav { right: 8px; bottom: 8px; left: 8px; width: auto; border: 1px solid rgba(255,255,255,.11); border-radius: 17px; background: rgba(9,10,12,.9); box-shadow: 0 10px 38px #000b; }
+  .app-header { position: sticky; top: 7px; min-height: 55px; margin-bottom: 11px; padding: 7px 8px 7px 12px; border-radius: 15px; }
+  .app-header .wordmark.logo-only { width: 89px; }
+  .app-header .wordmark img { width: 82px; }
+  .app-header .search { display: none; }
+  .app-header .msearch-open { margin-left: auto; }
+  .app-header > nav { right: 8px; bottom: 8px; left: 8px; width: auto; border: 1px solid rgba(255,255,255,.11); border-radius: 17px; background: rgba(9,10,12,.9); box-shadow: 0 10px 38px #000b; }
   .home-page .hero { min-height: min(660px,78vh); border-radius: 22px; }
   .home-hero-backdrop { background-position: 62% center; }
   .home-hero-shade { background: linear-gradient(0deg,rgba(5,6,7,.99) 0%,rgba(5,6,7,.82) 42%,rgba(5,6,7,.08) 78%), linear-gradient(90deg,rgba(5,6,7,.44),transparent); }
@@ -794,9 +794,6 @@ body:has(.home-page) {
 
 @keyframes series-backdrop-in { from { opacity: .15; transform: scale(1.045); } to { opacity: 1; transform: scale(1.015); } }
 @keyframes series-copy-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@media (min-width: 651px) {
-  header.main-header.series-header { padding-right: max(28px,calc(50vw - 700px)); padding-left: max(28px,calc(50vw - 700px)); }
-}
 @media (max-width: 940px) {
   .series-hero { min-height: 660px; }
   .series-hero-content { grid-template-columns: 155px minmax(0,1fr); gap: 26px; }
@@ -865,29 +862,29 @@ body:has(.home-page) {
 /* Account gates must cover the viewport, independent of Home's content width. */
 .profile-gate { width: 100vw; margin-left: calc(50% - 50vw); }
 
-/* Keep the redesigned Home chrome above the legacy header variants below. */
+/* Shared navigation: the same rounded header on every app route. */
 @media (min-width: 651px) {
-  header.main-header.home-header {
+  header.main-header.app-header {
     position: sticky; top: 10px; width: auto; min-height: 62px; margin: 0 0 18px; padding: 9px 12px 9px 18px;
     border: 1px solid rgba(255,255,255,.08); border-radius: 18px;
     background: rgba(7,8,10,.78); box-shadow: 0 14px 44px rgba(0,0,0,.32);
   }
-  header.main-header.home-header.scrolled { background: rgba(7,8,10,.94); box-shadow: 0 16px 48px rgba(0,0,0,.5); }
-  header.main-header.home-header nav { gap: 6px; }
-  header.main-header.home-header .nav-link { padding: 10px 13px; color: #92979d; font-size: 12px; font-weight: 730; }
-  header.main-header.home-header .nav-link.active { color: #fff; font-weight: 730; }
-  header.main-header.home-header .search { width: min(26vw,310px); padding: 10px 13px; border-color: rgba(255,255,255,.11); background: rgba(255,255,255,.055); cursor: text; }
-  header.main-header.home-header .search input { opacity: 1; }
-  header.main-header.home-header .search:focus-within { width: min(26vw,310px); border-color: rgba(255,255,255,.32); background: rgba(255,255,255,.09); }
+  header.main-header.app-header.scrolled { background: rgba(7,8,10,.94); box-shadow: 0 16px 48px rgba(0,0,0,.5); }
+  header.main-header.app-header nav { gap: 6px; }
+  header.main-header.app-header .nav-link { padding: 10px 13px; color: #92979d; font-size: 12px; font-weight: 730; }
+  header.main-header.app-header .nav-link.active { color: #fff; font-weight: 730; }
+  header.main-header.app-header .search { width: min(26vw,310px); padding: 10px 13px; border-color: rgba(255,255,255,.11); background: rgba(255,255,255,.055); cursor: text; }
+  header.main-header.app-header .search input { opacity: 1; }
+  header.main-header.app-header .search:focus-within { width: min(26vw,310px); border-color: rgba(255,255,255,.32); background: rgba(255,255,255,.09); }
 }
-header.main-header.home-header .account b { display: none; }
+header.main-header.app-header .account b { display: none; }
 @media (max-width: 650px) {
-  header.main-header.home-header {
+  header.main-header.app-header {
     position: sticky; top: 7px; width: auto; min-height: 55px; margin: 0 0 11px; padding: 7px 8px 7px 12px;
     border: 1px solid rgba(255,255,255,.08); border-radius: 15px;
     background: rgba(7,8,10,.88); box-shadow: 0 12px 34px rgba(0,0,0,.42);
     -webkit-backdrop-filter: none; backdrop-filter: none;
   }
-  header.main-header.home-header.scrolled { background: rgba(7,8,10,.96); }
-  header.main-header.home-header > nav { position: fixed; top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; margin: 0; }
+  header.main-header.app-header.scrolled { background: rgba(7,8,10,.96); }
+  header.main-header.app-header > nav { position: fixed; top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; margin: 0; }
 }
