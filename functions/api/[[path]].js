@@ -208,6 +208,17 @@ async function cineproProxy(request, requestURL, env, subPath) {
   const configured = String(env.CINEPRO_URL || "").trim().replace(/\/+$/, "");
   let target = configured;
   if (!target && /^https?:\/\//i.test(requestURL.searchParams.get("server") || "")) target = requestURL.searchParams.get("server").trim().replace(/\/+$/, "");
+  // Discovery: with no pinned env var and no client override, resolve the current tunnel URL from the owner's private gist (kept fresh by scripts/start-cinepro.ps1 on every restart).
+  if (!target) {
+    const gistId = String(env.CINEPRO_GIST_ID || "1138dc488b4556454417bc2de1821ac2");
+    try {
+      const raw = await fetch(`https://gist.githubusercontent.com/joetheproz5/${gistId}/raw/cinepro.json`, { signal:AbortSignal.timeout(10_000) });
+      if (raw.ok) {
+        const url = String(JSON.parse(await raw.text()).url || "").trim().replace(/\/+$/, "");
+        if (/^https?:\/\//i.test(url)) target = url;
+      }
+    } catch {}
+  }
   if (!target || !/^https?:\/\//i.test(target)) return json({ error:"SEVEN is not connected to a CinePro Core server yet. Set the CINEPRO_URL environment variable in your Cloudflare Pages project, or add your server address in Account → Playback." }, 503);
   const isRefresh = /^refresh\//.test(subPath);
   if (request.method !== "GET" && !(isRefresh && request.method === "POST")) return json({ error:"Unsupported CinePro action." }, 405);

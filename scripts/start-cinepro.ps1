@@ -1,11 +1,10 @@
 # SEVEN + CinePro launcher (Windows PowerShell)
 # Starts CinePro Core (..\core) and a cloudflared quick tunnel, then prints the public URL.
 #
-# NOTE: quick-tunnel URLs change on every restart. When the URL changes:
-#   1. This script rewrites PUBLIC_URL in ..\core\.env and restarts Core for you.
-#   2. Re-pin the Pages secret (only needed if you want the env-var default updated):
-#        npx wrangler pages secret put CINEPRO_URL --project-name seven
-#      Or just set the new address in SEVEN: Account -> Playback -> CinePro Core server.
+# NOTE: quick-tunnel URLs change on every restart. This script handles everything:
+#   1. Rewrites PUBLIC_URL in ..\core\.env and restarts Core.
+#   2. Publishes the new URL to the owner's private GitHub gist, which SEVEN's
+#      Pages Function reads for automatic discovery (no manual re-pinning).
 
 $ErrorActionPreference = "SilentlyContinue"
 
@@ -39,6 +38,14 @@ foreach ($i in 1..20) {
 if (-not $url) { Write-Host "Tunnel did not come up. Check $tunnelLog" -ForegroundColor Red; exit 1 }
 Write-Host "Tunnel: $url" -ForegroundColor Green
 
+Write-Host "== Publishing URL to SEVEN discovery gist ==" -ForegroundColor Cyan
+$gistId = "1138dc488b4556454417bc2de1821ac2"
+$gistFile = Join-Path $logDir "gist-body.json"
+@{ files = @{ "cinepro.json" = @{ content = ('{"url":"' + $url + '"}') } } } | ConvertTo-Json -Depth 5 | Set-Content -Path $gistFile
+gh api -X PATCH "gists/$gistId" --input "$gistFile" | Out-Null
+if ($LASTEXITCODE -eq 0) { Write-Host "Discovery gist updated (SEVEN picks it up automatically)." -ForegroundColor Green }
+else { Write-Host "Could not update gist (gh not logged in?). SEVEN may need the URL set manually in Account -> Playback." -ForegroundColor Yellow }
+
 Write-Host "== Updating PUBLIC_URL and starting CinePro Core ==" -ForegroundColor Cyan
 $envFile = Join-Path $coreDir ".env"
 $envText = (Get-Content $envFile -Raw) -replace "(?m)^PUBLIC_URL=.*$", "PUBLIC_URL=`"$url`""
@@ -62,9 +69,8 @@ Write-Host "  Public URL : $url"
 Write-Host "  Health     : $url/v1"
 Write-Host "  Core log   : $coreLog"
 Write-Host ""
-Write-Host "If this URL is NEW, update SEVEN either way:"
-Write-Host "  - In-app : Account -> Playback -> CinePro Core server -> paste the URL -> Test & save"
-Write-Host "  - Or pin : npx wrangler pages secret put CINEPRO_URL --project-name seven"
+Write-Host "SEVEN discovers this URL automatically via the private gist - nothing to re-pin."
+Write-Host "A personal override can still be set in SEVEN: Account -> Playback -> CinePro Core server."
 Write-Host ""
 Write-Host "Press Ctrl+C to stop (tunnel + core keep running until you close this PC or re-run this script)." -ForegroundColor Yellow
 while ($true) { Start-Sleep -Seconds 60 }
