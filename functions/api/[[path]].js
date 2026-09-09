@@ -209,9 +209,10 @@ async function cineproProxy(request, requestURL, env, subPath) {
   let target = configured;
   if (!target && /^https?:\/\//i.test(requestURL.searchParams.get("server") || "")) target = requestURL.searchParams.get("server").trim().replace(/\/+$/, "");
   if (!target || !/^https?:\/\//i.test(target)) return json({ error:"SEVEN is not connected to a CinePro Core server yet. Set the CINEPRO_URL environment variable in your Cloudflare Pages project, or add your server address in Account → Playback." }, 503);
-  if (request.method !== "GET") return json({ error:"Unsupported CinePro action." }, 405);
+  const isRefresh = /^refresh\//.test(subPath);
+  if (request.method !== "GET" && !(isRefresh && request.method === "POST")) return json({ error:"Unsupported CinePro action." }, 405);
   if (!subPath) {
-    try { const health = await upstream(`${target}/v1`); return json(health.data, health.status); }
+    try { const health = await upstream(`${target}/v1`, { signal:AbortSignal.timeout(10_000) }); return json(health.data, health.status); }
     catch { return json({ error:"Your CinePro Core server could not be reached. Make sure it is running and reachable." }, 502); }
   }
   if (subPath === "playable" || subPath.startsWith("playable/")) {
@@ -226,8 +227,9 @@ async function cineproProxy(request, requestURL, env, subPath) {
     } catch { return json({ error:"The stream could not be opened. It may have expired — reload the page to resolve a fresh source." }, 502); }
   }
   const query = requestURL.searchParams.has("server") ? "" : requestURL.search;
-  try { const result = await upstream(`${target}/v1/${subPath}${query}`); return json(result.data, result.status); }
-  catch { return json({ error:"Your CinePro Core server could not be reached." }, 502); }
+  const timeout = isRefresh ? 150_000 : 45_000;
+  try { const result = await upstream(`${target}/v1/${subPath}${query}`, { method:isRefresh ? "POST" : "GET", signal:AbortSignal.timeout(timeout) }); return json(result.data, result.status); }
+  catch (error) { return json({ error:error?.name === "TimeoutError" ? "Resolving took too long — the CinePro Core server did not answer in time. Give it a moment and try again." : "Your CinePro Core server could not be reached." }, 502); }
 }
 
 export async function onRequest(context) {

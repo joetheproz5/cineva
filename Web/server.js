@@ -89,8 +89,10 @@ async function proxyCinePro(request, response, sourceURL) {
       if (upstreamResponse.body) Readable.fromWeb(upstreamResponse.body).on("error", () => response.end()).pipe(response); else response.end();
       return;
     }
+    const isRefresh = /^refresh\//.test(subPath);
+    if (request.method !== "GET" && !isRefresh) return sendJSON(response, 405, { error:"Unsupported CinePro action." });
     const query = sourceURL.searchParams.has("server") ? "" : sourceURL.search;
-    const result = await upstream(`${target}/v1/${subPath}${query}`);
+    const result = await upstream(`${target}/v1/${subPath}${query}`, { method:isRefresh ? "POST" : "GET" });
     return sendJSON(response, result.status, result.data);
   } catch { return sendJSON(response, 502, { error:"Your CinePro Core server could not be reached." }); }
 }

@@ -8,7 +8,8 @@ let sessionRefreshTimer;
 let deferredInstallPrompt;
 let cineproRequest = 0;
 const cineproSourceCache = new Map();
-const CINEPRO_CACHE_TTL = 30 * 60 * 1000;
+const CINEPRO_CACHE_TTL = 3 * 60 * 1000;
+const CINEPRO_RESOLVE_TIMEOUT = 60 * 1000;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null };
 const SESSION_KEY = "cineva.supabase.session";
@@ -496,14 +497,18 @@ async function cineproSources(item, refresh = false) {
   if (!refresh && cached && Date.now() - cached.at < CINEPRO_CACHE_TTL) return cached.value;
   const base = item.type === "movie" ? `movies/${item.id}` : `tv/${item.id}/seasons/${item.season || 1}/episodes/${item.episode || 1}`;
   const query = server ? `?server=${encodeURIComponent(server)}` : "";
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), CINEPRO_RESOLVE_TIMEOUT);
   try {
-    const payload = await localAPI(`/api/cinepro/${base}${query}`);
+    const payload = await localAPI(`/api/cinepro/${base}${query}`, { signal:controller.signal });
     const sources = (payload.sources || []).filter(source => source?.url && source.streamable !== false), subtitles = payload.subtitles || [];
-    const value = { sources, subtitles, error:sources.length ? "" : (payload.error || "No playable sources were found for this title right now. Try another player below.") };
+    const value = { sources, subtitles, responseId:payload.responseId || "", error:sources.length ? "" : (payload.error || "No playable sources were found for this title right now. Try another player below.") };
     cineproSourceCache.set(key, { at:Date.now(), value });
     if (cineproSourceCache.size > 30) { const oldest = cineproSourceCache.keys().next().value; cineproSourceCache.delete(oldest); }
     return value;
-  } catch (error) { return { sources:[], subtitles:[], error:error.message || "Your CinePro Core server could not be reached." }; }
+  } catch (error) {
+    const message = error.name === "AbortError" ? "Resolving took too long — your CinePro Core server may be offline or busy. Try again." : error.message || "Your CinePro Core server could not be reached.";
+    return { sources:[], subtitles:[], responseId:"", error:message };
+  } finally { clearTimeout(timer); }
 }
 function cineproProxyURL(url, server = "") { return `/api/cinepro/playable?u=${encodeURIComponent(url)}${server ? `&server=${encodeURIComponent(server)}` : ""}`; }
 async function cineproVerify(server) { try { await localAPI(`/api/cinepro?server=${encodeURIComponent(server)}`); return true; } catch { return false; } }
@@ -940,8 +945,10 @@ async function setupCineProPlayer(p) {
   };
   const retry = async () => {
     document.querySelector("[data-cinepro-error]")?.remove();
-    if (loading) loading.hidden = false;
+    if (loading) { loading.hidden = false; loading.querySelector("p").textContent = "Resolving fresh sources via CinePro…"; }
+    if (resolved.responseId) { try { await localAPI(`/api/cinepro/refresh/${encodeURIComponent(resolved.responseId)}`); } catch { /* A failed cache refresh still leaves the re-resolve a chance. */ } }
     resolved = await cineproSources(p, true);
+    if (loading && loading.querySelector("p")) loading.querySelector("p").textContent = "Resolving sources via CinePro…";
     if (attempt !== cineproRequest || state.route !== "player" || !video.isConnected) return;
     if (loading) loading.hidden = true;
     failures = 0;
