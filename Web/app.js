@@ -490,10 +490,10 @@ async function playSeriesEpisode(season, episode, resume = false) { if (Number(s
 function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
 async function cineproServer() { return (currentPreferences().cineproServer || "").trim().replace(/\/+$/, ""); }
 function cineproCacheKey(server, item) { return `${server}|${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`; }
-async function cineproSources(item) {
+async function cineproSources(item, refresh = false) {
   const server = await cineproServer();
   const key = cineproCacheKey(server, item), cached = cineproSourceCache.get(key);
-  if (cached && Date.now() - cached.at < CINEPRO_CACHE_TTL) return cached.value;
+  if (!refresh && cached && Date.now() - cached.at < CINEPRO_CACHE_TTL) return cached.value;
   const base = item.type === "movie" ? `movies/${item.id}` : `tv/${item.id}/seasons/${item.season || 1}/episodes/${item.episode || 1}`;
   const query = server ? `?server=${encodeURIComponent(server)}` : "";
   try {
@@ -893,7 +893,7 @@ function renderPlayer() {
   const media = cineproActive
     ? `<video class="player cinepro-video" id="cinepro-video" controls controlslist="nodownload" playsinline preload="metadata" ${p.startAt ? `data-start-at="${Math.floor(p.startAt)}" ` : ""}poster="${p.posterPath ? escapeHTML(`${TMDB_BACKDROP}${p.posterPath}`) : ""}"></video>`
     : `<iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
-  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}<div class="cinepro-loading" id="cinepro-loading" ${cineproActive ? "" : "hidden"}><div class="cinepro-spinner"></div><p>Resolving sources via CinePro…</p></div>${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : `<span class="cinepro-sources-slot" data-cinepro-sources hidden></span>` + providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}<div class="cinepro-loading" id="cinepro-loading" ${cineproActive ? "" : "hidden"}><div class="cinepro-spinner"></div><p>Resolving sources via CinePro…</p></div>${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
   if (cineproActive) void setupCineProPlayer(p);
@@ -905,34 +905,69 @@ function renderPlayer() {
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
   document.querySelectorAll("[data-play-next]").forEach(button => button.addEventListener("click", () => { void playNextPlayerEpisode(p, next); }));
 }
-function cineproSourceButton(source, index) {
-  const provider = escapeHTML(source.provider?.name || source.provider?.id || `Source ${index + 1}`), quality = escapeHTML(String(source.quality || "Auto")), kind = escapeHTML(String(source.type || "hls").toUpperCase());
-  return `<button class="cinepro-source" data-cinepro-source="${index}"><b>${provider}</b><span>${quality} · ${kind}</span></button>`;
-}
 async function setupCineProPlayer(p) {
   const video = document.querySelector("#cinepro-video"), loading = document.querySelector("#cinepro-loading"), server = await cineproServer();
   if (!video) return;
   const attempt = ++cineproRequest;
-  const resolved = await cineproSources(p);
+  let resolved = await cineproSources(p), current = 0, failures = 0, lastTime = 0, lastProgressAt = Date.now(), watchdog = null, playing = false;
   if (attempt !== cineproRequest || state.route !== "player" || state.player !== p || !video.isConnected) return;
   if (loading) loading.hidden = true;
-  if (!resolved.sources.length) {
-    video.insertAdjacentHTML("afterend", `<div class="cinepro-error" data-cinepro-error><b>CinePro could not play this title</b><p>${escapeHTML(resolved.error)}</p></div>`);
-    return;
-  }
-  const pickSource = async index => {
+
+  const playSource = async (index, resumeAt) => {
     const source = resolved.sources[index];
     if (!source) return;
-    document.querySelectorAll("[data-cinepro-source]").forEach(button => button.classList.toggle("active", Number(button.dataset.cineproSource) === index));
-    const startAt = Math.max(0, Math.floor(video.currentTime || Number(video.dataset.startAt) || 0));
+    current = index;
+    const at = resumeAt ?? Math.max(0, Math.floor(video.currentTime || Number(video.dataset.startAt) || 0));
     video.src = cineproProxyURL(source.url, server);
     video.load();
-    if (startAt > 0) video.addEventListener("loadedmetadata", () => { try { video.currentTime = startAt; } catch { /* Some streams refuse seeking. */ } }, { once:true });
-    try { await video.play(); } catch { /* Autoplay can be blocked until the viewer taps play. */ }
+    if (at > 0) video.addEventListener("loadedmetadata", () => { try { if (isFinite(video.duration) && at < video.duration - 2) video.currentTime = at; } catch { /* Stream refused seeking. */ } }, { once:true });
+    try { await video.play(); playing = true; } catch { playing = false; }
+    syncMenu();
   };
-  video.addEventListener("play", () => recordPlaybackEvent({ event:"play", currentTime:video.currentTime, duration:video.duration || 0 }));
-  video.addEventListener("timeupdate", () => { if (video.duration) recordPlaybackEvent({ event:"timeupdate", currentTime:video.currentTime, duration:video.duration }); });
+  const syncMenu = () => document.querySelectorAll("[data-cinepro-source]").forEach(button => button.classList.toggle("active", Number(button.dataset.cineproSource) === current));
+  const slot = document.querySelector("[data-cinepro-sources]");
+  const renderMenu = () => {
+    if (!slot) return;
+    if (resolved.sources.length < 2) { slot.hidden = true; slot.innerHTML = ""; return; }
+    slot.hidden = false;
+    slot.innerHTML = `<button class="provider-toggle" data-cinepro-menu>Sources (${resolved.sources.length}) ▾</button><div class="provider-list" data-cinepro-list hidden>${resolved.sources.slice(0, 10).map((source, index) => `<button class="provider-option ${index === current ? "active" : ""}" data-cinepro-source="${index}">${escapeHTML(source.provider?.name || source.provider?.id || `Source ${index + 1}`)}<small>${escapeHTML(String(source.quality || "Auto"))} · ${escapeHTML(String(source.type || "hls").toUpperCase())}</small></button>`).join("")}</div>`;
+    slot.querySelector("[data-cinepro-menu]").onclick = event => { event.stopPropagation(); const list = slot.querySelector("[data-cinepro-list]"); if (list) list.hidden = !list.hidden; };
+    slot.querySelectorAll("[data-cinepro-source]").forEach(button => button.onclick = () => { const list = slot.querySelector("[data-cinepro-list]"); if (list) list.hidden = true; void playSource(Number(button.dataset.cineproSource)); });
+  };
+  const showError = message => {
+    video.insertAdjacentHTML("afterend", `<div class="cinepro-error" data-cinepro-error><b>CinePro could not play this title</b><p>${escapeHTML(message)}</p><button class="primary" data-cinepro-retry>Resolve fresh sources</button></div>`);
+    document.querySelector("[data-cinepro-retry]").onclick = () => void retry();
+  };
+  const retry = async () => {
+    document.querySelector("[data-cinepro-error]")?.remove();
+    if (loading) loading.hidden = false;
+    resolved = await cineproSources(p, true);
+    if (attempt !== cineproRequest || state.route !== "player" || !video.isConnected) return;
+    if (loading) loading.hidden = true;
+    failures = 0;
+    if (!resolved.sources.length) return showError(resolved.error);
+    renderMenu();
+    await playSource(0);
+  };
+  const failover = () => {
+    failures += 1;
+    if (failures > resolved.sources.length) { clearInterval(watchdog); showError("Every source stalled or failed. Resolving fresh links usually fixes this."); return; }
+    void playSource((current + 1) % resolved.sources.length);
+  };
+
+  video.addEventListener("error", () => { if (video.error && resolved.sources.length) failover(); });
+  video.addEventListener("waiting", () => { lastProgressAt = Date.now(); });
+  video.addEventListener("timeupdate", () => { if (video.currentTime - lastTime > 0.4) { failures = 0; lastTime = video.currentTime; } lastProgressAt = Date.now(); if (video.duration) recordPlaybackEvent({ event:"timeupdate", currentTime:video.currentTime, duration:video.duration }); });
+  video.addEventListener("play", () => { playing = true; recordPlaybackEvent({ event:"play", currentTime:video.currentTime, duration:video.duration || 0 }); });
+  video.addEventListener("pause", () => { playing = false; });
   video.addEventListener("ended", () => { recordPlaybackEvent({ event:"ended", currentTime:video.duration || 0, duration:video.duration || 0 }); void playNextPlayerEpisode(p, nextPlayerEpisode(p)); });
+  watchdog = setInterval(() => {
+    if (state.route !== "player" || state.player !== p || !video.isConnected) { clearInterval(watchdog); return; }
+    if (!playing || video.paused || video.readyState >= 3 || Date.now() - lastProgressAt < 8000) return;
+    lastProgressAt = Date.now();
+    failover();
+  }, 4000);
+
   (resolved.subtitles || []).slice(0, 6).forEach((subtitle, index) => {
     if (!subtitle?.url) return;
     const track = document.createElement("track");
@@ -942,9 +977,9 @@ async function setupCineProPlayer(p) {
     track.src = cineproProxyURL(subtitle.url, server);
     video.appendChild(track);
   });
-  if (resolved.sources.length > 1) video.insertAdjacentHTML("afterend", `<div class="cinepro-sources" data-cinepro-sources><span class="brand">SOURCES</span><div class="cinepro-source-list">${resolved.sources.slice(0, 8).map((source, index) => cineproSourceButton(source, index)).join("")}</div></div>`);
-  document.querySelectorAll("[data-cinepro-source]").forEach(button => button.onclick = () => void pickSource(Number(button.dataset.cineproSource)));
-  await pickSource(0);
+  if (!resolved.sources.length) return showError(resolved.error);
+  renderMenu();
+  await playSource(0);
 }
 function simplifiedTitleQuery(query) {
   const simplified = query.trim().replace(/\b(new|latest|series|tv\s+show|show|movie|film|gameplay|trailer|official)\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -1271,7 +1306,7 @@ function bindCommon() {
 }
 function syncHeaderScroll() { document.querySelector("header.main-header")?.classList.toggle("scrolled", (window.scrollY || 0) > 12); }
 window.addEventListener("scroll", syncHeaderScroll, { passive: true });
-window.addEventListener("click", () => { const providerList = document.querySelector("[data-provider-list]"); if (providerList && !providerList.hidden) providerList.hidden = true; });
+window.addEventListener("click", () => { const providerList = document.querySelector("[data-provider-list]"); if (providerList && !providerList.hidden) providerList.hidden = true; const cineproList = document.querySelector("[data-cinepro-list]"); if (cineproList && !cineproList.hidden) cineproList.hidden = true; });
 function recordPlaybackEvent(data) {
   const duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0;
   if (!duration) return;

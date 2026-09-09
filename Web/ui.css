@@ -232,15 +232,13 @@
 .cinepro-error { position: absolute; inset: 0; z-index: 3; display: grid; gap: 8px; place-content: center; justify-items: center; padding: 24px; background: #000e; text-align: center; }
 .cinepro-error b { color: #fff; font-size: 15px; }
 .cinepro-error p { max-width: 420px; margin: 0; color: #bbb; font-size: 13px; line-height: 1.5; }
-.cinepro-sources { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
-.cinepro-sources .brand { font-size: 10px; }
-.cinepro-source-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.cinepro-source { display: grid; gap: 1px; padding: 8px 14px; border: 1px solid #2c2c2c; border-radius: 8px; background: #131313; text-align: left; }
-.cinepro-source b { color: #eee; font-size: 12px; }
-.cinepro-source span { color: #999; font-size: 10px; letter-spacing: .3px; }
-.cinepro-source:hover { border-color: #e5091466; }
-.cinepro-source.active { border-color: #e50914; background: #1c0d0f; }
-.cinepro-source.active b { color: #fff; }
+.cinepro-sources-slot { position: relative; }
+.cinepro-sources-slot .provider-list { right: 0; min-width: 220px; }
+.cinepro-sources-slot .provider-option { justify-content: space-between; align-items: baseline; }
+.cinepro-sources-slot .provider-option small { color: #999; font-size: 10.5px; font-weight: 600; }
+.cinepro-sources-slot .provider-option.active small { color: #e50914; }
+.player-stage-bar .cinepro-sources-slot { margin-left: auto; }
+.player-stage-bar .cinepro-sources-slot + .provider-menu { margin-left: 0; }
 .cinepro-server-field { display: grid; gap: 8px; padding: 14px; border: 1px solid #2c2c2c; border-radius: 8px; }
 .cinepro-server-field span { display: grid; gap: 3px; color: #ddd; font-size: 13px; font-weight: 600; }
 .cinepro-server-field small { color: #999; font-size: 11px; font-weight: 400; line-height: 1.45; }

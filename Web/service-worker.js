@@ -1,7 +1,7 @@
-const VERSION = "seven-v202";
+const VERSION = "seven-v203";
 const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v1";
-const SHELL = ["/", "/index.html", "/styles.css?v=202", "/auth.css?v=202", "/ui.css?v=202", "/app.js?v=202", "/manifest.webmanifest", "/icon.svg", "/assets/seven-logo-red.png", "/assets/seven-wordmark-v2.png",  "/assets/avatars/red-panda.png", "/assets/avatars/black-cat.png", "/assets/avatars/astronaut.png", "/assets/avatars/duck.png", "/assets/avatars/robot.png"];
+const SHELL = ["/", "/index.html", "/styles.css?v=203", "/auth.css?v=203", "/ui.css?v=203", "/app.js?v=203", "/manifest.webmanifest", "/icon.svg", "/assets/seven-logo-red.png", "/assets/seven-wordmark-v2.png",  "/assets/avatars/red-panda.png", "/assets/avatars/black-cat.png", "/assets/avatars/astronaut.png", "/assets/avatars/duck.png", "/assets/avatars/robot.png"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("message", event => { if (event.data?.type === "SEVEN_SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => ![VERSION, DATA_CACHE, IMAGE_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
