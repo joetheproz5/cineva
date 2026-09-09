@@ -492,12 +492,12 @@ async function cineproServer() { return (currentPreferences().cineproServer || "
 function cineproCacheKey(server, item) { return `${server}|${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`; }
 async function cineproSources(item) {
   const server = await cineproServer();
-  if (!server) return { sources:[], subtitles:[], error:"Connect your CinePro Core server in Account → Playback to stream with SEVEN’s main player." };
   const key = cineproCacheKey(server, item), cached = cineproSourceCache.get(key);
   if (cached && Date.now() - cached.at < CINEPRO_CACHE_TTL) return cached.value;
   const base = item.type === "movie" ? `movies/${item.id}` : `tv/${item.id}/seasons/${item.season || 1}/episodes/${item.episode || 1}`;
+  const query = server ? `?server=${encodeURIComponent(server)}` : "";
   try {
-    const payload = await localAPI(`/api/cinepro/${base}?server=${encodeURIComponent(server)}`);
+    const payload = await localAPI(`/api/cinepro/${base}${query}`);
     const sources = (payload.sources || []).filter(source => source?.url && source.streamable !== false), subtitles = payload.subtitles || [];
     const value = { sources, subtitles, error:sources.length ? "" : (payload.error || "No playable sources were found for this title right now. Try another player below.") };
     cineproSourceCache.set(key, { at:Date.now(), value });
