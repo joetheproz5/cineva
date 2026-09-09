@@ -223,6 +223,31 @@
 .player-stage-bar .brand { margin: 0; }
 .player-frame { position: relative; overflow: hidden; border: 1px solid #242424; border-radius: 9px; background: #000; box-shadow: 0 12px 34px #000b; }
 .player-stage .player { border: 0; border-radius: 0; }
+.player-frame .cinepro-video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.cinepro-loading { position: absolute; inset: 0; z-index: 3; display: grid; gap: 12px; place-content: center; justify-items: center; background: #000d; }
+.cinepro-loading[hidden] { display: none; }
+.cinepro-loading p { margin: 0; color: #ddd; font-size: 12px; letter-spacing: .4px; }
+.cinepro-spinner { width: 34px; height: 34px; border: 3px solid #ffffff22; border-top-color: #e50914; border-radius: 50%; animation: cinepro-spin .8s linear infinite; }
+@keyframes cinepro-spin { to { transform: rotate(360deg); } }
+.cinepro-error { position: absolute; inset: 0; z-index: 3; display: grid; gap: 8px; place-content: center; justify-items: center; padding: 24px; background: #000e; text-align: center; }
+.cinepro-error b { color: #fff; font-size: 15px; }
+.cinepro-error p { max-width: 420px; margin: 0; color: #bbb; font-size: 13px; line-height: 1.5; }
+.cinepro-sources { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.cinepro-sources .brand { font-size: 10px; }
+.cinepro-source-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.cinepro-source { display: grid; gap: 1px; padding: 8px 14px; border: 1px solid #2c2c2c; border-radius: 8px; background: #131313; text-align: left; }
+.cinepro-source b { color: #eee; font-size: 12px; }
+.cinepro-source span { color: #999; font-size: 10px; letter-spacing: .3px; }
+.cinepro-source:hover { border-color: #e5091466; }
+.cinepro-source.active { border-color: #e50914; background: #1c0d0f; }
+.cinepro-source.active b { color: #fff; }
+.cinepro-server-field { display: grid; gap: 8px; padding: 14px; border: 1px solid #2c2c2c; border-radius: 8px; }
+.cinepro-server-field span { display: grid; gap: 3px; color: #ddd; font-size: 13px; font-weight: 600; }
+.cinepro-server-field small { color: #999; font-size: 11px; font-weight: 400; line-height: 1.45; }
+.cinepro-server-field input { width: 100%; padding: 10px 12px; border: 1px solid #333; border-radius: 6px; color: #fff; background: #0d0d0d; font-size: 13px; }
+.cinepro-server-field input:focus { outline: none; border-color: #e50914; }
+.cinepro-server-field .form-error { margin: 0; font-size: 12px; }
+.cinepro-server-field button { justify-self: start; }
 .player-frame-next { position: absolute; right: 15px; bottom: 15px; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; max-width: min(360px, calc(100% - 30px)); padding: 10px 12px 10px 15px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px; color: #fff; text-align: left; background: rgba(12,13,15,.9); box-shadow: 0 10px 28px rgba(0,0,0,.42); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .player-frame-next:hover { border-color: rgba(240,39,49,.8); background: rgba(38,12,15,.96); }
 .player-frame-next span { color: #ee2b36; font-size: 9px; font-weight: 900; letter-spacing: 1.2px; text-transform: uppercase; }

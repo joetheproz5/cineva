@@ -10,9 +10,13 @@ xcuserdata/
 Config.xcconfig
 Web/tmdb.local.json
 Web/supabase.local.json
+Web/cinepro.local.json
 *.mobileprovision
 *.p12
 *.cer
+
+# Wrangler local state
+.wrangler/
 
 # macOS
 .DS_Store

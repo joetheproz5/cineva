@@ -203,12 +203,40 @@ async function party(request, requestURL, env) {
   return json({ error:"Unsupported party action." }, 405);
 }
 
+async function cineproProxy(request, requestURL, env, subPath) {
+  // Priority: the owner-configured CINEPRO_URL environment variable, then an address supplied by a signed-in client (handy while setting a personal server up).
+  const configured = String(env.CINEPRO_URL || "").trim().replace(/\/+$/, "");
+  let target = configured;
+  if (!target && /^https?:\/\//i.test(requestURL.searchParams.get("server") || "")) target = requestURL.searchParams.get("server").trim().replace(/\/+$/, "");
+  if (!target || !/^https?:\/\//i.test(target)) return json({ error:"SEVEN is not connected to a CinePro Core server yet. Set the CINEPRO_URL environment variable in your Cloudflare Pages project, or add your server address in Account → Playback." }, 503);
+  if (request.method !== "GET") return json({ error:"Unsupported CinePro action." }, 405);
+  if (!subPath) {
+    try { const health = await upstream(`${target}/v1`); return json(health.data, health.status); }
+    catch { return json({ error:"Your CinePro Core server could not be reached. Make sure it is running and reachable." }, 502); }
+  }
+  if (subPath === "playable" || subPath.startsWith("playable/")) {
+    const streamURL = requestURL.searchParams.get("u");
+    if (!/^https?:\/\//i.test(streamURL || "")) return json({ error:"A valid stream URL is required." }, 400);
+    try {
+      const range = request.headers.get("Range");
+      const response = await fetch(streamURL, { headers:range ? { Range:range } : {}, redirect:"follow" });
+      const headers = new Headers({ "Cache-Control":"no-store", "Access-Control-Allow-Origin":"*" });
+      ["Content-Type", "Content-Length", "Content-Range", "Accept-Ranges"].forEach(name => { const value = response.headers.get(name); if (value) headers.set(name, value); });
+      return new Response(response.body, { status:response.status, headers });
+    } catch { return json({ error:"The stream could not be opened. It may have expired — reload the page to resolve a fresh source." }, 502); }
+  }
+  const query = requestURL.searchParams.has("server") ? "" : requestURL.search;
+  try { const result = await upstream(`${target}/v1/${subPath}${query}`); return json(result.data, result.status); }
+  catch { return json({ error:"Your CinePro Core server could not be reached." }, 502); }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
   if (path === "config" && request.method === "GET") return config(env);
   if (path.startsWith("tmdb/")) return tmdb(path.slice(5), requestURL, env);
+  if (path === "cinepro" || path.startsWith("cinepro/")) return cineproProxy(request, requestURL, env, path.slice(8));
   if (path === "auth/signup" && request.method === "POST") return auth("signup", request, env);
   if (path === "auth/login" && request.method === "POST") return auth("login", request, env);
   if (path === "auth/refresh" && request.method === "POST") return auth("refresh", request, env);
