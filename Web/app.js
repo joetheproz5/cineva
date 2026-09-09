@@ -911,22 +911,27 @@ function renderPlayer() {
   document.querySelectorAll("[data-play-next]").forEach(button => button.addEventListener("click", () => { void playNextPlayerEpisode(p, next); }));
 }
 async function setupCineProPlayer(p) {
-  const video = document.querySelector("#cinepro-video"), loading = document.querySelector("#cinepro-loading"), server = await cineproServer();
+  const video = document.querySelector("#cinepro-video"), loading = document.querySelector("#cinepro-loading");
   if (!video) return;
   const attempt = ++cineproRequest;
-  let resolved = await cineproSources(p), current = 0, failures = 0, lastTime = 0, lastProgressAt = Date.now(), watchdog = null, playing = false;
+  let resolved = await cineproSources(p), current = 0, errorStreak = 0;
   if (attempt !== cineproRequest || state.route !== "player" || state.player !== p || !video.isConnected) return;
   if (loading) loading.hidden = true;
+  // Chrome/Firefox cannot play HLS natively — try progressive MP4s first there.
+  if (!video.canPlayType("application/vnd.apple.mpegurl")) resolved.sources.sort((a, b) => (a.type === "hls") - (b.type === "hls"));
 
   const playSource = async (index, resumeAt) => {
     const source = resolved.sources[index];
     if (!source) return;
     current = index;
+    errorStreak = 0;
     const at = resumeAt ?? Math.max(0, Math.floor(video.currentTime || Number(video.dataset.startAt) || 0));
-    video.src = cineproProxyURL(source.url, server);
+    // Stream straight from the CinePro tunnel (CORS-open): one hop, Range-seeking hits the CDN directly.
+    // http:// sources on the https site would be mixed-content blocked — route those through the same-origin proxy.
+    video.src = location.protocol === "https:" && source.url.startsWith("http:") ? cineproProxyURL(source.url) : source.url;
     video.load();
     if (at > 0) video.addEventListener("loadedmetadata", () => { try { if (isFinite(video.duration) && at < video.duration - 2) video.currentTime = at; } catch { /* Stream refused seeking. */ } }, { once:true });
-    try { await video.play(); playing = true; } catch { playing = false; }
+    try { await video.play(); } catch { /* Autoplay can be blocked until the viewer taps play. */ }
     syncMenu();
   };
   const syncMenu = () => document.querySelectorAll("[data-cinepro-source]").forEach(button => button.classList.toggle("active", Number(button.dataset.cineproSource) === current));
@@ -957,23 +962,15 @@ async function setupCineProPlayer(p) {
     await playSource(0);
   };
   const failover = () => {
-    failures += 1;
-    if (failures > resolved.sources.length) { clearInterval(watchdog); showError("Every source stalled or failed. Resolving fresh links usually fixes this."); return; }
+    errorStreak += 1;
+    if (errorStreak > resolved.sources.length) return showError("Every source failed. Resolving fresh links usually fixes this.");
     void playSource((current + 1) % resolved.sources.length);
   };
 
   video.addEventListener("error", () => { if (video.error && resolved.sources.length) failover(); });
-  video.addEventListener("waiting", () => { lastProgressAt = Date.now(); });
-  video.addEventListener("timeupdate", () => { if (video.currentTime - lastTime > 0.4) { failures = 0; lastTime = video.currentTime; } lastProgressAt = Date.now(); if (video.duration) recordPlaybackEvent({ event:"timeupdate", currentTime:video.currentTime, duration:video.duration }); });
-  video.addEventListener("play", () => { playing = true; recordPlaybackEvent({ event:"play", currentTime:video.currentTime, duration:video.duration || 0 }); });
-  video.addEventListener("pause", () => { playing = false; });
+  video.addEventListener("timeupdate", () => { errorStreak = 0; if (video.duration) recordPlaybackEvent({ event:"timeupdate", currentTime:video.currentTime, duration:video.duration }); });
+  video.addEventListener("play", () => recordPlaybackEvent({ event:"play", currentTime:video.currentTime, duration:video.duration || 0 }));
   video.addEventListener("ended", () => { recordPlaybackEvent({ event:"ended", currentTime:video.duration || 0, duration:video.duration || 0 }); void playNextPlayerEpisode(p, nextPlayerEpisode(p)); });
-  watchdog = setInterval(() => {
-    if (state.route !== "player" || state.player !== p || !video.isConnected) { clearInterval(watchdog); return; }
-    if (!playing || video.paused || video.readyState >= 3 || Date.now() - lastProgressAt < 8000) return;
-    lastProgressAt = Date.now();
-    failover();
-  }, 4000);
 
   (resolved.subtitles || []).slice(0, 6).forEach((subtitle, index) => {
     if (!subtitle?.url) return;
@@ -981,7 +978,7 @@ async function setupCineProPlayer(p) {
     track.kind = "subtitles";
     track.label = subtitle.label || `Subtitles ${index + 1}`;
     track.srclang = String(subtitle.language || subtitle.label || "en").slice(0, 2).toLowerCase();
-    track.src = cineproProxyURL(subtitle.url, server);
+    track.src = subtitle.url;
     video.appendChild(track);
   });
   if (!resolved.sources.length) return showError(resolved.error);
