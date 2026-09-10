@@ -203,53 +203,12 @@ async function party(request, requestURL, env) {
   return json({ error:"Unsupported party action." }, 405);
 }
 
-async function cineproProxy(request, requestURL, env, subPath) {
-  // Priority: the owner-configured CINEPRO_URL environment variable, then an address supplied by a signed-in client (handy while setting a personal server up).
-  const configured = String(env.CINEPRO_URL || "").trim().replace(/\/+$/, "");
-  let target = configured;
-  if (!target && /^https?:\/\//i.test(requestURL.searchParams.get("server") || "")) target = requestURL.searchParams.get("server").trim().replace(/\/+$/, "");
-  // Discovery: with no pinned env var and no client override, resolve the current tunnel URL from the owner's private gist (kept fresh by scripts/start-cinepro.ps1 on every restart).
-  if (!target) {
-    const gistId = String(env.CINEPRO_GIST_ID || "1138dc488b4556454417bc2de1821ac2");
-    try {
-      const raw = await fetch(`https://gist.githubusercontent.com/joetheproz5/${gistId}/raw/cinepro.json`, { signal:AbortSignal.timeout(10_000) });
-      if (raw.ok) {
-        const url = String(JSON.parse(await raw.text()).url || "").trim().replace(/\/+$/, "");
-        if (/^https?:\/\//i.test(url)) target = url;
-      }
-    } catch {}
-  }
-  if (!target || !/^https?:\/\//i.test(target)) return json({ error:"SEVEN is not connected to a CinePro Core server yet. Set the CINEPRO_URL environment variable in your Cloudflare Pages project, or add your server address in Account → Playback." }, 503);
-  const isRefresh = /^refresh\//.test(subPath);
-  if (request.method !== "GET" && !(isRefresh && request.method === "POST")) return json({ error:"Unsupported CinePro action." }, 405);
-  if (!subPath) {
-    try { const health = await upstream(`${target}/v1`, { signal:AbortSignal.timeout(10_000) }); return json(health.data, health.status); }
-    catch { return json({ error:"Your CinePro Core server could not be reached. Make sure it is running and reachable." }, 502); }
-  }
-  if (subPath === "playable" || subPath.startsWith("playable/")) {
-    const streamURL = requestURL.searchParams.get("u");
-    if (!/^https?:\/\//i.test(streamURL || "")) return json({ error:"A valid stream URL is required." }, 400);
-    try {
-      const range = request.headers.get("Range");
-      const response = await fetch(streamURL, { headers:range ? { Range:range } : {}, redirect:"follow" });
-      const headers = new Headers({ "Cache-Control":"no-store", "Access-Control-Allow-Origin":"*" });
-      ["Content-Type", "Content-Length", "Content-Range", "Accept-Ranges"].forEach(name => { const value = response.headers.get(name); if (value) headers.set(name, value); });
-      return new Response(response.body, { status:response.status, headers });
-    } catch { return json({ error:"The stream could not be opened. It may have expired — reload the page to resolve a fresh source." }, 502); }
-  }
-  const query = requestURL.searchParams.has("server") ? "" : requestURL.search;
-  const timeout = isRefresh ? 150_000 : 45_000;
-  try { const result = await upstream(`${target}/v1/${subPath}${query}`, { method:isRefresh ? "POST" : "GET", signal:AbortSignal.timeout(timeout) }); return json(result.data, result.status); }
-  catch (error) { return json({ error:error?.name === "TimeoutError" ? "Resolving took too long — the CinePro Core server did not answer in time. Give it a moment and try again." : "Your CinePro Core server could not be reached." }, 502); }
-}
-
 export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
   if (path === "config" && request.method === "GET") return config(env);
   if (path.startsWith("tmdb/")) return tmdb(path.slice(5), requestURL, env);
-  if (path === "cinepro" || path.startsWith("cinepro/")) return cineproProxy(request, requestURL, env, path.slice(8));
   if (path === "auth/signup" && request.method === "POST") return auth("signup", request, env);
   if (path === "auth/login" && request.method === "POST") return auth("login", request, env);
   if (path === "auth/refresh" && request.method === "POST") return auth("refresh", request, env);
