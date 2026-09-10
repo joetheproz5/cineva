@@ -5,7 +5,9 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.resolve(__dirname, "..", "app.js"), "utf8");
-const providerDefinitions = source.match(/const PLAYER_PROVIDERS[^\r\n]*(?:\r?\nconst NEXT_EPISODE_PROMPT_SECONDS[^\r\n]*)?\r?\nfunction selectedPlayerProvider[^\r\n]*/)?.[0];
+const providerList = source.match(/const PLAYER_PROVIDERS[^\r\n]*/)?.[0];
+const selectedProvider = source.match(/function selectedPlayerProvider[^\r\n]*/)?.[0];
+const providerDefinitions = providerList && selectedProvider ? `${providerList}\n${selectedProvider}` : null;
 const start = source.indexOf("function playerURL");
 const end = source.indexOf("function nextPlayerEpisode");
 
@@ -28,6 +30,12 @@ test("supported providers receive the saved playback second", () => {
   assert.equal(new URL(buildURLFor("vidlink", item, 1712)).searchParams.get("startAt"), "1712");
   assert.equal(new URL(buildURLFor("vidsrc", item, 1712)).searchParams.get("t"), "1712");
   assert.equal(new URL(buildURLFor("vidking", item, 1712)).searchParams.get("progress"), "1712");
+});
+
+test("provider-owned next controls are disabled in favor of SEVEN's verified handoff", () => {
+  const item = { type:"tv", id:71712, season:4, episode:7 };
+  assert.equal(new URL(buildURLFor("vidlink", item)).searchParams.get("nextbutton"), "false");
+  assert.equal(new URL(buildURLFor("vidking", item)).searchParams.get("nextEpisode"), "false");
 });
 
 test("the player uses the saved start time unless a watch party supplies one", () => {

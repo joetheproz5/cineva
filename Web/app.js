@@ -7,7 +7,7 @@ let coverflowResizeTimer;
 let sessionRefreshTimer;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const ACCOUNT_KEY = "seven.account.settings";
@@ -80,7 +80,12 @@ function applyLocale() {
 const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"vidlink" };
 const PLAYER_PROVIDERS = Object.freeze(["vidlink", "vidking", "vidsrc", "2embed"]);
 const NEXT_EPISODE_PROMPT_SECONDS = 30;
+const PREVIOUS_EPISODE_WATCHED_PERCENT = 50;
+const NEXT_EPISODE_CONFIRMATION_PERCENT = 25;
 function selectedPlayerProvider() { const provider = currentPreferences().playerProvider; return PLAYER_PROVIDERS.includes(provider) ? provider : "vidlink"; }
+function playbackProgressPercent(record = {}) { const duration = Number(record.duration), currentTime = Number(record.currentTime), savedProgress = Number(record.progress); if (Number.isFinite(duration) && duration > 0 && Number.isFinite(currentTime) && currentTime >= 0) return Math.min(100, currentTime / duration * 100); return Number.isFinite(savedProgress) ? Math.min(100, Math.max(0, savedProgress)) : 0; }
+function isDirectNextEpisode(previous, current) { return previous?.type === "tv" && current?.type === "tv" && Number(previous.id) === Number(current.id) && Number(previous.season) === Number(current.season) && Number(current.episode) === Number(previous.episode) + 1; }
+function shouldConfirmPreviousEpisode(previous, current, previousRecord, currentProgress) { return isDirectNextEpisode(previous, current) && playbackProgressPercent(previousRecord) >= PREVIOUS_EPISODE_WATCHED_PERCENT && Number(currentProgress) >= NEXT_EPISODE_CONFIRMATION_PERCENT; }
 const activeProfileId = () => state.account?.activeProfileId || "main";
 const watchKey = item => `seven-progress-${activeProfileId()}-${item.type}-${item.id}-${item.season || 0}-${item.episode || 0}`;
 const titleOf = item => item.title || item.name || item.original_title || item.original_name || "Untitled";
@@ -487,7 +492,7 @@ function savedStart(item) { try { const saved = JSON.parse(localStorage.getItem(
 function timeLabel(seconds) { const minutes = Math.floor(seconds / 60), remainder = String(seconds % 60).padStart(2, "0"); return `${minutes}:${remainder}`; }
 function resumeAction(item, attribute) { const seconds = savedStart(item); return seconds ? `<button class="secondary resume-action" ${attribute}><b>↻</b> Resume from ${timeLabel(seconds)}</button>` : ""; }
 async function playSeriesEpisode(season, episode, resume = false) { if (Number(state.selectedSeason) !== Number(season)) { state.selectedSeason = Number(season); await loadEpisodes(); } playEpisode(Number(episode), resume); }
-function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
+function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }, previous = state.player; state.pendingEpisodeCompletion = isDirectNextEpisode(previous, key) && playbackProgressPercent(savedProgress(previous)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? { ...previous } : null; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
 function playerURL(item, progress = 0) {
   const preferences = currentPreferences(), provider = selectedPlayerProvider();
   let url;
@@ -498,16 +503,16 @@ function playerURL(item, progress = 0) {
   }
   else if (provider === "vidlink") {
     const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season || 1}/${item.episode || 1}`;
-    url = `https://vidlink.pro/${base}?${new URLSearchParams({ primaryColor:"B20710", secondaryColor:"170000", iconColor:"B20710", autoplay:"true", nextbutton:"true", ...(progress > 0 ? { startAt:String(Math.floor(progress)) } : {}) })}`;
+    url = `https://vidlink.pro/${base}?${new URLSearchParams({ primaryColor:"B20710", secondaryColor:"170000", iconColor:"B20710", autoplay:"true", nextbutton:"false", ...(progress > 0 ? { startAt:String(Math.floor(progress)) } : {}) })}`;
   }
   else {
     const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`;
-    url = `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true", ...(progress > 0 ? { progress:String(Math.floor(progress)) } : {}) })}`;
+    url = `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:"false", episodeSelector:"true", ...(progress > 0 ? { progress:String(Math.floor(progress)) } : {}) })}`;
   }
   return url;
 }
-function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; const episodes = state.episodes?.episodes || [], currentIndex = episodes.findIndex(episode => Number(episode.episode_number) === Number(item.episode)); return currentIndex >= 0 ? episodes.slice(currentIndex + 1).find(Boolean) || null : null; }
-async function playNextPlayerEpisode(player, next) { if (!next || player.type !== "tv") return; if (Number(state.selectedSeason) !== Number(player.season)) { state.selectedSeason = Number(player.season); await loadEpisodes(); } playEpisode(Number(next.episode_number), false); }
+function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; return (state.episodes?.episodes || []).filter(episode => Number(episode.episode_number) > Number(item.episode)).sort((a, b) => Number(a.episode_number) - Number(b.episode_number))[0] || null; }
+async function playNextPlayerEpisode(player) { if (player.type !== "tv" || Number(state.series?.id) !== Number(player.id)) return; state.selectedSeason = Number(player.season); await loadEpisodes(); const next = nextPlayerEpisode(player); if (!next) { showToast("No following episode is available in this season."); return; } playEpisode(Number(next.episode_number), false); }
 function playerEpisodePanel(player) {
   if (player.type !== "tv") return "";
   if (Number(state.series?.id) !== Number(player.id)) return `<section class="episode-section player-episodes player-episodes-loading" data-player-episode-panel><span class="brand">EPISODES</span><p>Loading Season ${player.season}…</p></section>`;
@@ -883,7 +888,7 @@ function renderPlayer() {
   document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
   renderPartyPanel();
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
-  document.querySelectorAll("[data-play-next]").forEach(button => button.addEventListener("click", () => { void playNextPlayerEpisode(p, next); }));
+  document.querySelectorAll("[data-play-next]").forEach(button => button.addEventListener("click", () => { void playNextPlayerEpisode(p); }));
 }
 function simplifiedTitleQuery(query) {
   const simplified = query.trim().replace(/\b(new|latest|series|tv\s+show|show|movie|film|gameplay|trailer|official)\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -1176,7 +1181,7 @@ function showInstallSEVEN() {
   document.querySelector("[data-close-install]").onclick = () => document.querySelector(".install-modal")?.remove();
   document.querySelector("[data-confirm-install]")?.addEventListener("click", async () => { const prompt = deferredInstallPrompt; if (!prompt) return; prompt.prompt(); await prompt.userChoice; deferredInstallPrompt = null; document.querySelector(".install-modal")?.remove(); });
 }
-function queueProgressSync(item, currentTime, duration, progress) { if (!state.session) return; state.pendingProgress = { content_key:watchKey(item), content_type:item.type, tmdb_id:item.id, season:item.season || null, episode:item.episode || null, title:item.title || "Untitled", poster_path:item.posterPath || null, progress_seconds:currentTime, duration_seconds:duration, is_watched:progress >= 90, last_watched_at:new Date().toISOString() }; clearTimeout(state.progressTimer); state.progressTimer = setTimeout(async () => { try { await localAPI("/api/account/progress", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify(state.pendingProgress) }); } catch { /* Local progress remains available if cloud sync is offline. */ } }, 1200); }
+function queueProgressSync(item, currentTime, duration, progress, immediate = false) { if (!state.session) return; const payload = { content_key:watchKey(item), content_type:item.type, tmdb_id:item.id, season:item.season || null, episode:item.episode || null, title:item.title || "Untitled", poster_path:item.posterPath || null, progress_seconds:currentTime, duration_seconds:duration, is_watched:progress >= 90, last_watched_at:new Date().toISOString() }; if (immediate) { void localAPI("/api/account/progress", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify(payload) }).catch(() => {}); return; } state.pendingProgress = payload; clearTimeout(state.progressTimer); state.progressTimer = setTimeout(async () => { try { await localAPI("/api/account/progress", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify(state.pendingProgress) }); } catch { /* Local progress remains available if cloud sync is offline. */ } }, 1200); }
 function bindCommon() {
   document.querySelectorAll("[data-home]").forEach(button => button.onclick = () => { state.route = "home"; render(); });
   document.querySelectorAll("[data-open]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, id); });
@@ -1209,6 +1214,9 @@ function recordPlaybackEvent(data) {
   const progress = Math.min(100, currentTime / duration * 100);
   localStorage.setItem(watchKey(state.player), JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()}));
   queueProgressSync(state.player, currentTime, duration, progress);
+  const pendingPrevious = state.pendingEpisodeCompletion;
+  if (pendingPrevious && shouldConfirmPreviousEpisode(pendingPrevious, state.player, savedProgress(pendingPrevious), progress)) { markEpisodeWatched(pendingPrevious); state.pendingEpisodeCompletion = null; }
+  else if (pendingPrevious && !isDirectNextEpisode(pendingPrevious, state.player)) state.pendingEpisodeCompletion = null;
   const bar = document.querySelector("#bar"), time = document.querySelector("#time");
   if (bar) bar.style.width = `${progress}%`;
   if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`;
@@ -1217,6 +1225,7 @@ function recordPlaybackEvent(data) {
   document.querySelectorAll("[data-next-player-action]").forEach(button => { button.hidden = !showNextEpisode; });
 }
 function nextEpisodePromptReady(currentTime, duration) { const current = Number(currentTime), total = Number(duration); return Number.isFinite(current) && Number.isFinite(total) && total > 0 && current >= Math.max(0, total - NEXT_EPISODE_PROMPT_SECONDS) && current < total; }
+function markEpisodeWatched(item) { const saved = savedProgress(item), duration = Math.max(1, Number(saved.duration) || 0), record = { ...saved, currentTime:duration, duration, progress:100, watched:true, type:item.type, id:item.id, season:item.season || null, episode:item.episode || null, title:saved.title || item.title || "Untitled", posterPath:saved.posterPath || item.posterPath || null, genreIds:saved.genreIds || item.genreIds || [], lastWatchedAt:new Date().toISOString() }; localStorage.setItem(watchKey(item), JSON.stringify(record)); state.seriesNext = null; queueProgressSync(item, duration, duration, 100, true); }
 window.addEventListener("message", event => {
   let payload;
   try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; }
@@ -1227,7 +1236,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(payload.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js?v=215").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("/service-worker.js?v=216").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });
