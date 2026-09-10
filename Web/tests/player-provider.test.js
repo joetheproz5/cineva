@@ -5,7 +5,7 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.resolve(__dirname, "..", "app.js"), "utf8");
-const providerDefinitions = source.match(/const PLAYER_PROVIDERS[^\r\n]*\r?\nfunction selectedPlayerProvider[^\r\n]*/)?.[0];
+const providerDefinitions = source.match(/const PLAYER_PROVIDERS[^\r\n]*(?:\r?\nconst NEXT_EPISODE_PROMPT_SECONDS[^\r\n]*)?\r?\nfunction selectedPlayerProvider[^\r\n]*/)?.[0];
 const start = source.indexOf("function playerURL");
 const end = source.indexOf("function nextPlayerEpisode");
 
