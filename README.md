@@ -2,15 +2,9 @@
 
 Cineva is a personal iPhone and Android streaming client for content the account holder is authorized to show. Version 1 provides a premium dark catalog for *The Good Doctor*, episode browsing, watch-progress storage, and an embedded Vidking player.
 
-## Main player: CinePro (SEVEN web app)
+## Web player
 
-The SEVEN web app now uses [CinePro Core](https://github.com/cinepro-org/core) — an OMSS-compliant streaming backend — as its **main player**. Instead of loading a third-party embed, SEVEN asks your own CinePro instance for playable sources (`/v1/movies/{id}` and `/v1/tv/{id}/seasons/{s}/episodes/{e}`), then plays them in a native `<video>` element with subtitles, quality/source switching, and the same watch-progress tracking as the embeds.
-
-1. Run CinePro Core somewhere reachable (home server, PC, or a Cloudflare Tunnel): `git clone https://github.com/cinepro-org/core && cd core && npm install && cp .env.example .env && npm run dev`.
-2. Point SEVEN at it in **Account → Playback → CinePro Core server** (e.g. `http://192.168.1.20:3000`), or set the `CINEPRO_URL` environment variable on the Cloudflare Pages project.
-3. All playback is routed through SEVEN's own `/api/cinepro` proxy (Pages Function in `functions/api/[[path]].js`), so the browser never talks to the scraper directly and HLS streams stay same-origin.
-
-VidLink, Vidking, VidSrc, and 2Embed remain available as fallback embeds from the player's provider menu.
+The SEVEN web app plays titles through cloud-hosted embed players — VidLink, Vidking, VidSrc, and 2Embed — selectable from the player's provider menu in the top bar. Playback progress, next-episode, and watch-together features work the same across all of them.
 
 ## Platforms
 

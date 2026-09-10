@@ -6,10 +6,6 @@ let searchRequest = 0;
 let coverflowResizeTimer;
 let sessionRefreshTimer;
 let deferredInstallPrompt;
-let cineproRequest = 0;
-const cineproSourceCache = new Map();
-const CINEPRO_CACHE_TTL = 3 * 60 * 1000;
-const CINEPRO_RESOLVE_TIMEOUT = 60 * 1000;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null };
 const SESSION_KEY = "cineva.supabase.session";
@@ -81,7 +77,7 @@ function applyLocale() {
   document.documentElement.lang = { English:"en", Arabic:"ar", French:"fr" }[language] || "en";
   document.documentElement.dir = language === "Arabic" ? "rtl" : "ltr";
 }
-const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"cinepro", cineproServer:"" };
+const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"vidlink" };
 const activeProfileId = () => state.account?.activeProfileId || "main";
 const watchKey = item => `seven-progress-${activeProfileId()}-${item.type}-${item.id}-${item.season || 0}-${item.episode || 0}`;
 const titleOf = item => item.title || item.name || item.original_title || item.original_name || "Untitled";
@@ -94,7 +90,7 @@ async function localAPI(path, options = {}) { const response = await fetch(path,
 function authorizedHeaders() { return state.session?.access_token ? { Authorization:`Bearer ${state.session.access_token}` } : {}; }
 function defaultAccount() { const name = state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile"; return { activeProfileId:"main", profiles:[{ id:"main", name, color:"#d3131c", kids:false }], preferences:{ ...DEFAULT_PREFERENCES } }; }
 const EMPTY_SECRET_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-function hydrateAccount() { const saved = state.user?.user_metadata?.seven_account || JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null") || {}, fallback = defaultAccount(); state.account = { ...fallback, ...saved, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } }; if (state.account.parentPinHash === EMPTY_SECRET_HASH) delete state.account.parentPinHash; let migratedKidsPin = false, cleanedEmptyPin = false; state.account.profiles.forEach(profile => { if (profile.pinHash === EMPTY_SECRET_HASH) { delete profile.pinHash; cleanedEmptyPin = true; } if (!profile.kids || !profile.pinHash) return; if (!state.account.parentPinHash) state.account.parentPinHash = profile.pinHash; delete profile.pinHash; migratedKidsPin = true; }); if (!state.account.profiles.some(profile => profile.id === state.account.activeProfileId)) state.account.activeProfileId = state.account.profiles[0].id; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); if ((migratedKidsPin || cleanedEmptyPin) && state.session) void saveAccount(); }
+function hydrateAccount() { const saved = state.user?.user_metadata?.seven_account || JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null") || {}, fallback = defaultAccount(); state.account = { ...fallback, ...saved, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } }; if (state.account.parentPinHash === EMPTY_SECRET_HASH) delete state.account.parentPinHash; let migratedKidsPin = false, cleanedEmptyPin = false; state.account.profiles.forEach(profile => { if (profile.pinHash === EMPTY_SECRET_HASH) { delete profile.pinHash; cleanedEmptyPin = true; } if (!profile.kids || !profile.pinHash) return; if (!state.account.parentPinHash) state.account.parentPinHash = profile.pinHash; delete profile.pinHash; migratedKidsPin = true; }); if (!state.account.profiles.some(profile => profile.id === state.account.activeProfileId)) state.account.activeProfileId = state.account.profiles[0].id; if (state.account.preferences.playerProvider === "cinepro") { state.account.preferences.playerProvider = "vidlink"; delete state.account.preferences.cineproServer; } localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); if ((migratedKidsPin || cleanedEmptyPin) && state.session) void saveAccount(); }
 function migrateLegacyProgress() { const prefix = `seven-progress-${activeProfileId()}-`; Object.keys(localStorage).filter(key => key.startsWith("cineva-progress-")).forEach(key => { const next = key.replace("cineva-progress-", prefix); if (!localStorage.getItem(next)) localStorage.setItem(next, localStorage.getItem(key)); }); }
 function parentAccessConfigured() { return Boolean(state.account?.parentAccessEnabled || state.account?.parentPinHash); }
 async function refreshParentAccessStatus() { if (!state.session || !state.account) return; try { const data = await localAPI("/api/account/parent-access", { headers:authorizedHeaders() }); if (data.enabled) { const hadLegacyHash = Boolean(state.account.parentPinHash); state.account.parentAccessEnabled = true; delete state.account.parentPinHash; if (hadLegacyHash) await saveAccount(); } else if (!state.account.parentPinHash) state.account.parentAccessEnabled = false; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); } catch { /* Keep a legacy local verifier available until the user migrates it. */ } }
@@ -489,31 +485,8 @@ function timeLabel(seconds) { const minutes = Math.floor(seconds / 60), remainde
 function resumeAction(item, attribute) { const seconds = savedStart(item); return seconds ? `<button class="secondary resume-action" ${attribute}><b>↻</b> Resume from ${timeLabel(seconds)}</button>` : ""; }
 async function playSeriesEpisode(season, episode, resume = false) { if (Number(state.selectedSeason) !== Number(season)) { state.selectedSeason = Number(season); await loadEpisodes(); } playEpisode(Number(episode), resume); }
 function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
-async function cineproServer() { return (currentPreferences().cineproServer || "").trim().replace(/\/+$/, ""); }
-function cineproCacheKey(server, item) { return `${server}|${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`; }
-async function cineproSources(item, refresh = false) {
-  const server = await cineproServer();
-  const key = cineproCacheKey(server, item), cached = cineproSourceCache.get(key);
-  if (!refresh && cached && Date.now() - cached.at < CINEPRO_CACHE_TTL) return cached.value;
-  const base = item.type === "movie" ? `movies/${item.id}` : `tv/${item.id}/seasons/${item.season || 1}/episodes/${item.episode || 1}`;
-  const query = server ? `?server=${encodeURIComponent(server)}` : "";
-  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), CINEPRO_RESOLVE_TIMEOUT);
-  try {
-    const payload = await localAPI(`/api/cinepro/${base}${query}`, { signal:controller.signal });
-    const sources = (payload.sources || []).filter(source => source?.url && source.streamable !== false), subtitles = payload.subtitles || [];
-    const value = { sources, subtitles, responseId:payload.responseId || "", error:sources.length ? "" : (payload.error || "No playable sources were found for this title right now. Try another player below.") };
-    cineproSourceCache.set(key, { at:Date.now(), value });
-    if (cineproSourceCache.size > 30) { const oldest = cineproSourceCache.keys().next().value; cineproSourceCache.delete(oldest); }
-    return value;
-  } catch (error) {
-    const message = error.name === "AbortError" ? "Resolving took too long — your CinePro Core server may be offline or busy. Try again." : error.message || "Your CinePro Core server could not be reached.";
-    return { sources:[], subtitles:[], responseId:"", error:message, unreachable:true };
-  } finally { clearTimeout(timer); }
-}
-function cineproProxyURL(url, server = "") { return `/api/cinepro/playable?u=${encodeURIComponent(url)}${server ? `&server=${encodeURIComponent(server)}` : ""}`; }
-async function cineproVerify(server) { try { await localAPI(`/api/cinepro?server=${encodeURIComponent(server)}`); return true; } catch { return false; } }
-function playerURL(item, progress = 0, override = "") {
-  const preferences = currentPreferences(), provider = override || preferences.playerProvider || "cinepro";
+function playerURL(item, progress = 0) {
+  const preferences = currentPreferences(), provider = preferences.playerProvider || "vidlink";
   if (provider === "2embed") return item.type === "movie" ? `https://www.2embed.online/embed/movie/${item.id}` : `https://www.2embed.online/embed/tv/${item.id}/${item.season || 1}/${item.episode || 1}`;
   if (provider === "vidsrc") {
     const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season || 1}/${item.episode || 1}`;
@@ -524,11 +497,8 @@ function playerURL(item, progress = 0, override = "") {
     return `https://vidlink.pro/${base}?${new URLSearchParams({ primaryColor:"B20710", secondaryColor:"170000", iconColor:"B20710", autoplay:"true", nextbutton:"true", ...(progress > 0 ? { startAt:String(Math.floor(progress)) } : {}) })}`;
   }
 
-  if (provider === "vidking") {
-    const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`;
-    return `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true", ...(progress > 0 ? { progress:String(Math.floor(progress)) } : {}) })}`;
-  }
-  return playerURL(item, progress, "vidlink");
+  const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`;
+  return `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true", ...(progress > 0 ? { progress:String(Math.floor(progress)) } : {}) })}`;
 }
 function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; const episodes = state.episodes?.episodes || [], currentIndex = episodes.findIndex(episode => Number(episode.episode_number) === Number(item.episode)); return currentIndex >= 0 ? episodes.slice(currentIndex + 1).find(Boolean) || null : null; }
 async function playNextPlayerEpisode(player, next) { if (!next || player.type !== "tv") return; if (Number(state.selectedSeason) !== Number(player.season)) { state.selectedSeason = Number(player.season); await loadEpisodes(); } playEpisode(Number(next.episode_number), false); }
@@ -891,114 +861,23 @@ function showPartyModal() {
   document.querySelector("[data-party-join-modal]").onclick = join;
   document.querySelector(".party-join-row input").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); join(); } };
 }
-function renderFallbackNotice(from) {
-  const host = document.querySelector(".player-frame");
-  if (!host || document.querySelector("[data-fallback-note]")) return;
-  host.insertAdjacentHTML("beforeend", `<div class="cinepro-fallback-note" data-fallback-note><span><b>CinePro offline</b> · playing via ${escapeHTML(from === "vidlink" ? "VidLink" : from)}</span><button class="primary" data-fallback-retry>Retry CinePro</button><button data-fallback-dismiss aria-label="Dismiss">×</button></div>`);
-  document.querySelector("[data-fallback-retry]").onclick = () => { state.playerFallbackTo = null; render(); };
-  document.querySelector("[data-fallback-dismiss]").onclick = () => document.querySelector("[data-fallback-note]")?.remove();
-}
 function providerMenuHTML() {
-  const labels = { cinepro:"CinePro ✦", vidlink:"VidLink", vidking:"Vidking", vidsrc:"VidSrc", "2embed":"2Embed" }, current = currentPreferences().playerProvider || "cinepro";
-  return `<div class="provider-menu"><button class="provider-toggle" data-provider-menu>${labels[current] || "CinePro ✦"} ▾</button><div class="provider-list" data-provider-list hidden>${["cinepro", "vidlink", "vidking", "vidsrc", "2embed"].map(provider => `<button class="provider-option ${provider === current ? "active" : ""}" data-provider-select="${provider}">${labels[provider]}${provider === current ? " ✓" : ""}</button>`).join("")}</div></div>`;
+  const labels = { vidlink:"VidLink", vidking:"Vidking", vidsrc:"VidSrc", "2embed":"2Embed" }, current = currentPreferences().playerProvider || "vidlink";
+  return `<div class="provider-menu"><button class="provider-toggle" data-provider-menu>${labels[current] || "VidLink"} ▾</button><div class="provider-list" data-provider-list hidden>${["vidlink", "vidking", "vidsrc", "2embed"].map(provider => `<button class="provider-option ${provider === current ? "active" : ""}" data-provider-select="${provider}">${labels[provider]}${provider === current ? " ✓" : ""}</button>`).join("")}</div></div>`;
 }
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextLabel = next ? escapeHTML(next.name || `Episode ${next.episode_number}`) : "", nextAction = next ? `<button class="secondary player-next" data-play-next>${t("Next episode")} <b>›</b> ${nextLabel}</button>` : "", frameNextAction = next ? `<button class="player-frame-next" data-play-next aria-label="Play next episode: ${nextLabel}"><span>${t("Next episode")}</span><b>${nextLabel}</b><i>›</i></button>` : "";
-  const cineproActive = (currentPreferences().playerProvider || "cinepro") === "cinepro";
-  if (state.playerFallbackTo && state.playerFallbackFor !== watchKey(p)) { state.playerFallbackTo = null; }
-  state.playerFallbackFor = watchKey(p);
-  const fallbackNotice = cineproActive && state.playerFallbackTo ? state.playerFallbackTo : "";
-  const media = cineproActive && !fallbackNotice
-    ? `<video class="player cinepro-video" id="cinepro-video" controls controlslist="nodownload" playsinline preload="metadata" ${p.startAt ? `data-start-at="${Math.floor(p.startAt)}" ` : ""}poster="${p.posterPath ? escapeHTML(`${TMDB_BACKDROP}${p.posterPath}`) : ""}"></video>`
-    : `<iframe class="player${fallbackNotice ? " player-fallback" : ""}" src="${playerURL(p, party.syncPosition || 0, fallbackNotice ? "vidlink" : "")}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
-  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : `<span class="cinepro-sources-slot" data-cinepro-sources hidden></span>` + providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}<div class="cinepro-loading" id="cinepro-loading" ${cineproActive && !fallbackNotice ? "" : "hidden"}><div class="cinepro-spinner"></div><p>Resolving sources via CinePro…</p></div>${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
+  const media = `<iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
-  if (cineproActive && !fallbackNotice) void setupCineProPlayer(p);
-  else if (fallbackNotice) renderFallbackNotice(fallbackNotice);
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
   document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
   document.querySelector("[data-provider-menu]")?.addEventListener("click", event => { event.stopPropagation(); const list = document.querySelector("[data-provider-list]"); if (list) list.hidden = !list.hidden; });
-  document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { state.playerFallbackTo = null; updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
+  document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
   renderPartyPanel();
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
   document.querySelectorAll("[data-play-next]").forEach(button => button.addEventListener("click", () => { void playNextPlayerEpisode(p, next); }));
-}
-async function setupCineProPlayer(p) {
-  const video = document.querySelector("#cinepro-video"), loading = document.querySelector("#cinepro-loading");
-  if (!video) return;
-  const attempt = ++cineproRequest;
-  let resolved = await cineproSources(p), current = 0, errorStreak = 0;
-  if (attempt !== cineproRequest || state.route !== "player" || state.player !== p || !video.isConnected) return;
-  if (!resolved.sources.length && resolved.unreachable) { if (state.playerFallbackTo) { if (loading) loading.hidden = true; return showError(resolved.error); } state.playerFallbackTo = "vidlink"; render(); return; }
-  if (loading) loading.hidden = true;
-  // Chrome/Firefox cannot play HLS natively — try progressive MP4s first there.
-  if (!video.canPlayType("application/vnd.apple.mpegurl")) resolved.sources.sort((a, b) => (a.type === "hls") - (b.type === "hls"));
-
-  const playSource = async (index, resumeAt) => {
-    const source = resolved.sources[index];
-    if (!source) return;
-    current = index;
-    errorStreak = 0;
-    const at = resumeAt ?? Math.max(0, Math.floor(video.currentTime || Number(video.dataset.startAt) || 0));
-    // Stream straight from the CinePro tunnel (CORS-open): one hop, Range-seeking hits the CDN directly.
-    // http:// sources on the https site would be mixed-content blocked — route those through the same-origin proxy.
-    video.src = location.protocol === "https:" && source.url.startsWith("http:") ? cineproProxyURL(source.url) : source.url;
-    video.load();
-    if (at > 0) video.addEventListener("loadedmetadata", () => { try { if (isFinite(video.duration) && at < video.duration - 2) video.currentTime = at; } catch { /* Stream refused seeking. */ } }, { once:true });
-    try { await video.play(); } catch { /* Autoplay can be blocked until the viewer taps play. */ }
-    syncMenu();
-  };
-  const syncMenu = () => document.querySelectorAll("[data-cinepro-source]").forEach(button => button.classList.toggle("active", Number(button.dataset.cineproSource) === current));
-  const slot = document.querySelector("[data-cinepro-sources]");
-  const renderMenu = () => {
-    if (!slot) return;
-    if (resolved.sources.length < 2) { slot.hidden = true; slot.innerHTML = ""; return; }
-    slot.hidden = false;
-    slot.innerHTML = `<button class="provider-toggle" data-cinepro-menu>Sources (${resolved.sources.length}) ▾</button><div class="provider-list" data-cinepro-list hidden>${resolved.sources.slice(0, 10).map((source, index) => `<button class="provider-option ${index === current ? "active" : ""}" data-cinepro-source="${index}">${escapeHTML(source.provider?.name || source.provider?.id || `Source ${index + 1}`)}<small>${escapeHTML(String(source.quality || "Auto"))} · ${escapeHTML(String(source.type || "hls").toUpperCase())}</small></button>`).join("")}</div>`;
-    slot.querySelector("[data-cinepro-menu]").onclick = event => { event.stopPropagation(); const list = slot.querySelector("[data-cinepro-list]"); if (list) list.hidden = !list.hidden; };
-    slot.querySelectorAll("[data-cinepro-source]").forEach(button => button.onclick = () => { const list = slot.querySelector("[data-cinepro-list]"); if (list) list.hidden = true; void playSource(Number(button.dataset.cineproSource)); });
-  };
-  const showError = message => {
-    video.insertAdjacentHTML("afterend", `<div class="cinepro-error" data-cinepro-error><b>CinePro could not play this title</b><p>${escapeHTML(message)}</p><button class="primary" data-cinepro-retry>Resolve fresh sources</button></div>`);
-    document.querySelector("[data-cinepro-retry]").onclick = () => void retry();
-  };
-  const retry = async () => {
-    document.querySelector("[data-cinepro-error]")?.remove();
-    if (loading) { loading.hidden = false; loading.querySelector("p").textContent = "Resolving fresh sources via CinePro…"; }
-    if (resolved.responseId) { try { await localAPI(`/api/cinepro/refresh/${encodeURIComponent(resolved.responseId)}`); } catch { /* A failed cache refresh still leaves the re-resolve a chance. */ } }
-    resolved = await cineproSources(p, true);
-    if (loading && loading.querySelector("p")) loading.querySelector("p").textContent = "Resolving sources via CinePro…";
-    if (attempt !== cineproRequest || state.route !== "player" || !video.isConnected) return;
-    if (loading) loading.hidden = true;
-    if (!resolved.sources.length && resolved.unreachable) { if (!state.playerFallbackTo) { state.playerFallbackTo = "vidlink"; render(); } return; }
-    if (!resolved.sources.length) return showError(resolved.error);
-    renderMenu();
-    await playSource(0);
-  };
-  const failover = () => {
-    errorStreak += 1;
-    if (errorStreak > resolved.sources.length) return showError("Every source failed. Resolving fresh links usually fixes this.");
-    void playSource((current + 1) % resolved.sources.length);
-  };
-
-  video.addEventListener("error", () => { if (video.error && resolved.sources.length) failover(); });
-  video.addEventListener("timeupdate", () => { errorStreak = 0; if (video.duration) recordPlaybackEvent({ event:"timeupdate", currentTime:video.currentTime, duration:video.duration }); });
-  video.addEventListener("play", () => recordPlaybackEvent({ event:"play", currentTime:video.currentTime, duration:video.duration || 0 }));
-  video.addEventListener("ended", () => { recordPlaybackEvent({ event:"ended", currentTime:video.duration || 0, duration:video.duration || 0 }); void playNextPlayerEpisode(p, nextPlayerEpisode(p)); });
-
-  (resolved.subtitles || []).slice(0, 6).forEach((subtitle, index) => {
-    if (!subtitle?.url) return;
-    const track = document.createElement("track");
-    track.kind = "subtitles";
-    track.label = subtitle.label || `Subtitles ${index + 1}`;
-    track.srclang = String(subtitle.language || subtitle.label || "en").slice(0, 2).toLowerCase();
-    track.src = subtitle.url;
-    video.appendChild(track);
-  });
-  if (!resolved.sources.length) return showError(resolved.error);
-  renderMenu();
-  await playSource(0);
 }
 function simplifiedTitleQuery(query) {
   const simplified = query.trim().replace(/\b(new|latest|series|tv\s+show|show|movie|film|gameplay|trailer|official)\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -1179,7 +1058,7 @@ function accountAction(icon, title, detail, action, value = "Open") { return `<b
 function parentAccessCodeAction() { const hasCode = parentAccessConfigured(); return `<button type="button" class="account-action-card profile-parent-code-action" data-change-parent-code><i aria-hidden="true">⌘</i><span><b>${t(hasCode ? "Change parent access code" : "Set parent access code")}</b><small>${t(hasCode ? "Confirm your current code before changing or turning it off." : "Protect profile and account settings without locking the profile picker.")}</small></span><em>${hasCode ? "Change" : "Set"} ›</em></button>`; }
 function accountPanel(account, profile, tab) {
   if (tab === "activity") return `<section class="account-content-panel"><div class="account-content-heading"><span class="brand">YOUR SEVEN</span><h2>${escapeHTML(profile?.name || "Your")} activity</h2><p>Everything this profile has saved, watched, rated, or hidden.</p></div><div class="account-action-grid">${accountAction("◴", "Profile stats", "Watch time, streaks, genres, and completed titles", "data-profile-stats")}${accountAction("♥", "Favourites", `Movies and series saved by ${escapeHTML(profile?.name || "this profile")}`, "data-my-list")}${accountAction("▤", "Viewing activity", "Review or remove watched titles", "data-view-history")}${accountAction("★", "Your ratings", "Titles used to shape recommendations", "data-liked-titles", likedTitles().length || "View")}${accountAction("⊘", "Not for me", "Bring hidden titles back into browse rows", "data-hidden-titles", hiddenTitles().length || "View")}</div></section>`;
-  if (tab === "playback") return `<section class="account-content-panel"><div class="account-content-heading"><span class="brand">PLAYBACK & ACCESS</span><h2>${t("Viewing preferences")}</h2><p>These choices apply only to ${escapeHTML(profile?.name || "this profile")}.</p></div><div class="settings-stack"><label class="account-toggle"><span>Autoplay next episode<small>Continue series automatically when available</small></span><input type="checkbox" data-pref="autoplayNext" ${account.preferences.autoplayNext !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Cinematic intro<small>Play the SEVEN ident when the app opens</small></span><input type="checkbox" data-pref="introEnabled" ${account.preferences.introEnabled !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Autoplay spotlight<small>Rotate featured titles on Home</small></span><input type="checkbox" data-pref="autoplayPreviews" ${account.preferences.autoplayPreviews !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>New episode alerts<small>Notify me when a show in Favourites has a new episode</small></span><input type="checkbox" data-pref="episodeAlerts" ${account.preferences.episodeAlerts === true ? "checked" : ""}><i></i></label><div class="account-selects"><label class="account-select">Maturity setting<select data-pref="maturity"><option ${account.preferences.maturity === "Kids" ? "selected" : ""}>Kids</option><option ${account.preferences.maturity === "13+" ? "selected" : ""}>13+</option><option ${account.preferences.maturity === "16+" ? "selected" : ""}>16+</option><option ${account.preferences.maturity === "18+" ? "selected" : ""}>18+</option></select></label><label class="account-select">Video player<select data-pref="playerProvider"><option value="cinepro" ${account.preferences.playerProvider === "cinepro" || !["vidlink", "vidking", "vidsrc", "2embed"].includes(account.preferences.playerProvider) ? "selected" : ""}>CinePro (main player)</option><option value="vidlink" ${account.preferences.playerProvider === "vidlink" ? "selected" : ""}>VidLink</option><option value="vidking" ${account.preferences.playerProvider === "vidking" ? "selected" : ""}>Vidking</option><option value="vidsrc" ${account.preferences.playerProvider === "vidsrc" ? "selected" : ""}>VidSrc (no ads)</option><option value="2embed" ${account.preferences.playerProvider === "2embed" ? "selected" : ""}>2Embed</option></select></label><label class="account-select">Display language<select data-pref="language"><option ${account.preferences.language === "English" ? "selected" : ""}>English</option><option ${account.preferences.language === "Arabic" ? "selected" : ""}>Arabic</option><option ${account.preferences.language === "French" ? "selected" : ""}>French</option></select></label></div><label class="account-select cinepro-server-field" data-cinepro-server-field><span>CinePro Core server<small>Your OMSS backend URL, e.g. http://192.168.1.20:3000 or a Cloudflare Tunnel address. SEVEN routes playback through its own /api/cinepro proxy.</small></span><input type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://your-cinepro-host:3000" value="${escapeHTML(account.preferences.cineproServer || "")}" data-cinepro-server><button class="secondary" type="button" data-cinepro-test>Test & save</button><p class="form-error" data-cinepro-status hidden></p></label></div></section>`;
+  if (tab === "playback") return `<section class="account-content-panel"><div class="account-content-heading"><span class="brand">PLAYBACK & ACCESS</span><h2>${t("Viewing preferences")}</h2><p>These choices apply only to ${escapeHTML(profile?.name || "this profile")}.</p></div><div class="settings-stack"><label class="account-toggle"><span>Autoplay next episode<small>Continue series automatically when available</small></span><input type="checkbox" data-pref="autoplayNext" ${account.preferences.autoplayNext !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Cinematic intro<small>Play the SEVEN ident when the app opens</small></span><input type="checkbox" data-pref="introEnabled" ${account.preferences.introEnabled !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Autoplay spotlight<small>Rotate featured titles on Home</small></span><input type="checkbox" data-pref="autoplayPreviews" ${account.preferences.autoplayPreviews !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>New episode alerts<small>Notify me when a show in Favourites has a new episode</small></span><input type="checkbox" data-pref="episodeAlerts" ${account.preferences.episodeAlerts === true ? "checked" : ""}><i></i></label><div class="account-selects"><label class="account-select">Maturity setting<select data-pref="maturity"><option ${account.preferences.maturity === "Kids" ? "selected" : ""}>Kids</option><option ${account.preferences.maturity === "13+" ? "selected" : ""}>13+</option><option ${account.preferences.maturity === "16+" ? "selected" : ""}>16+</option><option ${account.preferences.maturity === "18+" ? "selected" : ""}>18+</option></select></label><label class="account-select">Video player<select data-pref="playerProvider"><option value="vidlink" ${account.preferences.playerProvider === "vidlink" || !["vidlink", "vidking", "vidsrc", "2embed"].includes(account.preferences.playerProvider) ? "selected" : ""}>VidLink</option><option value="vidking" ${account.preferences.playerProvider === "vidking" ? "selected" : ""}>Vidking</option><option value="vidsrc" ${account.preferences.playerProvider === "vidsrc" ? "selected" : ""}>VidSrc (no ads)</option><option value="2embed" ${account.preferences.playerProvider === "2embed" ? "selected" : ""}>2Embed</option></select></label><label class="account-select">Display language<select data-pref="language"><option ${account.preferences.language === "English" ? "selected" : ""}>English</option><option ${account.preferences.language === "Arabic" ? "selected" : ""}>Arabic</option><option ${account.preferences.language === "French" ? "selected" : ""}>French</option></select></label></div></section>`;
   if (tab === "security") return `<section class="account-content-panel"><div class="account-content-heading"><span class="brand">ACCOUNT & DEVICE</span><h2>${t("Security and privacy")}</h2><p>Manage this device and your account credentials.</p></div><div class="account-security-layout"><div class="account-action-grid">${accountAction("⌁", "Change password", "Confirm your current password before setting a new one", "data-change-password", "Change")}${accountAction("⌂", "Install SEVEN", "Add SEVEN to this device’s Home Screen", "data-install-seven", "Install")}${accountAction("⌫", "Clear viewing history", `Remove activity for ${escapeHTML(profile?.name || "this profile")}`, "data-clear-history", "Clear")}${accountAction("↪", "Sign out", "End this device session", "data-signout", "Sign out")}</div></div></section>`;
   const profiles = account.profiles.map(item => `<div class="profile-card ${item.id === profile?.id ? "active" : ""}"><button data-select-profile="${item.id}">${profileAvatar(item)}<b>${escapeHTML(item.name)}</b><small>${item.kids ? "Kids" : "Standard"}</small></button><button class="profile-edit" data-edit-profile="${item.id}" aria-label="Edit ${escapeHTML(item.name)}">✎</button></div>`).join("");
   const profileAdd = account.profiles.length < 5 ? `<button class="profile-add" data-add-profile><span>+</span><b>Add profile</b></button>` : "";
@@ -1271,16 +1150,6 @@ function renderAccount() {
   document.querySelector("[data-liked-titles]")?.addEventListener("click", () => { state.route = "liked"; scrollToTop(); render(); });
   document.querySelector("[data-install-seven]")?.addEventListener("click", showInstallSEVEN);
   document.querySelectorAll("[data-pref]").forEach(field => field.onchange = async () => { if (field.dataset.pref === "episodeAlerts" && field.checked && !await requestEpisodeAlerts()) field.checked = false; updateCurrentPreferences({ [field.dataset.pref]:field.type === "checkbox" ? field.checked : field.value }); await saveAccount(); if (field.dataset.pref === "episodeAlerts" && field.checked) notifyNewEpisodes(); if (["language", "maturity"].includes(field.dataset.pref)) { applyLocale(); try { await refreshCatalogForLanguage(); } catch { /* The saved setting is used by the next successful TMDB request. */ } } });
-  document.querySelector("[data-cinepro-test]")?.addEventListener("click", async event => {
-    const status = document.querySelector("[data-cinepro-status]"), input = document.querySelector("[data-cinepro-server]"), server = (input?.value || "").trim().replace(/\/+$/, "");
-    if (!status) return;
-    status.hidden = false;
-    status.textContent = "Testing connection…";
-    updateCurrentPreferences({ cineproServer:server });
-    await saveAccount();
-    const reachable = server ? await cineproVerify(server) : false;
-    status.textContent = server ? (reachable ? "✓ Connected — CinePro is ready as your main player." : "✕ Could not reach that server. Check the address and that CinePro Core is running.") : "CinePro server address cleared.";
-  });
   document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${currentProfile()?.name || "this profile"}?`)) return; Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).forEach(key => localStorage.removeItem(key)); try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(activeProfileId())}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} showAccount(); });
   document.querySelector("[data-change-password]")?.addEventListener("click", showChangePassword);
   document.querySelector("[data-signout]")?.addEventListener("click", () => { clearSession(); state.route = "home"; render(); });
@@ -1325,7 +1194,7 @@ function bindCommon() {
 }
 function syncHeaderScroll() { document.querySelector("header.main-header")?.classList.toggle("scrolled", (window.scrollY || 0) > 12); }
 window.addEventListener("scroll", syncHeaderScroll, { passive: true });
-window.addEventListener("click", () => { const providerList = document.querySelector("[data-provider-list]"); if (providerList && !providerList.hidden) providerList.hidden = true; const cineproList = document.querySelector("[data-cinepro-list]"); if (cineproList && !cineproList.hidden) cineproList.hidden = true; });
+window.addEventListener("click", () => { const providerList = document.querySelector("[data-provider-list]"); if (providerList && !providerList.hidden) providerList.hidden = true; });
 function recordPlaybackEvent(data) {
   const duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0;
   if (!duration) return;

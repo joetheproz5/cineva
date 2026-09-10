@@ -1,5 +1,4 @@
 const http = require("http");
-const { Readable } = require("stream");
 const fs = require("fs");
 const path = require("path");
 const root = __dirname;
@@ -69,33 +68,6 @@ async function accountSettings(request, response) {
     sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Account settings could not be saved." }); }
 }
-async function proxyCinePro(request, response, sourceURL) {
-  // Priority: CINEPRO_URL env / Web/cinepro.local.json, then an address supplied by the client.
-  const local = config("cinepro.local.json");
-  let target = String(local.url || process.env.CINEPRO_URL || "").trim().replace(/\/+$/, "");
-  const requested = String(sourceURL.searchParams.get("server") || "").trim();
-  if (!target && /^https?:\/\//i.test(requested)) target = requested.replace(/\/+$/, "");
-  if (!target) return sendJSON(response, 503, { error:"No CinePro Core server is configured. Add Web/cinepro.local.json or set CINEPRO_URL, or set the server in Account → Playback." });
-  const pathname = decodeURIComponent(sourceURL.pathname);
-  const subPath = pathname === "/api/cinepro" ? "" : pathname.replace(/^\/api\/cinepro\//, "").replace(/^\/+/, "");
-  try {
-    if (!subPath || subPath === "") { const health = await upstream(`${target}/v1`); return sendJSON(response, health.status, health.data); }    if (subPath === "playable" || subPath.startsWith("playable/")) {
-      const streamURL = sourceURL.searchParams.get("u");
-      if (!/^https?:\/\//i.test(streamURL || "")) return sendJSON(response, 400, { error:"A valid stream URL is required." });
-      const range = request.headers.range;
-      const upstreamResponse = await fetch(streamURL, { headers:range ? { Range:range } : {}, redirect:"follow" });
-      const passthrough = ["content-type", "content-length", "content-range", "accept-ranges"].map(name => [name, upstreamResponse.headers.get(name)]).filter(([, value]) => value);
-      response.writeHead(upstreamResponse.status, Object.fromEntries(passthrough));
-      if (upstreamResponse.body) Readable.fromWeb(upstreamResponse.body).on("error", () => response.end()).pipe(response); else response.end();
-      return;
-    }
-    const isRefresh = /^refresh\//.test(subPath);
-    if (request.method !== "GET" && !isRefresh) return sendJSON(response, 405, { error:"Unsupported CinePro action." });
-    const query = sourceURL.searchParams.has("server") ? "" : sourceURL.search;
-    const result = await upstream(`${target}/v1/${subPath}${query}`, { method:isRefresh ? "POST" : "GET" });
-    return sendJSON(response, result.status, result.data);
-  } catch { return sendJSON(response, 502, { error:"Your CinePro Core server could not be reached." }); }
-}
 async function parentAccess(request, response) {
   const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
   const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
@@ -111,7 +83,6 @@ async function parentAccess(request, response) {
 const server = http.createServer((request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
   if (sourceURL.pathname.startsWith("/api/tmdb/")) return proxyTMDB(response, sourceURL);
-  if (sourceURL.pathname === "/api/cinepro" || sourceURL.pathname.startsWith("/api/cinepro/")) return proxyCinePro(request, response, sourceURL);
   if (sourceURL.pathname === "/api/auth/signup") return auth(request, response, "signup");
   if (sourceURL.pathname === "/api/auth/login") return auth(request, response, "login");
   if (sourceURL.pathname === "/api/auth/refresh") return auth(request, response, "refresh");
