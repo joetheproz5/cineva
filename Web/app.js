@@ -79,7 +79,8 @@ function applyLocale() {
 }
 const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"vidlink" };
 const PLAYER_PROVIDERS = Object.freeze(["vidlink", "vidking", "vidsrc", "2embed"]);
-const NEXT_EPISODE_PROMPT_SECONDS = 30;
+const NEXT_EPISODE_PROMPT_MIN_SECONDS = 45;
+const NEXT_EPISODE_PROMPT_MAX_SECONDS = 90;
 const PREVIOUS_EPISODE_WATCHED_PERCENT = 50;
 const NEXT_EPISODE_CONFIRMATION_PERCENT = 25;
 function selectedPlayerProvider() { const provider = currentPreferences().playerProvider; return PLAYER_PROVIDERS.includes(provider) ? provider : "vidlink"; }
@@ -881,7 +882,7 @@ function renderPlayer() {
   const media = `<iframe class="player" src="${playerURL(p, startAt)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
   app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${playbackNote}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
-  bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
+  bindCommon(); bindPlayerEpisodes(p); bindPlayerControlLift(); ensurePlayerContext(p);
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
   document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
   document.querySelector("[data-provider-menu]")?.addEventListener("click", event => { event.stopPropagation(); const list = document.querySelector("[data-provider-list]"); if (list) list.hidden = !list.hidden; });
@@ -1224,7 +1225,9 @@ function recordPlaybackEvent(data) {
   playerFrame?.classList.toggle("next-episode-ready", showNextEpisode);
   document.querySelectorAll("[data-next-player-action]").forEach(button => { button.hidden = !showNextEpisode; });
 }
-function nextEpisodePromptReady(currentTime, duration) { const current = Number(currentTime), total = Number(duration); return Number.isFinite(current) && Number.isFinite(total) && total > 0 && current >= Math.max(0, total - NEXT_EPISODE_PROMPT_SECONDS) && current < total; }
+function nextEpisodePromptLeadSeconds(duration) { const total = Number(duration); if (!Number.isFinite(total) || total <= 0) return NEXT_EPISODE_PROMPT_MIN_SECONDS; return Math.min(NEXT_EPISODE_PROMPT_MAX_SECONDS, Math.max(NEXT_EPISODE_PROMPT_MIN_SECONDS, Math.round(total * .03))); }
+function nextEpisodePromptReady(currentTime, duration) { const current = Number(currentTime), total = Number(duration); return Number.isFinite(current) && Number.isFinite(total) && total > 0 && current >= Math.max(0, total - nextEpisodePromptLeadSeconds(total)) && current < total; }
+function bindPlayerControlLift() { const frame = document.querySelector(".player-frame"); if (!frame) return; let idleTimer; const show = () => { clearTimeout(idleTimer); frame.classList.add("player-controls-active"); }; const deferHide = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => frame.classList.remove("player-controls-active"), 1800); }; frame.addEventListener("pointerenter", show); frame.addEventListener("pointermove", show); frame.addEventListener("pointerleave", deferHide); frame.addEventListener("focusin", show); frame.addEventListener("focusout", deferHide); }
 function markEpisodeWatched(item) { const saved = savedProgress(item), duration = Math.max(1, Number(saved.duration) || 0), record = { ...saved, currentTime:duration, duration, progress:100, watched:true, type:item.type, id:item.id, season:item.season || null, episode:item.episode || null, title:saved.title || item.title || "Untitled", posterPath:saved.posterPath || item.posterPath || null, genreIds:saved.genreIds || item.genreIds || [], lastWatchedAt:new Date().toISOString() }; localStorage.setItem(watchKey(item), JSON.stringify(record)); state.seriesNext = null; queueProgressSync(item, duration, duration, 100, true); }
 window.addEventListener("message", event => {
   let payload;
@@ -1236,7 +1239,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(payload.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js?v=216").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("/service-worker.js?v=217").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });
