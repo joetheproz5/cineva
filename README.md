@@ -6,6 +6,13 @@ Cineva is a personal iPhone and Android streaming client for content the account
 
 The SEVEN web app plays titles through cloud-hosted embed players — VidLink, Vidking, VidSrc, and 2Embed — selectable from the player's provider menu in the top bar. Playback progress, next-episode, and watch-together features work the same across all of them.
 
+## Player safety and platform limits
+
+- The web/PWA uses direct cross-origin provider iframes. It does not proxy, rewrite, or inspect provider media requests. A website service worker cannot reliably filter requests made inside a foreign iframe.
+- Progress messages are accepted only when they come from the active iframe, match the selected provider's exact origin, and contain finite, sensible time and duration values.
+- The Android WebView blocks unsolicited new windows and cross-site top-level navigation. The iOS player view does the same and only forwards valid player events from its configured provider origin.
+- Browser-level filtering of resources inside an embedded cross-origin player requires a separately installed browser extension; it is not a capability claimed by the web app.
+
 ## Platforms
 
 - **iPhone:** [GoodDoctor.xcodeproj](GoodDoctor.xcodeproj) — the Xcode target and on-device name are **Cineva**.

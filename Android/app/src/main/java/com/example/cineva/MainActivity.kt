@@ -21,6 +21,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 private const val APP_URL = "https://seven-9fm.pages.dev/"
 private const val APP_HOST = "seven-9fm.pages.dev"
 
+private fun isTrustedAppURL(uri: Uri): Boolean = uri.scheme == "https" && uri.host == APP_HOST
+
 class MainActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var refreshLayout: SwipeRefreshLayout
@@ -53,7 +55,7 @@ class MainActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     val url = request.url
-                    if (url.host == APP_HOST || url.host?.endsWith(".pages.dev") == true) return false
+                    if (isTrustedAppURL(url)) return false
                     // The app shell must never navigate to an advertiser's page. Cross-origin player
                     // requests remain inside their iframe; top-level popups and redirects are cancelled.
                     return request.isForMainFrame

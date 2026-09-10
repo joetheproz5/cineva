@@ -870,7 +870,7 @@ function providerMenuHTML() {
 }
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextLabel = next ? escapeHTML(next.name || `Episode ${next.episode_number}`) : "", nextAction = next ? `<button class="secondary player-next" data-play-next>${t("Next episode")} <b>›</b> ${nextLabel}</button>` : "", frameNextAction = next ? `<button class="player-frame-next" data-play-next aria-label="Play next episode: ${nextLabel}"><span>${t("Next episode")}</span><b>${nextLabel}</b><i>›</i></button>` : "";
-  const media = `<iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+  const media = `<iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
   app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
@@ -1210,9 +1210,17 @@ function recordPlaybackEvent(data) {
   if (bar) bar.style.width = `${progress}%`;
   if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`;
 }
-window.addEventListener("message", event => { let payload; try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; } if (state.route !== "player" || payload?.type !== "PLAYER_EVENT") return; recordPlaybackEvent(payload.data || {}); });
+window.addEventListener("message", event => {
+  let payload;
+  try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; }
+  if (state.route !== "player") return;
+  const iframe = document.querySelector("iframe.player");
+  const provider = currentPreferences().playerProvider || "vidlink";
+  if (!window.SEVENPlayerSecurity?.isTrustedPlayerMessage({ origin:event.origin, source:event.source, data:payload }, iframe, provider)) return;
+  recordPlaybackEvent(payload.data);
+});
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js?v=210").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("/service-worker.js?v=211").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });
