@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "SEVEN Popup Guard",
+  "version": "1.0.0",
+  "description": "Blocks new windows and top-level navigations initiated by SEVEN's configured embedded players.",
+  "minimum_chrome_version": "102",
+  "permissions": ["declarativeNetRequest", "storage", "tabs", "webNavigation"],
+  "host_permissions": [
+    "https://seven-9fm.pages.dev/*",
+    "https://vidlink.pro/*",
+    "https://*.vidlink.pro/*",
+    "https://vidsrc.sbs/*",
+    "https://*.vidsrc.sbs/*",
+    "https://www.vidking.net/*",
+    "https://*.vidking.net/*",
+    "https://www.2embed.online/*",
+    "https://*.2embed.online/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "Toggle SEVEN Popup Guard" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://vidlink.pro/*", "https://*.vidlink.pro/*",
+        "https://vidsrc.sbs/*", "https://*.vidsrc.sbs/*",
+        "https://www.vidking.net/*", "https://*.vidking.net/*",
+        "https://www.2embed.online/*", "https://*.2embed.online/*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://vidlink.pro/*", "https://*.vidlink.pro/*",
+        "https://vidsrc.sbs/*", "https://*.vidsrc.sbs/*",
+        "https://www.vidking.net/*", "https://*.vidking.net/*",
+        "https://www.2embed.online/*", "https://*.2embed.online/*"
+      ],
+      "js": ["page-guard.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [{ "id": "popup_navigation", "enabled": true, "path": "rules/popup-navigation.json" }]
+  }
+}

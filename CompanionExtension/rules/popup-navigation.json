@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "*",
+      "initiatorDomains": ["vidlink.pro", "vidsrc.sbs", "vidking.net", "2embed.online"],
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]

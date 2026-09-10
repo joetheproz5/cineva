@@ -13,6 +13,10 @@ The SEVEN web app plays titles through cloud-hosted embed players — VidLink, V
 - The Android WebView blocks unsolicited new windows and cross-site top-level navigation. The iOS player view does the same and only forwards valid player events from its configured provider origin.
 - Browser-level filtering of resources inside an embedded cross-origin player requires a separately installed browser extension; it is not a capability claimed by the web app.
 
+### Chrome/Edge popup guard
+
+For browser and PWA use, [CompanionExtension](CompanionExtension) is an optional, local Manifest V3 extension that blocks new windows and top-level navigations initiated by the configured player domains. Its exact install steps are in [CompanionExtension/README.md](CompanionExtension/README.md). It is deliberately limited to popup protection: it does not proxy, rewrite, inspect, or store media traffic.
+
 ## Platforms
 
 - **iPhone:** [GoodDoctor.xcodeproj](GoodDoctor.xcodeproj) — the Xcode target and on-device name are **Cineva**.
