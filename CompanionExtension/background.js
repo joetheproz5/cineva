@@ -1,4 +1,4 @@
-const PROVIDER_HOSTS = new Set(["vidlink.pro", "vidsrc.sbs", "vidking.net", "2embed.online", "dulo.gg", "dulo.cx"]);
+const PROVIDER_HOSTS = new Set(["vidlink.pro", "vidsrc.sbs", "vidking.net", "2embed.online"]);
 const RULESET_ID = "popup_navigation";
 
 function isProviderURL(value) {
