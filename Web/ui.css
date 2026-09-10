@@ -240,6 +240,10 @@
 .player-stage-bar .cinepro-sources-slot { margin-left: auto; }
 .player-stage-bar .cinepro-sources-slot + .provider-menu { margin-left: 0; }
 .cinepro-server-field { display: grid; gap: 8px; padding: 14px; border: 1px solid #2c2c2c; border-radius: 8px; }
+.cinepro-fallback-note { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #2c2c2c; border-radius: 8px; background: #000e; color: #ccc; font-size: 12px; backdrop-filter: blur(6px); }
+.cinepro-fallback-note b { color: #ffb020; }
+.cinepro-fallback-note .primary { padding: 5px 10px; font-size: 11px; }
+.cinepro-fallback-note [data-fallback-dismiss] { padding: 2px 6px; color: #888; background: none; border: none; font-size: 14px; cursor: pointer; }
 .cinepro-server-field span { display: grid; gap: 3px; color: #ddd; font-size: 13px; font-weight: 600; }
 .cinepro-server-field small { color: #999; font-size: 11px; font-weight: 400; line-height: 1.45; }
 .cinepro-server-field input { width: 100%; padding: 10px 12px; border: 1px solid #333; border-radius: 6px; color: #fff; background: #0d0d0d; font-size: 13px; }

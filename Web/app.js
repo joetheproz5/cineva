@@ -507,13 +507,13 @@ async function cineproSources(item, refresh = false) {
     return value;
   } catch (error) {
     const message = error.name === "AbortError" ? "Resolving took too long — your CinePro Core server may be offline or busy. Try again." : error.message || "Your CinePro Core server could not be reached.";
-    return { sources:[], subtitles:[], responseId:"", error:message };
+    return { sources:[], subtitles:[], responseId:"", error:message, unreachable:true };
   } finally { clearTimeout(timer); }
 }
 function cineproProxyURL(url, server = "") { return `/api/cinepro/playable?u=${encodeURIComponent(url)}${server ? `&server=${encodeURIComponent(server)}` : ""}`; }
 async function cineproVerify(server) { try { await localAPI(`/api/cinepro?server=${encodeURIComponent(server)}`); return true; } catch { return false; } }
-function playerURL(item, progress = 0) {
-  const preferences = currentPreferences(), provider = preferences.playerProvider || "cinepro";
+function playerURL(item, progress = 0, override = "") {
+  const preferences = currentPreferences(), provider = override || preferences.playerProvider || "cinepro";
   if (provider === "2embed") return item.type === "movie" ? `https://www.2embed.online/embed/movie/${item.id}` : `https://www.2embed.online/embed/tv/${item.id}/${item.season || 1}/${item.episode || 1}`;
   if (provider === "vidsrc") {
     const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season || 1}/${item.episode || 1}`;
@@ -524,8 +524,11 @@ function playerURL(item, progress = 0) {
     return `https://vidlink.pro/${base}?${new URLSearchParams({ primaryColor:"B20710", secondaryColor:"170000", iconColor:"B20710", autoplay:"true", nextbutton:"true", ...(progress > 0 ? { startAt:String(Math.floor(progress)) } : {}) })}`;
   }
 
-  const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`;
-  return `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true", ...(progress > 0 ? { progress:String(Math.floor(progress)) } : {}) })}`;
+  if (provider === "vidking") {
+    const base = item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}/${item.season}/${item.episode}`;
+    return `https://www.vidking.net/embed/${base}?${new URLSearchParams({ color:"b20710", autoPlay:"true", nextEpisode:String(preferences.autoplayNext !== false), episodeSelector:"true", ...(progress > 0 ? { progress:String(Math.floor(progress)) } : {}) })}`;
+  }
+  return playerURL(item, progress, "vidlink");
 }
 function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; const episodes = state.episodes?.episodes || [], currentIndex = episodes.findIndex(episode => Number(episode.episode_number) === Number(item.episode)); return currentIndex >= 0 ? episodes.slice(currentIndex + 1).find(Boolean) || null : null; }
 async function playNextPlayerEpisode(player, next) { if (!next || player.type !== "tv") return; if (Number(state.selectedSeason) !== Number(player.season)) { state.selectedSeason = Number(player.season); await loadEpisodes(); } playEpisode(Number(next.episode_number), false); }
@@ -888,6 +891,13 @@ function showPartyModal() {
   document.querySelector("[data-party-join-modal]").onclick = join;
   document.querySelector(".party-join-row input").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); join(); } };
 }
+function renderFallbackNotice(from) {
+  const host = document.querySelector(".player-frame");
+  if (!host || document.querySelector("[data-fallback-note]")) return;
+  host.insertAdjacentHTML("beforeend", `<div class="cinepro-fallback-note" data-fallback-note><span><b>CinePro offline</b> · playing via ${escapeHTML(from === "vidlink" ? "VidLink" : from)}</span><button class="primary" data-fallback-retry>Retry CinePro</button><button data-fallback-dismiss aria-label="Dismiss">×</button></div>`);
+  document.querySelector("[data-fallback-retry]").onclick = () => { state.playerFallbackTo = null; render(); };
+  document.querySelector("[data-fallback-dismiss]").onclick = () => document.querySelector("[data-fallback-note]")?.remove();
+}
 function providerMenuHTML() {
   const labels = { cinepro:"CinePro ✦", vidlink:"VidLink", vidking:"Vidking", vidsrc:"VidSrc", "2embed":"2Embed" }, current = currentPreferences().playerProvider || "cinepro";
   return `<div class="provider-menu"><button class="provider-toggle" data-provider-menu>${labels[current] || "CinePro ✦"} ▾</button><div class="provider-list" data-provider-list hidden>${["cinepro", "vidlink", "vidking", "vidsrc", "2embed"].map(provider => `<button class="provider-option ${provider === current ? "active" : ""}" data-provider-select="${provider}">${labels[provider]}${provider === current ? " ✓" : ""}</button>`).join("")}</div></div>`;
@@ -895,17 +905,21 @@ function providerMenuHTML() {
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextLabel = next ? escapeHTML(next.name || `Episode ${next.episode_number}`) : "", nextAction = next ? `<button class="secondary player-next" data-play-next>${t("Next episode")} <b>›</b> ${nextLabel}</button>` : "", frameNextAction = next ? `<button class="player-frame-next" data-play-next aria-label="Play next episode: ${nextLabel}"><span>${t("Next episode")}</span><b>${nextLabel}</b><i>›</i></button>` : "";
   const cineproActive = (currentPreferences().playerProvider || "cinepro") === "cinepro";
-  const media = cineproActive
+  if (state.playerFallbackTo && state.playerFallbackFor !== watchKey(p)) { state.playerFallbackTo = null; }
+  state.playerFallbackFor = watchKey(p);
+  const fallbackNotice = cineproActive && state.playerFallbackTo ? state.playerFallbackTo : "";
+  const media = cineproActive && !fallbackNotice
     ? `<video class="player cinepro-video" id="cinepro-video" controls controlslist="nodownload" playsinline preload="metadata" ${p.startAt ? `data-start-at="${Math.floor(p.startAt)}" ` : ""}poster="${p.posterPath ? escapeHTML(`${TMDB_BACKDROP}${p.posterPath}`) : ""}"></video>`
-    : `<iframe class="player" src="${playerURL(p, party.syncPosition || 0)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
-  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : `<span class="cinepro-sources-slot" data-cinepro-sources hidden></span>` + providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}<div class="cinepro-loading" id="cinepro-loading" ${cineproActive ? "" : "hidden"}><div class="cinepro-spinner"></div><p>Resolving sources via CinePro…</p></div>${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
+    : `<iframe class="player${fallbackNotice ? " player-fallback" : ""}" src="${playerURL(p, party.syncPosition || 0, fallbackNotice ? "vidlink" : "")}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : `<span class="cinepro-sources-slot" data-cinepro-sources hidden></span>` + providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}<div class="cinepro-loading" id="cinepro-loading" ${cineproActive && !fallbackNotice ? "" : "hidden"}><div class="cinepro-spinner"></div><p>Resolving sources via CinePro…</p></div>${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${p.startAt ? `Saved at ${timeLabel(p.startAt)} · this player starts safely from the beginning` : savedStart(p) ? `Previously watched until ${timeLabel(savedStart(p))} · playing from the beginning` : escapeHTML(p.overview || "Playback progress is saved on this iPhone.")}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); ensurePlayerContext(p);
-  if (cineproActive) void setupCineProPlayer(p);
+  if (cineproActive && !fallbackNotice) void setupCineProPlayer(p);
+  else if (fallbackNotice) renderFallbackNotice(fallbackNotice);
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
   document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
   document.querySelector("[data-provider-menu]")?.addEventListener("click", event => { event.stopPropagation(); const list = document.querySelector("[data-provider-list]"); if (list) list.hidden = !list.hidden; });
-  document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
+  document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { state.playerFallbackTo = null; updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
   renderPartyPanel();
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
   document.querySelectorAll("[data-play-next]").forEach(button => button.addEventListener("click", () => { void playNextPlayerEpisode(p, next); }));
@@ -916,6 +930,7 @@ async function setupCineProPlayer(p) {
   const attempt = ++cineproRequest;
   let resolved = await cineproSources(p), current = 0, errorStreak = 0;
   if (attempt !== cineproRequest || state.route !== "player" || state.player !== p || !video.isConnected) return;
+  if (!resolved.sources.length && resolved.unreachable) { if (state.playerFallbackTo) { if (loading) loading.hidden = true; return showError(resolved.error); } state.playerFallbackTo = "vidlink"; render(); return; }
   if (loading) loading.hidden = true;
   // Chrome/Firefox cannot play HLS natively — try progressive MP4s first there.
   if (!video.canPlayType("application/vnd.apple.mpegurl")) resolved.sources.sort((a, b) => (a.type === "hls") - (b.type === "hls"));
@@ -956,7 +971,7 @@ async function setupCineProPlayer(p) {
     if (loading && loading.querySelector("p")) loading.querySelector("p").textContent = "Resolving sources via CinePro…";
     if (attempt !== cineproRequest || state.route !== "player" || !video.isConnected) return;
     if (loading) loading.hidden = true;
-    failures = 0;
+    if (!resolved.sources.length && resolved.unreachable) { if (!state.playerFallbackTo) { state.playerFallbackTo = "vidlink"; render(); } return; }
     if (!resolved.sources.length) return showError(resolved.error);
     renderMenu();
     await playSource(0);
