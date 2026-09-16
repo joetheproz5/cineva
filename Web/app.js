@@ -1242,7 +1242,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(payload.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js?v=218").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("/service-worker.js?v=219").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });
