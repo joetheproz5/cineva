@@ -42,3 +42,8 @@ test("the player uses the saved start time unless a watch party supplies one", (
   assert.match(source, /playerURL\(p, startAt\)/);
   assert.match(source, /party\.code \? Math\.max\(0, Number\(party\.syncPosition\) \|\| 0\) : Math\.max\(0, Number\(p\.startAt\) \|\| 0\)/);
 });
+
+test("Vidking cannot reuse its own resume storage over SEVEN playback state", () => {
+  assert.match(source, /playerIsolation = selectedPlayerProvider\(\) === "vidking" \? " credentialless" : ""/);
+  assert.match(source, /<iframe class="player"\$\{playerIsolation\} src=/);
+});
