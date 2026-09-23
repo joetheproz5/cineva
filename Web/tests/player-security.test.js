@@ -50,3 +50,17 @@ test("VidFast PLAYER_EVENT and MEDIA_DATA payloads are accepted", () => {
   assert.deepEqual(security.normalizePlayerEvent(mediaData), { type:"PLAYER_EVENT", data:{ event:"timeupdate", currentTime:30, duration:100 } });
   assert.equal(security.normalizePlayerEvent({ type:"MEDIA_DATA", data:{ currentTime:999, duration:100 } }), null);
 });
+
+test("CineSrc command responses are validated for the progress poller", () => {
+  assert.equal(security.validPlayerResponse({ type:"cinesrc:response", command:"getCurrentTime", result:613.4 }), true);
+  assert.equal(security.validPlayerResponse({ type:"cinesrc:response", command:"getDuration", result:5400 }), true);
+  assert.equal(security.validPlayerResponse({ type:"cinesrc:response", command:"getCurrentTime", result:"613" }), false);
+  assert.equal(security.validPlayerResponse({ type:"cinesrc:response", command:"getCurrentTime", result:-4 }), false);
+  assert.equal(security.validPlayerResponse({ type:"cinesrc:response", command:"getCurrentTime" }), false);
+  assert.equal(security.validPlayerResponse({ type:"PLAYER_EVENT", command:"getCurrentTime", result:5 }), false);
+});
+
+test("only CineSrc exposes a postMessage command target", () => {
+  assert.equal(security.playerCommandFrame("cinesrc"), "https://cinesrc.st");
+  for (const provider of ["vidsrc", "2embed", "vidfast", "multiembed"]) assert.equal(security.playerCommandFrame(provider), null);
+});

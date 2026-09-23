@@ -81,3 +81,13 @@ test("removed providers are migrated to CineSrc and never reach a playback URL",
   const urlFunctions = source.slice(start, end);
   for (const removed of ["cinepro", "vidlink", "vidking", "dulo"]) assert.equal(urlFunctions.includes(removed), false);
 });
+
+test("CineSrc progress is polled via getCurrentTime and getDuration commands", () => {
+  assert.match(source, /function startPlayerProgressPolling/);
+  assert.match(source, /sendPlayerCommand\(provider, "getCurrentTime"\)/);
+  assert.match(source, /sendPlayerCommand\(provider, "getDuration"\)/);
+  assert.match(source, /type:"cinesrc:command", command, args:\[\]/);
+  assert.match(source, /bindPlayerControlLift\(\); ensurePlayerContext\(p\); startPlayerProgressPolling\(\);/);
+  assert.match(source, /if \(state\.route !== "player"\) stopPlayerProgressPolling\(\);/);
+  assert.match(source, /function handlePlayerResponse/);
+});

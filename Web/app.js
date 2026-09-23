@@ -235,7 +235,7 @@ function header() {
   return `<header class="main-header app-header"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="/assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-wordmark" aria-hidden="true">SEVEN</div><div class="footer-inner"><small>Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></footer>`; }
-function render() { if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = ""; if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
+function render() { if (state.route !== "player") stopPlayerProgressPolling(); if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = ""; if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
 async function profileSecret(value) { if (!globalThis.crypto?.subtle) throw new Error("Profile locks need a modern browser."); const bytes = new TextEncoder().encode(value), hash = await globalThis.crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join(""); }
 const PARENT_ACCESS_KEY = "seven.parent-access";
 function hasParentAccess() { return !parentAccessConfigured(); }
@@ -514,6 +514,37 @@ function playerURL(item, progress = 0) {
 }
 function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; return (state.episodes?.episodes || []).filter(episode => Number(episode.episode_number) > Number(item.episode)).sort((a, b) => Number(a.episode_number) - Number(b.episode_number))[0] || null; }
 async function playNextPlayerEpisode(player) { if (player.type !== "tv" || Number(state.series?.id) !== Number(player.id)) return; state.selectedSeason = Number(player.season); await loadEpisodes(); const next = nextPlayerEpisode(player); if (!next) { showToast("No following episode is available in this season."); return; } playEpisode(Number(next.episode_number), false); }
+const cineSrcPoll = { timer:null, currentTime:null, duration:null };
+function stopPlayerProgressPolling() { clearInterval(cineSrcPoll.timer); cineSrcPoll.timer = null; cineSrcPoll.currentTime = null; cineSrcPoll.duration = null; }
+function sendPlayerCommand(provider, command) {
+  const frame = document.querySelector("iframe.player"), target = window.SEVENPlayerSecurity?.playerCommandFrame(provider);
+  if (!frame?.contentWindow || !target) return;
+  frame.contentWindow.postMessage({ type:"cinesrc:command", command, args:[] }, target);
+}
+function startPlayerProgressPolling() {
+  stopPlayerProgressPolling();
+  if (selectedPlayerProvider() !== "cinesrc") return;
+  // CineSrc's embed ships without the documented timeupdate postMessage events,
+  // but it answers getCurrentTime/getDuration commands, so poll for real times.
+  cineSrcPoll.timer = setInterval(() => { if (state.route === "player") pollCineSrcProgress(); else stopPlayerProgressPolling(); }, 3000);
+  pollCineSrcProgress();
+}
+function pollCineSrcProgress() {
+  const provider = selectedPlayerProvider();
+  if (provider !== "cinesrc" || state.route !== "player" || !document.querySelector("iframe.player")) return;
+  sendPlayerCommand(provider, "getCurrentTime");
+  sendPlayerCommand(provider, "getDuration");
+}
+function handlePlayerResponse(data) {
+  if (data.command === "getCurrentTime") cineSrcPoll.currentTime = data.result;
+  else if (data.command === "getDuration") cineSrcPoll.duration = data.result;
+  else return;
+  if (cineSrcPoll.currentTime != null && Number(cineSrcPoll.duration) > 0) {
+    recordPlaybackEvent({ event:"timeupdate", currentTime:cineSrcPoll.currentTime, duration:cineSrcPoll.duration });
+    cineSrcPoll.currentTime = null;
+    cineSrcPoll.duration = null;
+  }
+}
 function playerEpisodePanel(player) {
   if (player.type !== "tv") return "";
   if (Number(state.series?.id) !== Number(player.id)) return `<section class="episode-section player-episodes player-episodes-loading" data-player-episode-panel><span class="brand">EPISODES</span><p>Loading Season ${player.season}…</p></section>`;
@@ -881,7 +912,7 @@ function renderPlayer() {
   const media = `<iframe class="player" src="${playerURL(p, startAt)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
   app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time">${playbackNote}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
-  bindCommon(); bindPlayerEpisodes(p); bindPlayerControlLift(); ensurePlayerContext(p);
+  bindCommon(); bindPlayerEpisodes(p); bindPlayerControlLift(); ensurePlayerContext(p); startPlayerProgressPolling();
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
   document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
   document.querySelector("[data-provider-menu]")?.addEventListener("click", event => { event.stopPropagation(); const list = document.querySelector("[data-provider-list]"); if (list) list.hidden = !list.hidden; });
@@ -1234,11 +1265,16 @@ window.addEventListener("message", event => {
   if (state.route !== "player") return;
   const iframe = document.querySelector("iframe.player");
   const provider = selectedPlayerProvider();
+  if (window.SEVENPlayerSecurity?.validPlayerResponse(payload)) {
+    const security = window.SEVENPlayerSecurity;
+    if (iframe?.contentWindow && event.source === iframe.contentWindow && event.origin === security.playerCommandFrame(provider)) handlePlayerResponse(payload);
+    return;
+  }
   if (!window.SEVENPlayerSecurity?.isTrustedPlayerMessage({ origin:event.origin, source:event.source, data:payload }, iframe, provider)) return;
   recordPlaybackEvent(window.SEVENPlayerSecurity.normalizePlayerEvent(payload).data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js?v=221").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("/service-worker.js?v=222").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") applyCoverflow(); }, 120); }, { passive:true });

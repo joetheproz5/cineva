@@ -50,6 +50,17 @@
       && event?.origin === originFor(provider)
       && validPlayerEvent(normalized);
   }
+  // CineSrc answers command getters (getCurrentTime, getDuration) with a
+  // cinesrc:response postMessage. Validate those replies so the progress poller
+  // only consumes numbers from the real player frame.
+  function validPlayerResponse(data) {
+    return data?.type === "cinesrc:response"
+      && typeof data.command === "string" && data.command.length > 0 && data.command.length <= 64
+      && isFiniteNumber(data.result) && data.result >= 0 && data.result <= MAX_DURATION_SECONDS;
+  }
+  function playerCommandFrame(provider) {
+    return provider === "cinesrc" ? "https://cinesrc.st" : null;
+  }
 
-  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, normalizePlayerEvent, isTrustedPlayerMessage };
+  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, normalizePlayerEvent, isTrustedPlayerMessage, validPlayerResponse, playerCommandFrame };
 });
