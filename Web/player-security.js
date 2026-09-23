@@ -6,7 +6,10 @@
 })(typeof window === "undefined" ? globalThis : window, function createPlayerSecurity() {
   const PROVIDER_ORIGINS = Object.freeze({
     vidsrc: "https://vidsrc.sbs",
-    "2embed": "https://www.2embed.online"
+    "2embed": "https://www.2embed.online",
+    cinesrc: "https://cinesrc.st",
+    vidfast: "https://vidfast.vc",
+    multiembed: "https://multiembed.mov"
   });
   const MAX_DURATION_SECONDS = 172800;
 
@@ -21,12 +24,32 @@
       && isFiniteNumber(data.duration) && data.duration > 0 && data.duration <= MAX_DURATION_SECONDS
       && data.currentTime <= data.duration + 5;
   }
-  function isTrustedPlayerMessage(event, iframe, provider) {
-    return Boolean(iframe?.contentWindow)
-      && event?.source === iframe.contentWindow
-      && event?.origin === originFor(provider)
-      && validPlayerEvent(event.data);
+  // Providers differ in how they announce progress; normalize everything into the
+  // PLAYER_EVENT shape the app already understands.
+  function normalizePlayerEvent(data) {
+    if (!data || typeof data !== "object") return null;
+    const type = String(data.type || "");
+    if (type === "PLAYER_EVENT" && data.data && typeof data.data === "object") return data;
+    if (type === "MEDIA_DATA" && data.data && typeof data.data === "object") {
+      const media = data.data;
+      return validPlayerEvent({ type:"PLAYER_EVENT", data:{ event:"timeupdate", currentTime:media.currentTime, duration:media.duration } }) ? { type:"PLAYER_EVENT", data:{ event:"timeupdate", currentTime:media.currentTime, duration:media.duration } } : null;
+    }
+    if (type.startsWith("cinesrc:")) {
+      const event = type.slice("cinesrc:".length);
+      if (["play", "pause", "seeking", "seeked", "ended"].includes(event)) return { type:"PLAYER_EVENT", data:{ event, currentTime:0, duration:0 } };
+      if (["timeupdate", "loadedmetadata"].includes(event)) return validPlayerEvent({ type:"PLAYER_EVENT", data:{ event, currentTime:data.currentTime, duration:data.duration } }) ? { type:"PLAYER_EVENT", data:{ event, currentTime:data.currentTime, duration:data.duration } } : null;
+    }
+    return null;
   }
 
-  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, isTrustedPlayerMessage };
+  function isTrustedPlayerMessage(event, iframe, provider) {
+    const normalized = normalizePlayerEvent(event?.data);
+    return Boolean(normalized)
+      && Boolean(iframe?.contentWindow)
+      && event?.source === iframe.contentWindow
+      && event?.origin === originFor(provider)
+      && validPlayerEvent(normalized);
+  }
+
+  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, normalizePlayerEvent, isTrustedPlayerMessage };
 });

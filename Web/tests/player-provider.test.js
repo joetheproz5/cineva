@@ -19,19 +19,53 @@ function buildURLFor(provider, item, progress = 0) {
   return context.playerURL(item, progress);
 }
 
-test("only VidSrc and 2Embed remain as supported providers", () => {
-  assert.deepEqual([...providerList.match(/"([^"]+)"/g)].map(value => value.replaceAll('"', "")), ["vidsrc", "2embed"]);
+test("CineSrc, VidFast, MultiEmbed, VidSrc, and 2Embed are the supported providers", () => {
+  assert.deepEqual([...providerList.match(/"([^"]+)"/g)].map(value => value.replaceAll('"', "")), ["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"]);
 });
 
-test("removed providers and unknown settings safely fall back to the VidSrc movie route", () => {
-  for (const removed of ["vidlink", "vidking", "dulo"]) {
-    const url = buildURLFor(removed, { type:"movie", id:550 });
-    assert.match(url, /^https:\/\/vidsrc\.sbs\/embed\/movie\/550\?/);
-    assert.equal(url.includes(removed), false);
-  }
+test("CineSrc is the default provider and unknown settings fall back to it", () => {
+  assert.match(source, /playerProvider:"cinesrc"/);
+  assert.match(selectedProvider, /return PLAYER_PROVIDERS\.includes\(provider\) \? provider : "cinesrc"/);
+  const url = buildURLFor("dulo", { type:"movie", id:550 });
+  assert.match(url, /^https:\/\/cinesrc\.st\/embed\/movie\/550\?/);
 });
 
-test("VidSrc receives the saved playback second and 2Embed stays parameter-free", () => {
+test("CineSrc embeds use TMDB routes, autonext, resume, and brand color", () => {
+  const movie = new URL(buildURLFor("cinesrc", { type:"movie", id:550 }, 1712));
+  assert.equal(`${movie.origin}${movie.pathname}`, "https://cinesrc.st/embed/movie/550");
+  assert.equal(movie.searchParams.get("autoplay"), "true");
+  assert.equal(movie.searchParams.get("autonext"), "true");
+  assert.equal(movie.searchParams.get("t"), "1712");
+  assert.equal(movie.searchParams.get("continueprompt"), "false");
+  const show = new URL(buildURLFor("cinesrc", { type:"tv", id:71712, season:4, episode:2 }, 0));
+  assert.equal(`${show.origin}${show.pathname}`, "https://cinesrc.st/embed/tv/71712");
+  assert.equal(show.searchParams.get("s"), "4");
+  assert.equal(show.searchParams.get("e"), "2");
+});
+
+test("VidFast embeds enable autoPlay, autoNext, theme, and startAt resume", () => {
+  const movie = new URL(buildURLFor("vidfast", { type:"movie", id:550 }, 640));
+  assert.equal(`${movie.origin}${movie.pathname}`, "https://vidfast.vc/movie/550");
+  assert.equal(movie.searchParams.get("autoPlay"), "true");
+  assert.equal(movie.searchParams.get("autoNext"), "true");
+  assert.equal(movie.searchParams.get("startAt"), "640");
+  const show = new URL(buildURLFor("vidfast", { type:"tv", id:71712, season:4, episode:2 }));
+  assert.equal(show.pathname, "/tv/71712/4/2");
+  assert.equal(show.searchParams.has("startAt"), false);
+});
+
+test("MultiEmbed uses the video_id query format for movies and episodes", () => {
+  const movie = new URL(buildURLFor("multiembed", { type:"movie", id:550 }));
+  assert.equal(`${movie.origin}${movie.pathname}`, "https://multiembed.mov/");
+  assert.equal(movie.searchParams.get("video_id"), "550");
+  const show = new URL(buildURLFor("multiembed", { type:"tv", id:71712, season:4, episode:2 }, 30));
+  assert.equal(show.searchParams.get("video_id"), "71712");
+  assert.equal(show.searchParams.get("s"), "4");
+  assert.equal(show.searchParams.get("e"), "2");
+  assert.equal(show.searchParams.get("t"), "30");
+});
+
+test("VidSrc keeps resume support and 2Embed stays parameter-free", () => {
   const item = { type:"tv", id:71712, season:4, episode:2 };
   assert.equal(new URL(buildURLFor("vidsrc", item, 1712)).searchParams.get("t"), "1712");
   assert.equal(new URL(buildURLFor("2embed", item, 1712)).search, "");
@@ -42,7 +76,8 @@ test("the player uses the saved start time unless a watch party supplies one", (
   assert.match(source, /party\.code \? Math\.max\(0, Number\(party\.syncPosition\) \|\| 0\) : Math\.max\(0, Number\(p\.startAt\) \|\| 0\)/);
 });
 
-test("VidLink and Vidking are fully absent from the web app source", () => {
-  assert.doesNotMatch(source, /vidlink/i);
-  assert.doesNotMatch(source, /vidking/i);
+test("removed providers are migrated to CineSrc and never reach a playback URL", () => {
+  assert.match(source, /\["cinepro", "vidlink", "vidking"\]\.includes\(state\.account\.preferences\.playerProvider\)/);
+  const urlFunctions = source.slice(start, end);
+  for (const removed of ["cinepro", "vidlink", "vidking", "dulo"]) assert.equal(urlFunctions.includes(removed), false);
 });
