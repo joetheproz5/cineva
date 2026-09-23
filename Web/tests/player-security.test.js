@@ -16,7 +16,7 @@ test("rejects malformed or impossible player progress", () => {
 
 test("rejects a message from the wrong provider origin or frame", () => {
   const activeWindow = {}, otherWindow = {}, iframe = { contentWindow:activeWindow };
-  assert.equal(security.isTrustedPlayerMessage({ origin:"https://vidlink.pro", source:activeWindow, data:validPayload }, iframe, "vidlink"), true);
-  assert.equal(security.isTrustedPlayerMessage({ origin:"https://attacker.invalid", source:activeWindow, data:validPayload }, iframe, "vidlink"), false);
-  assert.equal(security.isTrustedPlayerMessage({ origin:"https://vidlink.pro", source:otherWindow, data:validPayload }, iframe, "vidlink"), false);
+  assert.equal(security.isTrustedPlayerMessage({ origin:"https://vidsrc.sbs", source:activeWindow, data:validPayload }, iframe, "vidsrc"), true);
+  assert.equal(security.isTrustedPlayerMessage({ origin:"https://attacker.invalid", source:activeWindow, data:validPayload }, iframe, "vidsrc"), false);
+  assert.equal(security.isTrustedPlayerMessage({ origin:"https://vidsrc.sbs", source:otherWindow, data:validPayload }, iframe, "vidsrc"), false);
 });

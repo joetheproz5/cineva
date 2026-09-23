@@ -5,9 +5,7 @@
   root.SEVENPlayerSecurity = api;
 })(typeof window === "undefined" ? globalThis : window, function createPlayerSecurity() {
   const PROVIDER_ORIGINS = Object.freeze({
-    vidlink: "https://vidlink.pro",
     vidsrc: "https://vidsrc.sbs",
-    vidking: "https://www.vidking.net",
     "2embed": "https://www.2embed.online"
   });
   const MAX_DURATION_SECONDS = 172800;

@@ -19,23 +19,22 @@ function buildURLFor(provider, item, progress = 0) {
   return context.playerURL(item, progress);
 }
 
-test("an old Dulo setting safely falls back to the supported VidLink movie route", () => {
-  const url = buildURLFor("dulo", { type:"movie", id:550 });
-  assert.match(url, /^https:\/\/vidlink\.pro\/movie\/550\?/);
-  assert.equal(url.includes("dulo"), false);
+test("only VidSrc and 2Embed remain as supported providers", () => {
+  assert.deepEqual([...providerList.match(/"([^"]+)"/g)].map(value => value.replaceAll('"', "")), ["vidsrc", "2embed"]);
 });
 
-test("supported providers receive the saved playback second", () => {
+test("removed providers and unknown settings safely fall back to the VidSrc movie route", () => {
+  for (const removed of ["vidlink", "vidking", "dulo"]) {
+    const url = buildURLFor(removed, { type:"movie", id:550 });
+    assert.match(url, /^https:\/\/vidsrc\.sbs\/embed\/movie\/550\?/);
+    assert.equal(url.includes(removed), false);
+  }
+});
+
+test("VidSrc receives the saved playback second and 2Embed stays parameter-free", () => {
   const item = { type:"tv", id:71712, season:4, episode:2 };
-  assert.equal(new URL(buildURLFor("vidlink", item, 1712)).searchParams.get("startAt"), "1712");
   assert.equal(new URL(buildURLFor("vidsrc", item, 1712)).searchParams.get("t"), "1712");
-  assert.equal(new URL(buildURLFor("vidking", item, 1712)).searchParams.get("progress"), "1712");
-});
-
-test("provider-owned next controls are disabled in favor of SEVEN's verified handoff", () => {
-  const item = { type:"tv", id:71712, season:4, episode:7 };
-  assert.equal(new URL(buildURLFor("vidlink", item)).searchParams.get("nextbutton"), "false");
-  assert.equal(new URL(buildURLFor("vidking", item)).searchParams.get("nextEpisode"), "false");
+  assert.equal(new URL(buildURLFor("2embed", item, 1712)).search, "");
 });
 
 test("the player uses the saved start time unless a watch party supplies one", () => {
@@ -43,7 +42,7 @@ test("the player uses the saved start time unless a watch party supplies one", (
   assert.match(source, /party\.code \? Math\.max\(0, Number\(party\.syncPosition\) \|\| 0\) : Math\.max\(0, Number\(p\.startAt\) \|\| 0\)/);
 });
 
-test("Vidking cannot reuse its own resume storage over SEVEN playback state", () => {
-  assert.match(source, /playerIsolation = selectedPlayerProvider\(\) === "vidking" \? " credentialless" : ""/);
-  assert.match(source, /<iframe class="player"\$\{playerIsolation\} src=/);
+test("VidLink and Vidking are fully absent from the web app source", () => {
+  assert.doesNotMatch(source, /vidlink/i);
+  assert.doesNotMatch(source, /vidking/i);
 });
