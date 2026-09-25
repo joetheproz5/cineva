@@ -337,42 +337,26 @@ function renderHome() {
     render();
   });
 }
-function heroSequence() {
+function heroNavigation() {
   const count = state.featuredPool.length;
   if (count < 2) return "";
-  const auto = currentPreferences().autoplayPreviews !== false, position = String(state.featuredIndex + 1).padStart(2, "0"), total = String(count).padStart(2, "0"), steps = state.featuredPool.map((item, index) => { const active = index === state.featuredIndex; return `<button class="sequence-step ${active ? "is-active" : ""}" data-hero-index="${index}" role="tab" aria-selected="${active}" aria-label="Feature ${escapeHTML(titleOf(item))}" title="${escapeHTML(titleOf(item))}" tabindex="${active ? "0" : "-1"}"><span>${String(index + 1).padStart(2, "0")}</span><i><b></b></i></button>`; }).join("");
-  return `<div class="hero-sequence ${auto ? "" : "no-auto"}" style="--sequence-count:${count}"><div class="sequence-heading"><span class="sequence-kicker"><i></i> THE SEVEN SELECTION</span><span class="sequence-current">${escapeHTML(titleOf(state.featured))}</span><div class="sequence-controls"><span class="sequence-count"><b>${position}</b><i>/</i>${total}</span><button class="sequence-arrow" data-hero-prev aria-label="Previous featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button><button class="sequence-arrow" data-hero-next aria-label="Next featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button></div></div><div class="sequence-track" role="tablist" aria-label="Featured titles">${steps}</div></div>`;
+  const position = String(state.featuredIndex + 1).padStart(2, "0"), total = String(count).padStart(2, "0");
+  return `<div class="hero-nav" aria-label="Featured titles"><button class="hero-arrow hero-arrow-prev" data-hero-direction="-1" aria-label="Previous featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button><span class="hero-counter" aria-live="polite"><b>${position}</b><i>/</i>${total}</span><button class="hero-arrow hero-arrow-next" data-hero-direction="1" aria-label="Next featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button></div>`;
 }
 function featuredMarkup(f = state.featured) {
   if (!f) return `<div class="hero-skeleton skeleton"></div>`;
   const backdrop = f.backdrop_path ? `${TMDB_BACKDROP}${f.backdrop_path}` : posterOf(f), score = Number(f.vote_average) || 0, type = contentType(f), description = f.overview || "Discover a new story selected for you on SEVEN.";
   const words = escapeHTML(titleOf(f)).split(/\s+/).map((word, index) => `<span class="hero-word" style="animation-delay:${.42 + index * .09}s">${word}</span>`).join("");
-  return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')"></div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-content"><p class="hero-eyebrow">TONIGHT ON SEVEN</p><h1>${words}</h1><div class="hero-meta"><strong>${score ? `${Math.round(score * 10)}% match` : "Featured"}</strong><span>${yearOf(f) || "New"}</span><span>${type === "tv" ? "Series" : "Movie"}</span><span class="hero-rating">${type === "tv" ? "TV SERIES" : "FEATURED FILM"}</span></div><p class="hero-synopsis">${escapeHTML(description)}</p><div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>${t("Watch now")}</button><span class="hero-info-link" data-open="${type}:${f.id}" role="button" tabindex="0">More info</span></div></div>${heroSequence()}`;
+  return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')"></div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-content"><p class="hero-eyebrow">TONIGHT ON SEVEN</p><h1>${words}</h1><div class="hero-meta"><strong>${score ? `${Math.round(score * 10)}% match` : "Featured"}</strong><span>${yearOf(f) || "New"}</span><span>${type === "tv" ? "Series" : "Movie"}</span><span class="hero-rating">${type === "tv" ? "TV SERIES" : "FEATURED FILM"}</span></div><p class="hero-synopsis">${escapeHTML(description)}</p><div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>${t("Watch now")}</button><span class="hero-info-link" data-open="${type}:${f.id}" role="button" tabindex="0">More info</span></div></div>${heroNavigation()}`;
 }
 function bindHeroControls() {
   const featured = document.querySelector("#featured");
   if (!featured) return;
-  const selectAndFocus = index => {
-    setFeaturedIndex(index);
-    featured.querySelector(`[data-hero-index="${state.featuredIndex}"]`)?.focus({ preventScroll:true });
+  const selectAndFocus = direction => {
+    setFeaturedIndex(state.featuredIndex + direction);
+    featured.querySelector(`[data-hero-direction="${direction}"]`)?.focus({ preventScroll:true });
   };
-  featured.querySelector("[data-hero-prev]")?.addEventListener("click", () => selectAndFocus(state.featuredIndex - 1));
-  featured.querySelector("[data-hero-next]")?.addEventListener("click", () => selectAndFocus(state.featuredIndex + 1));
-  featured.querySelectorAll("[data-hero-index]").forEach(button => {
-    button.onclick = () => selectAndFocus(Number(button.dataset.heroIndex));
-    button.onkeydown = event => {
-      const count = state.featuredPool.length;
-      let next = null;
-      if (event.key === "ArrowRight") next = Number(button.dataset.heroIndex) + 1;
-      else if (event.key === "ArrowLeft") next = Number(button.dataset.heroIndex) - 1;
-      else if (event.key === "Home") next = 0;
-      else if (event.key === "End") next = count - 1;
-      if (next === null) return;
-      event.preventDefault();
-      const index = (next + count) % count;
-      selectAndFocus(index);
-    };
-  });
+  featured.querySelectorAll("[data-hero-direction]").forEach(button => button.onclick = () => selectAndFocus(Number(button.dataset.heroDirection)));
   featured.querySelectorAll(".home-hero-content [data-open]").forEach(button => {
     const open = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, Number(id)); };
     button.onclick = open;
