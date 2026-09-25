@@ -42,6 +42,41 @@
     return null;
   }
 
+  function episodeNumber(value, minimum, maximum) {
+    const number = typeof value === "number" ? value : typeof value === "string" && /^\d{1,4}$/.test(value) ? Number(value) : NaN;
+    return Number.isInteger(number) && number >= minimum && number <= maximum ? number : null;
+  }
+  function normalizePlayerEpisodeChange(payload) {
+    if (!payload || typeof payload !== "object") return null;
+    const type = String(payload.type || "");
+    if (type === "cinesrc:nextepisode") {
+      const season = episodeNumber(payload.season, 0, 100), episode = episodeNumber(payload.episode, 1, 1000);
+      return season == null || episode == null ? null : { season, episode, internalNavigation:payload.internalNavigation !== false, source:"cinesrc" };
+    }
+    if (type !== "PLAYER_EVENT" && type !== "MEDIA_DATA") return null;
+    const data = payload.data;
+    if (!data || typeof data !== "object") return null;
+    const info = data.player_info || data.playerInfo || data.media || data;
+    const season = episodeNumber(info.season ?? info.seasonNumber ?? info.season_number, 0, 100);
+    const episode = episodeNumber(info.episode ?? info.episodeNumber ?? info.episode_number, 1, 1000);
+    const event = String(data.event || payload.event || "").toLowerCase().replace(/[\s_-]/g, "");
+    if (season != null && episode != null) {
+      const rawId = info.tmdbId ?? info.tmdb_id ?? info.tmdb ?? info.id;
+      const showId = rawId == null ? null : typeof rawId === "number" ? rawId : typeof rawId === "string" && /^\d{1,9}$/.test(rawId) ? Number(rawId) : NaN;
+      if (rawId != null && (!Number.isInteger(showId) || showId < 1 || showId > 100000000)) return null;
+      return { season, episode, showId, internalNavigation:true, source:type === "MEDIA_DATA" ? "vidfast-media" : "vidfast" };
+    }
+    if (type === "PLAYER_EVENT" && ["nextepisode", "episodechange", "episodechanged"].includes(event)) return { next:true, internalNavigation:true, source:"vidfast" };
+    return null;
+  }
+  function isTrustedPlayerEpisodeChange(event, iframe, provider) {
+    return Boolean(normalizePlayerEpisodeChange(event?.data))
+      && (provider === "cinesrc" || provider === "vidfast")
+      && Boolean(iframe?.contentWindow)
+      && event?.source === iframe.contentWindow
+      && event?.origin === originFor(provider);
+  }
+
   function isTrustedPlayerMessage(event, iframe, provider) {
     const normalized = normalizePlayerEvent(event?.data);
     return Boolean(normalized)
@@ -62,5 +97,5 @@
     return provider === "cinesrc" ? "https://cinesrc.st" : null;
   }
 
-  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, normalizePlayerEvent, isTrustedPlayerMessage, validPlayerResponse, playerCommandFrame };
+  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, normalizePlayerEvent, normalizePlayerEpisodeChange, isTrustedPlayerMessage, isTrustedPlayerEpisodeChange, validPlayerResponse, playerCommandFrame };
 });

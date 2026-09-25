@@ -43,6 +43,25 @@ test("CineSrc lifecycle events normalize with safe placeholder times", () => {
   assert.equal(security.normalizePlayerEvent({ type:"cinesrc:volumechange", volume:0.5 }), null);
 });
 
+test("CineSrc native next-episode messages expose validated episode coordinates", () => {
+  const message = { type:"cinesrc:nextepisode", season:5, episode:1, internalNavigation:true, source:"button" };
+  const iframe = { contentWindow:{} };
+  assert.deepEqual(security.normalizePlayerEpisodeChange(message), { season:5, episode:1, internalNavigation:true, source:"cinesrc" });
+  assert.equal(security.isTrustedPlayerEpisodeChange({ origin:"https://cinesrc.st", source:iframe.contentWindow, data:message }, iframe, "cinesrc"), true);
+  assert.equal(security.isTrustedPlayerEpisodeChange({ origin:"https://attacker.invalid", source:iframe.contentWindow, data:message }, iframe, "cinesrc"), false);
+  assert.equal(security.normalizePlayerEpisodeChange({ ...message, episode:"next" }), null);
+});
+
+test("VidFast episode metadata and explicit next events normalize without accepting unknown origins", () => {
+  const iframe = { contentWindow:{} };
+  const message = { type:"PLAYER_EVENT", data:{ event:"timeupdate", season:4, episode:20, tmdbId:71712, currentTime:45, duration:120 } };
+  assert.deepEqual(security.normalizePlayerEpisodeChange(message), { season:4, episode:20, showId:71712, internalNavigation:true, source:"vidfast" });
+  assert.equal(security.isTrustedPlayerEpisodeChange({ origin:"https://vidfast.vc", source:iframe.contentWindow, data:message }, iframe, "vidfast"), true);
+  assert.equal(security.isTrustedPlayerEpisodeChange({ origin:"https://attacker.invalid", source:iframe.contentWindow, data:message }, iframe, "vidfast"), false);
+  assert.deepEqual(security.normalizePlayerEpisodeChange({ type:"PLAYER_EVENT", data:{ event:"next_episode" } }), { next:true, internalNavigation:true, source:"vidfast" });
+  assert.equal(security.normalizePlayerEpisodeChange({ type:"PLAYER_EVENT", data:{ event:"timeupdate", season:"4", episode:"20", tmdbId:"bad" } }), null);
+});
+
 test("VidFast PLAYER_EVENT and MEDIA_DATA payloads are accepted", () => {
   const vidfastEvent = { type:"PLAYER_EVENT", data:{ event:"timeupdate", currentTime:30, duration:100, tmdbId:550, mediaType:"movie" } };
   assert.equal(security.normalizePlayerEvent(vidfastEvent), vidfastEvent);

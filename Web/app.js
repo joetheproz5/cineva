@@ -80,8 +80,6 @@ function applyLocale() {
 }
 const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"cinesrc" };
 const PLAYER_PROVIDERS = Object.freeze(["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"]);
-const NEXT_EPISODE_PROMPT_MIN_SECONDS = 45;
-const NEXT_EPISODE_PROMPT_MAX_SECONDS = 90;
 const PREVIOUS_EPISODE_WATCHED_PERCENT = 50;
 const NEXT_EPISODE_CONFIRMATION_PERCENT = 25;
 function selectedPlayerProvider() { const provider = currentPreferences().playerProvider; return PLAYER_PROVIDERS.includes(provider) ? provider : "cinesrc"; }
@@ -417,7 +415,7 @@ async function openItem(type, id) {
   } catch (error) { state.error = error.message; state.route = "home"; }
   render(); scrollToTop();
 }
-async function loadEpisodes() { state.episodes = await api(`tv/${state.series.id}/season/${state.selectedSeason}`); }
+async function loadEpisodes() { const seriesId = Number(state.series.id), season = Number(state.selectedSeason); state.episodes = await api(`tv/${seriesId}/season/${season}`); state.episodesSeriesId = seriesId; state.episodesSeason = season; }
 function trailerFrom(videos) { return (videos?.results || []).find(video => video.site === "YouTube" && video.type === "Trailer") || (videos?.results || []).find(video => video.site === "YouTube") || null; }
 async function loadTrailer(type, id) { try { return trailerFrom(await api(`${type}/${id}/videos`)); } catch { return null; } }
 function trailerAction() { return state.trailer ? `<button class="secondary" data-trailer><b>▷</b> Trailer</button>` : ""; }
@@ -511,8 +509,8 @@ function playerURL(item, progress = 0) {
   return `https://vidsrc.sbs/embed/${base}?autoplay=1&color=b20710${start ? `&t=${start}` : ""}`;
 }
 function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series?.id) !== Number(item.id) || Number(state.selectedSeason) !== Number(item.season)) return null; return (state.episodes?.episodes || []).filter(episode => Number(episode.episode_number) > Number(item.episode)).sort((a, b) => Number(a.episode_number) - Number(b.episode_number))[0] || null; }
-async function playNextPlayerEpisode(player) { if (player.type !== "tv" || Number(state.series?.id) !== Number(player.id)) return; state.selectedSeason = Number(player.season); await loadEpisodes(); const next = nextPlayerEpisode(player); if (!next) { showToast("No following episode is available in this season."); return; } playEpisode(Number(next.episode_number), false); }
 const cineSrcPoll = { timer:null, currentTime:null, duration:null };
+let playerEpisodeContextRequest = 0;
 function stopPlayerProgressPolling() { clearInterval(cineSrcPoll.timer); cineSrcPoll.timer = null; cineSrcPoll.currentTime = null; cineSrcPoll.duration = null; }
 function sendPlayerCommand(provider, command) {
   const frame = document.querySelector("iframe.player"), target = window.SEVENPlayerSecurity?.playerCommandFrame(provider);
@@ -545,7 +543,7 @@ function handlePlayerResponse(data) {
 }
 function playerEpisodePanel(player) {
   if (player.type !== "tv") return "";
-  if (Number(state.series?.id) !== Number(player.id)) return `<section class="episode-section player-episodes player-episodes-loading" data-player-episode-panel><span class="brand">EPISODES</span><p>Loading Season ${player.season}…</p></section>`;
+  if (Number(state.series?.id) !== Number(player.id) || Number(state.episodesSeriesId) !== Number(player.id) || Number(state.episodesSeason) !== Number(state.selectedSeason)) return `<section class="episode-section player-episodes player-episodes-loading" data-player-episode-panel><span class="brand">EPISODES</span><p>Loading Season ${state.selectedSeason}…</p></section>`;
 
   const seasons = (state.series.seasons || []).filter(season => season.season_number > 0);
   const rows = (state.episodes?.episodes || []).map(episode => {
@@ -650,15 +648,76 @@ function renderTrailers() {
 }
 async function ensurePlayerContext(player) {
   if (player.type !== "tv" || Number(state.series?.id) === Number(player.id) || state.playerContextKey) return;
-  const contextKey = `${player.id}:${player.season}`;
+  const contextKey = String(player.id), request = ++playerEpisodeContextRequest;
   state.playerContextKey = contextKey;
-  try {
-    state.series = normalize(await api(`tv/${player.id}`, { append_to_response:"credits,keywords,videos" }), "tv");
-    state.selectedSeason = Number(player.season) || 1;
-    await loadEpisodes();
-    if (state.route === "player" && state.player?.type === "tv" && Number(state.player.id) === Number(player.id)) render();
-  } catch { /* The player remains available even if episode metadata cannot load. */ }
-  finally { state.playerContextKey = null; }
+  try { await refreshPlayerEpisodeContext(Number(player.id), Number(player.season) || 1, request); }
+  catch { /* The player remains available even if episode metadata cannot load. */ }
+  finally { if (state.playerContextKey === contextKey) state.playerContextKey = null; }
+}
+async function refreshPlayerEpisodeContext(id, season, request = ++playerEpisodeContextRequest) {
+  let series = Number(state.series?.id) === Number(id) ? state.series : normalize(await api(`tv/${id}`, { append_to_response:"credits,keywords,videos" }), "tv");
+  if (request !== playerEpisodeContextRequest || state.route !== "player" || Number(state.player?.id) !== Number(id)) return;
+  const activeSeason = Number(state.player.season) || Number(season) || 1;
+  const episodes = Number(state.episodesSeriesId) === Number(id) && Number(state.episodesSeason) === activeSeason && state.episodes ? state.episodes : await api(`tv/${id}/season/${activeSeason}`);
+  if (request !== playerEpisodeContextRequest || state.route !== "player" || Number(state.player?.id) !== Number(id) || Number(state.player?.season) !== activeSeason) return;
+  state.series = series;
+  state.selectedSeason = activeSeason;
+  state.episodes = episodes;
+  state.episodesSeriesId = Number(id);
+  state.episodesSeason = activeSeason;
+  syncPlayerEpisodeDisplay();
+}
+function syncPlayerEpisodeDisplay() {
+  const player = state.player;
+  if (!player || player.type !== "tv") return;
+  const episode = Number(state.episodesSeriesId) === Number(player.id) && Number(state.episodesSeason) === Number(player.season) ? (state.episodes?.episodes || []).find(item => Number(item.episode_number) === Number(player.episode)) : null;
+  if (episode) {
+    player.title = episode.name || `Episode ${player.episode}`;
+    player.overview = episode.overview || state.series?.overview || "";
+    player.posterPath = state.series?.poster_path || episode.still_path || player.posterPath || null;
+  }
+  const label = document.querySelector("[data-player-episode-label]"), title = document.querySelector("[data-now-playing-title]");
+  if (label) label.textContent = `Season ${player.season} · Episode ${player.episode}`;
+  if (title) title.textContent = player.title || `Episode ${player.episode}`;
+  const panel = document.querySelector("[data-player-episode-panel]");
+  if (panel && Number(state.series?.id) === Number(player.id)) {
+    panel.replaceWith(document.createRange().createContextualFragment(playerEpisodePanel(player)));
+    bindPlayerEpisodes(player);
+  }
+}
+async function followingNativeEpisode(player) {
+  const id = Number(player.id), currentSeason = Number(player.season), currentEpisode = Number(player.episode);
+  let series = Number(state.series?.id) === id ? state.series : null;
+  if (!series) series = normalize(await api(`tv/${id}`, { append_to_response:"credits,keywords,videos" }), "tv");
+  const seasons = (series.seasons || []).map(item => Number(item.season_number)).filter(number => number > currentSeason).sort((a, b) => a - b);
+  const currentEpisodes = Number(state.episodesSeriesId) === id && Number(state.episodesSeason) === currentSeason && state.episodes ? state.episodes : await api(`tv/${id}/season/${currentSeason}`);
+  const next = (currentEpisodes.episodes || []).find(item => Number(item.episode_number) > currentEpisode);
+  if (next) return { season:currentSeason, episode:Number(next.episode_number) };
+  for (const season of seasons) {
+    const payload = await api(`tv/${id}/season/${season}`), first = (payload.episodes || []).find(item => Number(item.episode_number) > 0);
+    if (first) return { season, episode:Number(first.episode_number) };
+  }
+  return null;
+}
+async function syncNativePlayerEpisode(change) {
+  const previous = state.player;
+  if (!previous || previous.type !== "tv") return;
+  if (change.showId != null && Number(change.showId) !== Number(previous.id)) return;
+  let target = change;
+  if (change.next) target = await followingNativeEpisode(previous);
+  if (state.route !== "player" || state.player !== previous) return;
+  if (!target || !Number.isInteger(Number(target.season)) || !Number.isInteger(Number(target.episode))) return;
+  const season = Number(target.season), episode = Number(target.episode);
+  if (season < 0 || episode < 1 || (season === Number(previous.season) && episode === Number(previous.episode))) return;
+  const oldEpisode = { ...previous };
+  state.pendingEpisodeCompletion = isDirectNextEpisode(oldEpisode, { ...previous, season, episode }) && playbackProgressPercent(savedProgress(oldEpisode)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? oldEpisode : null;
+  state.player = { ...previous, season, episode, title:`Episode ${episode}`, startAt:0 };
+  state.selectedSeason = season;
+  syncPlayerEpisodeDisplay();
+  if (Number(state.episodesSeriesId) === Number(previous.id) && Number(state.episodesSeason) === season && Number(state.series?.id) === Number(previous.id)) return;
+  const request = ++playerEpisodeContextRequest;
+  try { await refreshPlayerEpisodeContext(Number(previous.id), season, request); }
+  catch { /* Keep the counter in sync even if episode metadata is temporarily unavailable. */ }
 }
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
 function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"); return cached?.preferences?.introEnabled !== false; } catch { return true; } }
@@ -907,9 +966,9 @@ function providerMenuHTML() {
   const labels = { cinesrc:"CineSrc 4K", vidfast:"VidFast 4K", multiembed:"MultiEmbed", vidsrc:"VidSrc", "2embed":"2Embed" }, current = selectedPlayerProvider();
   return `<div class="provider-menu"><button class="provider-toggle" data-provider-menu>${labels[current] || "CineSrc 4K"} ▾</button><div class="provider-list" data-provider-list hidden>${PLAYER_PROVIDERS.map(provider => `<button class="provider-option ${provider === current ? "active" : ""}" data-provider-select="${provider}">${labels[provider]}${provider === current ? " ✓" : ""}</button>`).join("")}</div></div>`;}
 function renderPlayer() {
-  const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", next = nextPlayerEpisode(p), nextLabel = next ? escapeHTML(next.name || `Episode ${next.episode_number}`) : "", nextAction = next ? `<button class="secondary player-next" data-play-next data-next-player-action hidden>${t("Next episode")} <b>›</b> ${nextLabel}</button>` : "", frameNextAction = next ? `<button class="player-frame-next" data-play-next data-next-player-action hidden aria-label="Play next episode: ${nextLabel}"><span>${t("Next episode")}</span><b>${nextLabel}</b><i>›</i></button>` : "", startAt = party.code ? Math.max(0, Number(party.syncPosition) || 0) : Math.max(0, Number(p.startAt) || 0), playbackNote = startAt ? (party.code ? `Playing with your party from ${timeLabel(startAt)}` : `Resuming from ${timeLabel(startAt)}`) : savedStart(p) ? `Resume is available from ${timeLabel(savedStart(p))}` : escapeHTML(p.overview || "Playback progress is saved on this device.");
+  const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", startAt = party.code ? Math.max(0, Number(party.syncPosition) || 0) : Math.max(0, Number(p.startAt) || 0), playbackNote = startAt ? (party.code ? `Playing with your party from ${timeLabel(startAt)}` : `Resuming from ${timeLabel(startAt)}`) : savedStart(p) ? `Resume is available from ${timeLabel(savedStart(p))}` : escapeHTML(p.overview || "Playback progress is saved on this device.");
   const media = `<iframe class="player" src="${playerURL(p, startAt)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>`;
-  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span>${label}</span>${party.code ? "" : providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}${frameNextAction}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2>${escapeHTML(p.title)}</h2><div class="progress player-saved-progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time" class="player-saved-time">${playbackNote}</p>${nextAction}</section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="brand">SEVEN CINEMA</span><span data-player-episode-label>${label}</span>${party.code ? "" : providerMenuHTML() + `<button class="party-start" data-party-modal>⇄ Watch together</button>`}</div><div class="player-frame">${media}</div></section><section class="now"><span class="brand">NOW PLAYING</span><h2 data-now-playing-title>${escapeHTML(p.title)}</h2><div class="progress player-saved-progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time" class="player-saved-time">${playbackNote}</p></section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); bindPlayerControlLift(); ensurePlayerContext(p); startPlayerProgressPolling();
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
@@ -918,7 +977,6 @@ function renderPlayer() {
   document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
   renderPartyPanel();
   document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
-  document.querySelectorAll("[data-play-next]").forEach(button => button.addEventListener("click", () => { void playNextPlayerEpisode(p); }));
 }
 function simplifiedTitleQuery(query) {
   const simplified = query.trim().replace(/\b(new|latest|series|tv\s+show|show|movie|film|gameplay|trailer|official)\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -1250,15 +1308,10 @@ function recordPlaybackEvent(data) {
   const bar = document.querySelector("#bar"), time = document.querySelector("#time");
   if (bar) bar.style.width = `${progress}%`;
   if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`;
-  const showNextEpisode = nextEpisodePromptReady(currentTime, duration), playerFrame = document.querySelector(".player-frame");
-  playerFrame?.classList.toggle("next-episode-ready", showNextEpisode);
-  document.querySelectorAll("[data-next-player-action]").forEach(button => { button.hidden = !showNextEpisode; });
 }
-function nextEpisodePromptLeadSeconds(duration) { const total = Number(duration); if (!Number.isFinite(total) || total <= 0) return NEXT_EPISODE_PROMPT_MIN_SECONDS; return Math.min(NEXT_EPISODE_PROMPT_MAX_SECONDS, Math.max(NEXT_EPISODE_PROMPT_MIN_SECONDS, Math.round(total * .03))); }
-function nextEpisodePromptReady(currentTime, duration) { const current = Number(currentTime), total = Number(duration); return Number.isFinite(current) && Number.isFinite(total) && total > 0 && current >= Math.max(0, total - nextEpisodePromptLeadSeconds(total)) && current < total; }
 function bindPlayerControlLift() { const frame = document.querySelector(".player-frame"); if (!frame) return; let idleTimer; const show = () => { clearTimeout(idleTimer); frame.classList.add("player-controls-active"); }; const deferHide = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => frame.classList.remove("player-controls-active"), 1800); }; frame.addEventListener("pointerenter", show); frame.addEventListener("pointermove", show); frame.addEventListener("pointerleave", deferHide); frame.addEventListener("focusin", show); frame.addEventListener("focusout", deferHide); }
 function markEpisodeWatched(item) { const saved = savedProgress(item), duration = Math.max(1, Number(saved.duration) || 0), record = { ...saved, currentTime:duration, duration, progress:100, watched:true, type:item.type, id:item.id, season:item.season || null, episode:item.episode || null, title:saved.title || item.title || "Untitled", posterPath:saved.posterPath || item.posterPath || null, genreIds:saved.genreIds || item.genreIds || [], lastWatchedAt:new Date().toISOString() }; localStorage.setItem(watchKey(item), JSON.stringify(record)); state.seriesNext = null; queueProgressSync(item, duration, duration, 100, true); }
-window.addEventListener("message", event => {
+window.addEventListener("message", async event => {
   let payload;
   try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; }
   if (state.route !== "player") return;
@@ -1269,11 +1322,17 @@ window.addEventListener("message", event => {
     if (iframe?.contentWindow && event.source === iframe.contentWindow && event.origin === security.playerCommandFrame(provider)) handlePlayerResponse(payload);
     return;
   }
-  if (!window.SEVENPlayerSecurity?.isTrustedPlayerMessage({ origin:event.origin, source:event.source, data:payload }, iframe, provider)) return;
-  recordPlaybackEvent(window.SEVENPlayerSecurity.normalizePlayerEvent(payload).data);
+  const security = window.SEVENPlayerSecurity, playerEvent = { origin:event.origin, source:event.source, data:payload }, episodeChange = security?.normalizePlayerEpisodeChange(payload), trustedEpisodeChange = security?.isTrustedPlayerEpisodeChange(playerEvent, iframe, provider);
+  const normalized = security?.normalizePlayerEvent(payload);
+  if (trustedEpisodeChange && episodeChange) {
+    if (normalized) { try { await syncNativePlayerEpisode(episodeChange); } catch { /* Progress still syncs if episode metadata lookup fails. */ } }
+    else { void syncNativePlayerEpisode(episodeChange).catch(() => {}); return; }
+  }
+  if (!security?.isTrustedPlayerMessage(playerEvent, iframe, provider)) return;
+  if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=244").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=245").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
