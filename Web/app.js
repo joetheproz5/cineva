@@ -671,7 +671,7 @@ function StartupIntro() {
   const overlay = document.createElement("div");
   overlay.className = "seven-intro";
   overlay.setAttribute("aria-hidden", "true");
-  overlay.innerHTML = `<div class="startup-intro-scene"><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-sweep"></span></div></div>`;
+  overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-sweep"></span></div></div>`;
   overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
   overlay.addEventListener("click", dismissIntro, { once:true });
   overlay.querySelector(".startup-intro-mark").addEventListener("error", dismissIntro, { once:true });
