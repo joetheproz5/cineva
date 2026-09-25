@@ -340,8 +340,8 @@ function renderHome() {
 function heroFilmstrip() {
   const count = state.featuredPool.length;
   if (count < 2) return "";
-  const auto = currentPreferences().autoplayPreviews !== false, position = String(state.featuredIndex + 1).padStart(2, "0"), total = String(count).padStart(2, "0"), frames = state.featuredPool.map((item, index) => { const active = index === state.featuredIndex, score = Number(item.vote_average) || 0; return `<button class="film-frame ${active ? "is-active" : ""}" data-hero-index="${index}" role="tab" aria-selected="${active}" aria-label="Feature ${escapeHTML(titleOf(item))}"><img src="${stillOf(item)}" alt="" loading="eager" ${active ? "" : "tabindex=-1"}><span class="film-frame-index">${String(index + 1).padStart(2, "0")}</span><span class="film-frame-label"><b>${escapeHTML(titleOf(item))}</b><small>${score ? `★ ${score.toFixed(1)}` : yearOf(item) || ""}</small></span><i class="film-frame-bar"></i></button>`; }).join("");
-  return `<div class="hero-filmstrip ${auto ? "" : "no-auto"}"><div class="filmstrip-head"><span><i></i> THE SEVEN SPOTLIGHT</span><span class="filmstrip-count"><b>${position}</b> / ${total}</span></div><div class="filmstrip-track" role="tablist" aria-label="Featured titles">${frames}</div></div>`;
+  const auto = currentPreferences().autoplayPreviews !== false, position = String(state.featuredIndex + 1).padStart(2, "0"), total = String(count).padStart(2, "0"), frames = state.featuredPool.map((item, index) => { const active = index === state.featuredIndex, score = Number(item.vote_average) || 0; return `<button class="film-frame ${active ? "is-active" : ""}" data-hero-index="${index}" role="tab" aria-selected="${active}" aria-label="Feature ${escapeHTML(titleOf(item))}" tabindex="${active ? "0" : "-1"}"><img src="${stillOf(item)}" alt="" loading="eager"><span class="film-frame-index">${String(index + 1).padStart(2, "0")}</span><span class="film-frame-label"><b>${escapeHTML(titleOf(item))}</b><small>${score ? `★ ${score.toFixed(1)}` : yearOf(item) || ""}</small></span><i class="film-frame-bar"></i></button>`; }).join("");
+  return `<div class="hero-filmstrip ${auto ? "" : "no-auto"}"><div class="filmstrip-head"><span class="filmstrip-kicker"><i></i> SPOTLIGHT COLLECTION</span><span class="filmstrip-current"><small>NOW FEATURED</small><b>${escapeHTML(titleOf(state.featured))}</b></span><div class="filmstrip-navigation"><span class="filmstrip-count"><b>${position}</b><i>/</i>${total}</span><button class="filmstrip-arrow" data-hero-prev aria-label="Previous featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button><button class="filmstrip-arrow" data-hero-next aria-label="Next featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button></div></div><div class="filmstrip-track" role="tablist" aria-label="Featured titles">${frames}</div></div>`;
 }
 function featuredMarkup(f = state.featured) {
   if (!f) return `<div class="hero-skeleton skeleton"></div>`;
@@ -352,9 +352,27 @@ function featuredMarkup(f = state.featured) {
 function bindHeroControls() {
   const featured = document.querySelector("#featured");
   if (!featured) return;
-  featured.querySelector("[data-hero-prev]")?.addEventListener("click", () => rotateHero(-1));
-  featured.querySelector("[data-hero-next]")?.addEventListener("click", () => rotateHero(1));
-  featured.querySelectorAll("[data-hero-index]").forEach(button => button.onclick = () => setFeaturedIndex(Number(button.dataset.heroIndex)));
+  const selectAndFocus = index => {
+    setFeaturedIndex(index);
+    featured.querySelector(`[data-hero-index="${state.featuredIndex}"]`)?.focus({ preventScroll:true });
+  };
+  featured.querySelector("[data-hero-prev]")?.addEventListener("click", () => selectAndFocus(state.featuredIndex - 1));
+  featured.querySelector("[data-hero-next]")?.addEventListener("click", () => selectAndFocus(state.featuredIndex + 1));
+  featured.querySelectorAll("[data-hero-index]").forEach(button => {
+    button.onclick = () => selectAndFocus(Number(button.dataset.heroIndex));
+    button.onkeydown = event => {
+      const count = state.featuredPool.length;
+      let next = null;
+      if (event.key === "ArrowRight") next = Number(button.dataset.heroIndex) + 1;
+      else if (event.key === "ArrowLeft") next = Number(button.dataset.heroIndex) - 1;
+      else if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = count - 1;
+      if (next === null) return;
+      event.preventDefault();
+      const index = (next + count) % count;
+      selectAndFocus(index);
+    };
+  });
   featured.querySelectorAll(".home-hero-content [data-open]").forEach(button => {
     const open = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, Number(id)); };
     button.onclick = open;
