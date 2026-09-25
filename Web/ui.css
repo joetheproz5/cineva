@@ -233,6 +233,7 @@
 .player-frame-next b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .player-frame-next i { color: #ee2b36; font-size: 21px; font-style: normal; line-height: .6; }
 .now { max-width: 1060px; margin: 22px auto 0; padding: 0 4px 4px; }
+.player-saved-progress,.player-saved-time { display: none; }
 .player-episodes { max-width: 1060px; margin: 28px auto 0; }
 .player-episodes .rail-title { margin-bottom: 9px; }
 .player-episodes-list { display: grid; gap: 8px; }

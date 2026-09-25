@@ -11,10 +11,10 @@ const serviceWorker = fs.readFileSync(path.join(web, "service-worker.js"), "utf8
 
 test("the launch ident and PWA files work from a project subpath", () => {
   assert.match(app, /logo\.src = "assets\/seven-wordmark-v2\.png"/);
-  assert.match(app, /serviceWorker\.register\("service-worker\.js\?v=227"\)/);
+  assert.match(app, /serviceWorker\.register\("service-worker\.js\?v=228"\)/);
   assert.doesNotMatch(index, /(?:href|src)="\//);
   assert.match(manifest, /"start_url": "\.\/"/);
   assert.match(manifest, /"scope": "\.\/"/);
-  assert.match(serviceWorker, /const VERSION = "seven-v227"/);
+  assert.match(serviceWorker, /const VERSION = "seven-v228"/);
   assert.match(serviceWorker, /"assets\/seven-wordmark-v2\.png"/);
 });
