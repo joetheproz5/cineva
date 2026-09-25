@@ -846,6 +846,7 @@ function partySyncToHost() {
 }
 function ensurePartyPanel() {
   let panel = document.querySelector(".party-panel");
+  if (!party.code && !party.error) { panel?.remove(); return null; }
   if (!panel && state.route === "player") {
     document.querySelector(".now")?.insertAdjacentHTML("afterend", `<section class="party-panel"></section>`);
     panel = document.querySelector(".party-panel");
@@ -1270,7 +1271,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(window.SEVENPlayerSecurity.normalizePlayerEvent(payload).data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=228").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=229").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
