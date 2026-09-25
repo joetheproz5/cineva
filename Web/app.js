@@ -679,8 +679,7 @@ function renderLaunchIntro() {
   const fill = () => {
     if (!document.querySelector(".seven-intro")) return;
     overlay.classList.add("live");
-    const letters = ["s", "e-one", "v", "e-two", "n"];
-    overlay.innerHTML = `<div class="seven-intro-scene" aria-hidden="true"><div class="seven-intro-lockup"><div class="seven-intro-logo-wrap">${letters.map(letter => `<img class="seven-intro-letter letter-${letter}" src="${logo.src}" alt="">`).join("")}<span class="seven-intro-glint"></span></div></div></div>`;
+    overlay.innerHTML = `<div class="seven-intro-scene" aria-hidden="true"><div class="seven-intro-lockup"><div class="seven-intro-logo-wrap"><span class="seven-intro-beam"></span><img class="seven-intro-mark" src="${logo.src}" alt=""><span class="seven-intro-glint"></span></div></div></div>`;
     clearTimeout(state.introTimer);
     state.introTimer = setTimeout(dismissIntro, 3650);
   };
@@ -1272,7 +1271,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(window.SEVENPlayerSecurity.normalizePlayerEvent(payload).data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=235").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=236").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
