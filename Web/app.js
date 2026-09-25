@@ -552,7 +552,8 @@ function playerEpisodePanel(player) {
     const item = { type:"tv", id:player.id, season:state.selectedSeason, episode:episode.episode_number };
     const watched = isWatched(item);
     const current = Number(state.selectedSeason) === Number(player.season) && Number(episode.episode_number) === Number(player.episode);
-    return `<article class="episode ${watched ? "is-watched" : ""} ${current ? "is-current" : ""}"><button class="episode-main" data-player-episode="${episode.episode_number}"><img src="${episode.still_path ? TMDB_IMAGE + episode.still_path : "icon.svg"}" alt=""><span><b><em>${String(episode.episode_number).padStart(2, "0")}</em>${escapeHTML(episode.name)}${episode.vote_average ? `<i class="episode-score">★ ${Number(episode.vote_average).toFixed(1)}</i>` : ""}</b><small>${current ? "Now playing" : watched ? "Watched" : savedStart(item) ? `Resume from ${timeLabel(savedStart(item))}` : escapeHTML(episode.overview || "No description available.")}</small></span><strong>›</strong></button>${current ? '<span class="episode-current">Playing</span>' : ""}</article>`;
+    const resume = savedStart(item), status = current ? "" : watched ? `<em class="episode-state is-watched">✓ Watched</em>` : resume ? `<em class="episode-state is-resume">Resume from ${timeLabel(resume)}</em>` : "";
+    return `<article class="episode ${watched ? "is-watched" : ""} ${current ? "is-current" : ""}"><button class="episode-main" data-player-episode="${episode.episode_number}"><img src="${episode.still_path ? TMDB_IMAGE + episode.still_path : "icon.svg"}" alt=""><span><b><em>${String(episode.episode_number).padStart(2, "0")}</em>${escapeHTML(episode.name)}${episode.vote_average ? `<i class="episode-score">★ ${Number(episode.vote_average).toFixed(1)}</i>` : ""}</b><small class="episode-description">${escapeHTML(episode.overview || "No description available.")}</small>${status}</span><strong>›</strong></button>${current ? '<span class="episode-current">Now playing</span>' : ""}</article>`;
   }).join("");
 
   return `<section class="episode-section player-episodes" data-player-episode-panel><div class="rail-title"><h2>Episodes</h2><span>${Number(state.selectedSeason) === Number(player.season) ? `Watching Season ${player.season}` : `Season ${state.selectedSeason}`}</span></div><label class="season-select">Season <select id="player-season-selector" aria-label="Choose season while watching">${seasons.map(season => `<option value="${season.season_number}" ${Number(season.season_number) === Number(state.selectedSeason) ? "selected" : ""}>Season ${season.season_number}</option>`).join("")}</select></label><div class="player-episodes-list">${rows || '<p class="episode-empty">No episodes are available for this season.</p>'}</div></section>`;
@@ -1272,7 +1273,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(window.SEVENPlayerSecurity.normalizePlayerEvent(payload).data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=242").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=243").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
