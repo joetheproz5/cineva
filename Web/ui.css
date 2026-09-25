@@ -502,6 +502,7 @@ body:has(.home-page) {
 .home-library .explore-all:hover { border-color: rgba(255,255,255,.1); color: #fff; background: rgba(255,255,255,.04); text-decoration: none; }
 .home-library .explore-all:hover b { transform: translateX(3px); }
 .home-library .cards { gap: 18px; overflow: visible; }
+.home-library .card,.home-library .card-skeleton { max-width: 96%; }
 .home-library .card { position: relative; overflow: visible; border-radius: 13px; transition: transform .24s cubic-bezier(.2,.8,.2,1); }
 .home-library .card:hover { z-index: 3; transform: translateY(-7px); }
 .home-library .poster-wrap { border: 1px solid rgba(255,255,255,.08); border-radius: 13px; background: #121519; box-shadow: 0 12px 34px rgba(0,0,0,.28); transition: border-color .22s ease, box-shadow .22s ease; }
@@ -571,8 +572,8 @@ body:has(.home-page) {
   .home-library .rail-title { margin-bottom: 13px; }
   .home-library .rail-title small { margin-left: 9px; }
   .home-library .rail-heading { font-size: 20px; }
-  .home-library .cards { grid-auto-columns: 210px; gap: 12px; overflow-x: auto; padding: 4px 2px 13px; }
-  .home-library .card-skeleton { width: 210px; }
+  .home-library .cards { grid-auto-columns: 198px; gap: 12px; overflow-x: auto; padding: 4px 2px 13px; }
+  .home-library .card-skeleton { width: 198px; }
   .home-library .ranked-card { width: 200px; }
   .home-library .ranked-card .poster-wrap { width: calc(100% - 34px); }
   .ranked-card .card-copy { padding-left: 34px; }
