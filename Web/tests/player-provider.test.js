@@ -91,3 +91,8 @@ test("CineSrc progress is polled via getCurrentTime and getDuration commands", (
   assert.match(source, /if \(state\.route !== "player"\) stopPlayerProgressPolling\(\);/);
   assert.match(source, /function handlePlayerResponse/);
 });
+
+test("the existing server fullscreen control receives mobile-compatible permission", () => {
+  assert.match(source, /allowfullscreen webkitallowfullscreen mozallowfullscreen/);
+  assert.equal(source.includes("data-player-fullscreen"), false);
+});

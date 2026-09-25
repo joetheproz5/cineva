@@ -81,6 +81,11 @@ class MainActivity : Activity() {
                     customView = view
                     customViewCallback = callback
                     fullScreenContainer?.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                    // The browser view is normally the top-most child in the root. Bring the
+                    // server-provided full-screen view above it before showing it; otherwise
+                    // WebView acknowledges the request but the player remains visible.
+                    refreshLayout.visibility = View.GONE
+                    fullScreenContainer?.bringToFront()
                     fullScreenContainer?.visibility = View.VISIBLE
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
@@ -107,6 +112,7 @@ class MainActivity : Activity() {
     private fun exitFullscreen() {
         fullScreenContainer?.removeAllViews()
         fullScreenContainer?.visibility = View.GONE
+        refreshLayout.visibility = View.VISIBLE
         customView = null
         customViewCallback?.onCustomViewHidden()
         customViewCallback = null
