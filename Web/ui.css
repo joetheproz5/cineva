@@ -285,28 +285,28 @@
 .search-recent-query span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-recent-remove { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; color: #777; background: transparent; font-size: 14px; line-height: 1; transition: color 0.16s, background 0.16s; }
 .search-recent-remove:hover { color: #fff; background: #333; }
-.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; color: #fff; background: #020203; cursor: pointer; isolation: isolate; }
-.seven-intro::before { position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 50%, rgba(112,5,15,.22), transparent 46%); opacity: 0; animation: intro-atmosphere 2.8s ease-out both; content: ""; }
-.seven-intro.live { animation: intro-out .48s cubic-bezier(.4,0,.2,1) 3.08s forwards; }
+.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; color: #fff; background: #010102; cursor: pointer; isolation: isolate; }
+.seven-intro::before { position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 48%, rgba(93,5,13,.16), transparent 48%); opacity: 0; animation: intro-atmosphere 2.7s ease-out both; content: ""; }
+.seven-intro.live { animation: intro-out .44s cubic-bezier(.4,0,.2,1) 2.86s forwards; }
 .seven-intro-scene { position: relative; display: grid; width: min(90vw, 1000px); aspect-ratio: 16 / 7; place-items: center; }
-.seven-intro-horizon { position: absolute; left: 50%; top: 50%; width: min(100vw, 1400px); height: 1px; background: linear-gradient(90deg, transparent, rgba(237,20,35,.12) 27%, rgba(255,50,62,.9) 49.5%, rgba(255,226,228,.96) 50%, rgba(255,50,62,.9) 50.5%, rgba(237,20,35,.12) 73%, transparent); box-shadow: 0 0 22px 2px rgba(237,20,35,.32); opacity: 0; transform: translate(-50%,-50%) scaleX(.01); animation: intro-horizon 2.1s cubic-bezier(.2,.75,.25,1) .05s both; }
+.seven-intro-light { position: absolute; left: 50%; top: 50%; width: min(86vw, 900px); aspect-ratio: 1.9; border-radius: 50%; background: radial-gradient(ellipse, rgba(191,8,24,.28) 0%, rgba(112,4,15,.13) 33%, transparent 72%); filter: blur(20px); opacity: 0; transform: translate(-50%,-50%) scale(.58); animation: intro-light-bloom 1.55s cubic-bezier(.2,.75,.25,1) .16s both; }
 .seven-intro-lockup { position: relative; display: grid; justify-items: center; gap: clamp(13px, 2.5vh, 22px); width: 100%; }
 .seven-intro-logo-wrap { position: relative; width: min(70vw, 590px); aspect-ratio: 2172 / 724; }
-.seven-intro-logo-wrap::before { position: absolute; z-index: 0; inset: -8%; background: #ed1423; -webkit-mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; filter: blur(26px); opacity: 0; transform: scale(.94); animation: intro-logo-bloom 1.6s ease-out .55s both; content: ""; }
-.seven-intro-wordmark { position: absolute; z-index: 1; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill; opacity: 0; clip-path: inset(0 100% 0 0); transform: scale(.965); filter: blur(9px) drop-shadow(0 0 0 rgba(237,20,35,0)); animation: intro-wordmark-reveal 1.55s cubic-bezier(.16,1,.3,1) .32s both; will-change: clip-path, opacity, transform, filter; }
-.seven-intro-polish { position: absolute; z-index: 2; inset: 0; background: linear-gradient(105deg, transparent 39%, rgba(255,255,255,.94) 49.5%, rgba(255,91,101,.8) 51%, transparent 62%); -webkit-mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; opacity: 0; transform: translateX(-85%); animation: intro-polish .8s cubic-bezier(.16,1,.3,1) 1.05s both; }
-.seven-intro-tagline { color: rgba(226,230,236,.62); font-size: clamp(8px,1.1vw,11px); font-weight: 750; letter-spacing: clamp(3px,.55vw,6px); text-indent: clamp(3px,.55vw,6px); opacity: 0; transform: translateY(5px); animation: intro-tagline .65s ease-out 1.55s both; }
+.seven-intro-logo-wrap::before { position: absolute; z-index: 0; inset: -9%; background: #ed1423; -webkit-mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; filter: blur(30px); opacity: 0; transform: scale(.96); animation: intro-mark-halo 1.25s ease-out .42s both; content: ""; }
+.seven-intro-wordmark { position: absolute; z-index: 1; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill; opacity: 0; transform: translateY(7px) scale(1.035); filter: blur(6px) drop-shadow(0 0 0 rgba(237,20,35,0)); animation: intro-mark-impact .92s cubic-bezier(.2,.85,.25,1) .42s both; will-change: opacity, transform, filter; }
+.seven-intro-tagline { display: flex; align-items: center; gap: 15px; color: rgba(226,230,236,.58); font-size: clamp(8px,1.1vw,11px); font-weight: 750; letter-spacing: clamp(3px,.55vw,6px); text-indent: clamp(3px,.55vw,6px); opacity: 0; transform: translateY(5px); animation: intro-tagline .58s ease-out 1.4s both; }
+.seven-intro-tagline::before,.seven-intro-tagline::after { width: clamp(16px,3vw,34px); height: 1px; background: linear-gradient(90deg,transparent,rgba(237,20,35,.68)); content: ""; }
+.seven-intro-tagline::after { transform: rotate(180deg); }
 @keyframes intro-out { to { opacity: 0; visibility: hidden; } }
-@keyframes intro-atmosphere { 0% { opacity: 0; } 42% { opacity: 1; } 100% { opacity: .55; } }
-@keyframes intro-horizon { 0% { opacity: 0; transform: translate(-50%,-50%) scaleX(.01); } 20% { opacity: .75; } 58% { opacity: .45; transform: translate(-50%,-50%) scaleX(1); } 100% { opacity: .12; transform: translate(-50%,-50%) scaleX(.7); } }
-@keyframes intro-wordmark-reveal { 0% { opacity: 0; clip-path: inset(0 100% 0 0); transform: scale(.965); filter: blur(9px) drop-shadow(0 0 0 rgba(237,20,35,0)); } 14% { opacity: 1; } 76% { filter: blur(0) drop-shadow(0 0 34px rgba(237,20,35,.24)); } 100% { opacity: 1; clip-path: inset(0); transform: scale(1); filter: blur(0) drop-shadow(0 0 17px rgba(237,20,35,.12)); } }
-@keyframes intro-logo-bloom { 0% { opacity: 0; transform: scale(.94); } 40% { opacity: .38; transform: scale(1.02); } 100% { opacity: .05; transform: scale(1.08); } }
-@keyframes intro-polish { 0% { opacity: 0; transform: translateX(-85%); } 24% { opacity: .9; } 100% { opacity: 0; transform: translateX(85%); } }
+@keyframes intro-atmosphere { 0% { opacity: 0; } 38% { opacity: 1; } 100% { opacity: .55; } }
+@keyframes intro-light-bloom { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.58); } 32% { opacity: 1; transform: translate(-50%,-50%) scale(1.04); } 100% { opacity: .42; transform: translate(-50%,-50%) scale(1.16); } }
+@keyframes intro-mark-halo { 0% { opacity: 0; transform: scale(.96); } 34% { opacity: .52; transform: scale(1.015); } 100% { opacity: .1; transform: scale(1.08); } }
+@keyframes intro-mark-impact { 0% { opacity: 0; transform: translateY(7px) scale(1.035); filter: blur(6px) drop-shadow(0 0 0 rgba(237,20,35,0)); } 42% { opacity: 1; transform: translateY(0) scale(.995); filter: blur(0) drop-shadow(0 0 35px rgba(237,20,35,.38)); } 72% { transform: translateY(0) scale(1.004); filter: blur(0) drop-shadow(0 0 22px rgba(237,20,35,.2)); } 100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0) drop-shadow(0 0 16px rgba(237,20,35,.12)); } }
 @keyframes intro-tagline { to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {
-  .seven-intro::before,.seven-intro-horizon,.seven-intro-logo-wrap::before,.seven-intro-wordmark,.seven-intro-polish,.seven-intro-tagline { animation: none !important; }
+  .seven-intro::before,.seven-intro-light,.seven-intro-logo-wrap::before,.seven-intro-wordmark,.seven-intro-tagline { animation: none !important; }
   .seven-intro-logo-wrap::before { opacity: 0; }
-  .seven-intro-wordmark { opacity: 1; clip-path: none; transform: none; filter: none; }
+  .seven-intro-wordmark { opacity: 1; transform: none; filter: none; }
 }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }
 .offline-logo { width: min(52vw, 260px); height: auto; opacity: .92; margin-bottom: 18px; }
