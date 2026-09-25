@@ -319,8 +319,8 @@
 @keyframes profile-gate-exit { to { opacity: 0; transform: scale(.94); } }
 .hero-skeleton { min-height: 460px; border-radius: 12px; }
 .cards { grid-auto-columns: 246px; gap: 14px; }
-.card img { width: 100%; aspect-ratio: 16 / 9; height: auto; }
-.card-skeleton { width: 246px; aspect-ratio: 16 / 9; height: auto; }
+.card img { display: block; width: 100%; aspect-ratio: 2 / 3; height: auto; object-fit: cover; }
+.card-skeleton { width: 100%; aspect-ratio: 2 / 3; height: auto; }
 .poster-wrap { border-radius: 8px; }
 .card-copy b,.card > b { display: block; min-height: 2.5em; overflow: visible; line-height: 1.25; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
 
@@ -519,9 +519,9 @@ body:has(.home-page) {
 .home-library .card-copy { display: block; min-width: 0; padding: 10px 3px 1px; }
 .home-library .card-copy b,.home-library .card > b { margin: 0; color: #eef0f2; font-size: 14px; font-weight: 760; }
 .home-library .card-copy small { margin-top: 5px; color: #72787e; font-size: 10px; }
-.ranked-card .card-rank { position: absolute; z-index: 3; top: 4px; left: -8px; color: #08090a; font-size: clamp(58px,5vw,76px); font-style: normal; font-weight: 950; line-height: .75; letter-spacing: -.09em; pointer-events: none; -webkit-text-stroke: 2px rgba(255,255,255,.78); text-shadow: 5px 7px 16px rgba(0,0,0,.8); }
-.ranked-card .poster-wrap { margin-left: 18px; width: calc(100% - 18px); }
-.ranked-card .card-copy { padding-left: 21px; }
+.ranked-card .card-rank { position: absolute; z-index: 3; top: 9px; left: 0; color: #08090a; font-size: clamp(42px,4vw,62px); font-style: normal; font-weight: 950; line-height: .75; letter-spacing: -.09em; pointer-events: none; -webkit-text-stroke: 2px rgba(255,255,255,.78); text-shadow: 5px 7px 16px rgba(0,0,0,.8); }
+.ranked-card .poster-wrap { margin-left: 34px; width: calc(100% - 34px); }
+.ranked-card .card-copy { padding-left: 37px; }
 
 .home-library .play-something-banner { position: relative; isolation: isolate; overflow: hidden; gap: 18px; margin: 58px 0 10px; padding: 25px 28px; border: 1px solid rgba(255,255,255,.1); border-radius: 22px; background: linear-gradient(110deg,#17191d,#0c0d10 58%,#20080c); box-shadow: 0 22px 55px rgba(0,0,0,.3); }
 .home-library .play-something-banner::before { position: absolute; z-index: -1; right: -8%; width: 36%; aspect-ratio: 1; border-radius: 50%; background: rgba(219,19,32,.2); filter: blur(55px); content: ""; }
@@ -535,25 +535,8 @@ body:has(.home-page) {
 .home-library .play-something-banner > em b { color: #ef2934; font-size: 22px; }
 
 @media (min-width: 651px) {
-  .home-library .cards,.home-library .ranked-rail .cards { grid-template-columns: repeat(3,minmax(0,1fr)); }
-  .home-library .cards > :nth-child(-n + 3) { display: block; }
-  .home-library .cards > :nth-child(n + 4) { display: none; }
-}
-@media (min-width: 920px) {
   .home-library .cards,.home-library .ranked-rail .cards { grid-template-columns: repeat(4,minmax(0,1fr)); }
-  .home-library .cards > :nth-child(-n + 4) { display: block; }
   .home-library .cards > :nth-child(n + 5) { display: none; }
-}
-@media (min-width: 1150px) {
-  .home-library .cards,.home-library .ranked-rail .cards { grid-template-columns: repeat(5,minmax(0,1fr)); }
-  .home-library .cards > :nth-child(-n + 5) { display: block; }
-  .home-library .cards > :nth-child(n + 6) { display: none; }
-}
-@media (min-width: 1450px) {
-  .home-library .cards,.home-library .ranked-rail .cards { grid-template-columns: repeat(6,minmax(0,1fr)); }
-  .home-library .cards > :nth-child(-n + 6) { display: block; }
-  .home-library .cards > :nth-child(n + 7) { display: none; }
-  .ranked-card .card-rank { font-size: clamp(42px,3.2vw,54px); }
 }
 @media (max-width: 920px) {
   .film-frame { min-width: 96px; }
@@ -589,12 +572,14 @@ body:has(.home-page) {
   .home-library .rail-title small { margin-left: 9px; }
   .home-library .rail-heading { font-size: 20px; }
   .home-library .cards { grid-auto-columns: 210px; gap: 12px; overflow-x: auto; padding: 4px 2px 13px; }
-  .home-library .ranked-card { width: 235px; }
-  .home-library .ranked-card .poster-wrap { width: calc(100% - 24px); }
+  .home-library .card-skeleton { width: 210px; }
+  .home-library .ranked-card { width: 200px; }
+  .home-library .ranked-card .poster-wrap { width: calc(100% - 34px); }
+  .ranked-card .card-copy { padding-left: 34px; }
   .home-library .card:hover { transform: none; }
   .home-library .card-play { width: 40px; height: 40px; opacity: 0; }
   .home-library .card-score { font-size: 8px; }
-  .ranked-card .card-rank { top: 2px; font-size: 58px; }
+  .ranked-card .card-rank { top: 2px; font-size: 48px; }
   .home-library .play-something-banner { margin-top: 42px; padding: 19px; border-radius: 18px; }
   .home-library .play-something-icon { width: 48px; height: 48px; }
   .home-library .play-something-copy b { font-size: 17px; }
