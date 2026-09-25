@@ -679,9 +679,11 @@ function renderLaunchIntro() {
   const fill = () => {
     if (!document.querySelector(".seven-intro")) return;
     overlay.classList.add("live");
-    overlay.innerHTML = `<div class="seven-intro-glow" aria-hidden="true"></div><div class="seven-intro-streak" aria-hidden="true"></div><div class="seven-intro-logo-wrap" aria-hidden="true"><img class="seven-intro-logo" src="${logo.src}" alt=""></div>`;
+    const shards = ["s-upper", "s-lower", "e1-upper", "e1-lower", "v-upper", "v-lower", "e2-upper", "e2-lower", "n-upper", "n-lower"];
+    overlay.innerHTML = `<div class="seven-intro-scene" aria-hidden="true"><div class="seven-intro-aperture"></div><div class="seven-intro-beam"></div><div class="seven-intro-lockup"><div class="seven-intro-logo-wrap">${shards.map(piece => `<img class="seven-intro-piece ${piece}" src="${logo.src}" alt="">`).join("")}<span class="seven-intro-polish"></span></div><span class="seven-intro-tagline">YOUR NEXT STORY STARTS HERE</span></div></div><button class="seven-intro-skip" type="button" aria-label="Skip intro">SKIP <span>↗</span></button>`;
+    overlay.querySelector(".seven-intro-skip").addEventListener("click", event => { event.stopPropagation(); dismissIntro(); });
     clearTimeout(state.introTimer);
-    state.introTimer = setTimeout(dismissIntro, 3400);
+    state.introTimer = setTimeout(dismissIntro, 3300);
   };
   Promise.race([logo.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 2500))]).then(fill);
 }
@@ -1271,7 +1273,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(window.SEVENPlayerSecurity.normalizePlayerEvent(payload).data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=229").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=230").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
