@@ -1272,7 +1272,7 @@ window.addEventListener("message", event => {
   recordPlaybackEvent(window.SEVENPlayerSecurity.normalizePlayerEvent(payload).data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=234").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=235").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

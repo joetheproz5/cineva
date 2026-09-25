@@ -290,20 +290,21 @@
 .seven-intro.live { animation: intro-out .46s cubic-bezier(.4,0,.2,1) 3.12s forwards; }
 .seven-intro-scene { position: relative; display: grid; width: min(90vw, 1000px); aspect-ratio: 16 / 7; place-items: center; perspective: 1200px; }
 .seven-intro-lockup { position: relative; display: grid; justify-items: center; width: 100%; }
-.seven-intro-logo-wrap { position: relative; width: min(70vw, 590px); aspect-ratio: 2172 / 724; transform-style: preserve-3d; }
+.seven-intro-logo-wrap { position: relative; width: min(70vw, 590px); aspect-ratio: 2172 / 724; transform-style: preserve-3d; animation: intro-logo-lock .58s cubic-bezier(.16,1,.3,1) 1.28s both; will-change: transform, filter; }
 .seven-intro-letter { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill; opacity: 0; transform-origin: var(--letter-origin) 50%; transform: translate3d(var(--letter-x),var(--letter-y),var(--letter-z)) rotateX(var(--letter-rx)) rotateY(var(--letter-ry)) rotateZ(var(--letter-rz)) scale(.92); filter: blur(3px) brightness(1.7); animation: intro-letter-lock .86s cubic-bezier(.16,1,.3,1) var(--letter-delay) both; backface-visibility: hidden; will-change: opacity, transform, filter; }
 .letter-s { clip-path: inset(0 72.2% 0 14%); --letter-origin:21%; --letter-x:-18vw; --letter-y:5vh; --letter-z:-190px; --letter-rx:0deg; --letter-ry:-34deg; --letter-rz:-5deg; --letter-delay:.16s; }
 .letter-e-one { clip-path: inset(0 59.7% 0 27.8%); --letter-origin:34%; --letter-x:-8vw; --letter-y:-12vh; --letter-z:-245px; --letter-rx:18deg; --letter-ry:-18deg; --letter-rz:3deg; --letter-delay:.23s; }
 .letter-v { clip-path: inset(0 45.1% 0 40.2%); --letter-origin:47.6%; --letter-x:0; --letter-y:13vh; --letter-z:-300px; --letter-rx:-34deg; --letter-ry:0deg; --letter-rz:0deg; --letter-delay:.3s; }
 .letter-e-two { clip-path: inset(0 32.2% 0 55.6%); --letter-origin:61.8%; --letter-x:8vw; --letter-y:-11vh; --letter-z:-245px; --letter-rx:-16deg; --letter-ry:18deg; --letter-rz:-3deg; --letter-delay:.37s; }
 .letter-n { clip-path: inset(0 14% 0 67.8%); --letter-origin:76.9%; --letter-x:18vw; --letter-y:5vh; --letter-z:-190px; --letter-rx:0deg; --letter-ry:34deg; --letter-rz:5deg; --letter-delay:.44s; }
-.seven-intro-glint { position: absolute; z-index: 2; inset: 0; background: linear-gradient(105deg,transparent 39%,rgba(255,255,255,.92) 49.5%,rgba(255,50,67,.72) 51%,transparent 62%); -webkit-mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; opacity: 0; transform: translateX(-85%); animation: intro-glint .68s cubic-bezier(.16,1,.3,1) 1.42s both; }
+.seven-intro-glint { position: absolute; z-index: 2; inset: 0; background: linear-gradient(105deg,transparent 39%,rgba(255,255,255,.92) 49.5%,rgba(255,50,67,.72) 51%,transparent 62%); -webkit-mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; opacity: 0; transform: translateX(-85%); animation: intro-glint .68s cubic-bezier(.16,1,.3,1) 1.54s both; }
 @keyframes intro-out { to { opacity: 0; visibility: hidden; } }
 @keyframes intro-stage-light { 0% { opacity: 0; } 34% { opacity: 1; } 100% { opacity: .48; } }
 @keyframes intro-letter-lock { 0% { opacity: 0; transform: translate3d(var(--letter-x),var(--letter-y),var(--letter-z)) rotateX(var(--letter-rx)) rotateY(var(--letter-ry)) rotateZ(var(--letter-rz)) scale(.92); filter: blur(3px) brightness(1.7); } 58% { opacity: 1; filter: blur(0) brightness(1.35); } 82% { transform: translate3d(0,-2px,14px) rotateX(0) rotateY(0) rotateZ(0) scale(1.018); } 100% { opacity: 1; transform: translate3d(0,0,0) rotateX(0) rotateY(0) rotateZ(0) scale(1); filter: blur(0) brightness(1); } }
+@keyframes intro-logo-lock { 0%,100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(237,20,35,0)); } 32% { transform: scale(1.026); filter: drop-shadow(0 0 32px rgba(237,20,35,.32)); } 57% { transform: scale(.996); filter: drop-shadow(0 0 15px rgba(237,20,35,.18)); } 78% { transform: scale(1.004); filter: drop-shadow(0 0 9px rgba(237,20,35,.12)); } }
 @keyframes intro-glint { 0% { opacity: 0; transform: translateX(-85%); } 22% { opacity: .88; } 100% { opacity: 0; transform: translateX(85%); } }
 @media (prefers-reduced-motion: reduce) {
-  .seven-intro::before,.seven-intro-letter,.seven-intro-glint { animation: none !important; }
+  .seven-intro::before,.seven-intro-logo-wrap,.seven-intro-letter,.seven-intro-glint { animation: none !important; }
   .seven-intro-letter { opacity: 1; transform: none; filter: none; }
 }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }
