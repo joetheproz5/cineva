@@ -180,6 +180,7 @@ async function refreshCatalogNow() {
 }
 function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
 async function boot() {
+  renderLoading();
   await restoreSession();
   applyLocale();
   const params = new URLSearchParams(location.search);
@@ -666,24 +667,23 @@ function dismissIntro() {
   document.documentElement.style.overflow = "";
   document.querySelector(".seven-intro")?.remove();
 }
-function renderLaunchIntro() {
-  if (prefersReducedMotion() || !launchIntroEnabled() || document.querySelector(".seven-intro")) return;
+function StartupIntro() {
   const overlay = document.createElement("div");
   overlay.className = "seven-intro";
-  overlay.addEventListener("click", dismissIntro);
+  overlay.setAttribute("aria-hidden", "true");
+  overlay.innerHTML = `<div class="startup-intro-scene"><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-sweep"></span></div></div>`;
   overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
+  overlay.addEventListener("click", dismissIntro, { once:true });
+  overlay.querySelector(".startup-intro-mark").addEventListener("error", dismissIntro, { once:true });
+  return overlay;
+}
+function renderLaunchIntro() {
+  if (prefersReducedMotion() || !launchIntroEnabled() || document.querySelector(".seven-intro")) return;
+  const overlay = StartupIntro();
+  overlay.classList.add("live");
   document.documentElement.style.overflow = "hidden";
   document.body.appendChild(overlay);
-  const logo = new Image();
-  logo.src = "assets/seven-wordmark-v2.png";
-  const fill = () => {
-    if (!document.querySelector(".seven-intro")) return;
-    overlay.classList.add("live");
-    overlay.innerHTML = `<div class="seven-intro-scene" aria-hidden="true"><div class="seven-intro-lockup"><div class="seven-intro-logo-wrap"><span class="seven-intro-beam"></span><img class="seven-intro-mark" src="${logo.src}" alt=""><span class="seven-intro-glint"></span></div></div></div>`;
-    clearTimeout(state.introTimer);
-    state.introTimer = setTimeout(dismissIntro, 3650);
-  };
-  Promise.race([logo.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 2500))]).then(fill);
+  state.introTimer = setTimeout(dismissIntro, 2600);
 }
 function screenTimeState(profile = currentProfile()) {
   if (!profile?.kids || !profile.screenTime?.enabled) return null;
@@ -1295,5 +1295,5 @@ app.addEventListener("click", event => { const button = event.target.closest("[d
 window.addEventListener("online", () => { if (document.querySelector(".offline-screen")) void retryConnection(); });
 window.addEventListener("visibilitychange", () => { if (!document.hidden) tickScreenTime(); });
 setInterval(tickScreenTime, 60000);
-renderLaunchIntro();
 boot();
+renderLaunchIntro();
