@@ -32,11 +32,11 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
   assert.match(styles, /\.seven-intro\.exiting/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=269/);
-  assert.match(index, /app\.js\?v=269/);
-  assert.match(serviceWorker, /seven-v269/);
-  assert.match(serviceWorker, /ui\.css\?v=269/);
-  assert.match(serviceWorker, /app\.js\?v=269/);
+  assert.match(index, /ui\.css\?v=270/);
+  assert.match(index, /app\.js\?v=270/);
+  assert.match(serviceWorker, /seven-v270/);
+  assert.match(serviceWorker, /ui\.css\?v=270/);
+  assert.match(serviceWorker, /app\.js\?v=270/);
 });
 
 test("the home spotlight shares the header and rail content column", () => {
