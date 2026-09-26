@@ -8,7 +8,7 @@ let coverflowResizeTimer;
 let sessionRefreshTimer;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const ACCOUNT_KEY = "seven.account.settings";
@@ -420,7 +420,6 @@ async function repairContinuePosters(items) {
 }
 function continueRail(items) { return `<section class="rail continue-rail"><div class="rail-title">${railTitle("Continue watching")}<span>Pick up where you left off</span></div><div class="cards">${items.map(item => `<div class="continue-item"><button class="card continue-card" data-continue="${escapeHTML(`${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`)}"><span class="poster-wrap"><img src="${item.posterPath ? TMDB_IMAGE + item.posterPath : "icon.svg"}" alt="" loading="lazy"><i>${item.type === "tv" ? `S${item.season} · E${item.episode}` : "MOVIE"}</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(item.title)}</b><small>Resume from ${timeLabel(Math.floor(item.currentTime || 0))}</small><em class="continue-progress"><i style="width:${Math.min(100, Number(item.progress) || 0)}%"></i></em></button><button class="continue-remove" data-remove-continue="${escapeHTML(`${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`)}" aria-label="Remove ${escapeHTML(item.title)} from Continue watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>`).join("")}</div></section>`; }
 async function openItem(type, id) {
-  scrollToTop();
   try {
     const item = normalize(await api(`${type}/${id}`, { append_to_response:"credits,keywords,videos" }), type);
     state.trailer = trailerFrom(item.videos) || await loadTrailer(type, item.id);
@@ -738,27 +737,65 @@ function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.get
 function dismissIntro() {
   if (!document.querySelector(".seven-intro")) return;
   clearTimeout(state.introTimer);
+  clearTimeout(state.introSafetyTimer);
   state.introTimer = null;
+  state.introSafetyTimer = null;
   document.documentElement.style.overflow = "";
   document.querySelector(".seven-intro")?.remove();
+}
+function maybeFinishIntro() {
+  if (!state.startupReady || !state.introAnimationComplete || state.introExitStarted) return;
+  const overlay = document.querySelector(".seven-intro");
+  if (!overlay) return;
+  state.introExitStarted = true;
+  overlay.classList.add("exiting");
+  clearTimeout(state.introSafetyTimer);
+  state.introTimer = setTimeout(dismissIntro, 520);
 }
 function StartupIntro() {
   const overlay = document.createElement("div");
   overlay.className = "seven-intro";
   overlay.setAttribute("aria-hidden", "true");
-  overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-sweep"></span></div></div>`;
-  overlay.addEventListener("animationend", event => { if (event.target === overlay && event.animationName === "intro-out") dismissIntro(); });
-  overlay.addEventListener("click", dismissIntro, { once:true });
-  overlay.querySelector(".startup-intro-mark").addEventListener("error", dismissIntro, { once:true });
+  overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span><span class="startup-intro-sweep"></span></div></div>`;
+  overlay.addEventListener("animationend", event => {
+    if (event.target !== overlay) return;
+    if (event.animationName === "intro-atmosphere") {
+      state.introAnimationComplete = true;
+      maybeFinishIntro();
+    } else if (event.animationName === "intro-out") {
+      dismissIntro();
+    }
+  });
   return overlay;
 }
 function renderLaunchIntro() {
-  if (prefersReducedMotion() || !launchIntroEnabled() || document.querySelector(".seven-intro")) return;
+  if (prefersReducedMotion() || !launchIntroEnabled()) {
+    state.introAnimationComplete = true;
+    return;
+  }
+  if (document.querySelector(".seven-intro")) return;
   const overlay = StartupIntro();
-  overlay.classList.add("live");
+  const logo = overlay.querySelector(".startup-intro-mark");
+  const startIntro = loaded => {
+    if (!overlay.isConnected) return;
+    if (!loaded) {
+      logo.hidden = true;
+      overlay.querySelector(".startup-intro-fallback").hidden = false;
+    }
+    overlay.classList.add("live");
+  };
   document.documentElement.style.overflow = "hidden";
   document.body.appendChild(overlay);
-  state.introTimer = setTimeout(dismissIntro, 2600);
+  state.introSafetyTimer = setTimeout(() => {
+    state.startupReady = true;
+    state.introAnimationComplete = true;
+    if (!overlay.classList.contains("live")) startIntro(false);
+    maybeFinishIntro();
+  }, 12000);
+  const imageReady = typeof logo.decode === "function"
+    ? logo.decode().then(() => true, () => false)
+    : new Promise(resolve => { logo.onload = () => resolve(true); logo.onerror = () => resolve(false); });
+  Promise.race([imageReady, new Promise(resolve => setTimeout(() => resolve(false), 1800))]).then(startIntro);
 }
 function screenTimeState(profile = currentProfile()) {
   if (!profile?.kids || !profile.screenTime?.enabled) return null;
@@ -1368,7 +1405,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=245").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=246").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
@@ -1392,5 +1429,10 @@ app.addEventListener("click", event => { const button = event.target.closest("[d
 window.addEventListener("online", () => { if (document.querySelector(".offline-screen")) void retryConnection(); });
 window.addEventListener("visibilitychange", () => { if (!document.hidden) tickScreenTime(); });
 setInterval(tickScreenTime, 60000);
-boot();
 renderLaunchIntro();
+const markStartupReady = () => { state.startupReady = true; maybeFinishIntro(); };
+void boot().then(markStartupReady, error => {
+  state.error = error?.message || "Startup failed";
+  renderOfflineScreen();
+  markStartupReady();
+});
