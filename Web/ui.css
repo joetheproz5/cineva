@@ -145,8 +145,8 @@
 .continue-remove:hover { background: rgba(58, 58, 58, 0.85); transform: scale(1.06); }
 @media (hover: none) { .continue-remove { opacity: 1; transform: none; } }
 @media (min-width: 651px) {
-  .continue-item { width: 96%; }
-  .continue-item .card { max-width: 100%; }
+  .home-library .continue-item { width: 100%; }
+  .home-library .continue-item .continue-card { width: 100%; max-width: 100%; }
 }
 .episode-score { margin-left: 9px; color: #b7b7b7; font-size: 10.5px; font-weight: 750; font-style: normal; letter-spacing: .2px; }
 .play-something-banner { display: flex; align-items: center; gap: 15px; width: 100%; margin: 26px 0 6px; padding: 14px 18px; border: 1px solid #232323; border-radius: 12px; color: #fff; background: #101010; text-align: left; transition: background .18s ease, border-color .18s ease; }
