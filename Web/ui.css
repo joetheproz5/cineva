@@ -577,8 +577,9 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 .home-library .card-copy { display: block; min-width: 0; padding: 10px 3px 1px; }
 .home-library .card-copy b,.home-library .card > b { margin: 0; color: #eef0f2; font-size: 14px; font-weight: 760; }
 .home-library .card-copy small { margin-top: 5px; color: #72787e; font-size: 10px; }
-.home-library .ranked-copy { display: grid; grid-template-columns: 26px minmax(0,1fr); column-gap: 8px; align-items: start; }
-.ranked-copy .card-rank { grid-column: 1; grid-row: 1 / span 2; margin: 0; color: #e50914; font-size: 17px; font-style: normal; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -.08em; line-height: 1.1; }
+.home-library .ranked-copy { display: grid; grid-template-columns: 52px minmax(0,1fr); column-gap: 12px; align-items: start; }
+.ranked-copy .card-rank { grid-column: 1; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 3px; margin: 0; padding-right: 10px; border-right: 1px solid rgba(255,255,255,.16); color: #e50914; font-size: 42px; font-style: normal; font-weight: 950; font-variant-numeric: tabular-nums; letter-spacing: -.1em; line-height: .9; }
+.ranked-copy .card-rank::before { color: #777c82; content: "TOP"; font-size: 7px; font-weight: 850; letter-spacing: .18em; line-height: 1; }
 .ranked-copy b { grid-column: 2; grid-row: 1; min-width: 0; }
 .ranked-copy small { grid-column: 2; grid-row: 2; }
 .ranked-card .poster-wrap > i { right: 10px; left: auto; }
@@ -642,6 +643,9 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .home-library .cards { grid-auto-columns: 198px; gap: 12px; overflow-x: auto; padding: 4px 2px 13px; }
   .home-library .card-skeleton { width: 198px; }
   .home-library .ranked-card { width: 198px; }
+  .home-library .ranked-copy { grid-template-columns: 45px minmax(0,1fr); column-gap: 8px; }
+  .ranked-copy .card-rank { gap: 2px; padding-right: 7px; font-size: 34px; }
+  .ranked-copy .card-rank::before { font-size: 6px; }
   .home-library .card:hover { transform: none; }
   .home-library .card-play { width: 40px; height: 40px; opacity: 0; }
   .home-library .card-score { font-size: 8px; }

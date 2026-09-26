@@ -1410,7 +1410,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=281", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=282", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

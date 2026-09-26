@@ -12,5 +12,5 @@ test("the trending rail preserves TMDB order and presents exactly four ranked ti
   assert.match(app, /railItems = ranked \? visible\.slice\(0, 4\) : visible/);
   assert.match(app, /class="card-rank" aria-label="Rank \$\{rank\}"\>\$\{String\(rank\)\.padStart\(2, "0"\)\}/);
   assert.match(app, /class="card-copy \$\{rank \? "ranked-copy" : ""\}"/);
-  assert.match(css, /\.ranked-copy \.card-rank \{[\s\S]*?color: #e50914;[\s\S]*?font-size: 17px;/);
+  assert.match(css, /\.ranked-copy \.card-rank \{[\s\S]*?color: #e50914;[\s\S]*?font-size: 42px;/);
 });
