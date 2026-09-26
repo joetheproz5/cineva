@@ -27,7 +27,9 @@ self.addEventListener("fetch", event => {
     return;
   }
   if (url.origin !== location.origin) return;
-  const appShell = event.request.mode === "navigate" || ["/index.html", "/styles.css", "/auth.css", "/ui.css", "/app.js"].includes(url.pathname);
+  const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+  const appPath = url.pathname.slice(scopePath.length) || "/";
+  const appShell = event.request.mode === "navigate" || ["/index.html", "/styles.css", "/auth.css", "/ui.css", "/app.js"].includes(appPath);
   if (appShell) event.respondWith(fetch(event.request).then(response => { const copy = response.clone(); caches.open(VERSION).then(cache => cache.put(event.request, copy)); return response; }).catch(() => caches.match(event.request, { ignoreSearch:true })));
   else event.respondWith(caches.match(event.request, { ignoreSearch:true }).then(cached => cached || fetch(event.request)));
 });
