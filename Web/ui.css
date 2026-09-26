@@ -227,9 +227,11 @@
 .now { max-width: 1060px; margin: 22px auto 0; padding: 0 4px 4px; }
 .now-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
 .now-heading h2 { margin-bottom: 0; }
-.party-quick { display: grid; flex: 0 0 auto; width: 38px; height: 38px; place-items: center; padding: 0; border: 1px solid #3a3a3a; border-radius: 50%; color: #e8e8e8; background: #171717; transition: border-color .16s ease, background .16s ease, color .16s ease; }
-.party-quick:hover { border-color: #777; color: #fff; background: #262626; }
-.party-quick svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.party-quick { position: relative; display: grid; flex: 0 0 auto; width: 42px; height: 42px; place-items: center; overflow: hidden; padding: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 13px; color: #fff; background: linear-gradient(145deg,#f24a57,#b10817 72%); box-shadow: 0 9px 22px rgba(174,7,18,.34), inset 0 1px 0 rgba(255,255,255,.25); transition: transform .18s ease, border-color .18s ease, filter .18s ease; }
+.party-quick::before { position: absolute; inset: 1px; border-radius: 11px; background: linear-gradient(135deg,rgba(255,255,255,.16),transparent 47%); content: ""; pointer-events: none; }
+.party-quick:hover { border-color: rgba(255,255,255,.55); filter: brightness(1.08); transform: translateY(-1px); }
+.party-quick svg { position: relative; z-index: 1; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+.party-quick .party-play { fill: currentColor; stroke: none; }
 .player-saved-progress,.player-saved-time { display: none; }
 .player-episodes { max-width: 980px; margin: 38px auto 0; }
 .player-episodes .rail-title { align-items: center; margin-bottom: 13px; padding: 0 2px 13px; border-bottom: 1px solid #292929; }
@@ -251,18 +253,18 @@
 .player-episodes .episode-main { gap: 16px; width: 100%; min-height: 84px; }
 .player-episodes .player-episode-art { position: relative; display: block; flex: 0 0 150px; min-width: 150px; align-self: stretch; overflow: hidden; border-radius: 1px; background: #262626; }
 .player-episodes .player-episode-art::after { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 54%, rgba(0,0,0,.27)); content: ""; transition: background .18s ease; }
-.player-episodes .player-episode-art img { display: block; width: 150px; height: 84px; border-radius: 0; object-fit: cover; transition: filter .18s ease, transform .24s ease; }
+.player-episodes .player-episode-art img { display: block; width: 150px; min-height: 84px; height: 100%; border-radius: 0; object-fit: cover; transition: filter .18s ease, transform .24s ease; }
 .player-episodes .player-episode-art i { position: absolute; z-index: 1; top: 50%; left: 50%; display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: #111; background: #f4f4f4; box-shadow: 0 6px 18px rgba(0,0,0,.44); font-size: 10px; font-style: normal; opacity: 0; transform: translate(-50%,-42%) scale(.9); transition: opacity .18s ease, transform .18s ease; }
 .player-episodes .episode:hover .player-episode-art img, .player-episodes .episode:focus-within .player-episode-art img { filter: brightness(.65); transform: scale(1.035); }
 .player-episodes .episode:hover .player-episode-art i, .player-episodes .episode:focus-within .player-episode-art i { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-.player-episodes .episode b { color: #f0f0f0; font-size: 14px; font-weight: 700; letter-spacing: -.08px; }
+.player-episodes .episode b { display: block; overflow: hidden; color: #f0f0f0; font-size: 14px; font-weight: 700; letter-spacing: -.08px; text-overflow: ellipsis; white-space: nowrap; }
 .player-episodes .episode b em { min-width: 30px; color: #a8a8a8; font-size: 11px; font-weight: 650; }
 .player-episodes .episode-description { display: -webkit-box; margin-top: 6px; overflow: hidden; color: #a3a3a3; font-size: 11px; line-height: 1.42; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .player-episodes .episode-state { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; margin-top: 7px; padding: 3px 0; border: 0; border-radius: 0; color: #b1b1b1; background: transparent; font-size: 9px; font-style: normal; font-weight: 700; line-height: 1.2; }
 .player-episodes .episode-state.is-watched { color: #b7b7b7; background: transparent; }
 .player-episodes .episode-state.is-resume { color: #d7d7d7; background: transparent; }
 .player-episodes .episode-open { display: none; }
-.episode-current { flex: 0 0 auto; margin-right: 9px; padding: 0; border: 0; border-radius: 0; color: #f1f1f1; background: transparent; font-size: 9px; font-weight: 800; letter-spacing: .55px; text-transform: uppercase; }
+.episode-current { position: absolute; z-index: 4; bottom: 10px; left: 10px; margin: 0; padding: 4px 6px; border: 1px solid rgba(255,255,255,.24); border-radius: 5px; color: #fff; background: rgba(7,8,10,.72); font-size: 8px; font-weight: 850; letter-spacing: .7px; line-height: 1; text-transform: uppercase; -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); }
 .player-episodes-loading { min-height: 88px; padding: 17px; border: 1px solid #2b2b2b; border-radius: 9px; background: #101010; }
 .player-episodes-loading .brand { margin-bottom: 6px; }
 .player-episodes-loading p, .episode-empty { margin: 0; color: #9d9d9d; font-size: 13px; }
@@ -274,7 +276,7 @@
   .player-episodes .episode { min-height: 81px; padding: 6px; }
   .player-episodes .episode-main { gap: 11px; min-height: 69px; }
   .player-episodes .player-episode-art { flex-basis: 116px; min-width: 116px; }
-  .player-episodes .player-episode-art img { width: 116px; height: 65px; }
+  .player-episodes .player-episode-art img { width: 116px; min-height: 65px; height: 100%; }
   .player-episodes .episode-description { margin-top: 4px; -webkit-line-clamp: 1; }
 }
 .site-footer { position: relative; isolation: isolate; width: 100vw; margin: 68px 0 0 calc(50% - 50vw); overflow: hidden; border-top: 1px solid rgba(255,255,255,.09); color: #a7abb0; background: linear-gradient(180deg, rgba(255,255,255,.018), transparent 180px), #050607; }

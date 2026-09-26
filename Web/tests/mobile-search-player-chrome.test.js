@@ -28,11 +28,14 @@ test("the player header presents episode context instead of a cinema brand", () 
   assert.doesNotMatch(player, /party-start/);
   assert.match(css, /\.player-stage-context\s*\{[\s\S]*?white-space:\s*nowrap;/);
   assert.match(css, /\.player-stage-actions \.provider-menu\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1;/);
-  assert.match(css, /\.party-quick\s*\{[\s\S]*?border-radius:\s*50%;/);
+  assert.match(app, /<circle cx="8" cy="8\.1" r="2\.25"\/>/);
+  assert.match(css, /\.party-quick\s*\{[\s\S]*?border-radius:\s*13px;[\s\S]*?linear-gradient\(145deg,#f24a57,#b10817 72%\)/);
 });
 
 test("the mobile navigation does not reserve an extra bottom row", () => {
   assert.match(css, /header\.main-header\.app-header > nav\s*\{\s*height:\s*66px;\s*min-height:\s*66px;\s*padding:\s*6px 8px;/);
   assert.match(css, /\.player-episodes \.episode\s*\{\s*min-height:\s*0;/);
   assert.match(css, /\.player-episodes \.episode-main\s*\{\s*min-height:\s*65px;/);
+  assert.match(css, /\.player-episodes \.player-episode-art img\s*\{[\s\S]*?height:\s*100%;/);
+  assert.match(css, /\.episode-current\s*\{\s*position:\s*absolute;[\s\S]*?bottom:\s*10px;/);
 });
