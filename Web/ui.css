@@ -578,18 +578,17 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 .home-library .card-copy { display: block; min-width: 0; padding: 10px 3px 1px; }
 .home-library .card-copy b,.home-library .card > b { margin: 0; color: #eef0f2; font-size: 14px; font-weight: 760; }
 .home-library .card-copy small { margin-top: 5px; color: #72787e; font-size: 10px; }
-.ranked-card { --rank-a: #ff467e; --rank-b: #ffab5a; }
-.ranked-card.rank-2 { --rank-a: #27d7ff; --rank-b: #7067ff; }
-.ranked-card.rank-3 { --rank-a: #ffc14a; --rank-b: #ff5c87; }
-.ranked-card.rank-4 { --rank-a: #b687ff; --rank-b: #ff74ca; }
-.ranked-card .poster-wrap { box-shadow: 0 15px 36px rgba(0,0,0,.34), 0 0 0 1px color-mix(in srgb,var(--rank-a) 24%,transparent); }
-.ranked-card:hover .poster-wrap { box-shadow: 0 22px 48px rgba(0,0,0,.5), 0 0 26px color-mix(in srgb,var(--rank-a) 30%,transparent), 0 0 0 1px color-mix(in srgb,var(--rank-a) 46%,transparent); }
-.ranked-card .card-rank { position: absolute; z-index: 3; top: 10px; left: 10px; display: grid; width: 48px; height: 48px; place-items: center; border-radius: 50%; background: conic-gradient(from 205deg,var(--rank-a),#fff4 22%,var(--rank-b) 53%,var(--rank-a)); box-shadow: 0 7px 20px color-mix(in srgb,var(--rank-a) 35%,transparent), 0 5px 12px rgba(0,0,0,.38); font-style: normal; transition: transform .35s cubic-bezier(.2,.85,.25,1), filter .25s ease; pointer-events: none; }
-.ranked-card .card-rank::after { position: absolute; top: 2px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px #fff; content: ""; }
-.ranked-card .card-rank-core { display: grid; width: 40px; height: 40px; place-content: center; gap: 0; border: 1px solid rgba(255,255,255,.25); border-radius: 50%; color: #fff; background: rgba(9,10,13,.86); box-shadow: inset 0 1px 3px rgba(255,255,255,.1); text-align: center; }
-.ranked-card .card-rank small { display: block; color: color-mix(in srgb,var(--rank-a) 75%,white); font-size: 5.5px; font-weight: 950; letter-spacing: .9px; }
-.ranked-card .card-rank b { display: block; margin-top: 1px; color: #fff; font-size: 17px; font-weight: 900; letter-spacing: -.08em; }
-.ranked-card:hover .card-rank { filter: saturate(1.25) brightness(1.1); transform: rotate(12deg) scale(1.08); }
+.ranked-card { --rank-a: #ff5787; --rank-b: #ffbb68; --rank-glow: rgba(255,87,135,.24); }
+.ranked-card.rank-2 { --rank-a: #4ce3ff; --rank-b: #7580ff; --rank-glow: rgba(76,227,255,.23); }
+.ranked-card.rank-3 { --rank-a: #ffd15b; --rank-b: #ff718e; --rank-glow: rgba(255,209,91,.23); }
+.ranked-card.rank-4 { --rank-a: #c396ff; --rank-b: #ff83d2; --rank-glow: rgba(195,150,255,.23); }
+.ranked-card .poster-wrap { box-shadow: 0 15px 36px rgba(0,0,0,.34), 0 0 0 1px var(--rank-glow); }
+.home-library .ranked-card:hover .poster-wrap { box-shadow: 0 22px 48px rgba(0,0,0,.5), 0 0 26px var(--rank-glow), 0 0 0 1px var(--rank-glow); }
+.ranked-card .card-rank { position: absolute; z-index: 3; bottom: 13px; left: 17px; display: block; width: auto; height: auto; color: #fff; font-style: normal; line-height: .72; pointer-events: none; transition: transform .28s cubic-bezier(.2,.85,.25,1), filter .25s ease; }
+.ranked-card .card-rank::before { position: absolute; bottom: 2px; left: -8px; width: 3px; height: 45px; border-radius: 99px; background: linear-gradient(180deg,var(--rank-a),var(--rank-b)); box-shadow: 0 0 14px var(--rank-glow); content: ""; }
+.ranked-card .card-rank-core { display: block; width: auto; height: auto; border: 0; border-radius: 0; background: none; box-shadow: none; text-align: left; }
+.ranked-card .card-rank b { display: block; margin: 0; color: transparent; background: linear-gradient(155deg,#fff 7%,var(--rank-a) 76%,var(--rank-b)); background-clip: text; -webkit-background-clip: text; -webkit-text-stroke: 1px rgba(255,255,255,.24); filter: drop-shadow(0 5px 14px rgba(0,0,0,.76)); font-size: 72px; font-style: italic; font-weight: 950; letter-spacing: -.12em; }
+.ranked-card:hover .card-rank { filter: brightness(1.12); transform: translateY(-4px) skewX(-4deg); }
 .ranked-card .poster-wrap > i { right: 10px; left: auto; }
 
 .home-library .play-something-banner { position: relative; isolation: isolate; overflow: hidden; gap: 18px; margin: 58px 0 10px; padding: 25px 28px; border: 1px solid rgba(255,255,255,.1); border-radius: 22px; background: linear-gradient(110deg,#17191d,#0c0d10 58%,#20080c); box-shadow: 0 22px 55px rgba(0,0,0,.3); }
@@ -652,9 +651,9 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .home-library .cards { grid-auto-columns: 198px; gap: 12px; overflow-x: auto; padding: 4px 2px 13px; }
   .home-library .card-skeleton { width: 198px; }
   .home-library .ranked-card { width: 198px; }
-  .ranked-card .card-rank { top: 8px; left: 8px; width: 43px; height: 43px; }
-  .ranked-card .card-rank-core { width: 36px; height: 36px; }
-  .ranked-card .card-rank b { font-size: 15px; }
+  .ranked-card .card-rank { bottom: 12px; left: 15px; }
+  .ranked-card .card-rank::before { left: -7px; height: 36px; }
+  .ranked-card .card-rank b { font-size: 58px; }
   .home-library .card:hover { transform: none; }
   .home-library .card-play { width: 40px; height: 40px; opacity: 0; }
   .home-library .card-score { font-size: 8px; }
