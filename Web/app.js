@@ -352,7 +352,7 @@ function featuredMarkup(f = state.featured) {
   if (!f) return `<div class="hero-skeleton skeleton"></div>`;
   const backdrop = f.backdrop_path ? `${TMDB_BACKDROP}${f.backdrop_path}` : posterOf(f), score = Number(f.vote_average) || 0, type = contentType(f), description = f.overview || "Discover a new story selected for you on SEVEN.";
   const words = escapeHTML(titleOf(f)).split(/\s+/).map((word, index) => `<span class="hero-word" style="animation-delay:${.42 + index * .09}s">${word}</span>`).join("");
-  return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')"></div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-content"><p class="hero-eyebrow">TONIGHT ON SEVEN</p><h1>${words}</h1><div class="hero-meta"><strong>${score ? `${Math.round(score * 10)}% match` : "Featured"}</strong><span>${yearOf(f) || "New"}</span><span>${type === "tv" ? "Series" : "Movie"}</span><span class="hero-rating">${type === "tv" ? "TV SERIES" : "FEATURED FILM"}</span></div><p class="hero-synopsis">${escapeHTML(description)}</p><div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>${t("Watch now")}</button><span class="hero-info-link" data-open="${type}:${f.id}" role="button" tabindex="0">More info</span></div></div>${heroNavigation()}`;
+  return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')"></div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-layout"><div class="home-hero-content"><p class="hero-eyebrow">TONIGHT ON SEVEN</p><h1>${words}</h1><div class="hero-meta"><strong>${score ? `${Math.round(score * 10)}% match` : "Featured"}</strong><span>${yearOf(f) || "New"}</span><span>${type === "tv" ? "Series" : "Movie"}</span><span class="hero-rating">${type === "tv" ? "TV SERIES" : "FEATURED FILM"}</span></div><p class="hero-synopsis">${escapeHTML(description)}</p><div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>${t("Watch now")}</button><span class="hero-info-link" data-open="${type}:${f.id}" role="button" tabindex="0">More info</span></div></div></div>${heroNavigation()}`;
 }
 function bindHeroControls() {
   const featured = document.querySelector("#featured");
@@ -1407,7 +1407,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=268").catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=269").catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

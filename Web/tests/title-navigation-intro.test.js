@@ -32,9 +32,16 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
   assert.match(styles, /\.seven-intro\.exiting/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=268/);
-  assert.match(index, /app\.js\?v=265/);
-  assert.match(serviceWorker, /seven-v268/);
-  assert.match(serviceWorker, /ui\.css\?v=268/);
-  assert.match(serviceWorker, /app\.js\?v=265/);
+  assert.match(index, /ui\.css\?v=269/);
+  assert.match(index, /app\.js\?v=269/);
+  assert.match(serviceWorker, /seven-v269/);
+  assert.match(serviceWorker, /ui\.css\?v=269/);
+  assert.match(serviceWorker, /app\.js\?v=269/);
+});
+
+test("the home spotlight shares the header and rail content column", () => {
+  assert.match(app, /class="home-hero-layout"/);
+  assert.match(styles, /\.home-hero-layout \{[\s\S]*?width: min\(1480px,100%\);[\s\S]*?padding: 0 clamp\(18px,3vw,44px\) clamp\(145px,18vh,190px\);/);
+  assert.match(styles, /\.home-hero-content \{ position: relative; width: min\(700px,47%\);/);
+  assert.doesNotMatch(styles, /\.home-hero-content \{[^}]*left: clamp\(30px, 11vw, 205px\)/);
 });
