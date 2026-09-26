@@ -904,7 +904,13 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   header.main-header.app-header .search:focus-within { width: min(26vw,310px); border-color: rgba(255,255,255,.32); background: rgba(255,255,255,.09); }
 }
 header.main-header.app-header .account b { display: none; }
+header.main-header.app-header .account.account-guest { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 38px; min-height: 38px; padding: 0 13px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: #e6e8eb; background: rgba(255,255,255,.045); transition: background .18s ease, border-color .18s ease; }
+header.main-header.app-header .account.account-guest:hover { border-color: rgba(255,255,255,.26); background: rgba(255,255,255,.09); }
+header.main-header.app-header .account.account-guest .account-guest-icon { display: block; width: 17px; height: 17px; flex: 0 0 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.65; }
+header.main-header.app-header .account.account-guest b { display: inline; color: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; }
 @media (max-width: 650px) {
+  header.main-header.app-header .account.account-guest { width: 38px; height: 38px; min-width: 38px; min-height: 38px; padding: 0; }
+  header.main-header.app-header .account.account-guest b { display: none; }
   header.main-header.app-header {
     position: sticky; top: 7px; width: auto; min-height: 55px; margin: 0 0 11px; padding: 7px 8px 7px 12px;
     border: 1px solid rgba(255,255,255,.08); border-radius: 15px;
