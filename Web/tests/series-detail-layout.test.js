@@ -14,6 +14,8 @@ test("series details use an aligned episode guide and softened backdrop fade", (
   assert.doesNotMatch(app, /id="season-selector"/);
   assert.match(css, /\.series-hero-fade/);
   assert.match(css, /filter: blur\(22px\)/);
+  assert.match(css, /\.series-shell \{ width: min\(1400px,calc\(100% - 56px\)\);/);
+  assert.match(css, /\.series-episodes \{ width: 100%; max-width: none;/);
   assert.match(css, /\.series-episode-grid \{ display: grid; grid-template-columns: 1fr;/);
   assert.match(css, /\.series-episode \.episode-main \{ display: grid; grid-template-columns: 180px minmax\(0,1fr\)/);
 });
