@@ -229,19 +229,13 @@
 .player-episodes .rail-title { align-items: center; margin-bottom: 13px; padding: 0 2px 13px; border-bottom: 1px solid #292929; }
 .player-episodes .rail-title h2 { color: #f5f5f5; font-size: 21px; letter-spacing: -.35px; }
 .player-episodes .rail-title span { color: #8d8d8d; font-size: 11px; font-weight: 600; }
-.season-picker { position: relative; display: flex; align-items: center; gap: 11px; width: fit-content; margin: 0 0 17px; }
-.season-picker-label { color: #8f8f8f; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.season-picker-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 24px; min-width: 148px; height: 38px; padding: 0 12px 0 14px; border: 1px solid #3b3b3b; border-radius: 2px; color: #f1f1f1; background: #171717; font-size: 12px; font-weight: 700; transition: border-color .18s ease, background .18s ease; }
-.season-picker-trigger:hover, .season-picker-trigger[aria-expanded="true"] { border-color: #8a8a8a; background: #242424; }
-.season-picker-trigger:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.season-picker-trigger svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; transition: transform .18s ease; }
-.season-picker-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
-.season-picker-menu { position: absolute; z-index: 20; top: calc(100% + 7px); left: 0; display: grid; grid-template-columns: repeat(2, minmax(108px, 1fr)); width: 260px; gap: 3px; padding: 6px; border: 1px solid #3b3b3b; border-radius: 2px; background: #111; box-shadow: 0 18px 45px rgba(0,0,0,.62); }
-.season-picker-menu[hidden] { display: none; }
-.season-picker-menu button { display: flex; align-items: center; justify-content: space-between; min-width: 0; min-height: 36px; padding: 0 10px; border: 1px solid transparent; border-radius: 1px; color: #c9c9c9; background: transparent; font-size: 11px; font-weight: 700; text-align: left; }
-.season-picker-menu button:hover, .season-picker-menu button:focus-visible { border-color: #505050; color: #fff; background: #272727; outline: 0; }
-.season-picker-menu button[aria-selected="true"] { color: #111; background: #ededed; }
-.season-picker-menu small { color: inherit; font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.season-rail { display: flex; gap: 7px; max-width: 100%; margin: 0 0 18px; padding: 0 1px 3px; overflow-x: auto; scrollbar-width: none; }
+.season-rail::-webkit-scrollbar { display: none; }
+.season-rail button { display: grid; flex: 0 0 62px; min-height: 54px; place-content: center; gap: 2px; padding: 0; border: 1px solid transparent; border-radius: 3px; color: #8e8e8e; background: #161616; text-align: center; transition: color .18s ease, background .18s ease, border-color .18s ease; }
+.season-rail button:hover, .season-rail button:focus-visible { border-color: #4a4a4a; color: #f0f0f0; background: #252525; outline: 0; }
+.season-rail button[aria-current="true"] { border-color: #f0f0f0; color: #111; background: #f0f0f0; }
+.season-rail span { font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.season-rail b { font-size: 17px; line-height: 1; }
 .player-episodes-list { display: grid; gap: 5px; }
 .player-episodes .episode { position: relative; min-height: 102px; margin: 0; padding: 8px; overflow: hidden; border: 1px solid transparent; border-radius: 2px; background: #151515; transform: none; transition: border-color .18s ease, background .18s ease; }
 .player-episodes .episode:hover, .player-episodes .episode:focus-within { border-color: #3a3a3a; background: #212121; transform: none; }
@@ -269,7 +263,8 @@
 @media (max-width: 650px) {
   .player-episodes { margin-top: 30px; }
   .player-episodes .rail-title { padding-bottom: 11px; }
-  .season-picker-menu { width: 236px; }
+  .season-rail { gap: 6px; margin-bottom: 14px; }
+  .season-rail button { flex-basis: 57px; min-height: 49px; }
   .player-episodes .episode { min-height: 81px; padding: 6px; }
   .player-episodes .episode-main { gap: 11px; min-height: 69px; }
   .player-episodes .player-episode-art { flex-basis: 116px; min-width: 116px; }

@@ -567,19 +567,11 @@ function playerEpisodePanel(player) {
     return `<article class="episode ${watched ? "is-watched" : ""} ${current ? "is-current" : ""}"><button class="episode-main" data-player-episode="${episode.episode_number}"><span class="player-episode-art"><img src="${episode.still_path ? TMDB_IMAGE + episode.still_path : "icon.svg"}" alt=""><i aria-hidden="true">▶</i></span><span><b><em>${String(episode.episode_number).padStart(2, "0")}</em>${escapeHTML(episode.name)}${episode.vote_average ? `<i class="episode-score">★ ${Number(episode.vote_average).toFixed(1)}</i>` : ""}</b><small class="episode-description">${escapeHTML(episode.overview || "No description available.")}</small>${status}</span><strong class="episode-open" aria-hidden="true">▶</strong></button>${current ? '<span class="episode-current">Now playing</span>' : ""}</article>`;
   }).join("");
 
-  const seasonPicker = `<div class="season-picker" data-season-picker><span class="season-picker-label">Season</span><button class="season-picker-trigger" type="button" data-season-picker-trigger aria-haspopup="listbox" aria-expanded="false"><span>Season ${state.selectedSeason}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><div class="season-picker-menu" data-season-picker-menu role="listbox" aria-label="Choose season" hidden>${seasons.map(season => `<button type="button" role="option" data-player-season="${season.season_number}" aria-selected="${Number(season.season_number) === Number(state.selectedSeason)}"><span>Season ${season.season_number}</span>${Number(season.season_number) === Number(player.season) ? "<small>Current</small>" : ""}</button>`).join("")}</div></div>`;
+  const seasonPicker = `<nav class="season-rail" aria-label="Choose season">${seasons.map(season => `<button type="button" data-player-season="${season.season_number}" aria-current="${Number(season.season_number) === Number(state.selectedSeason) ? "true" : "false"}"><span>Season</span><b>${season.season_number}</b></button>`).join("")}</nav>`;
   return `<section class="episode-section player-episodes" data-player-episode-panel><div class="rail-title"><h2>Episodes</h2><span>${Number(state.selectedSeason) === Number(player.season) ? `Watching Season ${player.season}` : `Season ${state.selectedSeason}`}</span></div>${seasonPicker}<div class="player-episodes-list">${rows || '<p class="episode-empty">No episodes are available for this season.</p>'}</div></section>`;
 }
 function bindPlayerEpisodes(player) {
-  const picker = document.querySelector("[data-season-picker]"), trigger = picker?.querySelector("[data-season-picker-trigger]"), menu = picker?.querySelector("[data-season-picker-menu]");
-  trigger?.addEventListener("click", event => {
-    event.stopPropagation();
-    const opening = menu.hidden;
-    menu.hidden = !opening;
-    trigger.setAttribute("aria-expanded", String(opening));
-    if (opening) document.addEventListener("click", () => { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); }, { once:true });
-  });
-  picker?.querySelectorAll("[data-player-season]").forEach(button => button.addEventListener("click", async () => {
+  document.querySelectorAll("[data-player-season]").forEach(button => button.addEventListener("click", async () => {
     state.selectedSeason = Number(button.dataset.playerSeason);
     await loadEpisodes();
     document.querySelector("[data-player-episode-panel]")?.replaceWith(document.createRange().createContextualFragment(playerEpisodePanel(player)));
