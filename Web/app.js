@@ -107,6 +107,7 @@ async function saveAccount(remote = true) { localStorage.setItem(ACCOUNT_KEY, JS
 function sessionStartedAt(session) { const saved = Number(session?.seven_started_at); if (saved) return saved; const expiresAt = Number(session?.expires_at), expiresIn = Number(session?.expires_in); return expiresAt && expiresIn ? expiresAt * 1000 - expiresIn * 1000 : Date.now(); }
 function persistSession(session, startedAt = sessionStartedAt(session)) { state.session = { ...session, seven_started_at:startedAt }; localStorage.setItem(SESSION_KEY, JSON.stringify(state.session)); }
 function clearSession() { clearTimeout(sessionRefreshTimer); localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem("seven.parent-access"); state.session = null; state.user = null; }
+function signOut() { clearSession(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
 function sessionExpired(session = state.session) { return Date.now() - sessionStartedAt(session) >= SESSION_MAX_AGE; }
 function accessTokenExpiresSoon(session = state.session) { return !session?.access_token || !session.expires_at || Number(session.expires_at) * 1000 - Date.now() < 90 * 1000; }
 function scheduleSessionRefresh() { clearTimeout(sessionRefreshTimer); if (!state.session?.refresh_token || sessionExpired()) return; const delay = Math.max(30_000, Math.min(45 * 60 * 1000, Number(state.session.expires_at || 0) * 1000 - Date.now() - 90_000)); sessionRefreshTimer = setTimeout(async () => { try { await refreshSession(); } catch {} scheduleSessionRefresh(); }, delay); }
@@ -1233,8 +1234,12 @@ function renderProfileSettings() {
   document.querySelector("[data-liked-titles]")?.addEventListener("click", () => { state.route = "liked"; scrollToTop(); render(); });
   document.querySelector("[data-install-seven]")?.addEventListener("click", showInstallSEVEN);
   document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${profile.name || "this profile"}?`)) return; Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).forEach(key => localStorage.removeItem(key)); try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(activeProfileId())}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderProfileSettings(); });
-  if (category === "security") document.querySelector(".profile-category-actions")?.insertAdjacentHTML("afterbegin", accountAction("⌁", "Change account password", "Use your current password to set a new one", "data-change-password", "Change"));
+  if (category === "security") {
+    document.querySelector(".profile-category-actions")?.insertAdjacentHTML("afterbegin", accountAction("⌁", "Change account password", "Use your current password to set a new one", "data-change-password", "Change"));
+    document.querySelector(".profile-category-actions")?.insertAdjacentHTML("afterbegin", accountAction("↪", "Sign out", "Sign out of your SEVEN account on this device", "data-signout", "Sign out"));
+  }
   document.querySelector("[data-change-password]")?.addEventListener("click", showChangePassword);
+  document.querySelector("[data-signout]")?.addEventListener("click", signOut);
   document.querySelector("[data-remove-profile]")?.addEventListener("click", async () => { if (!confirm(`Delete ${profile.name || "this"} profile?`)) return; state.account.profiles = state.account.profiles.filter(item => item.id !== profile.id); if (state.account.activeProfileId === profile.id) state.account.activeProfileId = state.account.profiles[0].id; await saveAccount(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; render(); });
 }
 function renderAccount() {
@@ -1254,7 +1259,7 @@ function renderAccount() {
   document.querySelectorAll("[data-pref]").forEach(field => field.onchange = async () => { if (field.dataset.pref === "episodeAlerts" && field.checked && !await requestEpisodeAlerts()) field.checked = false; updateCurrentPreferences({ [field.dataset.pref]:field.type === "checkbox" ? field.checked : field.value }); await saveAccount(); if (field.dataset.pref === "episodeAlerts" && field.checked) notifyNewEpisodes(); if (["language", "maturity"].includes(field.dataset.pref)) { applyLocale(); try { await refreshCatalogForLanguage(); } catch { /* The saved setting is used by the next successful TMDB request. */ } } });
   document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${currentProfile()?.name || "this profile"}?`)) return; Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).forEach(key => localStorage.removeItem(key)); try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(activeProfileId())}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} showAccount(); });
   document.querySelector("[data-change-password]")?.addEventListener("click", showChangePassword);
-  document.querySelector("[data-signout]")?.addEventListener("click", () => { clearSession(); state.route = "home"; render(); });
+  document.querySelector("[data-signout]")?.addEventListener("click", signOut);
 }
 function openAccount() {
   if (currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.route === "profile-settings" ? state.profileSettingsReturn || "home" : state.route || "home"; state.route = "profile-settings"; scrollToTop(); render(); return; }
