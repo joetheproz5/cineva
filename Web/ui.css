@@ -408,7 +408,7 @@ body:has(.home-page) {
   border: 1px solid rgba(255,255,255,.08); border-radius: 18px;
   background: rgba(7, 8, 10, .78); box-shadow: 0 14px 44px rgba(0,0,0,.32);
   -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
-  transition: width .24s ease, top .24s ease, margin .24s ease, padding .24s ease, border-radius .24s ease, border-color .24s ease, background-color .24s ease, box-shadow .24s ease, backdrop-filter .24s ease;
+  transition: border-color .24s ease, background-color .24s ease, box-shadow .24s ease, backdrop-filter .24s ease;
 }
 .app-header .wordmark.logo-only { width: 106px; }
 .app-header .wordmark img { width: 99px; }
@@ -883,10 +883,10 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
     background: rgba(7,8,10,.78); box-shadow: 0 14px 44px rgba(0,0,0,.32);
   }
   header.main-header.app-header.scrolled {
-    top: 0; width: 100vw; margin: 0 0 18px; margin-left: calc(50% - 50vw); padding-right: max(24px, calc(max(0px, 50vw - 740px) + clamp(18px, 3vw, 44px) + 12px)); padding-left: max(24px, calc(max(0px, 50vw - 740px) + clamp(18px, 3vw, 44px) + 18px));
-    border: 0; border-bottom: 1px solid rgba(255,255,255,.12); border-radius: 0;
-    background: rgba(5,6,8,.995); box-shadow: 0 16px 42px rgba(0,0,0,.78);
-    -webkit-backdrop-filter: blur(24px) saturate(115%); backdrop-filter: blur(24px) saturate(115%);
+    top: 10px; width: auto; margin: 0 0 18px; padding: 9px 12px 9px 18px;
+    border: 1px solid rgba(123,177,255,.3); border-radius: 18px;
+    background: rgba(5,7,11,.985); box-shadow: 0 18px 48px rgba(0,0,0,.68), 0 0 0 1px rgba(96,157,245,.07), 0 0 24px rgba(54,111,204,.12);
+    -webkit-backdrop-filter: blur(28px) saturate(135%); backdrop-filter: blur(28px) saturate(135%);
   }
   header.main-header.app-header nav { gap: 6px; }
   header.main-header.app-header .nav-link { padding: 10px 13px; color: #92979d; font-size: 12px; font-weight: 730; }
@@ -903,6 +903,6 @@ header.main-header.app-header .account b { display: none; }
     background: rgba(7,8,10,.88); box-shadow: 0 12px 34px rgba(0,0,0,.42);
     -webkit-backdrop-filter: none; backdrop-filter: none;
   }
-  header.main-header.app-header.scrolled { top: 0; width: 100vw; margin: 0 0 11px; margin-left: calc(50% - 50vw); border: 0; border-bottom: 1px solid rgba(255,255,255,.12); border-radius: 0; background: rgba(5,6,8,.995); box-shadow: 0 14px 36px rgba(0,0,0,.78); }
+  header.main-header.app-header.scrolled { top: 7px; width: auto; margin: 0 0 11px; border: 1px solid rgba(123,177,255,.3); border-radius: 15px; background: rgba(5,7,11,.985); box-shadow: 0 12px 34px rgba(0,0,0,.62), 0 0 20px rgba(54,111,204,.12); }
   header.main-header.app-header > nav { position: fixed; top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; margin: 0; }
 }
