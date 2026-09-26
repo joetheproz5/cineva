@@ -822,7 +822,8 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 .series-social-actions { display: flex; align-items: center; gap: 18px; min-height: 44px; margin-top: 13px; }
 .series-social-actions .title-feedback { margin: 0; }
 .series-social-actions .rate-btn { width: 35px; height: 35px; background: rgba(21,23,25,.72); }
-.series-social-actions .title-share { margin: 0; padding: 8px 0; text-decoration: none; }
+.share-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.share-action svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 .series-shell { width: min(1400px,100%); margin: -20px auto 0; }
 .series-dashboard { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.45fr); gap: 14px; }
