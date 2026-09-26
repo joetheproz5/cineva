@@ -382,7 +382,7 @@
 html, body { overflow-x: hidden; }
 
 @media (max-width: 650px) {
-  #app { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
+  #app { padding-bottom: 82px; }
   header { gap: 8px; }
   .settings-header { justify-content: center; }
   .settings-header .wordmark { position: static; transform: none; animation: seven-wordmark-center-mobile .34s cubic-bezier(.2,.8,.2,1); }
@@ -427,11 +427,14 @@ html, body { overflow-x: hidden; }
   .episode-main { gap: 10px; }
   .episode-toggle { width: 30px; height: 30px; margin-left: 6px; }
   .player-stage { padding: 8px; border-radius: 11px; }
-  .player-stage-bar { flex-wrap: wrap; gap: 7px; padding: 1px 2px 8px; font-size: 10px; }
-  .player-stage-context { flex: 1 0 100%; font-size: 11px; }
-  .player-stage-actions { width: 100%; gap: 7px; }
-  .player-stage-actions .provider-menu { margin-right: auto; }
+  .player-stage-bar { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 7px 9px; padding: 1px 2px 8px; font-size: 10px; }
+  .player-stage-context { grid-column: 1; grid-row: 1; min-width: 0; padding-top: 8px; font-size: 11px; }
+  .player-stage-actions { display: contents; }
+  .player-stage-actions .provider-menu { grid-column: 2; grid-row: 1; margin: 0; }
+  .player-stage-actions .party-start { grid-column: 2; grid-row: 2; justify-self: end; }
   .player-stage-actions .provider-toggle,.player-stage-actions .party-start { min-height: 36px; padding-right: 11px; padding-left: 11px; }
+  .player-episodes .episode { min-height: 0; }
+  .player-episodes .episode-main { min-height: 65px; }
   .player-frame { border-radius: 7px; }
   .now { margin-top: 17px; padding: 0 2px; }
   .site-footer { margin-top: 52px; }
@@ -654,7 +657,8 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 
 @media (max-width: 650px) {
   header > nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  header.main-header.app-header > nav { min-height: 0; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); }
+  header.main-header.app-header > nav { height: 66px; min-height: 66px; padding: 6px 8px; }
+  header.main-header.app-header > nav .nav-link { min-height: 0; }
   header > nav .nav-link { white-space: nowrap; }
   header > nav .nav-link[data-favourites] span { font-size: 0; }
   header > nav .nav-link[data-favourites] span:after { font-size: 10px; content: "Favs"; }
@@ -755,9 +759,9 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .msearch-top-item img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
   .msearch-top-item b { position: absolute; left: 10px; bottom: 9px; color: #fff; font-size: 24px; font-weight: 900; text-shadow: 0 2px 10px #000; }
   .msearch-top-item span { position: absolute; left: 52px; bottom: 15px; overflow: hidden; max-width: calc(100% - 64px); color: #fff; font-size: 13.5px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 2px 10px #000; }
-  .msearch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .msearch-grid .card { width: 100%; min-width: 0; }
-  .msearch-grid .poster-wrap { aspect-ratio: 2 / 3; }
+  .msearch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: start; }
+  .msearch-grid > .card { display: block; width: 100% !important; min-width: 0; max-width: none; }
+  .msearch-grid > .card > .poster-wrap { width: 100% !important; aspect-ratio: 2 / 3; }
   .msearch-grid .card img { width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; }
   .msearch-grid .card-play { display: none; }
   .msearch-grid .card-score { right: 7px; bottom: 7px; display: inline-flex; align-items: center; min-height: 24px; padding: 4px 7px; border: 1px solid rgba(245,211,90,.25); border-radius: 999px; background: rgba(5,6,7,.88); font-size: 9px; line-height: 1; }
