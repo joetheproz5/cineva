@@ -10,8 +10,7 @@ test("the trending rail preserves TMDB order and presents exactly four ranked ti
   assert.match(app, /api\("trending\/all\/week"\)/);
   assert.match(app, /trending = results\(trendingData\)/);
   assert.match(app, /railItems = ranked \? visible\.slice\(0, 4\) : visible/);
-  assert.match(app, /ranked-card rank-\$\{rank\}/);
-  assert.match(app, /<span class="card-rank-core"><b>\$\{String\(rank\)\.padStart\(2, "0"\)\}<\/b><\/span>/);
-  assert.match(css, /\.ranked-card\.rank-2 \{ --rank-a: #27d7ff; --rank-b: #7067ff; \}/);
-  assert.match(css, /font-size: 72px; font-style: italic; font-weight: 950;/);
+  assert.match(app, /class="card-rank" aria-label="Rank \$\{rank\}"\>\$\{String\(rank\)\.padStart\(2, "0"\)\}/);
+  assert.match(app, /class="card-copy \$\{rank \? "ranked-copy" : ""\}"/);
+  assert.match(css, /\.ranked-copy \.card-rank \{[\s\S]*?color: #e50914;[\s\S]*?font-size: 17px;/);
 });
