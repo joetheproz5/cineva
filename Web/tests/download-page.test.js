@@ -103,8 +103,13 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.equal((downloadPage.match(/class="chapter-visual(?: chapter-phone-wrap)? reveal"/g) ?? []).length, 4, "all four device previews reveal on scroll");
   assert.match(downloadPage, /chapter-visual\.reveal:not\(\.is-visible\) \.chapter-laptop\{[^}]*translate:0 34px[^}]*scale:\.96[^}]*filter:blur/);
   assert.match(downloadPage, /chapter-visual\.reveal:not\(\.is-visible\) \.chapter-phone\{[^}]*scale:\.92[^}]*filter:blur/);
+  assert.match(downloadPage, /\.chapter-laptop\{--preview-y:-5deg;--preview-x:2deg;transform:perspective\(1400px\) rotateY\(var\(--preview-y\)\) rotateX\(var\(--preview-x\)\)\}/);
+  assert.match(downloadPage, /chapter-visual\.reveal:not\(\.is-visible\) \.chapter-laptop\{--preview-y:-31deg;--preview-x:10deg/);
+  assert.match(downloadPage, /chapter-visual\.reveal:not\(\.is-visible\) \.chapter-phone\{--preview-y:-27deg;--preview-z:5deg/);
+  assert.match(downloadPage, /\.motion-ready \.chapter-visual\.reveal\.is-visible \.chapter-laptop:after,[\s\S]*?animation:preview-sheen 1\.15s/);
+  assert.match(downloadPage, /@keyframes preview-sheen\{0%\{opacity:0;transform:translateX\(-125%\)\}[\s\S]*?100%\{opacity:0;transform:translateX\(125%\)\}\}/);
   assert.match(downloadPage, /chapter-visual\.reveal\.is-visible \.device\{transition-delay:\.12s\}/);
-  assert.match(downloadPage, /chapter-visual\.reveal \.device\{opacity:1!important;translate:0 0!important;scale:1!important;filter:none!important;transition:none!important/);
+  assert.match(downloadPage, /chapter-visual\.reveal \.device\{opacity:1!important;translate:0 0!important;scale:1!important;filter:none!important;transition:none!important\}\.motion-ready \.chapter-visual\.reveal \.device:after\{animation:none!important;opacity:0!important;transform:none!important/);
   assert.match(downloadPage, /scroll-behavior:smooth/);
   assert.match(downloadPage, /prefers-reduced-motion\s*:\s*reduce/);
   assert.doesNotMatch(downloadPage, /qrserver\.com|id="qrImage"/);
