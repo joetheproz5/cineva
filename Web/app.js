@@ -8,7 +8,7 @@ let coverflowResizeTimer;
 let sessionRefreshTimer;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0 };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const ACCOUNT_KEY = "seven.account.settings";
@@ -96,6 +96,31 @@ const posterOf = item => item.poster_path ? `${TMDB_IMAGE}${item.poster_path}` :
 const stillOf = item => item.backdrop_path ? `${TMDB_STILL}${item.backdrop_path}` : posterOf(item);
 const escapeHTML = value => String(value || "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
 function scrollToTop() { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; }
+function animateScrollToTop() {
+  const root = document.scrollingElement || document.documentElement;
+  const startY = Math.max(Number(window.scrollY) || 0, Number(root.scrollTop) || 0, Number(document.body.scrollTop) || 0);
+  if (prefersReducedMotion()) { scrollToTop(); return; }
+  if (startY <= 0) return;
+  cancelAnimationFrame(state.footerScrollFrame);
+  const duration = Math.min(1100, Math.max(420, startY * .42));
+  let startedAt = null;
+  const step = timestamp => {
+    if (startedAt === null) startedAt = timestamp;
+    const progress = Math.min((timestamp - startedAt) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 4);
+    const top = Math.round(startY * (1 - eased));
+    root.scrollTop = top;
+    if (document.body !== root) document.body.scrollTop = top;
+    if (Math.abs((Number(root.scrollTop) || 0) - top) > 1) window.scrollTo(0, top);
+    if (progress < 1) state.footerScrollFrame = requestAnimationFrame(step);
+    else {
+      root.scrollTop = 0;
+      document.body.scrollTop = 0;
+      state.footerScrollFrame = 0;
+    }
+  };
+  state.footerScrollFrame = requestAnimationFrame(step);
+}
 
 async function localAPI(path, options = {}) { const response = await fetch(path, options); const data = await response.json().catch(() => ({})); if (!response.ok) { const error = new Error(data.error || data.msg || "Request failed."); error.status = response.status; throw error; } return data; }
 function authorizedHeaders() { return state.session?.access_token ? { Authorization:`Bearer ${state.session.access_token}` } : {}; }
@@ -796,13 +821,15 @@ function StartupIntro() {
   return overlay;
 }
 function renderLaunchIntro() {
-  if (prefersReducedMotion() || !launchIntroEnabled()) {
+  if (!launchIntroEnabled()) {
     state.introAnimationComplete = true;
     return;
   }
+  const reducedMotion = prefersReducedMotion();
   if (document.querySelector(".seven-intro")) return;
   const overlay = StartupIntro();
   const logo = overlay.querySelector(".startup-intro-mark");
+  if (reducedMotion) overlay.classList.add("reduced-motion");
   const startIntro = loaded => {
     if (!overlay.isConnected) return;
     if (!loaded) {
@@ -810,6 +837,10 @@ function renderLaunchIntro() {
       overlay.querySelector(".startup-intro-fallback").hidden = false;
     }
     overlay.classList.add("live");
+    if (reducedMotion) {
+      state.introAnimationComplete = true;
+      maybeFinishIntro();
+    }
   };
   document.documentElement.style.overflow = "hidden";
   document.body.appendChild(overlay);
@@ -1455,7 +1486,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=285", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=286", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
@@ -1475,13 +1506,13 @@ function keepFavouritesUI() {
 }
 const favouritesObserver = new MutationObserver(keepFavouritesUI);
 favouritesObserver.observe(app, { childList:true });
+document.addEventListener("click", event => {
+  const topLink = event.target?.closest?.(".footer-top");
+  if (!topLink) return;
+  event.preventDefault();
+  animateScrollToTop();
+}, true);
 app.addEventListener("click", event => {
-  const topLink = event.target.closest(".footer-top");
-  if (topLink) {
-    event.preventDefault();
-    window.scrollTo({ top:0, behavior:prefersReducedMotion() ? "auto" : "smooth" });
-    return;
-  }
   const button = event.target.closest("[data-favourites]");
   if (!button) return;
   event.preventDefault();

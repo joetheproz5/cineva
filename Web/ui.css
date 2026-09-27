@@ -346,6 +346,10 @@
 .startup-intro-fallback[hidden] { display: none; }
 .startup-intro-sweep { position: absolute; z-index: 1; inset: 0; -webkit-mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; mask: url("assets/seven-wordmark-v2.png") center / 100% 100% no-repeat; }
 .startup-intro-sweep::before { position: absolute; inset: 0; background: linear-gradient(105deg,transparent 38%,rgba(255,248,244,.72) 49.5%,rgba(231,169,161,.32) 52%,transparent 63%); opacity: 0; transform: translateX(-85%); animation: intro-sweep .76s cubic-bezier(.22,1,.36,1) .94s both; content: ""; }
+.seven-intro.reduced-motion { transition: none; }
+.seven-intro.reduced-motion::before,.seven-intro.reduced-motion::after,.seven-intro.reduced-motion .startup-intro-rays,.seven-intro.reduced-motion .startup-intro-bloom,.seven-intro.reduced-motion .startup-intro-flare,.seven-intro.reduced-motion .startup-intro-sweep::before { animation: none !important; opacity: 0; }
+.seven-intro.reduced-motion .startup-intro-mark { animation: none !important; opacity: 1; transform: none; filter: none; }
+.seven-intro.reduced-motion .startup-intro-sweep { display: none; }
 @keyframes intro-out { to { opacity: 0; visibility: hidden; transform: scale(1.025); } }
 @keyframes intro-stage-light { 0% { opacity: 0; } 36% { opacity: 1; } 100% { opacity: .62; } }
 @keyframes intro-atmosphere { 0% { opacity: 0; transform: scale(1.035) translateX(-1%); } 54% { opacity: .72; } 100% { opacity: .52; transform: scale(1) translateX(1%); } }

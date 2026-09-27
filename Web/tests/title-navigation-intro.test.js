@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const web = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(web, "app.js"), "utf8");
@@ -30,18 +31,58 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(intro, /!state\.startupReady \|\| !state\.introAnimationComplete/);
   assert.match(intro, /state\.introSafetyTimer = setTimeout\(/);
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
+  assert.match(app, /if \(reducedMotion\) overlay\.classList\.add\("reduced-motion"\)/);
+  assert.match(app, /if \(reducedMotion\) \{\s*state\.introAnimationComplete = true;\s*maybeFinishIntro\(\);/);
   assert.match(styles, /\.seven-intro\.exiting/);
+  assert.match(styles, /\.seven-intro\.reduced-motion \.startup-intro-mark \{ animation: none !important; opacity: 1; transform: none; filter: none; \}/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=283/);
-  assert.match(index, /app\.js\?v=285/);
-  assert.match(serviceWorker, /seven-v285/);
-  assert.match(serviceWorker, /ui\.css\?v=283/);
-  assert.match(serviceWorker, /app\.js\?v=285/);
+  assert.match(index, /ui\.css\?v=284/);
+  assert.match(index, /app\.js\?v=286/);
+  assert.match(serviceWorker, /seven-v286/);
+  assert.match(serviceWorker, /ui\.css\?v=284/);
+  assert.match(serviceWorker, /app\.js\?v=286/);
+  assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
 test("the footer back-to-top link scrolls smoothly and honors reduced motion", () => {
   assert.match(app, /<a class="footer-top" href="#app"/);
-  assert.match(app, /const topLink = event\.target\.closest\("\.footer-top"\);[\s\S]*?window\.scrollTo\(\{ top:0, behavior:prefersReducedMotion\(\) \? "auto" : "smooth" \}\)/);
+  assert.match(app, /document\.addEventListener\("click", event => \{\s*const topLink = event\.target\?\.closest\?\.\("\.footer-top"\);\s*if \(!topLink\) return;\s*event\.preventDefault\(\);\s*animateScrollToTop\(\);\s*\}, true\)/);
+
+  const start = app.indexOf("function animateScrollToTop()");
+  const end = app.indexOf("async function localAPI", start);
+  const helper = app.slice(start, end);
+  assert.ok(start >= 0 && end > start, "animated scroll helper should exist");
+  assert.match(helper, /requestAnimationFrame\(step\)/);
+  assert.match(helper, /prefersReducedMotion\(\)\) \{ scrollToTop\(\); return; \}/);
+
+  const root = { scrollTop:900 };
+  const body = { scrollTop:900 };
+  const frames = [];
+  const context = {
+    state:{ footerScrollFrame:0 },
+    window:{ scrollY:900, scrollTo(_x, y) { root.scrollTop = y; } },
+    document:{ scrollingElement:root, documentElement:root, body },
+    prefersReducedMotion:() => false,
+    cancelAnimationFrame() {},
+    requestAnimationFrame(callback) { frames.push(callback); return frames.length; }
+  };
+  vm.runInNewContext(`${helper}\nanimateScrollToTop();`, context);
+  frames.shift()(0);
+  frames.shift()(100);
+  assert.ok(root.scrollTop > 0 && root.scrollTop < 900, "scroll should visibly advance before reaching the top");
+  while (frames.length) frames.shift()(500);
+  assert.equal(root.scrollTop, 0);
+  assert.equal(body.scrollTop, 0);
+
+  let instantScrolls = 0;
+  const reducedContext = {
+    state:{ footerScrollFrame:0 }, window:{ scrollY:900 },
+    document:{ scrollingElement:{ scrollTop:900 }, documentElement:{ scrollTop:900 }, body:{ scrollTop:900 } },
+    prefersReducedMotion:() => true, scrollToTop() { instantScrolls += 1; },
+    cancelAnimationFrame() {}, requestAnimationFrame() { throw new Error("reduced motion must not animate"); }
+  };
+  vm.runInNewContext(`${helper}\nanimateScrollToTop();`, reducedContext);
+  assert.equal(instantScrolls, 1);
 });
 
 test("the home spotlight shares the header and rail content column", () => {
