@@ -33,10 +33,15 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.seven-intro\.exiting/);
   assert.match(styles, /animation-play-state: paused/);
   assert.match(index, /ui\.css\?v=283/);
-  assert.match(index, /app\.js\?v=283/);
-  assert.match(serviceWorker, /seven-v283/);
+  assert.match(index, /app\.js\?v=284/);
+  assert.match(serviceWorker, /seven-v284/);
   assert.match(serviceWorker, /ui\.css\?v=283/);
-  assert.match(serviceWorker, /app\.js\?v=283/);
+  assert.match(serviceWorker, /app\.js\?v=284/);
+});
+
+test("the footer back-to-top link scrolls smoothly and honors reduced motion", () => {
+  assert.match(app, /<a class="footer-top" href="#app"/);
+  assert.match(app, /const topLink = event\.target\.closest\("\.footer-top"\);[\s\S]*?window\.scrollTo\(\{ top:0, behavior:prefersReducedMotion\(\) \? "auto" : "smooth" \}\)/);
 });
 
 test("the home spotlight shares the header and rail content column", () => {

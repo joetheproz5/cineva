@@ -1444,7 +1444,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=283", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=284", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
@@ -1464,7 +1464,21 @@ function keepFavouritesUI() {
 }
 const favouritesObserver = new MutationObserver(keepFavouritesUI);
 favouritesObserver.observe(app, { childList:true });
-app.addEventListener("click", event => { const button = event.target.closest("[data-favourites]"); if (!button) return; event.preventDefault(); state.myListReturn = state.route; state.route = "my-list"; scrollToTop(); render(); });
+app.addEventListener("click", event => {
+  const topLink = event.target.closest(".footer-top");
+  if (topLink) {
+    event.preventDefault();
+    window.scrollTo({ top:0, behavior:prefersReducedMotion() ? "auto" : "smooth" });
+    return;
+  }
+  const button = event.target.closest("[data-favourites]");
+  if (!button) return;
+  event.preventDefault();
+  state.myListReturn = state.route;
+  state.route = "my-list";
+  scrollToTop();
+  render();
+});
 window.addEventListener("online", () => { if (document.querySelector(".offline-screen")) void retryConnection(); });
 window.addEventListener("visibilitychange", () => { if (!document.hidden) tickScreenTime(); });
 setInterval(tickScreenTime, 60000);
