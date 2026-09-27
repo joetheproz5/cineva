@@ -30,9 +30,11 @@ test("the Mac wrapper is native, universal, and published as a disk image", () =
   assert.match(releaseWorkflow, /swift build --configuration release --arch x86_64/);
   assert.match(releaseWorkflow, /lipo -create/);
   assert.match(releaseWorkflow, /hdiutil create/);
+  assert.match(releaseWorkflow, /\.\.\/Web\/assets\/seven-logo-red\.png/);
   assert.match(releaseWorkflow, /dist\/macos\/SEVEN-macOS\.dmg/);
   assert.match(releaseWorkflow, /needs: \[windows, macos\]/);
   assert.match(releaseWorkflow, /--repo joetheproz5\/cineva/);
+  assert.match(macHost, /setFrameAutosaveName\("SEVEN\.MainWindow"\)/);
   assert.match(macManifest, /<string>13\.0<\/string>/);
   assert.match(macHost, /WKWebView/);
 });
@@ -88,5 +90,13 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(desktopHost, /SystemCommands\.MaximizeWindow\(this\)/);
   assert.match(desktopHost, /MonitorFromWindow\(windowHandle, MonitorDefaultToNearest\)/);
   assert.match(desktopHost, /SetWindowPosNoSize \| SetWindowPosNoZOrder \| SetWindowPosNoActivate/);
+  assert.match(windowsChrome, /WindowStartupLocation="Manual"/);
+  assert.match(windowsChrome, /Closing="Window_Closing"/);
+  assert.match(desktopHost, /SystemParameters\.WorkArea/);
+  assert.match(desktopHost, /SystemParameters\.VirtualScreenWidth/);
+  assert.match(desktopHost, /window-placement\.json/);
+  assert.match(desktopHost, /LocationChanged \+=/);
+  assert.match(desktopHost, /SizeChanged \+=/);
+  assert.match(desktopHost, /JsonSerializer\.Serialize\(placement\)/);
   assert.match(desktopHost, /Close_Click\(object sender, RoutedEventArgs e\) => Close\(\)/);
 });

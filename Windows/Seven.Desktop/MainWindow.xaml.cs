@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -18,14 +19,81 @@ public partial class MainWindow : Window
     private const uint SetWindowPosNoSize = 0x0001;
     private const uint SetWindowPosNoZOrder = 0x0004;
     private const uint SetWindowPosNoActivate = 0x0010;
+    private static readonly string WindowPlacementPath = System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SEVEN",
+        "window-placement.json");
+    private readonly DispatcherTimer _placementSaveTimer;
+    private bool _restoringPlacement = true;
 
     public MainWindow()
     {
         InitializeComponent();
+        _placementSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _placementSaveTimer.Tick += PlacementSaveTimer_Tick;
+        RestoreWindowPlacement();
+        _restoringPlacement = false;
+        LocationChanged += (_, _) => ScheduleWindowPlacementSave();
+        SizeChanged += (_, _) => ScheduleWindowPlacementSave();
+    }
+
+    private void RestoreWindowPlacement()
+    {
+        var workArea = SystemParameters.WorkArea;
+        if (workArea.IsEmpty || workArea.Width <= 0 || workArea.Height <= 0)
+        {
+            return;
+        }
+
+        MinWidth = Math.Min(820, workArea.Width);
+        MinHeight = Math.Min(580, workArea.Height);
+        Width = Math.Min(1440, Math.Max(MinWidth, workArea.Width - 48));
+        Height = Math.Min(920, Math.Max(MinHeight, workArea.Height - 48));
+        Left = workArea.Left + (workArea.Width - Width) / 2;
+        Top = workArea.Top + (workArea.Height - Height) / 2;
+        var virtualArea = new Rect(
+            SystemParameters.VirtualScreenLeft,
+            SystemParameters.VirtualScreenTop,
+            SystemParameters.VirtualScreenWidth,
+            SystemParameters.VirtualScreenHeight);
+        if (virtualArea.IsEmpty || virtualArea.Width <= 0 || virtualArea.Height <= 0)
+        {
+            virtualArea = workArea;
+        }
+
+        try
+        {
+            var placement = JsonSerializer.Deserialize<WindowPlacement>(File.ReadAllText(WindowPlacementPath));
+            if (placement is null
+                || !double.IsFinite(placement.Left)
+                || !double.IsFinite(placement.Top)
+                || !double.IsFinite(placement.Width)
+                || !double.IsFinite(placement.Height)
+                || placement.Width <= 0
+                || placement.Height <= 0)
+            {
+                return;
+            }
+
+            Width = Math.Clamp(placement.Width, MinWidth, Math.Max(MinWidth, virtualArea.Width));
+            Height = Math.Clamp(placement.Height, MinHeight, Math.Max(MinHeight, virtualArea.Height));
+            Left = Math.Clamp(placement.Left, virtualArea.Left, Math.Max(virtualArea.Left, virtualArea.Right - Width));
+            Top = Math.Clamp(placement.Top, virtualArea.Top, Math.Max(virtualArea.Top, virtualArea.Bottom - Height));
+            if (placement.WasMaximized)
+            {
+                WindowState = System.Windows.WindowState.Maximized;
+            }
+        }
+        catch (Exception)
+        {
+            // Missing or malformed window preferences should never block startup.
+        }
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)KeepRestoredWindowOnScreen);
+
         try
         {
             var dataFolder = System.IO.Path.Combine(
@@ -144,14 +212,26 @@ public partial class MainWindow : Window
 
     private void Window_StateChanged(object? sender, EventArgs e)
     {
+        if (_restoringPlacement)
+        {
+            return;
+        }
+
         if (WindowState == System.Windows.WindowState.Normal)
         {
             Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)KeepRestoredWindowOnScreen);
         }
+
+        ScheduleWindowPlacementSave();
     }
 
     private void KeepRestoredWindowOnScreen()
     {
+        if (WindowState != System.Windows.WindowState.Normal)
+        {
+            return;
+        }
+
         var windowHandle = new WindowInteropHelper(this).Handle;
         var monitorHandle = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
         var monitor = new NativeMonitorInfo { Size = Marshal.SizeOf<NativeMonitorInfo>() };
@@ -208,6 +288,56 @@ public partial class MainWindow : Window
     private static extern bool SetWindowPos(IntPtr windowHandle, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        _placementSaveTimer.Stop();
+        SaveWindowPlacement();
+    }
+
+    private void PlacementSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _placementSaveTimer.Stop();
+        SaveWindowPlacement();
+    }
+
+    private void ScheduleWindowPlacementSave()
+    {
+        if (_restoringPlacement)
+        {
+            return;
+        }
+
+        _placementSaveTimer.Stop();
+        _placementSaveTimer.Start();
+    }
+
+    private void SaveWindowPlacement()
+    {
+        try
+        {
+            var bounds = WindowState == System.Windows.WindowState.Normal
+                ? new Rect(Left, Top, Width, Height)
+                : RestoreBounds;
+            if (bounds.IsEmpty || !double.IsFinite(bounds.Left) || !double.IsFinite(bounds.Top)
+                || !double.IsFinite(bounds.Width) || !double.IsFinite(bounds.Height)
+                || bounds.Width <= 0 || bounds.Height <= 0)
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(WindowPlacementPath)!);
+            var placement = new WindowPlacement(bounds.Left, bounds.Top, bounds.Width, bounds.Height,
+                WindowState == System.Windows.WindowState.Maximized);
+            File.WriteAllText(WindowPlacementPath, JsonSerializer.Serialize(placement));
+        }
+        catch (Exception)
+        {
+            // Window geometry is a convenience; a read-only profile folder must not stop exit.
+        }
+    }
+
+    private sealed record WindowPlacement(double Left, double Top, double Width, double Height, bool WasMaximized);
 
     private void InstallRuntime_Click(object sender, RoutedEventArgs e) => OpenExternal(new Uri(WebViewRuntimeUrl));
 

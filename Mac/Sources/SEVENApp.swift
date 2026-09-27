@@ -109,6 +109,7 @@ private struct SEVENWindow: View {
         WebContent(webView: browser.webView)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(nsColor: .windowBackgroundColor))
+            .background(WindowFrameAutosave())
             .preferredColorScheme(.dark)
             .toolbar {
                 ToolbarItemGroup(placement: .navigation) {
@@ -165,4 +166,20 @@ private struct WebContent: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView { webView }
     func updateNSView(_ nsView: WKWebView, context: Context) { }
+}
+
+private struct WindowFrameAutosave: NSViewRepresentable {
+    func makeNSView(context: Context) -> AutosaveView { AutosaveView() }
+    func updateNSView(_ nsView: AutosaveView, context: Context) { }
+
+    final class AutosaveView: NSView {
+        private var didSetAutosaveName = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard !didSetAutosaveName, let window else { return }
+            didSetAutosaveName = true
+            _ = window.setFrameAutosaveName("SEVEN.MainWindow")
+        }
+    }
 }

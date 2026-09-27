@@ -99,7 +99,7 @@ jobs:
           cp Info.plist "$app/Contents/Info.plist"
 
           while IFS=: read -r icon_name icon_size; do
-            sips -s format png -z "$icon_size" "$icon_size" ../Web/assets/seven-logo-app.png \
+            sips -s format png -z "$icon_size" "$icon_size" ../Web/assets/seven-logo-red.png \
               --out "../dist/seven.iconset/$icon_name" >/dev/null
           done <<'ICONS'
           icon_16x16.png:16

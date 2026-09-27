@@ -6,8 +6,9 @@
         Title="SEVEN" Icon="/Assets/seven.ico" Width="1440" Height="920" MinWidth="820" MinHeight="580"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{StaticResource CanvasBrush}" Foreground="{StaticResource InkBrush}"
-        WindowStartupLocation="CenterScreen" PreviewKeyDown="Window_PreviewKeyDown"
+        WindowStartupLocation="Manual" PreviewKeyDown="Window_PreviewKeyDown"
         Loaded="Window_Loaded" StateChanged="Window_StateChanged"
+        Closing="Window_Closing"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="42" ResizeBorderThickness="8" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
