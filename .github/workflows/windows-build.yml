@@ -46,10 +46,12 @@ jobs:
           RELEASE_TAG: desktop-build-${{ github.run_id }}
         shell: pwsh
         run: |
-          $asset = "dist/windows/SEVEN.exe"
-          if (-not (Test-Path -LiteralPath $asset)) {
-            throw "Expected desktop app was not created: $asset"
+          $executable = "dist/windows/SEVEN.exe"
+          $asset = "dist/windows/SEVEN-Desktop-win-x64.exe"
+          if (-not (Test-Path -LiteralPath $executable)) {
+            throw "Expected desktop app was not created: $executable"
           }
+          Copy-Item -LiteralPath $executable -Destination $asset
           $notes = @'
           SEVEN desktop app for 64-bit Windows 10 and 11.
 

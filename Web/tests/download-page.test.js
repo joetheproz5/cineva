@@ -12,6 +12,7 @@ test("the Windows download button points at the desktop executable published by 
   assert.match(downloadPage, /href="https:\/\/github\.com\/joetheproz5\/cineva\/releases\/latest\/download\/SEVEN-Desktop-win-x64\.exe"/);
   assert.match(releaseWorkflow, /Publish self-contained Windows app/);
   assert.match(releaseWorkflow, /dist\/windows\/SEVEN\.exe/);
+  assert.match(releaseWorkflow, /SEVEN-Desktop-win-x64\.exe/);
   assert.match(releaseWorkflow, /--latest/);
 });
 
