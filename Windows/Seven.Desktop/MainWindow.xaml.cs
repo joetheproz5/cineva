@@ -110,9 +110,6 @@ public partial class MainWindow : Window
             core.Settings.IsStatusBarEnabled = false;
             core.NavigationStarting += Browser_NavigationStarting;
             core.NewWindowRequested += Browser_NewWindowRequested;
-            core.HistoryChanged += (_, _) => UpdateNavigationButtons();
-            core.NavigationCompleted += (_, _) => UpdateNavigationButtons();
-
             Browser.Source = new Uri(AppUrl);
         }
         catch (Exception)
@@ -165,38 +162,6 @@ public partial class MainWindow : Window
             // A missing browser association should not bring down the desktop shell.
         }
     }
-
-    private void UpdateNavigationButtons()
-    {
-        var core = Browser.CoreWebView2;
-        if (core is null)
-        {
-            return;
-        }
-
-        BackButton.IsEnabled = core.CanGoBack;
-        ForwardButton.IsEnabled = core.CanGoForward;
-    }
-
-    private void Back_Click(object sender, RoutedEventArgs e)
-    {
-        if (Browser.CoreWebView2?.CanGoBack == true)
-        {
-            Browser.CoreWebView2.GoBack();
-        }
-    }
-
-    private void Forward_Click(object sender, RoutedEventArgs e)
-    {
-        if (Browser.CoreWebView2?.CanGoForward == true)
-        {
-            Browser.CoreWebView2.GoForward();
-        }
-    }
-
-    private void Reload_Click(object sender, RoutedEventArgs e) => Browser.Reload();
-
-    private void OpenInBrowser_Click(object sender, RoutedEventArgs e) => OpenExternal(new Uri(AppUrl));
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
 

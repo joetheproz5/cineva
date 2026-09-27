@@ -80,6 +80,10 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(windowsChrome, /WindowStyle="None" ResizeMode="CanResize"/);
   assert.match(windowsChrome, /<shell:WindowChrome CaptionHeight="42"/);
   assert.match(windowsChrome, /shell:WindowChrome\.IsHitTestVisibleInChrome="True"/);
+  const titleBar = windowsChrome.match(/<Border Grid\.Row="0"[\s\S]*?<\/Border>/)?.[0];
+  assert.ok(titleBar, "the custom title bar exists");
+  assert.equal((titleBar.match(/<Button\b/g) ?? []).length, 3, "the title bar contains only three window controls");
+  assert.doesNotMatch(titleBar, /<Image\b|<TextBlock\b|Back_Click|Forward_Click|Reload_Click|OpenInBrowser_Click/);
   assert.match(windowsChrome, /Click="Minimize_Click"/);
   assert.match(windowsChrome, /Click="MaximizeRestore_Click"/);
   assert.match(windowsChrome, /Click="Close_Click"/);

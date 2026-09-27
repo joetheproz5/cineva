@@ -20,37 +20,13 @@
     </Grid.RowDefinitions>
 
     <Border Grid.Row="0" Background="#101114" BorderBrush="#24252A" BorderThickness="0,0,0,1">
-      <Grid Margin="14,0,0,0">
+      <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-          <Image Width="68" Height="25" Stretch="Uniform" Source="/Assets/seven-wordmark-v2.png" />
-        </StackPanel>
-
-        <Border Grid.Column="1" Width="1" Height="18" Margin="16,0" Background="#303137" />
-
-        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="BackButton" Style="{StaticResource ToolbarButton}" Content="‹" ToolTip="Go back" Click="Back_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
-          <Button x:Name="ForwardButton" Margin="3,0,0,0" Style="{StaticResource ToolbarButton}" Content="›" ToolTip="Go forward" Click="Forward_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
-          <Button Margin="5,0,0,0" Style="{StaticResource ToolbarButton}" Content="⟳" ToolTip="Reload SEVEN" Click="Reload_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
-        </StackPanel>
-
-        <TextBlock Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Foreground="#85868D" FontSize="10" FontWeight="SemiBold"
-                   IsHitTestVisible="False" Text="SEVEN" />
-
-        <Button Grid.Column="4" Margin="0,0,5,0" Style="{StaticResource ToolbarButton}"
-                Content="↗" ToolTip="Open SEVEN in your browser" Click="OpenInBrowser_Click"
-                shell:WindowChrome.IsHitTestVisibleInChrome="True" />
-
-        <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
           <Button Style="{StaticResource CaptionButton}" ToolTip="Minimize" Click="Minimize_Click"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <Path Width="14" Height="14" Data="M 2,8 L 12,8" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.2" />
