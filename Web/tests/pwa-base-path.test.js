@@ -11,7 +11,7 @@ const serviceWorker = fs.readFileSync(path.join(web, "service-worker.js"), "utf8
 
 test("the launch ident and PWA files work from a project subpath", () => {
   assert.match(app, /startup-intro-mark" src="assets\/seven-wordmark-v2\.png"/);
-  assert.match(app, /serviceWorker\.register\("service-worker\.js\?v=\d+"\)/);
+  assert.match(app, /serviceWorker\.register\("service-worker\.js\?v=\d+",\s*\{ updateViaCache:"none" \}\)/);
   assert.doesNotMatch(index, /(?:href|src)="\//);
   assert.match(manifest, /"start_url": "\.\/"/);
   assert.match(manifest, /"scope": "\.\/"/);

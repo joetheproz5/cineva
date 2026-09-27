@@ -791,5 +791,141 @@
 .family-title-search button:hover, .family-title-results button:hover { border-color: #555; background: #333; }
 .profile-category-back { color: #a3a3a3; }
 .profile-category-back:hover { color: #fff; }
+
+/* Netflix-inspired profile settings: clear hierarchy, quiet surfaces, and direct navigation. */
+.profile-settings-redesign { width: min(1040px, calc(100% - 56px)); padding: 26px 0 84px; }
+.profile-settings-topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 0 16px; border-bottom: 1px solid #292929; }
+.profile-settings-redesign .profile-settings-topbar .account-back { grid-column: auto; width: auto; height: auto; margin: 0; padding: 5px 0; border-radius: 0; color: #a3a3a3; font-size: 13px; font-weight: 650; }
+.profile-settings-redesign .profile-settings-topbar .account-back:hover { color: #fff; }
+.profile-settings-redesign .profile-settings-switch { display: inline-flex; width: auto; height: 38px; align-items: center; gap: 13px; padding: 0 13px; border: 1px solid #333; border-radius: 4px; color: #e5e5e5; background: #181818; font-size: 12px; font-weight: 650; }
+.profile-settings-redesign .profile-settings-switch:hover { border-color: #666; color: #fff; background: #222; }
+.profile-settings-redesign .profile-settings-switch i { color: #e50914; font-size: 17px; font-style: normal; }
+.profile-settings-redesign .profile-settings-hub { display: grid; gap: 27px; padding-top: 0; }
+.profile-settings-intro { padding: 28px 0 0; }
+.profile-settings-redesign .profile-settings-intro .brand, .profile-settings-redesign .profile-settings-page-heading .brand { display: block; margin-bottom: 9px; color: #e50914; font-size: 10px; font-weight: 800; letter-spacing: 1.9px; }
+.profile-settings-intro h2 { margin: 0; color: #f5f5f1; font-size: clamp(29px, 4vw, 38px); font-weight: 750; letter-spacing: -1.2px; }
+.profile-settings-intro p { margin: 8px 0 0; color: #a3a3a3; font-size: 13px; line-height: 1.5; }
+.profile-settings-notice { margin: -12px 0 -9px; color: #d8d8d8; font-size: 12px; }
+.profile-hub-hero { display: flex; min-height: 126px; align-items: center; justify-items: initial; gap: 19px; margin: 0; padding: 17px 20px; border: 1px solid #292929; border-left: 3px solid #e50914; border-radius: 3px; background: #141414; }
+.profile-settings-redesign .profile-hub-avatar { position: relative; flex: 0 0 auto; width: 82px; height: 82px; margin: 0; border: 1px solid #393939; border-radius: 4px; background: #1a1a1a; box-shadow: none; }
+.profile-settings-redesign .profile-hub-avatar .profile-avatar { width: 100%; height: 100%; border-radius: 3px; }
+.profile-settings-redesign .profile-hub-avatar i { right: -7px; bottom: -7px; width: 24px; height: 24px; border: 2px solid #141414; border-radius: 50%; color: #fff; background: #e50914; font-size: 11px; }
+.profile-hub-identity { min-width: 0; }
+.profile-settings-redesign .profile-hub-identity .brand { display: block; margin-bottom: 6px; color: #858585; font-size: 9px; font-weight: 750; letter-spacing: 1.5px; }
+.profile-hub-identity h3 { margin: 0; overflow: hidden; color: #f5f5f1; font-size: 22px; font-weight: 700; letter-spacing: -.45px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-hub-identity p { margin: 5px 0 0; color: #a3a3a3; font-size: 12px; }
+.profile-settings-groups { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 30px 46px; }
+.profile-settings-group { min-width: 0; padding-top: 13px; border-top: 1px solid #373737; }
+.profile-settings-group h3 { margin: 0 0 3px; color: #f0f0f0; font-size: 15px; font-weight: 680; letter-spacing: -.2px; }
+.profile-settings-group-wide { grid-column: 1 / -1; }
+.profile-settings-group-wide .profile-category-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
+.profile-settings-redesign .profile-category-list { display: grid; gap: 0; margin: 5px 0 0; }
+.profile-settings-redesign .profile-category-row { display: grid; grid-template-columns: minmax(0, 1fr) 18px; min-height: 69px; align-items: center; gap: 15px; padding: 12px 2px 12px 0; border: 0; border-bottom: 1px solid #2b2b2b; border-radius: 0; color: #eee; background: transparent; text-align: left; transition: color .16s ease, background .16s ease; }
+.profile-settings-redesign .profile-category-row:hover { border-color: #383838; color: #fff; background: #111; }
+.profile-settings-redesign .profile-category-row:focus-visible { outline: 2px solid #e50914; outline-offset: 2px; }
+.profile-settings-redesign .profile-category-row b { color: #e8e8e8; font-size: 13.5px; font-weight: 620; }
+.profile-settings-redesign .profile-category-row small { margin-top: 5px; color: #929292; font-size: 11.5px; line-height: 1.35; }
+.profile-settings-redesign .profile-category-row em { color: #757575; font-size: 22px; font-style: normal; line-height: 1; transition: color .16s ease, transform .16s ease; }
+.profile-settings-redesign .profile-category-row:hover em { color: #e50914; transform: translateX(3px); }
+.profile-settings-redesign .profile-hub-note { margin: -5px 0 0; color: #a3a3a3; font-size: 12px; text-align: left; }
+.profile-settings-detail-page { width: min(840px, 100%); margin: 0 auto; }
+.profile-settings-page-heading { padding: 28px 0 20px; }
+.profile-settings-redesign .profile-category-back { display: inline-flex; align-items: center; margin: 0 0 24px; padding: 0; color: #a3a3a3; background: transparent; font-size: 12px; font-weight: 650; }
+.profile-settings-redesign .profile-category-back:hover { color: #fff; }
+.profile-settings-page-heading h2 { margin: 0; color: #f5f5f1; font-size: clamp(27px, 3vw, 34px); font-weight: 740; letter-spacing: -.8px; }
+.profile-settings-page-heading p { margin: 8px 0 0; color: #a3a3a3; font-size: 13px; line-height: 1.5; }
+.profile-settings-redesign .profile-detail-card { gap: 0; padding: 23px 26px; border: 1px solid #292929; border-radius: 4px; background: #141414; }
+.profile-settings-redesign .profile-detail-card > .brand { margin: 0 0 12px; color: #e50914; font-size: 9px; font-weight: 800; letter-spacing: 1.7px; }
+.profile-settings-redesign .profile-detail-card > h2, .profile-settings-card-title { margin: 5px 0 3px; color: #f3f3f3; font-size: 15px; font-weight: 670; letter-spacing: -.15px; }
+.profile-settings-redesign .profile-mobile-row { grid-template-columns: minmax(0, 1fr) auto; min-height: 75px; padding: 16px 0; border: 0; border-bottom: 1px solid #2a2a2a; border-radius: 0; background: transparent; }
+.profile-settings-redesign .profile-mobile-row:last-child { border-bottom: 0; }
+.profile-settings-redesign .profile-mobile-row b { color: #ececec; font-size: 13px; font-weight: 620; }
+.profile-settings-redesign .profile-mobile-row small { max-width: 570px; margin-top: 5px; color: #999; font-size: 11.5px; line-height: 1.45; }
+.profile-settings-redesign .profile-mobile-toggle em { width: 36px; height: 20px; background: #5b5b5b; }
+.profile-settings-redesign .profile-mobile-toggle em:after { top: 3px; left: 3px; width: 14px; height: 14px; background: #f5f5f1; }
+.profile-settings-redesign .profile-mobile-toggle input:checked + em { background: #e50914; }
+.profile-settings-redesign .profile-mobile-toggle input:checked + em:after { transform: translateX(16px); }
+.profile-settings-redesign .profile-mobile-select select { width: auto; min-width: 116px; max-width: 220px; padding: 9px 30px 9px 11px; border: 1px solid #333; border-radius: 3px; color: #eee; background-color: #202020; font-size: 12px; }
+.profile-settings-redesign .profile-mobile-select .preferred-player-select { width: 200px; }
+.profile-settings-subsection { margin-top: 18px; padding-top: 13px; border-top: 1px solid #333; }
+.profile-settings-subsection .profile-settings-card-title { margin: 0 0 4px; }
+.profile-settings-redesign .profile-settings-actions { display: flex; justify-content: flex-start; margin-top: 18px; }
+.profile-settings-redesign .profile-settings-actions .primary { min-width: 176px; min-height: 42px; padding: 0 19px; border: 0; border-radius: 3px; color: #fff; background: #e50914; font-size: 13px; font-weight: 700; }
+.profile-settings-redesign .profile-settings-actions .primary:hover { background: #f6121d; }
+.profile-settings-redesign .profile-settings-error { color: #ff747b; font-size: 12px; }
+.profile-settings-redesign #profile-settings-form:has(.family-controls) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-detail-card { align-self: start; }
+.profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-settings-error, .profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-settings-actions { grid-column: 1 / -1; }
+.profile-settings-redesign .profile-mobile-identity { grid-template-columns: 104px minmax(0, 1fr); column-gap: 20px; row-gap: 0; padding: 8px 0 18px; }
+.profile-settings-redesign .profile-mobile-identity .profile-settings-avatar, .profile-settings-redesign .profile-mobile-identity .profile-avatar { width: 104px; height: 104px; }
+.profile-settings-redesign .profile-mobile-identity .profile-avatar { border-radius: 4px; }
+.profile-settings-redesign .profile-avatar-change { top: 78px; left: 78px; border: 2px solid #141414; border-radius: 50%; color: #fff; background: #e50914; }
+.profile-settings-redesign .profile-mobile-identity .profile-name-field { grid-column: 2; grid-row: 1; align-self: center; color: #ddd; font-size: 12px; }
+.profile-settings-redesign .profile-mobile-identity .profile-name-field input { min-height: 43px; margin-top: 8px; border-color: #383838; border-radius: 3px; background: #202020; font-size: 14px; }
+.profile-name-hint { grid-column: 2; grid-row: 2; align-self: start; margin-top: -11px; color: #888; font-size: 10px; }
+.profile-settings-redesign .profile-avatar-chooser { margin-top: 2px; padding: 17px; border: 1px solid #303030; border-radius: 3px; background: #101010; }
+.profile-settings-redesign .profile-avatar-chooser .brand { color: #e50914; }
+.profile-settings-redesign .profile-manager { padding: 23px 26px; }
+.profile-settings-redesign .profile-manager h2 { margin: 0; color: #f3f3f3; font-size: 17px; }
+.profile-settings-redesign .profile-manager > p { margin: 7px 0 20px; color: #999; font-size: 12px; }
+.profile-settings-redesign .profile-manager-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 20px 12px; }
+.profile-settings-redesign .profile-manager-card, .profile-settings-redesign .profile-manager-add { min-height: 123px; padding: 11px 8px; border: 1px solid transparent; border-radius: 4px; transition: background .16s, border-color .16s; }
+.profile-settings-redesign .profile-manager-card:hover, .profile-settings-redesign .profile-manager-card.current { border-color: #4a4a4a; background: #1c1c1c; }
+.profile-settings-redesign .profile-manager-card .profile-avatar, .profile-settings-redesign .profile-manager-add span { width: 72px; height: 72px; border-radius: 3px; }
+.profile-settings-redesign .profile-manager-card b, .profile-settings-redesign .profile-manager-add b { font-size: 11px; }
+.profile-settings-redesign .profile-manager-add span { border-color: #4a4a4a; }
+.profile-settings-redesign .profile-category-actions { gap: 0; margin-top: 12px; }
+.profile-settings-redesign .profile-category-actions .account-action-card { min-height: 65px; padding: 14px 3px; border: 0; border-bottom: 1px solid #2a2a2a; border-radius: 0; background: transparent; }
+.profile-settings-redesign .profile-category-actions .account-action-card:last-child { border-bottom: 0; }
+.profile-settings-redesign .profile-danger-zone { margin-top: 25px; padding-top: 17px; border-top: 1px solid #44272a; }
+.profile-settings-redesign .profile-danger-zone h2 { margin: 0; color: #e6e6e6; font-size: 14px; }
+.profile-settings-redesign .profile-danger-zone p { margin: 5px 0 10px; color: #999; font-size: 11px; }
+.profile-settings-redesign .profile-danger-zone .account-action-card { width: 100%; border-color: #46272a; background: #181313; }
+.profile-settings-redesign .profile-danger-zone .account-action-card b, .profile-settings-redesign .profile-danger-zone .account-action-card em { color: #e8898e; }
+.profile-settings-redesign .family-restrictions h2 { margin: 0 0 5px; }
+.profile-settings-redesign .profile-pin-card { margin: 16px 0 0; padding: 16px; border: 1px solid #303030; border-radius: 3px; background: #101010; }
+.profile-settings-redesign .profile-pin-card:first-of-type { margin-top: 10px; }
+.profile-settings-redesign .profile-pin-field { color: #ccc; font-size: 11px; }
+.profile-settings-redesign .profile-pin-field input { min-height: 42px; margin-top: 7px; border-radius: 3px; background: #202020; font-size: 14px; }
+.profile-settings-redesign .profile-remove-pin { display: flex; align-items: center; gap: 8px; margin-top: 13px; color: #aaa; font-size: 11px; }
+
+@media (max-width: 720px) {
+  .profile-settings-redesign { width: min(100% - 32px, 560px); padding: 17px 0 68px; }
+  .profile-settings-topbar { padding-bottom: 12px; }
+  .profile-settings-redesign .profile-settings-topbar .account-back { font-size: 12px; }
+  .profile-settings-redesign .profile-settings-switch { height: 36px; gap: 8px; padding: 0 10px; font-size: 11px; }
+  .profile-settings-redesign .profile-settings-hub { gap: 22px; }
+  .profile-settings-intro { padding-top: 20px; }
+  .profile-settings-intro h2 { font-size: 30px; }
+  .profile-settings-intro p { max-width: 420px; font-size: 12px; }
+  .profile-hub-hero { min-height: 100px; gap: 15px; padding: 13px; }
+  .profile-settings-redesign .profile-hub-avatar { width: 68px; height: 68px; }
+  .profile-hub-identity h3 { font-size: 18px; }
+  .profile-settings-groups { grid-template-columns: 1fr; gap: 22px; }
+  .profile-settings-group-wide { grid-column: auto; }
+  .profile-settings-group-wide .profile-category-list { grid-template-columns: 1fr; }
+  .profile-settings-redesign .profile-category-row { min-height: 66px; padding: 12px 1px 12px 0; }
+  .profile-settings-redesign .profile-category-row b { font-size: 13px; }
+  .profile-settings-redesign .profile-category-row small { font-size: 11px; }
+  .profile-settings-page-heading { padding: 21px 0 17px; }
+  .profile-settings-redesign .profile-category-back { margin-bottom: 19px; }
+  .profile-settings-redesign .profile-detail-card { padding: 18px 16px; }
+  .profile-settings-redesign .profile-mobile-row { min-height: 68px; padding: 14px 0; }
+  .profile-settings-redesign .profile-mobile-row b { font-size: 12.5px; }
+  .profile-settings-redesign .profile-mobile-row small { max-width: 34ch; font-size: 10.5px; }
+  .profile-settings-redesign .profile-mobile-select select { min-width: 106px; max-width: 42vw; padding: 9px 23px 9px 8px; font-size: 11px; }
+  .profile-settings-redesign .profile-mobile-select .preferred-player-select { width: min(190px, 42vw); }
+  .profile-settings-redesign #profile-settings-form:has(.family-controls) { grid-template-columns: 1fr; gap: 13px; }
+  .profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-settings-error, .profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-settings-actions { grid-column: auto; }
+  .profile-settings-redesign .profile-mobile-identity { grid-template-columns: 78px minmax(0, 1fr); column-gap: 15px; }
+  .profile-settings-redesign .profile-mobile-identity .profile-settings-avatar, .profile-settings-redesign .profile-mobile-identity .profile-avatar { width: 78px; height: 78px; }
+  .profile-settings-redesign .profile-avatar-change { top: 57px; left: 57px; }
+  .profile-settings-redesign .profile-mobile-identity .profile-name-field input { min-height: 40px; font-size: 16px; }
+  .profile-name-hint { margin-top: -9px; font-size: 9px; }
+  .profile-settings-redesign .profile-settings-actions .primary { width: 100%; }
+  .profile-settings-redesign .profile-manager-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 12px 7px; }
+  .profile-settings-redesign .profile-manager-card, .profile-settings-redesign .profile-manager-add { min-height: 112px; }
+  .profile-settings-redesign .profile-manager-card .profile-avatar, .profile-settings-redesign .profile-manager-add span { width: 62px; height: 62px; }
+}
 .account-back { color: #a3a3a3; }
 .account-back:hover { color: #fff; }
