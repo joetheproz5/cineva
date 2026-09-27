@@ -76,7 +76,10 @@ test("the installation chapters flow without large enclosing cards", () => {
   const continuousStyles = downloadPage.slice(downloadPage.indexOf("/* Keep the installation story continuous"));
   assert.match(continuousStyles, /\.hero\{[^}]*border:0[^}]*border-radius:0[^}]*box-shadow:none/);
   assert.match(continuousStyles, /\.platform-card\{[^}]*border:0[^}]*background:transparent[^}]*box-shadow:none/);
-  assert.match(continuousStyles, /\.platform-link\{[^}]*border:0[^}]*background:transparent/);
+  assert.match(continuousStyles, /\.platform-link\{[^}]*border:1px solid #[\da-f]{6,8}[^}]*border-radius:14px[^}]*background:linear-gradient/);
+  assert.match(continuousStyles, /\.platform-link:hover\{[^}]*translateY\(-3px\)[^}]*box-shadow:/);
+  assert.match(continuousStyles, /\.platform-link:focus-visible\{outline:2px solid/);
+  assert.match(continuousStyles, /\.platform-link\{[^}]*min-height:62px[^}]*border-radius:12px/);
   assert.match(continuousStyles, /\.chapter\+\.chapter\{border-top:0\}/);
 });
 
