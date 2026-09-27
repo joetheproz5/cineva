@@ -105,6 +105,8 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.match(downloadPage, /@keyframes note-drift/);
   assert.doesNotMatch(downloadPage, /class="floating-note"/);
   assert.match(downloadPage, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(downloadPage, /\.hero-laptop\{top:50%;right:auto;left:-8%;width:min\(46%,580px\);transform:rotateY\(18deg\)/);
+  assert.match(downloadPage, /\.hero-phone\{top:50%;right:0;bottom:auto;width:clamp\(150px,14vw,176px\);transform:translateY\(-50%\) rotateY\(-22deg\)/);
   assert.match(downloadPage, /\.hero-phone \.device-screen\{object-fit:contain\}/);
   assert.match(downloadPage, /@media\(max-width:860px\)\{[\s\S]*?\.hero-copy\{width:100%;max-width:560px;[\s\S]*?\.hero-visual\{width:100%;height:clamp/);
   assert.match(downloadPage, /IntersectionObserver/);
@@ -122,13 +124,14 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.match(downloadPage, /prefers-reduced-motion\s*:\s*reduce/);
   assert.doesNotMatch(downloadPage, /qrserver\.com|id="qrImage"/);
 
-  for (const id of ["macCard", "iosCard", "windowsCard", "androidCard"]) {
+  const installLabels = { macCard: "Install on Mac", iosCard: "Install on iPhone & iPad", windowsCard: "Install on Windows", androidCard: "Install on Android" };
+  for (const [id, expectedLabel] of Object.entries(installLabels)) {
     const card = downloadPage.match(new RegExp(`<article class="platform-card" id="${id}">([\\s\\S]*?)<\\/article>`));
     assert.ok(card, `${id} remains available`);
     const action = card[1].match(/<(?:a|button) class="btn"[\s\S]*?<\/(?:a|button)>/)?.[0];
     assert.ok(action, `${id} keeps its install action`);
-    const visibleLabel = action.replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]*>/g, "").trim();
-    assert.equal(visibleLabel, "Install SEVEN", `${id} uses the shared install label`);
+    const visibleLabel = action.replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").trim();
+    assert.equal(visibleLabel, expectedLabel, `${id} names its platform in the install action`);
     assert.match(action, /aria-label="Install SEVEN on /);
   }
 
@@ -136,7 +139,7 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.match(downloadPage, /window\.location\.assign\(appUrl\)/);
   assert.match(downloadPage, /if \(!response\.ok\) throw new Error\("Android install unavailable"\)/);
   assert.match(downloadPage, /Install SEVEN/);
-  assert.doesNotMatch(downloadPage, /Download for Mac|Install on Windows|Download APK/);
+  assert.doesNotMatch(downloadPage, /Download for Mac|Download APK/);
 });
 
 test("the desktop wrapper confines embedded navigation to SEVEN and opens web links externally", () => {

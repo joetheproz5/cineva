@@ -87,12 +87,12 @@
       .hero-copy h1{font-size:clamp(52px,5vw,70px)}
       .hero-copy>p{margin-inline:auto}
       .hero-copy .hero-actions,.hero-copy .trust-line{justify-content:center}
-      .hero-laptop{top:50%;right:auto;left:-1%;width:min(56%,680px);transform:rotateY(11deg) rotateX(3deg) rotateZ(-1.2deg);animation:hero-drift-inward 9s ease-in-out infinite}
-      .hero-phone{top:50%;right:0;bottom:auto;width:clamp(150px,14vw,176px);transform:translateY(-50%) rotateY(-13deg) rotateZ(3deg)}
+      .hero-laptop{top:50%;right:auto;left:-8%;width:min(46%,580px);transform:rotateY(18deg) rotateX(3deg) rotateZ(-1.2deg);animation:hero-drift-inward 9s ease-in-out infinite}
+      .hero-phone{top:50%;right:0;bottom:auto;width:clamp(150px,14vw,176px);transform:translateY(-50%) rotateY(-22deg) rotateZ(5deg)}
       .hero-phone .device-screen{object-fit:contain}
     }
-    @keyframes hero-drift-inward{0%,100%{translate:0 -50%;transform:rotateY(11deg) rotateX(3deg) rotateZ(-1.2deg)}50%{translate:0 calc(-50% - 8px);transform:rotateY(8deg) rotateX(2deg) rotateZ(-.5deg)}}
-    @keyframes hero-drift-mobile{0%,100%{transform:translateY(-50%) rotateY(9deg) rotateX(3deg) rotateZ(-1deg)}50%{transform:translateY(calc(-50% - 6px)) rotateY(6deg) rotateX(2deg) rotateZ(-.4deg)}}
+    @keyframes hero-drift-inward{0%,100%{translate:0 -50%;transform:rotateY(18deg) rotateX(3deg) rotateZ(-1.2deg)}50%{translate:0 calc(-50% - 8px);transform:rotateY(14deg) rotateX(2deg) rotateZ(-.5deg)}}
+    @keyframes hero-drift-mobile{0%,100%{transform:translateY(-50%) rotateY(13deg) rotateX(3deg) rotateZ(-1deg)}50%{transform:translateY(calc(-50% - 6px)) rotateY(10deg) rotateX(2deg) rotateZ(-.4deg)}}
     @media(max-width:860px){
       .hero{min-height:0;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding-top:34px;padding-bottom:12px;overflow:hidden}
       .hero-copy{width:100%;max-width:560px;align-self:center;padding:0 12px;text-align:center}
@@ -101,14 +101,14 @@
       .hero-copy .hero-actions,.hero-copy .trust-line{justify-content:center}
       .hero-visual{width:100%;height:clamp(330px,48vw,450px);min-height:0;flex:none;margin:10px 0 0}
       .hero-visual:after{display:none}
-      .hero-laptop{top:50%;right:auto;bottom:auto;left:0;width:min(94%,600px);animation-name:hero-drift-mobile}
-      .hero-phone{top:auto;right:0;bottom:0;width:clamp(120px,18vw,166px);transform:rotateY(-13deg) rotateZ(3deg)}
+      .hero-laptop{top:50%;right:auto;bottom:auto;left:-2%;width:min(94%,600px);animation-name:hero-drift-mobile}
+      .hero-phone{top:auto;right:0;bottom:0;width:clamp(120px,18vw,166px);transform:rotateY(-19deg) rotateZ(5deg)}
       .hero-phone .device-screen{object-fit:contain}
     }
     @media(max-width:680px){
       .hero{padding-top:25px;padding-bottom:7px}
       .hero-visual{height:320px;margin:9px 0 0}
-      .hero-laptop{width:95%}
+      .hero-laptop{left:-1%;width:95%}
       .hero-phone{width:clamp(116px,30vw,132px)}
       .hero-phone .device-screen{object-fit:contain}
     }
@@ -135,7 +135,7 @@
           <article class="platform-card" id="macCard"><div class="chapter-inner">
             <div class="chapter-copy reveal"><div class="chapter-kicker">Mac <span class="platform-badge">macOS 13+</span></div><h2 id="macTitle">A bigger canvas for your next pick.</h2><p>Give SEVEN its own place on your Mac. Browse your collection in a focused desktop window and keep your profile ready for the next episode.</p>
               <ol class="install-steps"><li><span class="step-no">1</span><span>Install the universal app for Intel or Apple silicon.</span></li><li><span class="step-no">2</span><span>Open the disk image and move SEVEN to Applications.</span></li><li><span class="step-no">3</span><span>Sign in and your saved titles are right where you left them.</span></li></ol>
-              <a class="btn" id="macBtn" aria-label="Install SEVEN on Mac" href="https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-macOS.dmg">Install SEVEN<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+              <a class="btn" id="macBtn" aria-label="Install SEVEN on Mac" href="https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-macOS.dmg">Install on Mac<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
             </div>
             <div class="chapter-visual reveal"><div class="device device--laptop chapter-laptop"><div class="device-bar" aria-hidden="true"><i></i><i></i><i></i></div><span class="device-caption">SEVEN · Browse</span><img class="device-screen" src="/assets/install-movies-desktop.webp" alt="SEVEN movie collection on Mac" width="1180" height="754" loading="lazy"></div></div>
           </div></article>
@@ -145,7 +145,7 @@
           <article class="platform-card" id="iosCard"><div class="chapter-inner">
             <div class="chapter-copy reveal"><div class="chapter-kicker">iPhone &amp; iPad <span class="platform-badge">Safari web app</span></div><h2 id="iosTitle">Your stories, right at home.</h2><p>Add SEVEN to your Home Screen and open it like an app. Your favourites, searches, and watch progress travel with your profile.</p>
               <ol class="install-steps"><li><span class="step-no">1</span><span>Open SEVEN in Safari on your iPhone or iPad.</span></li><li><span class="step-no">2</span><span>Tap Share, then choose Add to Home Screen.</span></li><li><span class="step-no">3</span><span>Tap Add. SEVEN is ready from your Home Screen.</span></li></ol>
-              <button class="btn" id="iosBtn" type="button" aria-label="Install SEVEN on iPhone and iPad">Install SEVEN<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button class="btn" id="iosBtn" type="button" aria-label="Install SEVEN on iPhone and iPad">Install on iPhone &amp; iPad<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
             </div>
             <div class="chapter-visual chapter-phone-wrap reveal"><div class="device chapter-phone"><span class="phone-island" aria-hidden="true"></span><img class="device-screen" src="/assets/install-home-mobile.webp" alt="SEVEN home screen on iPhone" width="430" height="932" loading="lazy"></div></div>
           </div></article>
@@ -155,7 +155,7 @@
           <article class="platform-card" id="windowsCard"><div class="chapter-inner">
             <div class="chapter-copy reveal"><div class="chapter-kicker">Windows <span class="platform-badge">Windows 10 / 11 · 64-bit</span></div><h2 id="windowsTitle">A dedicated window for SEVEN.</h2><p>Settle in with a desktop app that feels at home on Windows. Install once, open it from Start, and let your library come with you.</p>
               <ol class="install-steps"><li><span class="step-no">1</span><span>Download the SEVEN setup for 64-bit Windows.</span></li><li><span class="step-no">2</span><span>Run the installer and follow the setup prompts. If asked, install <a href="https://developer.microsoft.com/microsoft-edge/webview2/" target="_blank" rel="noreferrer">WebView2 Runtime</a>.</span></li><li><span class="step-no">3</span><span>Launch SEVEN from Start and sign in to your profile.</span></li></ol>
-              <a class="btn" id="windowsBtn" aria-label="Install SEVEN on Windows" href="https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-Setup-win-x64.exe">Install SEVEN<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+              <a class="btn" id="windowsBtn" aria-label="Install SEVEN on Windows" href="https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-Setup-win-x64.exe">Install on Windows<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
             </div>
             <div class="chapter-visual reveal"><div class="device device--laptop chapter-laptop"><div class="device-bar" aria-hidden="true"><i></i><i></i><i></i></div><span class="device-caption">SEVEN · Series</span><img class="device-screen" src="/assets/install-series-desktop.webp" alt="SEVEN series detail and episode guide on Windows" width="1180" height="738" loading="lazy"></div></div>
           </div></article>
@@ -165,7 +165,7 @@
           <article class="platform-card" id="androidCard"><div class="chapter-inner">
             <div class="chapter-copy reveal"><div class="chapter-kicker">Android <span class="platform-badge">Android 8+</span></div><h2 id="androidTitle">Take SEVEN along.</h2><p>Keep your SEVEN library close. Install the Android app directly, then pick up with your own profile and saved progress.</p>
               <ol class="install-steps"><li><span class="step-no">1</span><span>Download the SEVEN app package to your device.</span></li><li><span class="step-no">2</span><span>Open it and allow installs from your browser if asked.</span></li><li><span class="step-no">3</span><span>Finish installing, open SEVEN, and sign in.</span></li></ol>
-              <a class="btn" id="androidBtn" aria-label="Install SEVEN on Android" href="/downloads/seven.apk" download="seven.apk">Install SEVEN<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+              <a class="btn" id="androidBtn" aria-label="Install SEVEN on Android" href="/downloads/seven.apk" download="seven.apk">Install on Android<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
             </div>
             <div class="chapter-visual chapter-phone-wrap reveal"><div class="device chapter-phone"><span class="phone-island" aria-hidden="true"></span><img class="device-screen" src="/assets/install-series-mobile.webp" alt="SEVEN series episode page on Android" width="430" height="932" loading="lazy"></div></div>
           </div></article>
