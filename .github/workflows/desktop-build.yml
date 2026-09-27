@@ -1,0 +1,167 @@
+name: Build SEVEN desktop apps
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "Mac/**"
+      - "Windows/**"
+      - "Web/download.html"
+      - "Web/tests/download-page.test.js"
+      - ".github/workflows/desktop-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seven-desktop-release
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Build Windows installer
+    runs-on: windows-2022
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish self-contained Windows app
+        run: >-
+          dotnet publish Windows/Seven.Desktop/Seven.Desktop.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output dist/windows
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+
+      - name: Create Windows installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $compiler)) {
+            throw "Inno Setup compiler was not found: $compiler"
+          }
+          New-Item -ItemType Directory -Path "dist/installer" -Force | Out-Null
+          & $compiler /Qp "Windows/Seven.Desktop/installer.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup failed with exit code $LASTEXITCODE"
+          }
+          if (-not (Test-Path -LiteralPath "dist/installer/SEVEN-Setup-win-x64.exe")) {
+            throw "Expected Windows installer was not created"
+          }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-windows-installer
+          path: dist/installer/SEVEN-Setup-win-x64.exe
+          if-no-files-found: error
+          retention-days: 2
+
+  macos:
+    name: Build universal macOS app
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Build Apple Silicon app
+        run: swift build --configuration release --arch arm64 --build-path .build/arm64
+        working-directory: Mac
+
+      - name: Build Intel app
+        run: swift build --configuration release --arch x86_64 --build-path .build/x86_64
+        working-directory: Mac
+
+      - name: Package universal app as a disk image
+        shell: bash
+        working-directory: Mac
+        run: |
+          set -euo pipefail
+          app="../dist/SEVEN.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" ../dist/seven.iconset
+          arm_bin="$(swift build --configuration release --arch arm64 --build-path .build/arm64 --show-bin-path)"
+          intel_bin="$(swift build --configuration release --arch x86_64 --build-path .build/x86_64 --show-bin-path)"
+          lipo -create \
+            "$arm_bin/SEVEN" \
+            "$intel_bin/SEVEN" \
+            -output "$app/Contents/MacOS/SEVEN"
+          cp Info.plist "$app/Contents/Info.plist"
+
+          while IFS=: read -r icon_name icon_size; do
+            sips -s format png -z "$icon_size" "$icon_size" ../Web/assets/seven-logo-app.png \
+              --out "../dist/seven.iconset/$icon_name" >/dev/null
+          done <<'ICONS'
+          icon_16x16.png:16
+          icon_16x16@2x.png:32
+          icon_32x32.png:32
+          icon_32x32@2x.png:64
+          icon_128x128.png:128
+          icon_128x128@2x.png:256
+          icon_256x256.png:256
+          icon_256x256@2x.png:512
+          icon_512x512.png:512
+          icon_512x512@2x.png:1024
+          ICONS
+          iconutil -c icns -o "$app/Contents/Resources/SEVEN.icns" ../dist/seven.iconset
+
+          plutil -lint "$app/Contents/Info.plist"
+          file "$app/Contents/MacOS/SEVEN"
+          hdiutil create -volname "SEVEN" -srcfolder "$app" -ov -format UDZO ../dist/SEVEN-macOS.dmg
+
+      - name: Upload macOS disk image
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-macos-disk-image
+          path: dist/SEVEN-macOS.dmg
+          if-no-files-found: error
+          retention-days: 2
+
+  release:
+    name: Publish combined desktop release
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: seven-windows-installer
+          path: dist/windows
+
+      - name: Download macOS disk image
+        uses: actions/download-artifact@v4
+        with:
+          name: seven-macos-disk-image
+          path: dist/macos
+
+      - name: Publish both installers to the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: desktop-build-${{ github.run_id }}
+          RELEASE_NOTES: |
+            SEVEN desktop apps for Windows and macOS.
+
+            Windows: 64-bit Windows 10 and 11. Run SEVEN-Setup-win-x64.exe to install for your Windows user. Setup creates a Start menu shortcut and supports normal uninstall. Microsoft Edge WebView2 is required; if it is missing, the app opens Microsoft's official runtime download page. The installer is unsigned and Windows may show a SmartScreen warning.
+
+            macOS: universal app for Apple Silicon and Intel, macOS 13 or later. Open SEVEN-macOS.dmg and drag SEVEN to Applications. This build is not signed or notarized; on first launch, Control-click SEVEN in Applications and choose Open to approve it in Gatekeeper.
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/windows/SEVEN-Setup-win-x64.exe
+          test -s dist/macos/SEVEN-macOS.dmg
+          gh release create "$RELEASE_TAG" \
+            dist/windows/SEVEN-Setup-win-x64.exe \
+            dist/macos/SEVEN-macOS.dmg \
+            --title "SEVEN Desktop · Build $GITHUB_RUN_NUMBER" \
+            --notes "$RELEASE_NOTES" \
+            --latest

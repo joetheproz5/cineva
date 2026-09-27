@@ -17,12 +17,14 @@ The SEVEN web app plays titles through cloud-hosted embed players — VidLink, V
 
 For browser and PWA use, [CompanionExtension](CompanionExtension) is an optional, local Manifest V3 extension that blocks new windows and top-level navigations initiated by the configured player domains. Its exact install steps are in [CompanionExtension/README.md](CompanionExtension/README.md). It is deliberately limited to popup protection: it does not proxy, rewrite, inspect, or store media traffic.
 
-The Windows desktop wrapper lives in [Windows/Seven.Desktop](Windows/Seven.Desktop). It packages the SEVEN web app in a native WPF window powered by Microsoft's WebView2 runtime; links leaving SEVEN open in the default browser. Pushes that change `Windows/**` build a self-contained x64 app and a per-user Windows installer, then publish the installer to the latest GitHub Release. The installer creates a Start menu shortcut and supports normal uninstall. Windows may display SmartScreen for the currently unsigned installer.
+The desktop wrappers live in [Windows/Seven.Desktop](Windows/Seven.Desktop) and [Mac](Mac). The Windows app uses WPF and Microsoft's WebView2; the macOS app is a native SwiftUI/WebKit shell built for Intel and Apple Silicon. Both keep SEVEN in the app window and send outside links to the default browser. The combined [desktop build workflow](.github/workflows/desktop-build.yml) builds both installers and publishes them together, so their download links remain available from the same latest GitHub Release. Windows may display SmartScreen for the unsigned installer. The macOS build is unsigned and not notarized; Gatekeeper may require Control-click → Open for the first launch.
 
 ## Platforms
 
 - **iPhone:** [GoodDoctor.xcodeproj](GoodDoctor.xcodeproj) — the Xcode target and on-device name are **Cineva**.
 - **Android:** [Android](Android) — a native Kotlin/Jetpack Compose project with the same player URL configuration.
+- **Mac:** [Mac](Mac) — a native SwiftUI/WebKit app that wraps the SEVEN web experience.
+- **Windows:** [Windows/Seven.Desktop](Windows/Seven.Desktop) — a native WPF/WebView2 desktop wrapper.
 
 ## Embedded-player configuration
 
@@ -47,6 +49,12 @@ The embedded page controls native playback/full-screen behavior. Cineva listens 
 1. Open the `Android` directory in current Android Studio and allow Gradle sync to download dependencies.
 2. If Android Studio asks, install Android SDK Platform 35.
 3. Connect an Android phone with USB debugging enabled, select it, then press Run.
+
+## Run on Mac
+
+1. Open `Mac` in Terminal on a Mac with Swift 5.9 or later.
+2. Run `swift build --configuration release` to build the native wrapper.
+3. For the distributable universal app, use the `Build SEVEN desktop apps` GitHub Actions workflow; it packages the Apple Silicon and Intel builds into a DMG.
 
 ## Run on an iPhone without a Mac
 

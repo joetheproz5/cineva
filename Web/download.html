@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#08090b">
-  <meta name="description" content="Get SEVEN for Windows, iPhone, iPad, or Android. Your watchlist and progress go wherever you do.">
+  <meta name="description" content="Get SEVEN for Mac, Windows, iPhone, iPad, or Android. Your watchlist and progress go wherever you do.">
   <title>Get SEVEN</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/assets/seven-logo-app.png">
@@ -160,23 +160,35 @@
     .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
     .section-heading h2 { margin: 0; font-size: 20px; font-weight: 720; letter-spacing: -.035em; }
     .section-heading p { margin: 0; color: var(--subtle); font-size: 12px; }
-    .platforms { display: grid; grid-template-columns: 1.34fr 1fr 1fr; align-items: stretch; gap: 14px; }
+    .platform-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px; }
+    .platform-family {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid #ffffff14;
+      border-radius: 20px;
+      background: linear-gradient(155deg, #151619, #0f1012 66%);
+      box-shadow: 0 20px 56px #0002;
+    }
+    .family-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 1px 2px 15px; border-bottom: 1px solid #ffffff12; }
+    .family-heading h3 { margin: 0; font-size: 16px; font-weight: 760; letter-spacing: -.035em; }
+    .family-heading p { margin: 3px 0 0; color: var(--subtle); font-size: 10px; }
+    .family-label { flex: 0 0 auto; padding: 6px 9px; border: 1px solid #ffffff14; border-radius: 999px; color: #c6c7cc; background: #ffffff06; font-size: 8px; font-weight: 780; letter-spacing: .13em; text-transform: uppercase; }
+    .platforms { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 12px; padding-top: 14px; }
     .platform-card {
       position: relative;
       min-width: 0;
       display: flex;
       flex-direction: column;
-      padding: 23px;
+      padding: 18px;
       border: 1px solid var(--line);
-      border-radius: 18px;
-      background: linear-gradient(145deg, #17181b, #111215 62%, #101013);
-      box-shadow: 0 12px 35px #0002;
+      border-radius: 15px;
+      background: linear-gradient(145deg, #191a1d, #121316 68%, #101114);
       transition: border-color .18s, transform .18s, background .18s;
     }
-    .platform-card.is-recommended { border-color: #8a2a33; box-shadow: 0 0 0 1px #3a1418, 0 12px 35px #0002; }
+    .platform-card.is-recommended { border-color: #8a2a33; box-shadow: 0 0 0 1px #3a1418, 0 10px 28px #e5091412; }
     .platform-card:hover { transform: translateY(-2px); border-color: #4b3034; background: linear-gradient(145deg, #1a191c, #121316 62%, #110f11); }
-    .windows-card { border-color: #5e2027; background: radial-gradient(ellipse at 100% 0%, #4b101a42, transparent 55%), linear-gradient(145deg, #1b171a, #121215 64%); }
-    .windows-card:hover { border-color: #8d2833; }
+    .desktop-card { border-color: #512128; background: radial-gradient(ellipse at 100% 0%, #4b101a35, transparent 58%), linear-gradient(145deg, #1a171a, #121215 68%); }
+    .desktop-card:hover { border-color: #8d2833; }
     .card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .platform-name { display: flex; align-items: center; gap: 11px; min-width: 0; }
     .platform-icon { display: grid; flex: 0 0 auto; width: 42px; height: 42px; place-items: center; border: 1px solid #ffffff12; border-radius: 12px; color: #f3f3f5; background: #ffffff08; }
@@ -185,8 +197,8 @@
     .platform-name p { margin: 2px 0 0; color: var(--subtle); font-size: 11px; }
     .platform-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #ffffff13; border-radius: 999px; color: #bebfc4; background: #ffffff06; font-size: 9px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
     .platform-badge.featured { border-color: #6e252d77; color: #ff969c; background: #60182032; }
-    .platform-card h4 { margin: 22px 0 5px; font-size: 18px; font-weight: 700; letter-spacing: -.035em; }
-    .platform-card .description { min-height: 40px; margin: 0 0 19px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+    .platform-card h4 { margin: 16px 0 5px; font-size: 16px; font-weight: 720; letter-spacing: -.035em; }
+    .platform-card .description { min-height: 36px; margin: 0 0 14px; color: var(--muted); font-size: 11px; line-height: 1.6; }
     .btn {
       display: inline-flex;
       min-height: 46px;
@@ -212,13 +224,13 @@
     .btn svg { width: 16px; height: 16px; }
     .btn.secondary { border-color: #37383e; color: #e6e6e9; background: #ffffff06; box-shadow: none; }
     .btn.secondary:hover { border-color: #55565d; background: #ffffff0c; }
-    .fineprint { margin: 11px 0 0; color: #777880; font-size: 10px; line-height: 1.5; text-align: center; }
+    .fineprint { margin: 10px 0 0; color: #777880; font-size: 9px; line-height: 1.5; text-align: center; }
     .fineprint a { color: #aaaab0; text-decoration: underline; text-underline-offset: 2px; }
     .steps { display: grid; gap: 8px; margin: 18px 0 0; padding: 0; color: #93949a; font-size: 10.5px; list-style: none; }
     .steps li { display: grid; grid-template-columns: 19px 1fr; align-items: start; gap: 7px; }
     .step-number { display: grid; width: 18px; height: 18px; place-items: center; border: 1px solid #34353b; border-radius: 50%; color: #c4c5ca; font-size: 9px; font-weight: 700; }
     .steps strong { color: #d7d8dc; font-weight: 650; }
-    .ios-card .description, .android-card .description { min-height: 40px; }
+    .platform-card .steps { margin-top: 14px; }
     .qr-section {
       display: flex;
       align-items: center;
@@ -251,10 +263,7 @@
       .app-art { width: 128px; height: 128px; border-radius: 28px; }
       .label-top { top: 19px; left: 15px; }
       .label-bottom { right: 14px; bottom: 17px; }
-      .platforms { grid-template-columns: 1fr 1fr; }
-      .windows-card { grid-column: 1 / -1; }
-      .windows-card .windows-layout { display: grid; grid-template-columns: 1fr minmax(220px, .8fr); align-items: end; gap: 24px; }
-      .windows-card h4 { margin-top: 20px; }
+      .platform-groups { grid-template-columns: 1fr; gap: 13px; }
     }
     @media (max-width: 620px) {
       .page { width: calc(100% - 36px); }
@@ -279,14 +288,16 @@
       .section-heading { display: block; margin-bottom: 12px; }
       .section-heading h2 { font-size: 17px; }
       .section-heading p { margin-top: 3px; font-size: 10px; }
-      .platforms { grid-template-columns: 1fr; gap: 11px; }
-      .platform-card { padding: 18px; border-radius: 15px; }
-      .windows-card { grid-column: auto; }
-      .windows-card .windows-layout { display: block; }
-      .platform-card h4 { margin-top: 18px; font-size: 16px; }
+      .platform-family { padding: 14px; border-radius: 17px; }
+      .family-heading { padding-bottom: 12px; }
+      .family-heading h3 { font-size: 15px; }
+      .family-heading p { max-width: 245px; font-size: 9px; }
+      .family-label { padding: 5px 7px; font-size: 7px; }
+      .platforms { gap: 10px; padding-top: 11px; }
+      .platform-card { padding: 16px; border-radius: 14px; }
+      .platform-card h4 { margin-top: 14px; font-size: 15px; }
       .platform-card .description { min-height: auto; margin-bottom: 15px; }
       .steps { grid-template-columns: 1fr; margin-top: 14px; }
-      .ios-card .description, .android-card .description { min-height: auto; }
       .qr-section { margin-top: 14px; padding: 15px; }
       .qr-copy { gap: 10px; }
       .qr-copy-mark { width: 34px; height: 34px; }
@@ -325,7 +336,7 @@
           <i class="orbit orbit-one"></i><i class="orbit orbit-two"></i>
           <div class="floating-label label-top">
             <svg viewBox="0 0 24 24" fill="none"><path d="M2.5 5.5h19v13h-19zM8 21h8m-4-2.5V21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Your own window<small>SEVEN for Windows</small></span>
+            <span>Your own window<small>SEVEN for Mac &amp; Windows</small></span>
           </div>
           <img class="app-art" src="/assets/seven-logo-red.png" alt="">
           <div class="floating-label label-bottom">
@@ -340,65 +351,98 @@
           <h2 id="platformHeading">Choose your screen</h2>
           <p>Official SEVEN downloads · Always free</p>
         </div>
-        <div class="platforms">
-          <article class="platform-card windows-card" id="windowsCard">
-            <div class="windows-layout">
+        <div class="platform-groups">
+          <section class="platform-family" aria-labelledby="appleHeading">
+            <header class="family-heading">
               <div>
+                <h3 id="appleHeading">Apple devices</h3>
+                <p>One SEVEN experience, at your desk and on the go.</p>
+              </div>
+              <span class="family-label">Mac · iPhone · iPad</span>
+            </header>
+            <div class="platforms">
+              <article class="platform-card desktop-card mac-card" id="macCard">
+                <div class="card-top">
+                  <div class="platform-name">
+                    <span class="platform-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 12.4c.02 2.28 2 3.04 2.02 3.05-.02.06-.32 1.08-1.05 2.14-.63.92-1.28 1.83-2.3 1.85-1 .02-1.32-.6-2.46-.6-1.15 0-1.5.58-2.44.62-1 .04-1.76-.99-2.4-1.9-1.31-1.9-2.3-5.37-.96-7.72.66-1.17 1.84-1.91 3.12-1.93.97-.02 1.88.65 2.47.65.6 0 1.72-.8 2.9-.69.5.02 1.9.2 2.8 1.54-.07.04-1.68.98-1.7 2.99ZM14.47 6.62c.52-.63.87-1.5.77-2.37-.75.03-1.66.5-2.2 1.12-.49.56-.92 1.45-.8 2.3.83.07 1.69-.43 2.23-1.05Z"/></svg></span>
+                    <span><h3>Mac</h3><p>Universal desktop app</p></span>
+                  </div>
+                  <span class="platform-badge">Intel + Apple silicon</span>
+                </div>
+                <h4>A proper home for SEVEN.</h4>
+                <p class="description">A native Mac window with keyboard-friendly browsing, smooth playback, and your SEVEN profile ready when you are.</p>
+                <a class="btn" id="macBtn" href="https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-macOS.dmg">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Download for Mac
+                </a>
+                <p class="fineprint">macOS 13+ · Intel &amp; Apple silicon<br>Open the DMG and drag SEVEN to Applications. Unsigned: Control-click SEVEN → Open on first launch.</p>
+              </article>
+
+              <article class="platform-card ios-card" id="iosCard">
+                <div class="card-top">
+                  <div class="platform-name">
+                    <span class="platform-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 12.4c.02 2.28 2 3.04 2.02 3.05-.02.06-.32 1.08-1.05 2.14-.63.92-1.28 1.83-2.3 1.85-1 .02-1.32-.6-2.46-.6-1.15 0-1.5.58-2.44.62-1 .04-1.76-.99-2.4-1.9-1.31-1.9-2.3-5.37-.96-7.72.66-1.17 1.84-1.91 3.12-1.93.97-.02 1.88.65 2.47.65.6 0 1.72-.8 2.9-.69.5.02 1.9.2 2.8 1.54-.07.04-1.68.98-1.7 2.99ZM14.47 6.62c.52-.63.87-1.5.77-2.37-.75.03-1.66.5-2.2 1.12-.49.56-.92 1.45-.8 2.3.83.07 1.69-.43 2.23-1.05Z"/></svg></span>
+                    <span><h3>iPhone &amp; iPad</h3><p>Install from Safari</p></span>
+                  </div>
+                </div>
+                <h4>Put SEVEN on your Home Screen.</h4>
+                <p class="description">Install the web app in Safari. Your profiles, favourites and progress stay in sync.</p>
+                <button class="btn secondary" id="iosBtn" type="button">Open SEVEN in Safari <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 14 14 6m-6 0h6v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <ol class="steps">
+                  <li><span class="step-number">1</span><span>In Safari, tap <strong>Share</strong>.</span></li>
+                  <li><span class="step-number">2</span><span>Choose <strong>Add to Home Screen</strong>.</span></li>
+                  <li><span class="step-number">3</span><span>Tap <strong>Add</strong> to finish.</span></li>
+                </ol>
+              </article>
+            </div>
+          </section>
+
+          <section class="platform-family" aria-labelledby="otherPlatformsHeading">
+            <header class="family-heading">
+              <div>
+                <h3 id="otherPlatformsHeading">PC &amp; Android</h3>
+                <p>Bring the full SEVEN library to your computer or phone.</p>
+              </div>
+              <span class="family-label">Windows · Android</span>
+            </header>
+            <div class="platforms">
+              <article class="platform-card desktop-card windows-card" id="windowsCard">
                 <div class="card-top">
                   <div class="platform-name">
                     <span class="platform-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.1 10.4 4v7H3zm8.5-1.2L21 2.5v8.5h-9.5zM3 13h7.4v7L3 18.9zm8.5 0H21v8.5l-9.5-1.4z"/></svg></span>
                     <span><h3>Windows</h3><p>SEVEN desktop app</p></span>
                   </div>
-                  <span class="platform-badge featured">Made for desktop</span>
+                  <span class="platform-badge">Made for desktop</span>
                 </div>
                 <h4>Your own space for SEVEN.</h4>
                 <p class="description">Install SEVEN like any other Windows app. It gets its own Start menu shortcut and a focused desktop window.</p>
-              </div>
-              <div>
                 <a class="btn" id="windowsBtn" href="https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-Setup-win-x64.exe">
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   Install on Windows
                 </a>
                 <p class="fineprint">Windows 10 or 11 · 64-bit · Installs for your account · WebView2 required<br>Unsigned installer; Windows may show SmartScreen. <a href="https://developer.microsoft.com/microsoft-edge/webview2/" target="_blank" rel="noreferrer">Get the WebView2 Runtime</a></p>
-              </div>
-            </div>
-          </article>
+              </article>
 
-          <article class="platform-card ios-card" id="iosCard">
-            <div class="card-top">
-              <div class="platform-name">
-                <span class="platform-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 12.4c.02 2.28 2 3.04 2.02 3.05-.02.06-.32 1.08-1.05 2.14-.63.92-1.28 1.83-2.3 1.85-1 .02-1.32-.6-2.46-.6-1.15 0-1.5.58-2.44.62-1 .04-1.76-.99-2.4-1.9-1.31-1.9-2.3-5.37-.96-7.72.66-1.17 1.84-1.91 3.12-1.93.97-.02 1.88.65 2.47.65.6 0 1.72-.8 2.9-.69.5.02 1.9.2 2.8 1.54-.07.04-1.68.98-1.7 2.99ZM14.47 6.62c.52-.63.87-1.5.77-2.37-.75.03-1.66.5-2.2 1.12-.49.56-.92 1.45-.8 2.3.83.07 1.69-.43 2.23-1.05Z"/></svg></span>
-                <span><h3>iPhone &amp; iPad</h3><p>Install from Safari</p></span>
-              </div>
+              <article class="platform-card android-card" id="androidCard">
+                <div class="card-top">
+                  <div class="platform-name">
+                    <span class="platform-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.2 19 6.8a.5.5 0 0 0-.87-.5l-1.45 2.5a9.2 9.2 0 0 0-9.36 0L5.87 6.3a.5.5 0 1 0-.87.5l1.4 2.4a8.4 8.4 0 0 0-3.9 6.3h19.1a8.4 8.4 0 0 0-4-6.3ZM8 13.2a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm8 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"/></svg></span>
+                    <span><h3>Android</h3><p>Direct app download</p></span>
+                  </div>
+                </div>
+                <h4>SEVEN, ready to go.</h4>
+                <p class="description">Download the Android app, then follow the install prompt on your phone.</p>
+                <a class="btn secondary" id="androidBtn" href="/downloads/seven.apk" download="seven.apk">
+                  Download APK <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <ol class="steps">
+                  <li><span class="step-number">1</span><span>Open the downloaded APK.</span></li>
+                  <li><span class="step-number">2</span><span>Allow install if Android asks.</span></li>
+                  <li><span class="step-number">3</span><span>Tap <strong>Install</strong> to finish.</span></li>
+                </ol>
+              </article>
             </div>
-            <h4>Put SEVEN on your Home Screen.</h4>
-            <p class="description">Install the web app in Safari. Your profiles, favourites and progress stay in sync.</p>
-            <button class="btn secondary" id="iosBtn" type="button">Open SEVEN in Safari <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 14 14 6m-6 0h6v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-            <ol class="steps">
-              <li><span class="step-number">1</span><span>In Safari, tap <strong>Share</strong>.</span></li>
-              <li><span class="step-number">2</span><span>Choose <strong>Add to Home Screen</strong>.</span></li>
-              <li><span class="step-number">3</span><span>Tap <strong>Add</strong> to finish.</span></li>
-            </ol>
-          </article>
-
-          <article class="platform-card android-card" id="androidCard">
-            <div class="card-top">
-              <div class="platform-name">
-                <span class="platform-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.2 19 6.8a.5.5 0 0 0-.87-.5l-1.45 2.5a9.2 9.2 0 0 0-9.36 0L5.87 6.3a.5.5 0 1 0-.87.5l1.4 2.4a8.4 8.4 0 0 0-3.9 6.3h19.1a8.4 8.4 0 0 0-4-6.3ZM8 13.2a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm8 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"/></svg></span>
-                <span><h3>Android</h3><p>Direct app download</p></span>
-              </div>
-            </div>
-            <h4>SEVEN, ready to go.</h4>
-            <p class="description">Download the Android app, then follow the install prompt on your phone.</p>
-            <a class="btn secondary" id="androidBtn" href="/downloads/seven.apk" download="seven.apk">
-              Download APK <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8v9.4m0 0 3.5-3.5M10 12.2 6.5 8.7M3.5 13v3.5h13V13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
-            <ol class="steps">
-              <li><span class="step-number">1</span><span>Open the downloaded APK.</span></li>
-              <li><span class="step-number">2</span><span>Allow install if Android asks.</span></li>
-              <li><span class="step-number">3</span><span>Tap <strong>Install</strong> to finish.</span></li>
-            </ol>
-          </article>
+          </section>
         </div>
       </section>
 
@@ -422,8 +466,10 @@
       var appUrl = "https://seven-9fm.pages.dev/";
       var userAgent = navigator.userAgent || "";
       var isIOS = /iPad|iPhone|iPod/.test(userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      var isMac = /Macintosh|Mac OS X/.test(userAgent) && !isIOS;
       var isAndroid = /Android/.test(userAgent);
       var isWindows = /Windows/.test(userAgent);
+      var macCard = document.getElementById("macCard");
       var iosCard = document.getElementById("iosCard");
       var androidCard = document.getElementById("androidCard");
       var windowsCard = document.getElementById("windowsCard");
@@ -440,6 +486,7 @@
       }
 
       if (isIOS) recommend(iosCard, "Recommended");
+      else if (isMac) recommend(macCard, "Recommended");
       else if (isAndroid) recommend(androidCard, "Recommended");
       else if (isWindows) recommend(windowsCard, "Recommended");
 
