@@ -90,6 +90,11 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.match(downloadPage, /@keyframes phone-drift/);
   assert.match(downloadPage, /@keyframes note-drift/);
   assert.match(downloadPage, /IntersectionObserver/);
+  assert.equal((downloadPage.match(/class="chapter-visual(?: chapter-phone-wrap)? reveal"/g) ?? []).length, 4, "all four device previews reveal on scroll");
+  assert.match(downloadPage, /chapter-visual\.reveal:not\(\.is-visible\) \.chapter-laptop\{[^}]*translate:0 34px[^}]*scale:\.96[^}]*filter:blur/);
+  assert.match(downloadPage, /chapter-visual\.reveal:not\(\.is-visible\) \.chapter-phone\{[^}]*scale:\.92[^}]*filter:blur/);
+  assert.match(downloadPage, /chapter-visual\.reveal\.is-visible \.device\{transition-delay:\.12s\}/);
+  assert.match(downloadPage, /chapter-visual\.reveal \.device\{opacity:1!important;translate:0 0!important;scale:1!important;filter:none!important;transition:none!important/);
   assert.match(downloadPage, /scroll-behavior:smooth/);
   assert.match(downloadPage, /prefers-reduced-motion\s*:\s*reduce/);
   assert.doesNotMatch(downloadPage, /qrserver\.com|id="qrImage"/);
