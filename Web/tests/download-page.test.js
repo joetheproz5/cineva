@@ -39,28 +39,29 @@ test("the Mac wrapper is native, universal, and published as a disk image", () =
   assert.match(macHost, /WKWebView/);
 });
 
-test("the download page separates Apple installs from Windows and Android", () => {
-  assert.match(downloadPage, /aria-labelledby="appleHeading"/);
-  assert.match(downloadPage, /id="macCard"/);
-  assert.match(downloadPage, /id="iosCard"/);
-  assert.match(downloadPage, /aria-labelledby="otherPlatformsHeading"/);
-  assert.match(downloadPage, /id="windowsCard"/);
-  assert.match(downloadPage, /id="androidCard"/);
+test("the download page provides four platform jump links and dedicated install chapters", () => {
+  for (const [id, anchor] of [["macCard", "install-mac"], ["iosCard", "install-ios"], ["windowsCard", "install-windows"], ["androidCard", "install-android"]]) {
+    assert.match(downloadPage, new RegExp(`id="${id}"`));
+    assert.match(downloadPage, new RegExp(`<section class="chapter(?: chapter--reverse)?" id="${anchor}"`));
+    assert.match(downloadPage, new RegExp(`href="#${anchor}"`));
+  }
+  assert.match(downloadPage, /aria-label="Choose a platform"/);
   assert.match(downloadPage, /id="iosBtn"/);
   assert.match(downloadPage, /id="androidBtn"[^>]*href="\/downloads\/seven\.apk"/);
-  assert.match(downloadPage, /<h3 id="otherPlatformsHeading">Windows &amp; Android<\/h3>/);
   assert.match(responseHeaders, /\/download\.html\s+Cache-Control: no-store, no-cache, must-revalidate/);
 });
 
-test("download options share one visual treatment and the red SEVEN icon", () => {
+test("the install story uses a restrained brand mark and lightweight app screenshots", () => {
   assert.match(downloadPage, /rel="icon" type="image\/png" sizes="64x64" href="\/assets\/favicon-64\.png\?v=2"/);
   assert.match(downloadPage, /rel="apple-touch-icon" href="\/assets\/apple-touch-icon\.png"/);
   assert.doesNotMatch(downloadPage, /href="\/icon\.svg" type="image\/svg\+xml"/);
   assert.doesNotMatch(downloadPage, /is-recommended|desktop-card|class="btn secondary"|function recommend/);
   assert.match(downloadPage, /seven-wordmark-download\.webp/);
-  assert.match(downloadPage, /seven-logo-red-download\.webp/);
   assert.ok(fs.statSync(path.join(repository, "Web/assets/seven-wordmark-download.webp")).size < 20_000);
-  assert.ok(fs.statSync(path.join(repository, "Web/assets/seven-logo-red-download.webp")).size < 20_000);
+  for (const screenshot of ["install-home-desktop.webp", "install-movies-desktop.webp", "install-series-desktop.webp", "install-home-mobile.webp", "install-movies-mobile.webp", "install-series-mobile.webp"]) {
+    assert.ok(fs.statSync(path.join(repository, "Web/assets", screenshot)).size < 60_000, `${screenshot} stays lightweight`);
+    assert.match(downloadPage, new RegExp(screenshot));
+  }
 
   for (const id of ["macCard", "iosCard", "windowsCard", "androidCard"]) {
     const card = downloadPage.match(new RegExp(`<article class="platform-card" id="${id}">([\\s\\S]*?)<\\/article>`));
@@ -71,13 +72,15 @@ test("download options share one visual treatment and the red SEVEN icon", () =>
   }
 });
 
-test("the redesigned download page gives every platform one clear install action", () => {
-  assert.match(downloadPage, /<title>Install SEVEN — Everywhere you watch<\/title>/);
-  assert.match(downloadPage, /id="pageTitle">Your stories\.<br><span>Everywhere\.<\/span>/);
-  assert.match(downloadPage, /@keyframes orbit/);
-  assert.match(downloadPage, /@keyframes logo-float/);
-  assert.match(downloadPage, /@keyframes chip-float/);
-  assert.match(downloadPage, /prefers-reduced-motion: reduce/);
+test("the long-form install page keeps motion accessible and every platform install working", () => {
+  assert.match(downloadPage, /<title>Install SEVEN — Your stories, on every screen<\/title>/);
+  assert.match(downloadPage, /id="pageTitle">Good stories,<br><span>one tap away\.<\/span>/);
+  assert.match(downloadPage, /@keyframes hero-drift/);
+  assert.match(downloadPage, /@keyframes phone-drift/);
+  assert.match(downloadPage, /@keyframes note-drift/);
+  assert.match(downloadPage, /IntersectionObserver/);
+  assert.match(downloadPage, /scroll-behavior:smooth/);
+  assert.match(downloadPage, /prefers-reduced-motion\s*:\s*reduce/);
   assert.doesNotMatch(downloadPage, /qrserver\.com|id="qrImage"/);
 
   for (const id of ["macCard", "iosCard", "windowsCard", "androidCard"]) {
@@ -91,8 +94,10 @@ test("the redesigned download page gives every platform one clear install action
   }
 
   assert.match(downloadPage, /androidButton\.setAttribute\("aria-label", "Install SEVEN on Android is temporarily unavailable"\)/);
+  assert.match(downloadPage, /window\.location\.assign\(appUrl\)/);
+  assert.match(downloadPage, /if \(!response\.ok\) throw new Error\("Android install unavailable"\)/);
   assert.match(downloadPage, /Install SEVEN/);
-  assert.doesNotMatch(downloadPage, /Download for Mac|Install on Windows|Download APK|Open SEVEN in Safari/);
+  assert.doesNotMatch(downloadPage, /Download for Mac|Install on Windows|Download APK/);
 });
 
 test("the desktop wrapper confines embedded navigation to SEVEN and opens web links externally", () => {
