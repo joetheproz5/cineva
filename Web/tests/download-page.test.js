@@ -72,6 +72,14 @@ test("the install story uses a restrained brand mark and lightweight app screens
   }
 });
 
+test("the installation chapters flow without large enclosing cards", () => {
+  const continuousStyles = downloadPage.slice(downloadPage.indexOf("/* Keep the installation story continuous"));
+  assert.match(continuousStyles, /\.hero\{[^}]*border:0[^}]*border-radius:0[^}]*box-shadow:none/);
+  assert.match(continuousStyles, /\.platform-card\{[^}]*border:0[^}]*background:transparent[^}]*box-shadow:none/);
+  assert.match(continuousStyles, /\.platform-link\{[^}]*border:0[^}]*background:transparent/);
+  assert.match(continuousStyles, /\.chapter\+\.chapter\{border-top:0\}/);
+});
+
 test("the long-form install page keeps motion accessible and every platform install working", () => {
   assert.match(downloadPage, /<title>Install SEVEN — Your stories, on every screen<\/title>/);
   assert.match(downloadPage, /id="pageTitle">Good stories,<br><span>one tap away\.<\/span>/);

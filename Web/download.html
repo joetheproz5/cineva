@@ -25,6 +25,22 @@
     @keyframes hero-drift-mobile{0%,100%{transform:rotateY(-9deg) rotateX(3deg) rotateZ(-1deg) translateY(0)}50%{transform:rotateY(-6deg) rotateX(2deg) rotateZ(-.4deg) translateY(-6px)}}@media(max-width:370px){.page{width:calc(100% - 22px)}.platform-link{gap:7px;padding:8px}.platform-icon{width:29px;height:29px}.platform-link b{font-size:9px}.floating-note{transform:scale(.93);transform-origin:left top}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.motion-ready .reveal{opacity:1;transform:none}}
     @media(min-width:681px){h1{font-size:clamp(52px,5.4vw,78px)}}
     .hero-laptop:after{display:none}
+    /* Keep the installation story continuous: only the device mockups are framed. */
+    .hero{min-height:660px;overflow:visible;padding-right:0;padding-left:0;border:0;border-radius:0;background:radial-gradient(ellipse at 79% 54%,#205b591f,transparent 33rem);box-shadow:none}
+    .hero:before,.hero:after{display:none}
+    .platform-links{column-gap:24px;row-gap:0}
+    .platform-link{min-height:68px;gap:12px;padding:8px 2px 12px;border:0;border-radius:0;background:transparent}
+    .platform-link:hover{transform:translateY(-2px);border:0;background:transparent}
+    .platform-icon{width:29px;height:29px;border:0;border-radius:0;background:transparent}
+    .chapters{gap:0;padding-top:8px}
+    .chapter{position:relative;padding:32px 0}
+    .chapter+.chapter{border-top:0}
+    .platform-card{overflow:visible;border:0;border-radius:0;background:transparent;box-shadow:none}
+    .platform-card:before{display:none}
+    .chapter-inner{padding:60px 0}
+    .install-finish{padding-right:0;padding-left:0;border:0;border-top:1px solid #ffffff16;border-radius:0;background:transparent;box-shadow:none}
+    @media(max-width:1000px){.hero{min-height:570px;padding-right:0;padding-left:0}.chapter-inner,.chapter--reverse .chapter-inner{padding:48px 0}}
+    @media(max-width:680px){.hero{min-height:0;padding:24px 0 6px;border-radius:0}.platform-picker{padding:42px 0 20px}.platform-links{column-gap:18px;row-gap:6px}.platform-link{min-height:62px;gap:8px;padding:7px 1px 9px}.platform-icon{width:26px;height:26px}.chapter{padding:18px 0}.chapter-inner,.chapter--reverse .chapter-inner{gap:19px;padding:32px 0 29px}.install-finish{padding-top:20px}}
   </style>
 </head>
 <body>
