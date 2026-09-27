@@ -48,7 +48,7 @@ test("the download page separates Apple installs from Windows and Android", () =
   assert.match(downloadPage, /id="androidCard"/);
   assert.match(downloadPage, /id="iosBtn"/);
   assert.match(downloadPage, /id="androidBtn"[^>]*href="\/downloads\/seven\.apk"/);
-  assert.match(downloadPage, /id="qrImage"/);
+  assert.match(downloadPage, /<h3 id="otherPlatformsHeading">Windows &amp; Android<\/h3>/);
   assert.match(responseHeaders, /\/download\.html\s+Cache-Control: no-store, no-cache, must-revalidate/);
 });
 
@@ -57,6 +57,10 @@ test("download options share one visual treatment and the red SEVEN icon", () =>
   assert.match(downloadPage, /rel="apple-touch-icon" href="\/assets\/apple-touch-icon\.png"/);
   assert.doesNotMatch(downloadPage, /href="\/icon\.svg" type="image\/svg\+xml"/);
   assert.doesNotMatch(downloadPage, /is-recommended|desktop-card|class="btn secondary"|function recommend/);
+  assert.match(downloadPage, /seven-wordmark-download\.webp/);
+  assert.match(downloadPage, /seven-logo-red-download\.webp/);
+  assert.ok(fs.statSync(path.join(repository, "Web/assets/seven-wordmark-download.webp")).size < 20_000);
+  assert.ok(fs.statSync(path.join(repository, "Web/assets/seven-logo-red-download.webp")).size < 20_000);
 
   for (const id of ["macCard", "iosCard", "windowsCard", "androidCard"]) {
     const card = downloadPage.match(new RegExp(`<article class="platform-card" id="${id}">([\\s\\S]*?)<\\/article>`));
@@ -68,12 +72,13 @@ test("download options share one visual treatment and the red SEVEN icon", () =>
 });
 
 test("the redesigned download page gives every platform one clear install action", () => {
-  assert.match(downloadPage, /<title>Install SEVEN — Your stories, everywhere<\/title>/);
+  assert.match(downloadPage, /<title>Install SEVEN — Everywhere you watch<\/title>/);
   assert.match(downloadPage, /id="pageTitle">Your stories\.<br><span>Everywhere\.<\/span>/);
-  assert.match(downloadPage, /@keyframes screen-float/);
-  assert.match(downloadPage, /@keyframes phone-float/);
+  assert.match(downloadPage, /@keyframes orbit/);
+  assert.match(downloadPage, /@keyframes logo-float/);
+  assert.match(downloadPage, /@keyframes chip-float/);
   assert.match(downloadPage, /prefers-reduced-motion: reduce/);
-  assert.match(downloadPage, /id="qrImage"/);
+  assert.doesNotMatch(downloadPage, /qrserver\.com|id="qrImage"/);
 
   for (const id of ["macCard", "iosCard", "windowsCard", "androidCard"]) {
     const card = downloadPage.match(new RegExp(`<article class="platform-card" id="${id}">([\\s\\S]*?)<\\/article>`));
