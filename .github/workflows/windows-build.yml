@@ -1,0 +1,60 @@
+name: Build SEVEN for Windows
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "Windows/**"
+      - ".github/workflows/windows-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-desktop-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish self-contained Windows app
+        run: >-
+          dotnet publish Windows/Seven.Desktop/Seven.Desktop.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output dist/windows
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+
+      - name: Publish latest desktop release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: desktop-build-${{ github.run_id }}
+        shell: pwsh
+        run: |
+          $asset = "dist/windows/SEVEN.exe"
+          if (-not (Test-Path -LiteralPath $asset)) {
+            throw "Expected desktop app was not created: $asset"
+          }
+          $notes = @'
+          SEVEN desktop app for 64-bit Windows 10 and 11.
+
+          Download SEVEN.exe and run it. The app uses Microsoft's Edge WebView2 Runtime; if it is not installed, SEVEN opens the official Microsoft download page.
+
+          This build is currently unsigned, so Windows may show a SmartScreen warning before first launch.
+          '@
+          gh release create $env:RELEASE_TAG $asset --title "SEVEN Desktop · Build $env:GITHUB_RUN_NUMBER" --notes $notes --latest

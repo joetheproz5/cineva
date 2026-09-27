@@ -6,6 +6,11 @@ xcuserdata/
 *.xcscmblueprint
 *.moved-aside
 
+# .NET build output
+**/bin/
+**/obj/
+/dist/
+
 # Local configuration and credentials
 Config.xcconfig
 Web/tmdb.local.json
