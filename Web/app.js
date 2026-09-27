@@ -99,7 +99,6 @@ function scrollToTop() { window.scrollTo(0, 0); document.documentElement.scrollT
 function animateScrollToTop() {
   const root = document.scrollingElement || document.documentElement;
   const startY = Math.max(Number(window.scrollY) || 0, Number(root.scrollTop) || 0, Number(document.body.scrollTop) || 0);
-  if (prefersReducedMotion()) { scrollToTop(); return; }
   if (startY <= 0) return;
   cancelAnimationFrame(state.footerScrollFrame);
   const duration = Math.min(1100, Math.max(420, startY * .42));
@@ -784,7 +783,6 @@ async function syncNativePlayerEpisode(change) {
   try { await refreshPlayerEpisodeContext(Number(previous.id), season, request); }
   catch { /* Keep the counter in sync even if episode metadata is temporarily unavailable. */ }
 }
-const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
 function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"), profile = cached?.profiles?.find(item => item.id === cached.activeProfileId), enabled = profile?.preferences?.introEnabled ?? cached?.preferences?.introEnabled; return enabled !== false; } catch { return true; } }
 function dismissIntro() {
   if (!document.querySelector(".seven-intro")) return;
@@ -825,11 +823,9 @@ function renderLaunchIntro() {
     state.introAnimationComplete = true;
     return;
   }
-  const reducedMotion = prefersReducedMotion();
   if (document.querySelector(".seven-intro")) return;
   const overlay = StartupIntro();
   const logo = overlay.querySelector(".startup-intro-mark");
-  if (reducedMotion) overlay.classList.add("reduced-motion");
   const startIntro = loaded => {
     if (!overlay.isConnected) return;
     if (!loaded) {
@@ -837,10 +833,6 @@ function renderLaunchIntro() {
       overlay.querySelector(".startup-intro-fallback").hidden = false;
     }
     overlay.classList.add("live");
-    if (reducedMotion) {
-      state.introAnimationComplete = true;
-      maybeFinishIntro();
-    }
   };
   document.documentElement.style.overflow = "hidden";
   document.body.appendChild(overlay);
@@ -1486,7 +1478,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=287", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=289", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

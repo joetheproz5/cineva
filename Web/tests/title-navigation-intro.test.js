@@ -31,22 +31,23 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(intro, /!state\.startupReady \|\| !state\.introAnimationComplete/);
   assert.match(intro, /state\.introSafetyTimer = setTimeout\(/);
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
-  assert.match(app, /if \(reducedMotion\) overlay\.classList\.add\("reduced-motion"\)/);
-  assert.match(app, /if \(reducedMotion\) \{\s*state\.introAnimationComplete = true;\s*maybeFinishIntro\(\);/);
+  assert.doesNotMatch(intro, /prefersReducedMotion|reduced-motion/);
   assert.match(styles, /\.seven-intro\.exiting/);
-  assert.match(styles, /\.seven-intro\.reduced-motion \.startup-intro-mark \{ animation: none !important; opacity: 1; transform: none; filter: none; \}/);
+  assert.match(styles, /\.startup-intro-rays \{[^}]*animation: intro-rays/);
+  assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
+  assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=284/);
+  assert.match(index, /ui\.css\?v=286/);
   assert.match(index, /auth\.css\?v=238/);
-  assert.match(index, /app\.js\?v=287/);
-  assert.match(serviceWorker, /seven-v287/);
+  assert.match(index, /app\.js\?v=289/);
+  assert.match(serviceWorker, /seven-v289/);
   assert.match(serviceWorker, /auth\.css\?v=238/);
-  assert.match(serviceWorker, /ui\.css\?v=284/);
-  assert.match(serviceWorker, /app\.js\?v=287/);
+  assert.match(serviceWorker, /ui\.css\?v=286/);
+  assert.match(serviceWorker, /app\.js\?v=289/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
-test("the footer back-to-top link scrolls smoothly and honors reduced motion", () => {
+test("the footer back-to-top link animates even when reduced motion is requested", () => {
   assert.match(app, /<a class="footer-top" href="#app"/);
   assert.match(app, /document\.addEventListener\("click", event => \{\s*const topLink = event\.target\?\.closest\?\.\("\.footer-top"\);\s*if \(!topLink\) return;\s*event\.preventDefault\(\);\s*animateScrollToTop\(\);\s*\}, true\)/);
 
@@ -55,7 +56,7 @@ test("the footer back-to-top link scrolls smoothly and honors reduced motion", (
   const helper = app.slice(start, end);
   assert.ok(start >= 0 && end > start, "animated scroll helper should exist");
   assert.match(helper, /requestAnimationFrame\(step\)/);
-  assert.match(helper, /prefersReducedMotion\(\)\) \{ scrollToTop\(\); return; \}/);
+  assert.doesNotMatch(helper, /prefersReducedMotion/);
 
   const root = { scrollTop:900 };
   const body = { scrollTop:900 };
@@ -64,7 +65,7 @@ test("the footer back-to-top link scrolls smoothly and honors reduced motion", (
     state:{ footerScrollFrame:0 },
     window:{ scrollY:900, scrollTo(_x, y) { root.scrollTop = y; } },
     document:{ scrollingElement:root, documentElement:root, body },
-    prefersReducedMotion:() => false,
+    prefersReducedMotion:() => true,
     cancelAnimationFrame() {},
     requestAnimationFrame(callback) { frames.push(callback); return frames.length; }
   };
@@ -75,16 +76,6 @@ test("the footer back-to-top link scrolls smoothly and honors reduced motion", (
   while (frames.length) frames.shift()(500);
   assert.equal(root.scrollTop, 0);
   assert.equal(body.scrollTop, 0);
-
-  let instantScrolls = 0;
-  const reducedContext = {
-    state:{ footerScrollFrame:0 }, window:{ scrollY:900 },
-    document:{ scrollingElement:{ scrollTop:900 }, documentElement:{ scrollTop:900 }, body:{ scrollTop:900 } },
-    prefersReducedMotion:() => true, scrollToTop() { instantScrolls += 1; },
-    cancelAnimationFrame() {}, requestAnimationFrame() { throw new Error("reduced motion must not animate"); }
-  };
-  vm.runInNewContext(`${helper}\nanimateScrollToTop();`, reducedContext);
-  assert.equal(instantScrolls, 1);
 });
 
 test("the home spotlight shares the header and rail content column", () => {
