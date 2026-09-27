@@ -47,8 +47,22 @@ test("the download page separates Apple installs from Windows and Android", () =
   assert.match(downloadPage, /id="iosBtn"/);
   assert.match(downloadPage, /id="androidBtn" href="\/downloads\/seven\.apk"/);
   assert.match(downloadPage, /id="qrImage"/);
-  assert.match(downloadPage, /var isMac = \/Macintosh\|Mac OS X\//);
   assert.match(responseHeaders, /\/download\.html\s+Cache-Control: no-store, no-cache, must-revalidate/);
+});
+
+test("download options share one visual treatment and the red SEVEN icon", () => {
+  assert.match(downloadPage, /rel="icon" type="image\/png" sizes="64x64" href="\/assets\/favicon-64\.png\?v=2"/);
+  assert.match(downloadPage, /rel="apple-touch-icon" href="\/assets\/apple-touch-icon\.png"/);
+  assert.doesNotMatch(downloadPage, /href="\/icon\.svg" type="image\/svg\+xml"/);
+  assert.doesNotMatch(downloadPage, /is-recommended|desktop-card|class="btn secondary"|function recommend/);
+
+  for (const id of ["macCard", "iosCard", "windowsCard", "androidCard"]) {
+    const card = downloadPage.match(new RegExp(`<article class="platform-card" id="${id}">([\\s\\S]*?)<\\/article>`));
+    assert.ok(card, `${id} uses the shared platform card`);
+    assert.match(card[1], /class="platform-badge"/);
+    assert.match(card[1], /class="btn"/);
+    assert.doesNotMatch(card[1], /class="btn secondary"/);
+  }
 });
 
 test("the desktop wrapper confines embedded navigation to SEVEN and opens web links externally", () => {
