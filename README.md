@@ -17,7 +17,7 @@ The SEVEN web app plays titles through cloud-hosted embed players — VidLink, V
 
 For browser and PWA use, [CompanionExtension](CompanionExtension) is an optional, local Manifest V3 extension that blocks new windows and top-level navigations initiated by the configured player domains. Its exact install steps are in [CompanionExtension/README.md](CompanionExtension/README.md). It is deliberately limited to popup protection: it does not proxy, rewrite, inspect, or store media traffic.
 
-The Windows desktop wrapper lives in [Windows/Seven.Desktop](Windows/Seven.Desktop). It packages the SEVEN web app in a native WPF window powered by Microsoft's WebView2 runtime; links leaving SEVEN open in the default browser. Pushes that change `Windows/**` publish a self-contained x64 desktop executable to the latest GitHub Release. The download page links directly to that release asset. Windows may display SmartScreen for the currently unsigned build.
+The Windows desktop wrapper lives in [Windows/Seven.Desktop](Windows/Seven.Desktop). It packages the SEVEN web app in a native WPF window powered by Microsoft's WebView2 runtime; links leaving SEVEN open in the default browser. Pushes that change `Windows/**` build a self-contained x64 app and a per-user Windows installer, then publish the installer to the latest GitHub Release. The installer creates a Start menu shortcut and supports normal uninstall. Windows may display SmartScreen for the currently unsigned installer.
 
 ## Platforms
 

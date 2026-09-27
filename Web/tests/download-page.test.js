@@ -6,14 +6,18 @@ const test = require("node:test");
 const repository = path.resolve(__dirname, "../..");
 const downloadPage = fs.readFileSync(path.join(repository, "Web/download.html"), "utf8");
 const releaseWorkflow = fs.readFileSync(path.join(repository, ".github/workflows/windows-build.yml"), "utf8");
+const installerScript = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/installer.iss"), "utf8");
 const desktopHost = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/MainWindow.xaml.cs"), "utf8");
 
 test("the Windows download button points at the desktop executable published by CI", () => {
-  assert.match(downloadPage, /href="https:\/\/github\.com\/joetheproz5\/cineva\/releases\/latest\/download\/SEVEN-Desktop-win-x64\.exe"/);
+  assert.match(downloadPage, /href="https:\/\/github\.com\/joetheproz5\/cineva\/releases\/latest\/download\/SEVEN-Setup-win-x64\.exe"/);
   assert.match(releaseWorkflow, /Publish self-contained Windows app/);
-  assert.match(releaseWorkflow, /dist\/windows\/SEVEN\.exe/);
-  assert.match(releaseWorkflow, /SEVEN-Desktop-win-x64\.exe/);
+  assert.match(releaseWorkflow, /--output dist\/windows/);
+  assert.match(releaseWorkflow, /dist\/installer\/SEVEN-Setup-win-x64\.exe/);
+  assert.match(releaseWorkflow, /SEVEN-Setup-win-x64\.exe/);
+  assert.match(installerScript, /Source: "\.\.\\\.\.\\dist\\windows\\\{#AppExecutable\}"/);
   assert.match(releaseWorkflow, /--latest/);
+  assert.match(installerScript, /DefaultGroupName=SEVEN/);
 });
 
 test("the redesigned download page retains iPhone, Android, and QR install paths", () => {
