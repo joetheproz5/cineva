@@ -104,10 +104,11 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.match(downloadPage, /id="pageTitle">Good stories,<br><span>one tap away\.<\/span>/);
   assert.match(downloadPage, /<div class="device hero-phone">[\s\S]*?src="\/assets\/install-series-mobile\.webp" alt="SEVEN series spotlight with loaded artwork on a phone"/);
   assert.match(downloadPage, /<div class="device chapter-phone">[\s\S]*?src="\/assets\/install-movies-mobile\.webp" alt="SEVEN movie collection with loaded film artwork on iPhone"/);
-  assert.match(downloadPage, /\.hero-phone\{padding:12px 4px 4px;border-radius:29px\}/);
-  assert.match(downloadPage, /\.chapter-phone\{padding:16px 5px 5px;border-radius:35px\}/);
-  assert.match(downloadPage, /\.phone-island\{top:3px;width:43px;height:9px/);
-  assert.match(downloadPage, /class="phone-camera" aria-hidden="true"/);
+  assert.match(downloadPage, /\.hero-phone,\.chapter-phone\{padding:3px;border:1px solid/);
+  assert.match(downloadPage, /\.hero-phone\{aspect-ratio:430\/916;transform:translateY\(-50%\) rotateY\(0deg\)/);
+  assert.match(downloadPage, /\.chapter-phone\{aspect-ratio:430\/916;transform:perspective\(1100px\) rotateY\(0deg\)/);
+  assert.match(downloadPage, /@media\(max-width:860px\)\{\.hero-phone\{transform:rotateY\(0deg\) rotateZ\(5deg\)\}\}/);
+  assert.doesNotMatch(downloadPage, /<span class="phone-(?:island|camera)"/);
   assert.doesNotMatch(downloadPage, /src="\/assets\/install-home-mobile\.webp"/);
   assert.match(downloadPage, /@keyframes hero-drift/);
   assert.match(downloadPage, /@keyframes hero-drift-inward/);
