@@ -71,7 +71,7 @@ test("the install story uses a restrained brand mark and lightweight app screens
   assert.match(downloadPage, /If asked, install <a href="https:\/\/developer\.microsoft\.com\/microsoft-edge\/webview2\/"[^>]*>WebView2 Runtime<\/a>/);
   assert.match(downloadPage, /seven-wordmark-download\.webp/);
   assert.ok(fs.statSync(path.join(repository, "Web/assets/seven-wordmark-download.webp")).size < 20_000);
-  for (const screenshot of ["install-home-desktop.webp", "install-movies-desktop.webp", "install-series-desktop.webp", "install-home-mobile.webp", "install-movies-mobile.webp", "install-series-mobile.webp"]) {
+  for (const screenshot of ["install-home-desktop.webp", "install-movies-desktop.webp", "install-series-desktop.webp", "install-home-mobile.webp", "install-series-mobile.webp"]) {
     assert.ok(fs.statSync(path.join(repository, "Web/assets", screenshot)).size < 60_000, `${screenshot} stays lightweight`);
     assert.match(downloadPage, new RegExp(screenshot));
   }
@@ -99,6 +99,7 @@ test("the installation chapters flow without large enclosing cards", () => {
 test("the long-form install page keeps motion accessible and every platform install working", () => {
   assert.match(downloadPage, /<title>Install SEVEN — Your stories, on every screen<\/title>/);
   assert.match(downloadPage, /id="pageTitle">Good stories,<br><span>one tap away\.<\/span>/);
+  assert.match(downloadPage, /<div class="device hero-phone">[\s\S]*?src="\/assets\/install-home-mobile\.webp" alt="SEVEN home screen on a phone"/);
   assert.match(downloadPage, /@keyframes hero-drift/);
   assert.match(downloadPage, /@keyframes hero-drift-inward/);
   assert.match(downloadPage, /@keyframes phone-drift/);
