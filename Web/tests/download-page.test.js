@@ -105,8 +105,8 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.match(downloadPage, /@keyframes note-drift/);
   assert.doesNotMatch(downloadPage, /class="floating-note"/);
   assert.match(downloadPage, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  assert.match(downloadPage, /\.hero-laptop\{top:50%;right:auto;left:-8%;width:min\(46%,580px\);transform:rotateY\(18deg\)/);
-  assert.match(downloadPage, /\.hero-phone\{top:50%;right:0;bottom:auto;width:clamp\(150px,14vw,176px\);transform:translateY\(-50%\) rotateY\(-22deg\)/);
+  assert.match(downloadPage, /\.hero-laptop\{top:50%;right:auto;left:-10%;width:min\(37%,470px\);transform:rotateY\(28deg\)/);
+  assert.match(downloadPage, /\.hero-phone\{top:50%;right:0;bottom:auto;width:clamp\(150px,14vw,176px\);transform:translateY\(-50%\) rotateY\(-30deg\)/);
   assert.match(downloadPage, /\.hero-phone \.device-screen\{object-fit:contain\}/);
   assert.match(downloadPage, /@media\(max-width:860px\)\{[\s\S]*?\.hero-copy\{width:100%;max-width:560px;[\s\S]*?\.hero-visual\{width:100%;height:clamp/);
   assert.match(downloadPage, /IntersectionObserver/);

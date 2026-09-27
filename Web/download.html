@@ -87,11 +87,11 @@
       .hero-copy h1{font-size:clamp(52px,5vw,70px)}
       .hero-copy>p{margin-inline:auto}
       .hero-copy .hero-actions,.hero-copy .trust-line{justify-content:center}
-      .hero-laptop{top:50%;right:auto;left:-8%;width:min(46%,580px);transform:rotateY(18deg) rotateX(3deg) rotateZ(-1.2deg);animation:hero-drift-inward 9s ease-in-out infinite}
-      .hero-phone{top:50%;right:0;bottom:auto;width:clamp(150px,14vw,176px);transform:translateY(-50%) rotateY(-22deg) rotateZ(5deg)}
+      .hero-laptop{top:50%;right:auto;left:-10%;width:min(37%,470px);transform:rotateY(28deg) rotateX(4deg) rotateZ(-1.6deg);animation:hero-drift-inward 9s ease-in-out infinite}
+      .hero-phone{top:50%;right:0;bottom:auto;width:clamp(150px,14vw,176px);transform:translateY(-50%) rotateY(-30deg) rotateZ(7deg)}
       .hero-phone .device-screen{object-fit:contain}
     }
-    @keyframes hero-drift-inward{0%,100%{translate:0 -50%;transform:rotateY(18deg) rotateX(3deg) rotateZ(-1.2deg)}50%{translate:0 calc(-50% - 8px);transform:rotateY(14deg) rotateX(2deg) rotateZ(-.5deg)}}
+    @keyframes hero-drift-inward{0%,100%{translate:0 -50%;transform:rotateY(28deg) rotateX(4deg) rotateZ(-1.6deg)}50%{translate:0 calc(-50% - 8px);transform:rotateY(23deg) rotateX(2deg) rotateZ(-.8deg)}}
     @keyframes hero-drift-mobile{0%,100%{transform:translateY(-50%) rotateY(13deg) rotateX(3deg) rotateZ(-1deg)}50%{transform:translateY(calc(-50% - 6px)) rotateY(10deg) rotateX(2deg) rotateZ(-.4deg)}}
     @media(max-width:860px){
       .hero{min-height:0;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding-top:34px;padding-bottom:12px;overflow:hidden}
@@ -102,7 +102,7 @@
       .hero-visual{width:100%;height:clamp(330px,48vw,450px);min-height:0;flex:none;margin:10px 0 0}
       .hero-visual:after{display:none}
       .hero-laptop{top:50%;right:auto;bottom:auto;left:-2%;width:min(94%,600px);animation-name:hero-drift-mobile}
-      .hero-phone{top:auto;right:0;bottom:0;width:clamp(120px,18vw,166px);transform:rotateY(-19deg) rotateZ(5deg)}
+      .hero-phone{top:auto;right:0;bottom:0;width:clamp(120px,18vw,166px);transform:rotateY(-25deg) rotateZ(6deg)}
       .hero-phone .device-screen{object-fit:contain}
     }
     @media(max-width:680px){
