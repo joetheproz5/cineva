@@ -7,7 +7,8 @@
         WindowStyle="None" ResizeMode="CanResize"
         Background="{StaticResource CanvasBrush}" Foreground="{StaticResource InkBrush}"
         WindowStartupLocation="CenterScreen" PreviewKeyDown="Window_PreviewKeyDown"
-        Loaded="Window_Loaded" UseLayoutRounding="True" SnapsToDevicePixels="True">
+        Loaded="Window_Loaded" StateChanged="Window_StateChanged"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="42" ResizeBorderThickness="8" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
   </shell:WindowChrome.WindowChrome>

@@ -81,8 +81,12 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(windowsChrome, /Click="Minimize_Click"/);
   assert.match(windowsChrome, /Click="MaximizeRestore_Click"/);
   assert.match(windowsChrome, /Click="Close_Click"/);
+  assert.match(windowsChrome, /StateChanged="Window_StateChanged"/);
   assert.match(windowsChrome, /<RowDefinition Height="42"/);
   assert.match(desktopHost, /SystemCommands\.MinimizeWindow\(this\)/);
-  assert.match(desktopHost, /WindowState == System\.Windows\.WindowState\.Maximized/);
+  assert.match(desktopHost, /SystemCommands\.RestoreWindow\(this\)/);
+  assert.match(desktopHost, /SystemCommands\.MaximizeWindow\(this\)/);
+  assert.match(desktopHost, /MonitorFromWindow\(windowHandle, MonitorDefaultToNearest\)/);
+  assert.match(desktopHost, /SetWindowPosNoSize \| SetWindowPosNoZOrder \| SetWindowPosNoActivate/);
   assert.match(desktopHost, /Close_Click\(object sender, RoutedEventArgs e\) => Close\(\)/);
 });

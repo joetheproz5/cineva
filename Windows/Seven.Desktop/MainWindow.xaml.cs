@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Shell;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 
 namespace Seven.Desktop;
@@ -11,6 +14,10 @@ public partial class MainWindow : Window
     private const string AppUrl = "https://seven-9fm.pages.dev/";
     private const string AppHost = "seven-9fm.pages.dev";
     private const string WebViewRuntimeUrl = "https://developer.microsoft.com/microsoft-edge/webview2/";
+    private const uint MonitorDefaultToNearest = 2;
+    private const uint SetWindowPosNoSize = 0x0001;
+    private const uint SetWindowPosNoZOrder = 0x0004;
+    private const uint SetWindowPosNoActivate = 0x0010;
 
     public MainWindow()
     {
@@ -126,10 +133,79 @@ public partial class MainWindow : Window
 
     private void MaximizeRestore_Click(object sender, RoutedEventArgs e)
     {
-        WindowState = WindowState == System.Windows.WindowState.Maximized
-            ? System.Windows.WindowState.Normal
-            : System.Windows.WindowState.Maximized;
+        if (WindowState == System.Windows.WindowState.Maximized)
+        {
+            SystemCommands.RestoreWindow(this);
+            return;
+        }
+
+        SystemCommands.MaximizeWindow(this);
     }
+
+    private void Window_StateChanged(object? sender, EventArgs e)
+    {
+        if (WindowState == System.Windows.WindowState.Normal)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)KeepRestoredWindowOnScreen);
+        }
+    }
+
+    private void KeepRestoredWindowOnScreen()
+    {
+        var windowHandle = new WindowInteropHelper(this).Handle;
+        var monitorHandle = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
+        var monitor = new NativeMonitorInfo { Size = Marshal.SizeOf<NativeMonitorInfo>() };
+        if (monitorHandle == IntPtr.Zero || !GetMonitorInfo(monitorHandle, ref monitor) || !GetWindowRect(windowHandle, out var bounds))
+        {
+            return;
+        }
+
+        var width = bounds.Right - bounds.Left;
+        var height = bounds.Bottom - bounds.Top;
+        var maxLeft = Math.Max(monitor.Work.Right - width, monitor.Work.Left);
+        var maxTop = Math.Max(monitor.Work.Bottom - height, monitor.Work.Top);
+        var left = Math.Clamp(bounds.Left, monitor.Work.Left, maxLeft);
+        var top = Math.Clamp(bounds.Top, monitor.Work.Top, maxTop);
+
+        if (left != bounds.Left || top != bounds.Top)
+        {
+            SetWindowPos(windowHandle, IntPtr.Zero, left, top, 0, 0,
+                SetWindowPosNoSize | SetWindowPosNoZOrder | SetWindowPosNoActivate);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeMonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect Work;
+        public uint Flags;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
+
+    [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitorHandle, ref NativeMonitorInfo monitorInfo);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr windowHandle, out NativeRect bounds);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr windowHandle, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
