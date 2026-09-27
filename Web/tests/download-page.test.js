@@ -100,8 +100,13 @@ test("the long-form install page keeps motion accessible and every platform inst
   assert.match(downloadPage, /<title>Install SEVEN — Your stories, on every screen<\/title>/);
   assert.match(downloadPage, /id="pageTitle">Good stories,<br><span>one tap away\.<\/span>/);
   assert.match(downloadPage, /@keyframes hero-drift/);
+  assert.match(downloadPage, /@keyframes hero-drift-inward/);
   assert.match(downloadPage, /@keyframes phone-drift/);
   assert.match(downloadPage, /@keyframes note-drift/);
+  assert.doesNotMatch(downloadPage, /class="floating-note"/);
+  assert.match(downloadPage, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(downloadPage, /\.hero-phone \.device-screen\{object-fit:contain\}/);
+  assert.match(downloadPage, /@media\(max-width:860px\)\{[\s\S]*?\.hero-copy\{width:100%;max-width:560px;[\s\S]*?\.hero-visual\{width:100%;height:clamp/);
   assert.match(downloadPage, /IntersectionObserver/);
   assert.equal((downloadPage.match(/class="chapter-visual(?: chapter-phone-wrap)? reveal"/g) ?? []).length, 4, "all four device previews reveal on scroll");
   assert.match(downloadPage, /chapter-visual\.reveal:not\(\.is-visible\) \.chapter-laptop\{[^}]*translate:0 34px[^}]*scale:\.96[^}]*filter:blur/);
