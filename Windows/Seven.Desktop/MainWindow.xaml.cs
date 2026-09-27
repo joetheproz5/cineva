@@ -20,12 +20,19 @@ public partial class MainWindow : Window
     private const uint SetWindowPosNoSize = 0x0001;
     private const uint SetWindowPosNoZOrder = 0x0004;
     private const uint SetWindowPosNoActivate = 0x0010;
+    private const uint SetWindowPosFrameChanged = 0x0020;
+    private const uint SetWindowPosShowWindow = 0x0040;
+    private static readonly IntPtr HwndTopmost = new(-1);
     private static readonly string WindowPlacementPath = System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SEVEN",
         "window-placement.json");
     private readonly DispatcherTimer _placementSaveTimer;
     private bool _restoringPlacement = true;
+    private bool _isPlayerFullscreen;
+    private Rect? _fullscreenRestoreBounds;
+    private WindowState _fullscreenRestoreState;
+    private bool _fullscreenRestoreTopmost;
 
     public MainWindow()
     {
@@ -110,6 +117,12 @@ public partial class MainWindow : Window
             core.Settings.IsStatusBarEnabled = false;
             core.NavigationStarting += Browser_NavigationStarting;
             core.NewWindowRequested += Browser_NewWindowRequested;
+            core.ContainsFullScreenElementChanged += (_, _) =>
+            {
+                var containsFullscreenElement = core.ContainsFullScreenElement;
+                Dispatcher.BeginInvoke(DispatcherPriority.Send,
+                    (Action)(() => SetPlayerFullscreen(containsFullscreenElement)));
+            };
             Browser.Source = new Uri(AppUrl);
         }
         catch (Exception)
@@ -178,7 +191,7 @@ public partial class MainWindow : Window
 
     private void Window_StateChanged(object? sender, EventArgs e)
     {
-        if (_restoringPlacement)
+        if (_restoringPlacement || _isPlayerFullscreen)
         {
             return;
         }
@@ -218,6 +231,90 @@ public partial class MainWindow : Window
             SetWindowPos(windowHandle, IntPtr.Zero, left, top, 0, 0,
                 SetWindowPosNoSize | SetWindowPosNoZOrder | SetWindowPosNoActivate);
         }
+    }
+
+    private void SetPlayerFullscreen(bool isFullscreen)
+    {
+        if (_isPlayerFullscreen == isFullscreen)
+        {
+            return;
+        }
+
+        if (isFullscreen)
+        {
+            EnterPlayerFullscreen();
+        }
+        else
+        {
+            ExitPlayerFullscreen();
+        }
+    }
+
+    private void EnterPlayerFullscreen()
+    {
+        _fullscreenRestoreState = WindowState;
+        _fullscreenRestoreBounds = WindowState == System.Windows.WindowState.Maximized
+            ? RestoreBounds
+            : new Rect(Left, Top, Width, Height);
+        _fullscreenRestoreTopmost = Topmost;
+        _isPlayerFullscreen = true;
+
+        CaptionRow.Height = new GridLength(0);
+        if (WindowState != System.Windows.WindowState.Normal)
+        {
+            WindowState = System.Windows.WindowState.Normal;
+        }
+        Topmost = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, (Action)CoverCurrentMonitor);
+    }
+
+    private void CoverCurrentMonitor()
+    {
+        if (!_isPlayerFullscreen)
+        {
+            return;
+        }
+
+        var windowHandle = new WindowInteropHelper(this).Handle;
+        var monitorHandle = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
+        var monitor = new NativeMonitorInfo { Size = Marshal.SizeOf<NativeMonitorInfo>() };
+        if (monitorHandle == IntPtr.Zero || !GetMonitorInfo(monitorHandle, ref monitor))
+        {
+            return;
+        }
+
+        var bounds = monitor.Monitor;
+        SetWindowPos(windowHandle, HwndTopmost,
+            bounds.Left, bounds.Top,
+            bounds.Right - bounds.Left, bounds.Bottom - bounds.Top,
+            SetWindowPosNoActivate | SetWindowPosFrameChanged | SetWindowPosShowWindow);
+    }
+
+    private void ExitPlayerFullscreen()
+    {
+        var restoreBounds = _fullscreenRestoreBounds;
+        var restoreState = _fullscreenRestoreState;
+        var restoreTopmost = _fullscreenRestoreTopmost;
+
+        CaptionRow.Height = new GridLength(42);
+        WindowState = System.Windows.WindowState.Normal;
+        if (restoreBounds is { } bounds && !bounds.IsEmpty)
+        {
+            Left = bounds.Left;
+            Top = bounds.Top;
+            Width = bounds.Width;
+            Height = bounds.Height;
+        }
+        Topmost = restoreTopmost;
+        if (restoreState == System.Windows.WindowState.Maximized)
+        {
+            WindowState = System.Windows.WindowState.Maximized;
+        }
+
+        _isPlayerFullscreen = false;
+        _fullscreenRestoreBounds = null;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)KeepRestoredWindowOnScreen);
+        ScheduleWindowPlacementSave();
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -269,7 +366,7 @@ public partial class MainWindow : Window
 
     private void ScheduleWindowPlacementSave()
     {
-        if (_restoringPlacement)
+        if (_restoringPlacement || _isPlayerFullscreen)
         {
             return;
         }
@@ -282,9 +379,11 @@ public partial class MainWindow : Window
     {
         try
         {
-            var bounds = WindowState == System.Windows.WindowState.Normal
-                ? new Rect(Left, Top, Width, Height)
-                : RestoreBounds;
+            var bounds = _isPlayerFullscreen && _fullscreenRestoreBounds is { } fullscreenBounds
+                ? fullscreenBounds
+                : WindowState == System.Windows.WindowState.Normal
+                    ? new Rect(Left, Top, Width, Height)
+                    : RestoreBounds;
             if (bounds.IsEmpty || !double.IsFinite(bounds.Left) || !double.IsFinite(bounds.Top)
                 || !double.IsFinite(bounds.Width) || !double.IsFinite(bounds.Height)
                 || bounds.Width <= 0 || bounds.Height <= 0)
@@ -293,8 +392,10 @@ public partial class MainWindow : Window
             }
 
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(WindowPlacementPath)!);
-            var placement = new WindowPlacement(bounds.Left, bounds.Top, bounds.Width, bounds.Height,
-                WindowState == System.Windows.WindowState.Maximized);
+            var wasMaximized = _isPlayerFullscreen
+                ? _fullscreenRestoreState == System.Windows.WindowState.Maximized
+                : WindowState == System.Windows.WindowState.Maximized;
+            var placement = new WindowPlacement(bounds.Left, bounds.Top, bounds.Width, bounds.Height, wasMaximized);
             File.WriteAllText(WindowPlacementPath, JsonSerializer.Serialize(placement));
         }
         catch (Exception)

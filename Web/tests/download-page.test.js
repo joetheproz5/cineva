@@ -174,7 +174,7 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(windowsChrome, /Click="MaximizeRestore_Click"/);
   assert.match(windowsChrome, /Click="Close_Click"/);
   assert.match(windowsChrome, /StateChanged="Window_StateChanged"/);
-  assert.match(windowsChrome, /<RowDefinition Height="42"/);
+  assert.match(windowsChrome, /<RowDefinition x:Name="CaptionRow" Height="42"/);
   assert.match(desktopHost, /SystemCommands\.MinimizeWindow\(this\)/);
   assert.match(desktopHost, /SystemCommands\.RestoreWindow\(this\)/);
   assert.match(desktopHost, /SystemCommands\.MaximizeWindow\(this\)/);
@@ -189,4 +189,14 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(desktopHost, /SizeChanged \+=/);
   assert.match(desktopHost, /JsonSerializer\.Serialize\(placement\)/);
   assert.match(desktopHost, /Close_Click\(object sender, RoutedEventArgs e\) => Close\(\)/);
+});
+
+test("WebView2 player fullscreen hides the app chrome and covers the whole monitor", () => {
+  assert.match(desktopHost, /ContainsFullScreenElementChanged/);
+  assert.match(desktopHost, /CaptionRow\.Height = new GridLength\(0\)/);
+  assert.match(desktopHost, /var bounds = monitor\.Monitor/);
+  assert.match(desktopHost, /SetWindowPos\(windowHandle, HwndTopmost/);
+  assert.match(desktopHost, /SetWindowPosNoActivate \| SetWindowPosFrameChanged \| SetWindowPosShowWindow/);
+  assert.match(desktopHost, /if \(_restoringPlacement \|\| _isPlayerFullscreen\)/);
+  assert.match(desktopHost, /_fullscreenRestoreBounds/);
 });

@@ -15,7 +15,7 @@
   </shell:WindowChrome.WindowChrome>
   <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="42" />
+      <RowDefinition x:Name="CaptionRow" Height="42" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
