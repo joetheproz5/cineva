@@ -9,6 +9,7 @@ const responseHeaders = fs.readFileSync(path.join(repository, "Web/_headers"), "
 const releaseWorkflow = fs.readFileSync(path.join(repository, ".github/workflows/desktop-build.yml"), "utf8");
 const installerScript = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/installer.iss"), "utf8");
 const desktopHost = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/MainWindow.xaml.cs"), "utf8");
+const windowsChrome = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/MainWindow.xaml"), "utf8");
 const macHost = fs.readFileSync(path.join(repository, "Mac/Sources/SEVENApp.swift"), "utf8");
 const macManifest = fs.readFileSync(path.join(repository, "Mac/Info.plist"), "utf8");
 
@@ -57,4 +58,17 @@ test("the desktop wrapper confines embedded navigation to SEVEN and opens web li
   assert.match(macHost, /navigationAction\.targetFrame\?\.isMainFrame != false/);
   assert.match(macHost, /url\.host\?\.lowercased\(\) == sevenHost/);
   assert.match(macHost, /NSWorkspace\.shared\.open\(url\)/);
+});
+
+test("the Windows wrapper uses a compact custom title bar with working window controls", () => {
+  assert.match(windowsChrome, /WindowStyle="None" ResizeMode="CanResize"/);
+  assert.match(windowsChrome, /<shell:WindowChrome CaptionHeight="42"/);
+  assert.match(windowsChrome, /shell:WindowChrome\.IsHitTestVisibleInChrome="True"/);
+  assert.match(windowsChrome, /Click="Minimize_Click"/);
+  assert.match(windowsChrome, /Click="MaximizeRestore_Click"/);
+  assert.match(windowsChrome, /Click="Close_Click"/);
+  assert.match(windowsChrome, /<RowDefinition Height="42"/);
+  assert.match(desktopHost, /SystemCommands\.MinimizeWindow\(this\)/);
+  assert.match(desktopHost, /WindowState == System\.Windows\.WindowState\.Maximized/);
+  assert.match(desktopHost, /Close_Click\(object sender, RoutedEventArgs e\) => Close\(\)/);
 });

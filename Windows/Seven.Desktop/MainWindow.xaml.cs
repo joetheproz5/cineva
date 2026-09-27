@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Shell;
 using Microsoft.Web.WebView2.Core;
 
 namespace Seven.Desktop;
@@ -42,7 +43,6 @@ public partial class MainWindow : Window
         {
             Browser.Visibility = Visibility.Collapsed;
             RuntimeHelp.Visibility = Visibility.Visible;
-            ConnectionLabel.Text = "Setup required";
         }
     }
 
@@ -121,6 +121,17 @@ public partial class MainWindow : Window
     private void Reload_Click(object sender, RoutedEventArgs e) => Browser.Reload();
 
     private void OpenInBrowser_Click(object sender, RoutedEventArgs e) => OpenExternal(new Uri(AppUrl));
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+
+    private void MaximizeRestore_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState == System.Windows.WindowState.Maximized
+            ? System.Windows.WindowState.Normal
+            : System.Windows.WindowState.Maximized;
+    }
+
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private void InstallRuntime_Click(object sender, RoutedEventArgs e) => OpenExternal(new Uri(WebViewRuntimeUrl));
 
