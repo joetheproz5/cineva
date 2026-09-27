@@ -5,6 +5,7 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.resolve(__dirname, "..", "app.js"), "utf8");
+const styles = fs.readFileSync(path.resolve(__dirname, "..", "auth.css"), "utf8");
 const homeSource = source.slice(source.indexOf("function profileCategoryRow("), source.indexOf("\nfunction profileSettingsDetail("));
 const detailStart = source.indexOf("function profileSettingsDetail(");
 const detailSource = source.slice(detailStart, source.indexOf("\nfunction renderProfileSettings()", detailStart));
@@ -30,9 +31,19 @@ test("the redesigned settings hub keeps all seven working categories discoverabl
   for (const category of ["profiles", "profile", "family", "playback", "language", "activity", "security"]) {
     assert.match(html, new RegExp(`data-profile-category="${category}"`));
   }
-  assert.match(html, /profile-settings-group-wide/);
+  assert.equal((html.match(/class="profile-settings-group"/g) || []).length, 3);
   assert.match(source, /profile-settings-topbar[\s\S]*?data-switch-profile/);
   assert.match(html, /data-profile-category="profile"/);
+  assert.equal((html.match(/class="profile-category-icon"/g) || []).length, 7);
+  assert.match(html, /class="profile-hub-edit" data-profile-category="profile"/);
+});
+
+test("the settings hub and details use spacious single-column layouts", () => {
+  assert.match(styles, /\.profile-settings-redesign \.profile-settings-intro \{ display: block !important;/);
+  assert.match(styles, /\.profile-settings-redesign \.profile-settings-groups \{ grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(styles, /\.profile-settings-redesign #profile-settings-form:has\(\.family-controls\) \{ display: block; \}/);
+  assert.match(styles, /\.profile-settings-redesign \.profile-mobile-row \{ min-height: 82px;/);
+  assert.match(styles, /@media \(max-width: 720px\)[\s\S]*?\.profile-settings-redesign \.profile-settings-groups \{ gap: 13px; \}/);
 });
 
 test("playback and display pages render controls that the profile form persists", () => {

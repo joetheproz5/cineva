@@ -929,3 +929,161 @@
 }
 .account-back { color: #a3a3a3; }
 .account-back:hover { color: #fff; }
+
+/* Settings: a spacious, single-column account dashboard with consistent detail pages. */
+.profile-settings-redesign { width: min(960px, calc(100% - 64px)); padding: 30px 0 104px; }
+.profile-settings-redesign .profile-settings-topbar { min-height: 52px; padding-bottom: 14px; }
+.profile-settings-redesign .profile-settings-topbar .account-back { font-size: 14px; }
+.profile-settings-redesign .profile-settings-switch { min-height: 42px; padding: 0 15px; border-radius: 7px; font-size: 13px; }
+.profile-settings-redesign .profile-settings-hub { gap: 32px; }
+.profile-settings-redesign .profile-settings-intro { display: block !important; width: 100%; padding: 36px 0 0; }
+.profile-settings-redesign .profile-settings-intro .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: #e50914; font-size: 10px; letter-spacing: 2px; }
+.profile-settings-redesign .profile-settings-intro .brand i { width: 3px; height: 3px; border-radius: 50%; background: #777; }
+.profile-settings-redesign .profile-settings-intro h2 { margin: 0; font-size: clamp(36px, 5vw, 48px); line-height: 1.08; letter-spacing: -1.8px; }
+.profile-settings-redesign .profile-settings-intro p { max-width: 550px; margin: 12px 0 0; color: #aaa; font-size: 15px; line-height: 1.65; }
+.profile-settings-redesign .profile-settings-notice { margin: -10px 0 -8px; padding: 12px 15px; border: 1px solid #343434; border-radius: 8px; background: #151515; font-size: 13px; }
+.profile-settings-redesign .profile-hub-hero { min-height: 120px; gap: 20px; padding: 20px 24px; border: 1px solid #292929; border-left: 0; border-radius: 12px; background: linear-gradient(110deg, #171719, #101011 78%); }
+.profile-settings-redesign .profile-hub-avatar { width: 76px; height: 76px; border-color: #37373a; border-radius: 10px; }
+.profile-settings-redesign .profile-hub-avatar .profile-avatar { border-radius: 8px; }
+.profile-settings-redesign .profile-hub-avatar i { right: -8px; bottom: -8px; width: 25px; height: 25px; border-color: #171719; border-radius: 50%; background: #e50914; }
+.profile-settings-redesign .profile-hub-identity .brand { margin-bottom: 5px; font-size: 9px; letter-spacing: 1.6px; }
+.profile-settings-redesign .profile-hub-identity h3 { font-size: 21px; letter-spacing: -.5px; }
+.profile-settings-redesign .profile-hub-identity p { margin-top: 6px; font-size: 12px; }
+.profile-settings-redesign .profile-hub-edit { display: inline-flex; min-height: 42px; align-items: center; gap: 14px; margin-left: auto; padding: 0 14px; border: 1px solid #3b3b3e; border-radius: 7px; color: #eee; background: #202022; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.profile-settings-redesign .profile-hub-edit:hover { border-color: #666; background: #29292b; }
+.profile-settings-redesign .profile-hub-edit span { color: #999; font-size: 17px; transition: transform .18s ease; }
+.profile-settings-redesign .profile-hub-edit:hover span { transform: translateX(3px); }
+.profile-settings-redesign .profile-settings-groups { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.profile-settings-redesign .profile-settings-group { min-width: 0; padding: 20px 22px 16px; border: 1px solid #242426; border-radius: 12px; background: #101011; }
+.profile-settings-redesign .profile-settings-group-heading { display: flex; align-items: center; gap: 11px; padding: 1px 1px 14px; border-bottom: 1px solid #29292b; }
+.profile-settings-redesign .profile-settings-group-heading .brand { display: grid; width: 27px; height: 27px; place-items: center; margin: 0; border: 1px solid #303033; border-radius: 7px; color: #aaa; background: #19191b; font-size: 9px; letter-spacing: .4px; }
+.profile-settings-redesign .profile-settings-group-heading h3 { margin: 0; color: #f1f1f1; font-size: 16px; font-weight: 680; letter-spacing: -.2px; }
+.profile-settings-redesign .profile-category-list, .profile-settings-redesign .profile-settings-group-wide .profile-category-list { grid-template-columns: minmax(0, 1fr); gap: 5px; margin-top: 9px; }
+.profile-settings-redesign .profile-category-row { grid-template-columns: 46px minmax(0, 1fr) 34px; min-height: 78px; gap: 15px; padding: 10px 8px; border: 0; border-radius: 9px; background: transparent; }
+.profile-settings-redesign .profile-category-row:hover { border-color: transparent; background: #19191b; }
+.profile-settings-redesign .profile-category-icon { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid #2c2c2f; border-radius: 11px; color: #c5c5c8; background: #18181a; transition: color .18s ease, border-color .18s ease, background .18s ease; }
+.profile-settings-redesign .profile-category-icon svg { width: 21px; height: 21px; }
+.profile-settings-redesign .profile-category-row:hover .profile-category-icon { border-color: #492428; color: #ff4a54; background: #201416; }
+.profile-settings-redesign .profile-category-copy { display: block; min-width: 0; }
+.profile-settings-redesign .profile-category-row b { color: #f0f0f0; font-size: 14px; font-weight: 650; }
+.profile-settings-redesign .profile-category-row small { margin-top: 5px; color: #999; font-size: 12px; line-height: 1.45; }
+.profile-settings-redesign .profile-category-arrow { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #29292c; border-radius: 50%; color: #999; font-size: 15px; transition: color .18s ease, border-color .18s ease, transform .18s ease; }
+.profile-settings-redesign .profile-category-row:hover .profile-category-arrow { transform: translateX(2px); border-color: #454548; color: #fff; }
+.profile-settings-redesign .profile-hub-note { margin: -6px 0 0; font-size: 13px; }
+.profile-settings-redesign .profile-settings-detail-page { width: min(800px, 100%); }
+.profile-settings-redesign .profile-settings-page-heading { padding: 36px 0 25px; }
+.profile-settings-redesign .profile-category-back { margin-bottom: 24px; font-size: 13px; }
+.profile-settings-redesign .profile-settings-page-heading .brand { margin-bottom: 11px; font-size: 10px; letter-spacing: 1.9px; }
+.profile-settings-redesign .profile-settings-page-heading h2 { font-size: clamp(34px, 4vw, 42px); line-height: 1.1; letter-spacing: -1.3px; }
+.profile-settings-redesign .profile-settings-page-heading p { max-width: 610px; margin-top: 11px; font-size: 14px; line-height: 1.6; }
+.profile-settings-redesign .profile-detail-card { display: block; padding: 30px 34px; border-color: #29292c; border-radius: 12px; background: #111113; }
+.profile-settings-redesign .profile-detail-card > .brand { margin: 0 0 17px; font-size: 10px; letter-spacing: 1.9px; }
+.profile-settings-redesign .profile-detail-card > h2, .profile-settings-redesign .profile-settings-card-title { margin: 2px 0 8px; font-size: 19px; font-weight: 680; letter-spacing: -.35px; }
+.profile-settings-redesign .profile-mobile-row { min-height: 82px; padding: 18px 2px; border-bottom-color: #29292c; }
+.profile-settings-redesign .profile-mobile-row b { font-size: 14px; font-weight: 630; }
+.profile-settings-redesign .profile-mobile-row small { max-width: 560px; margin-top: 6px; color: #a2a2a5; font-size: 12.5px; line-height: 1.55; }
+.profile-settings-redesign .profile-mobile-toggle em { width: 42px; height: 24px; background: #4a4a4d; }
+.profile-settings-redesign .profile-mobile-toggle em:after { top: 3px; left: 3px; width: 18px; height: 18px; }
+.profile-settings-redesign .profile-mobile-toggle input:checked + em:after { transform: translateX(18px); }
+.profile-settings-redesign .profile-mobile-toggle input:focus-visible + em { outline: 2px solid #fff; outline-offset: 3px; }
+.profile-settings-redesign .profile-mobile-select select { min-width: 150px; min-height: 44px; max-width: 250px; padding: 0 34px 0 13px; border-radius: 7px; font-size: 13px; }
+.profile-settings-redesign .profile-mobile-select .preferred-player-select { width: 220px; }
+.profile-settings-redesign .profile-settings-subsection { margin-top: 28px; padding-top: 23px; border-top-color: #303033; }
+.profile-settings-redesign .profile-settings-subsection .profile-settings-card-title { margin-bottom: 8px; }
+.profile-settings-redesign .profile-settings-actions { margin-top: 25px; }
+.profile-settings-redesign .profile-settings-actions .primary { min-height: 48px; border-radius: 7px; font-size: 14px; }
+.profile-settings-redesign #profile-settings-form:has(.family-controls) { display: block; }
+.profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-detail-card + .profile-detail-card { margin-top: 18px; }
+.profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-settings-error, .profile-settings-redesign #profile-settings-form:has(.family-controls) > .profile-settings-actions { grid-column: auto; }
+.profile-settings-redesign .family-restrictions { margin-top: 18px; }
+.profile-settings-redesign .family-restrictions h2 { margin: 0 0 8px; font-size: 19px; }
+.profile-settings-redesign .family-restrictions > p { margin-bottom: 16px; font-size: 13px; line-height: 1.55; }
+.profile-settings-redesign .family-title-search { margin-top: 16px; font-size: 13px; }
+.profile-settings-redesign .family-title-search span { gap: 10px; margin-top: 9px; }
+.profile-settings-redesign .family-title-search input { min-height: 46px; padding: 0 14px; border-radius: 7px; font-size: 14px; }
+.profile-settings-redesign .family-title-search button { min-width: 80px; border-radius: 7px; font-size: 13px; }
+.profile-settings-redesign .profile-mobile-identity { grid-template-columns: 120px minmax(0, 1fr); column-gap: 24px; row-gap: 6px; padding: 4px 0 24px; }
+.profile-settings-redesign .profile-mobile-identity .profile-settings-avatar, .profile-settings-redesign .profile-mobile-identity .profile-avatar { width: 120px; height: 120px; }
+.profile-settings-redesign .profile-avatar-change { top: 88px; left: 88px; width: 32px; height: 32px; }
+.profile-settings-redesign .profile-mobile-identity .profile-name-field { font-size: 13px; }
+.profile-settings-redesign .profile-mobile-identity .profile-name-field input { min-height: 48px; margin-top: 9px; border-radius: 7px; font-size: 15px; }
+.profile-settings-redesign .profile-name-hint { margin-top: -17px; font-size: 11px; }
+.profile-settings-redesign .profile-avatar-chooser { margin-top: 12px; padding: 22px; border-radius: 10px; }
+.profile-settings-redesign .profile-avatar-chooser .brand { margin-bottom: 14px; font-size: 10px; letter-spacing: 1.7px; }
+.profile-settings-redesign .profile-manager { padding: 30px 34px; }
+.profile-settings-redesign .profile-manager h2 { font-size: 21px; }
+.profile-settings-redesign .profile-manager > p { margin: 8px 0 24px; font-size: 13px; line-height: 1.55; }
+.profile-settings-redesign .profile-manager-grid { grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 16px; }
+.profile-settings-redesign .profile-manager-card, .profile-settings-redesign .profile-manager-add { min-height: 150px; padding: 14px 8px; border-radius: 9px; }
+.profile-settings-redesign .profile-manager-card .profile-avatar, .profile-settings-redesign .profile-manager-add span { width: 88px; height: 88px; border-radius: 9px; }
+.profile-settings-redesign .profile-manager-card b, .profile-settings-redesign .profile-manager-add b { font-size: 13px; }
+.profile-settings-redesign .profile-manager-card small { font-size: 11px; }
+.profile-settings-redesign .profile-category-actions { gap: 4px; margin-top: 20px; }
+.profile-settings-redesign .profile-category-actions .account-action-card { grid-template-columns: 42px minmax(0, 1fr) auto; min-height: 78px; padding: 14px 12px; border: 0; border-bottom: 1px solid #29292c; border-radius: 8px; background: transparent; }
+.profile-settings-redesign .profile-category-actions .account-action-card:hover { background: #19191b; }
+.profile-settings-redesign .profile-category-actions .account-action-card > i { display: grid; width: 40px; height: 40px; border-radius: 10px; color: #d6d6d8; background: #1c1c1f; font-size: 18px; }
+.profile-settings-redesign .profile-category-actions .account-action-card b { font-size: 14px; }
+.profile-settings-redesign .profile-category-actions .account-action-card small { margin-top: 5px; font-size: 12px; line-height: 1.45; }
+.profile-settings-redesign .profile-category-actions .account-action-card em { font-size: 12px; }
+.profile-settings-redesign .profile-pin-card { margin: 18px 0 0; padding: 22px; border-radius: 10px; background: #171719; }
+.profile-settings-redesign .profile-pin-card h2 { margin-bottom: 7px; font-size: 17px; }
+.profile-settings-redesign .profile-pin-card p { margin-bottom: 17px; font-size: 12px; line-height: 1.55; }
+.profile-settings-redesign .profile-pin-field { font-size: 12px; }
+.profile-settings-redesign .profile-pin-field input { min-height: 46px; max-width: 420px; margin-top: 9px; border-radius: 7px; font-size: 15px; }
+.profile-settings-redesign .profile-danger-zone { margin-top: 30px; padding-top: 22px; }
+.profile-settings-redesign .profile-danger-zone h2 { font-size: 16px; }
+.profile-settings-redesign .profile-danger-zone p { margin: 7px 0 13px; font-size: 12px; }
+
+@media (max-width: 720px) {
+  .profile-settings-redesign { width: min(100% - 32px, 560px); padding: 18px 0 86px; }
+  .profile-settings-redesign .profile-settings-hub { gap: 24px; }
+  .profile-settings-redesign .profile-settings-intro { padding-top: 25px; }
+  .profile-settings-redesign .profile-settings-intro h2 { font-size: 36px; }
+  .profile-settings-redesign .profile-settings-intro p { margin-top: 9px; font-size: 13px; }
+  .profile-settings-redesign .profile-hub-hero { min-height: 100px; gap: 14px; padding: 14px; }
+  .profile-settings-redesign .profile-hub-avatar { width: 64px; height: 64px; }
+  .profile-settings-redesign .profile-hub-identity h3 { font-size: 18px; }
+  .profile-settings-redesign .profile-hub-edit { min-height: 38px; gap: 7px; padding: 0 9px; font-size: 11px; }
+  .profile-settings-redesign .profile-settings-groups { gap: 13px; }
+  .profile-settings-redesign .profile-settings-group { padding: 16px 12px 11px; border-radius: 10px; }
+  .profile-settings-redesign .profile-settings-group-heading { padding: 0 3px 11px; }
+  .profile-settings-redesign .profile-settings-group-heading h3 { font-size: 14px; }
+  .profile-settings-redesign .profile-category-row { grid-template-columns: 40px minmax(0, 1fr) 28px; min-height: 72px; gap: 10px; padding: 8px 4px; }
+  .profile-settings-redesign .profile-category-icon { width: 38px; height: 38px; border-radius: 10px; }
+  .profile-settings-redesign .profile-category-icon svg { width: 19px; height: 19px; }
+  .profile-settings-redesign .profile-category-row b { font-size: 13px; }
+  .profile-settings-redesign .profile-category-row small { margin-top: 4px; font-size: 11px; }
+  .profile-settings-redesign .profile-category-arrow { width: 26px; height: 26px; }
+  .profile-settings-redesign .profile-settings-page-heading { padding: 26px 0 20px; }
+  .profile-settings-redesign .profile-settings-page-heading h2 { font-size: 34px; }
+  .profile-settings-redesign .profile-settings-page-heading p { font-size: 13px; }
+  .profile-settings-redesign .profile-detail-card { padding: 23px 18px; border-radius: 10px; }
+  .profile-settings-redesign .profile-mobile-row { min-height: 76px; padding: 16px 0; }
+  .profile-settings-redesign .profile-mobile-row b { font-size: 13px; }
+  .profile-settings-redesign .profile-mobile-row small { max-width: 36ch; font-size: 11.5px; }
+  .profile-settings-redesign .profile-mobile-select select { min-width: 128px; max-width: 42vw; min-height: 42px; padding: 0 27px 0 9px; font-size: 12px; }
+  .profile-settings-redesign .profile-mobile-select .preferred-player-select { width: min(205px, 42vw); }
+  .profile-settings-redesign .profile-settings-subsection { margin-top: 22px; padding-top: 19px; }
+  .profile-settings-redesign .profile-settings-actions .primary { width: 100%; }
+  .profile-settings-redesign .profile-mobile-identity { grid-template-columns: 78px minmax(0, 1fr); column-gap: 15px; row-gap: 5px; padding-bottom: 20px; }
+  .profile-settings-redesign .profile-mobile-identity .profile-settings-avatar, .profile-settings-redesign .profile-mobile-identity .profile-avatar { width: 78px; height: 78px; }
+  .profile-settings-redesign .profile-avatar-change { top: 53px; left: 53px; width: 29px; height: 29px; }
+  .profile-settings-redesign .profile-mobile-identity .profile-name-field input { min-height: 43px; font-size: 16px; }
+  .profile-settings-redesign .profile-name-hint { margin-top: -12px; font-size: 10px; }
+  .profile-settings-redesign .profile-manager { padding: 23px 18px; }
+  .profile-settings-redesign .profile-manager-grid { grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 10px; }
+  .profile-settings-redesign .profile-manager-card, .profile-settings-redesign .profile-manager-add { min-height: 126px; }
+  .profile-settings-redesign .profile-manager-card .profile-avatar, .profile-settings-redesign .profile-manager-add span { width: 70px; height: 70px; }
+  .profile-settings-redesign .profile-category-actions .account-action-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 10px; min-height: 72px; padding: 12px 5px; }
+  .profile-settings-redesign .profile-category-actions .account-action-card > i { width: 36px; height: 36px; }
+  .profile-settings-redesign .profile-category-actions .account-action-card b { font-size: 13px; }
+  .profile-settings-redesign .profile-category-actions .account-action-card small { font-size: 11px; }
+  .profile-settings-redesign .profile-pin-card { padding: 18px 15px; }
+}
+
+@media (max-width: 400px) {
+  .profile-settings-redesign .profile-hub-hero { gap: 10px; padding: 11px; }
+  .profile-settings-redesign .profile-hub-avatar { width: 56px; height: 56px; }
+  .profile-settings-redesign .profile-hub-edit { width: 34px; min-width: 34px; justify-content: center; overflow: hidden; gap: 0; padding: 0; font-size: 0; }
+  .profile-settings-redesign .profile-hub-edit span { font-size: 19px; }
+}
