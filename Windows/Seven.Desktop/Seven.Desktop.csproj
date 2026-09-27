@@ -8,6 +8,7 @@
     <AssemblyName>SEVEN</AssemblyName>
     <Product>SEVEN Desktop</Product>
     <Version>1.0.0</Version>
+    <ApplicationIcon>Assets\seven.ico</ApplicationIcon>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
@@ -16,5 +17,6 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
     <Resource Include="..\..\Web\assets\seven-wordmark-v2.png" Link="Assets\seven-wordmark-v2.png" />
     <Resource Include="..\..\Web\assets\seven-logo-red.png" Link="Assets\seven-logo-red.png" />
+    <Resource Include="Assets\seven.ico" />
   </ItemGroup>
 </Project>
