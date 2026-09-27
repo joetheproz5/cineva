@@ -37,10 +37,12 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.seven-intro\.reduced-motion \.startup-intro-mark \{ animation: none !important; opacity: 1; transform: none; filter: none; \}/);
   assert.match(styles, /animation-play-state: paused/);
   assert.match(index, /ui\.css\?v=284/);
-  assert.match(index, /app\.js\?v=286/);
-  assert.match(serviceWorker, /seven-v286/);
+  assert.match(index, /auth\.css\?v=238/);
+  assert.match(index, /app\.js\?v=287/);
+  assert.match(serviceWorker, /seven-v287/);
+  assert.match(serviceWorker, /auth\.css\?v=238/);
   assert.match(serviceWorker, /ui\.css\?v=284/);
-  assert.match(serviceWorker, /app\.js\?v=286/);
+  assert.match(serviceWorker, /app\.js\?v=287/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 

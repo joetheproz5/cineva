@@ -46,6 +46,13 @@ test("the settings hub and details use spacious single-column layouts", () => {
   assert.match(styles, /@media \(max-width: 720px\)[\s\S]*?\.profile-settings-redesign \.profile-settings-groups \{ gap: 13px; \}/);
 });
 
+test("every settings category uses a deliberate, responsive page-heading grid", () => {
+  assert.match(source, /class="profile-settings-page-heading"><button class="profile-category-back"[\s\S]*?<div class="profile-settings-heading-copy"><span class="brand">\$\{t\("PROFILE SETTINGS"\)\}<\/span><h2>\$\{t\(titles\[category\]\)\}<\/h2><\/div><p>\$\{t\(descriptions\[category\]\)\}<\/p><\/header>/);
+  assert.match(styles, /\.profile-settings-redesign \.profile-settings-page-heading \{ display: grid;[\s\S]*?grid-template-areas: "back back" "copy description";/);
+  assert.match(styles, /\.profile-settings-redesign \.profile-settings-heading-copy \{ grid-area: copy;/);
+  assert.match(styles, /@media \(max-width: 720px\)[\s\S]*?grid-template-areas: "back" "copy" "description";/);
+});
+
 test("playback and display pages render controls that the profile form persists", () => {
   const context = settingsContext();
   const profile = { id:"main", name:"Joe", preferences:{} };

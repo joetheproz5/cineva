@@ -1317,7 +1317,7 @@ function renderProfileSettings() {
   const profile = state.profileDraft;
   if (!profile) { state.route = "account"; return render(); }
   const isNew = state.profileEditorIsNew, preferences = { ...currentPreferences(), ...(profile.preferences || {}) }, category = state.profileSettingsCategory || "home", titles = { profiles:"Manage profiles", profile:"Edit this profile", family:"Family controls", playback:"Playback", language:"Language & display", activity:"Your SEVEN activity", security:"Privacy & security" }, descriptions = { profiles:"Manage each profile's details and viewing limits.", profile:"Choose a profile name and avatar.", family:"Choose what this profile can discover and watch.", playback:"Make playback fit your preferences.", language:"Choose the language and content you want to see.", activity:"Review saved titles, ratings, and watch history.", security:"Protect the profile and manage account access." };
-  const detailHeading = category === "home" ? "" : `<header class="profile-settings-page-heading"><button class="profile-category-back" data-profile-category-back>‹ ${t("All settings")}</button><span class="brand">${t("PROFILE SETTINGS")}</span><h2>${t(titles[category])}</h2><p>${t(descriptions[category])}</p></header>`;
+  const detailHeading = category === "home" ? "" : `<header class="profile-settings-page-heading"><button class="profile-category-back" data-profile-category-back>‹ ${t("All settings")}</button><div class="profile-settings-heading-copy"><span class="brand">${t("PROFILE SETTINGS")}</span><h2>${t(titles[category])}</h2></div><p>${t(descriptions[category])}</p></header>`;
   app.innerHTML = `${header()}<main class="profile-settings-page profile-settings-mobile-first profile-settings-redesign"><div class="profile-settings-topbar"><button class="account-back" data-profile-settings-back>‹ ${t("Browse")}</button><button class="profile-settings-switch" data-switch-profile><span>${t("Switch profile")}</span><i aria-hidden="true">⇄</i></button></div>${category === "home" ? profileSettingsHome(profile, isNew) : `<div class="profile-settings-detail-page">${detailHeading}${profileSettingsDetail(profile, category, preferences, isNew)}</div>`}</main>`;
   document.querySelectorAll(".screen-time-rows input, .screen-time-rows select").forEach(field => { field.disabled = !profile.kids; });
   bindCommon();
@@ -1486,7 +1486,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=286", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=287", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
