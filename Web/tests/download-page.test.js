@@ -31,6 +31,7 @@ test("the Mac wrapper is native, universal, and published as a disk image", () =
   assert.match(releaseWorkflow, /hdiutil create/);
   assert.match(releaseWorkflow, /dist\/macos\/SEVEN-macOS\.dmg/);
   assert.match(releaseWorkflow, /needs: \[windows, macos\]/);
+  assert.match(releaseWorkflow, /--repo joetheproz5\/cineva/);
   assert.match(macManifest, /<string>13\.0<\/string>/);
   assert.match(macHost, /WKWebView/);
 });

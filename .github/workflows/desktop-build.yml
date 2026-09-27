@@ -164,4 +164,5 @@ jobs:
             dist/macos/SEVEN-macOS.dmg \
             --title "SEVEN Desktop · Build $GITHUB_RUN_NUMBER" \
             --notes "$RELEASE_NOTES" \
+            --repo joetheproz5/cineva \
             --latest
