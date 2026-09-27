@@ -51,6 +51,16 @@ test("the download page provides four platform jump links and dedicated install 
   assert.match(responseHeaders, /\/download\.html\s+Cache-Control: no-store, no-cache, must-revalidate/);
 });
 
+test("refreshing the download page clears a stale platform anchor and returns to the top", () => {
+  const refreshHandler = downloadPage.match(/<script id="reset-scroll-on-refresh">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(refreshHandler, "the early refresh handler runs before the page can restore an anchor");
+  assert.match(refreshHandler, /navigationEntry\.type === "reload"/);
+  assert.match(refreshHandler, /history\.scrollRestoration = "manual"/);
+  assert.match(refreshHandler, /history\.replaceState\(history\.state, "", location\.pathname \+ location\.search\)/);
+  assert.match(refreshHandler, /window\.scrollTo\(0, 0\)/);
+  assert.match(refreshHandler, /history\.scrollRestoration = previousScrollRestoration/);
+});
+
 test("the install story uses a restrained brand mark and lightweight app screenshots", () => {
   assert.match(downloadPage, /rel="icon" type="image\/png" sizes="64x64" href="\/assets\/favicon-64\.png\?v=2"/);
   assert.match(downloadPage, /rel="apple-touch-icon" href="\/assets\/apple-touch-icon\.png"/);

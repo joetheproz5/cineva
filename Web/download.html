@@ -4,6 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090a0d">
+  <script id="reset-scroll-on-refresh">
+    (function () {
+      var navigationEntry = window.performance && performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+      var isReload = navigationEntry ? navigationEntry.type === "reload" : performance.navigation && performance.navigation.type === 1;
+      if (!isReload) return;
+      var previousScrollRestoration = history.scrollRestoration;
+      var previousScrollBehavior = document.documentElement.style.scrollBehavior;
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      document.documentElement.style.scrollBehavior = "auto";
+      if (location.hash) history.replaceState(history.state, "", location.pathname + location.search);
+      window.scrollTo(0, 0);
+      window.addEventListener("pageshow", function () {
+        window.scrollTo(0, 0);
+        requestAnimationFrame(function () {
+          if ("scrollRestoration" in history) history.scrollRestoration = previousScrollRestoration;
+          document.documentElement.style.scrollBehavior = previousScrollBehavior;
+        });
+      }, { once: true });
+    })();
+  </script>
   <meta name="description" content="Bring SEVEN to Mac, iPhone, Windows, or Android. One home for the stories you love, on every screen.">
   <title>Install SEVEN — Your stories, on every screen</title>
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-64.png?v=2">
