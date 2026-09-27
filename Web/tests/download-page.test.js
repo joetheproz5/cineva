@@ -66,6 +66,9 @@ test("the install story uses a restrained brand mark and lightweight app screens
   assert.match(downloadPage, /rel="apple-touch-icon" href="\/assets\/apple-touch-icon\.png"/);
   assert.doesNotMatch(downloadPage, /href="\/icon\.svg" type="image\/svg\+xml"/);
   assert.doesNotMatch(downloadPage, /is-recommended|desktop-card|class="btn secondary"|function recommend/);
+  assert.doesNotMatch(downloadPage, /class="(?:install-note|visual-caption)"/);
+  assert.doesNotMatch(downloadPage, /Universal app · macOS 13 or later|For the app-style install, use Safari|64-bit installer ·|APK · Android may ask/);
+  assert.match(downloadPage, /If asked, install <a href="https:\/\/developer\.microsoft\.com\/microsoft-edge\/webview2\/"[^>]*>WebView2 Runtime<\/a>/);
   assert.match(downloadPage, /seven-wordmark-download\.webp/);
   assert.ok(fs.statSync(path.join(repository, "Web/assets/seven-wordmark-download.webp")).size < 20_000);
   for (const screenshot of ["install-home-desktop.webp", "install-movies-desktop.webp", "install-series-desktop.webp", "install-home-mobile.webp", "install-movies-mobile.webp", "install-series-mobile.webp"]) {
