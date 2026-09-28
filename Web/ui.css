@@ -389,15 +389,16 @@
 html, body { overflow-x: hidden; }
 
 @media (max-width: 650px) {
-  #app { padding-bottom: 82px; }
+  #app { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
   header { gap: 8px; }
   .settings-header { justify-content: center; }
   .settings-header .wordmark { position: static; transform: none; animation: seven-wordmark-center-mobile .34s cubic-bezier(.2,.8,.2,1); }
   header > nav { position: fixed; z-index: 50; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; padding: 7px 8px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid #2a2a2a; background: #0b0b0bf5; box-shadow: 0 -10px 28px #0008; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-  header > nav .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 49px; padding: 3px 2px; color: #c9c9c9; font-size: 10px; font-weight: 760; line-height: 1; }
-  header > nav .nav-link:active { color: #fff; }
-  header > nav .nav-icon { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  header > nav .nav-link:first-child .nav-icon { fill: currentColor; stroke: currentColor; }
+  header.main-header.app-header > nav { display: none; }
+  header > nav .nav-link,.app-mobile-nav .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 49px; padding: 3px 2px; color: #c9c9c9; font-size: 10px; font-weight: 760; line-height: 1; }
+  header > nav .nav-link:active,.app-mobile-nav .nav-link:active { color: #fff; }
+  header > nav .nav-icon,.app-mobile-nav .nav-icon { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  header > nav .nav-link:first-child .nav-icon,.app-mobile-nav .nav-link:first-child .nav-icon { fill: currentColor; stroke: currentColor; }
   .search { flex: 1; width: auto; margin-left: 0; }
   .search input { font-size: 16px; }
   .search-suggestions { right: 0; }
@@ -607,7 +608,7 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .app-header .wordmark img { width: 82px; }
   .app-header .search { display: none; }
   .app-header .msearch-open { margin-left: auto; }
-  .app-header > nav { right: 8px; bottom: 8px; left: 8px; width: auto; border: 1px solid rgba(255,255,255,.11); border-radius: 17px; background: rgba(9,10,12,.9); box-shadow: 0 10px 38px #000b; }
+  .app-mobile-nav { border-color: rgba(255,255,255,.11); border-radius: 17px; background: rgba(9,10,12,.9); box-shadow: 0 10px 38px #000b; }
   .home-page .hero { width: 100vw; min-height: min(680px, 82svh); margin-left: calc(50% - 50vw); border-radius: 0; }
   .home-hero-backdrop { background-position: 66% center; }
   .home-hero-shade { background: linear-gradient(90deg,rgba(5,6,7,.82) 0%,rgba(5,6,7,.56) 38%,rgba(5,6,7,.1) 100%), linear-gradient(0deg,rgba(5,6,7,.97) 0%,rgba(5,6,7,.82) 26%,rgba(5,6,7,.16) 72%,rgba(5,6,7,.1) 100%); }
@@ -666,12 +667,10 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 @keyframes seven-wordmark-center-mobile { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 650px) {
-  header > nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  header.main-header.app-header > nav { height: 66px; min-height: 66px; padding: 6px 8px; }
-  header.main-header.app-header > nav .nav-link { min-height: 0; }
-  header > nav .nav-link { white-space: nowrap; }
-  header > nav .nav-link[data-favourites] span { font-size: 0; }
-  header > nav .nav-link[data-favourites] span:after { font-size: 10px; content: "Favs"; }
+  .app-mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .app-mobile-nav .nav-link { min-height: 0; white-space: nowrap; }
+  .app-mobile-nav .nav-link[data-favourites] span { font-size: 0; }
+  .app-mobile-nav .nav-link[data-favourites] span:after { font-size: 10px; content: "Favs"; }
   .detail .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .detail .actions .primary { grid-column: 1 / -1; width: 100%; }
   .detail .actions .secondary { display: flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; padding: 10px 8px; text-align: center; }
@@ -986,6 +985,7 @@ header.main-header.app-header .account.account-guest { display: grid; width: 40p
 header.main-header.app-header .account.account-guest:hover { border-color: rgba(240,45,55,.78); color: #fff; background: radial-gradient(circle at 35% 25%, #3a2024, #111 72%); }
 header.main-header.app-header .account.account-guest .account-guest-icon { display: block; width: 21px; height: 21px; flex: 0 0 21px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.6; }
 header.main-header.app-header .account.account-guest b { display: none; }
+.app-mobile-nav { display: none; }
 @media (max-width: 650px) {
   header.main-header.app-header .account.account-guest { width: 38px; height: 38px; min-width: 38px; min-height: 38px; }
   header.main-header.app-header {
@@ -995,5 +995,8 @@ header.main-header.app-header .account.account-guest b { display: none; }
     -webkit-backdrop-filter: none; backdrop-filter: none;
   }
   header.main-header.app-header.scrolled { top: 7px; width: auto; margin: 0 0 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 15px; background: rgba(8,9,11,.84); box-shadow: 0 12px 34px rgba(0,0,0,.68), inset 0 0 0 1px rgba(255,255,255,.035); -webkit-backdrop-filter: blur(18px) saturate(135%); backdrop-filter: blur(18px) saturate(135%); }
-  header.main-header.app-header > nav { position: fixed; top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; margin: 0; }
+  #app > .app-mobile-nav { position: fixed; z-index: 95; top: auto; right: 8px; bottom: max(8px,env(safe-area-inset-bottom)); left: 8px; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); width: auto; height: 66px; min-height: 66px; margin: 0; padding: 6px 8px; border: 1px solid rgba(255,255,255,.11); border-radius: 17px; background: rgba(9,10,12,.94); box-shadow: 0 10px 38px #000b; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  #app > .app-mobile-nav .nav-link { position: relative; }
+  #app > .app-mobile-nav .nav-link.active { color: #fff; background: rgba(255,255,255,.085); }
+  #app > .app-mobile-nav .nav-link.active::after { position: absolute; right: 13px; bottom: 3px; left: 13px; height: 2px; border-radius: 99px; background: #f32b36; content: ""; }
 }

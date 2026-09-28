@@ -33,9 +33,24 @@ test("the player header presents episode context instead of a cinema brand", () 
 });
 
 test("the mobile navigation does not reserve an extra bottom row", () => {
-  assert.match(css, /header\.main-header\.app-header > nav\s*\{\s*height:\s*66px;\s*min-height:\s*66px;\s*padding:\s*6px 8px;/);
+  assert.match(css, /#app > \.app-mobile-nav\s*\{[^}]*height:\s*66px;[^}]*min-height:\s*66px;[^}]*padding:\s*6px 8px;/);
   assert.match(css, /\.player-episodes \.episode\s*\{\s*min-height:\s*0;/);
   assert.match(css, /\.player-episodes \.episode-main\s*\{\s*min-height:\s*65px;/);
   assert.match(css, /\.player-episodes \.player-episode-art img\s*\{[\s\S]*?height:\s*100%;/);
   assert.match(css, /\.episode-current\s*\{\s*position:\s*absolute;[\s\S]*?bottom:\s*10px;/);
+});
+
+test("the mobile bottom navigation stays viewport-fixed while the header is scrolled", () => {
+  const scrolledHeaderRules = [...css.matchAll(/header\.main-header\.app-header\.scrolled\s*\{([^}]*)\}/g)];
+  const mobileScrolledHeader = scrolledHeaderRules.at(-1)?.[1] || "";
+  const mobileNavRules = [...css.matchAll(/#app\s*>\s*\.app-mobile-nav\s*\{([^}]*)\}/g)];
+  const mobileNav = mobileNavRules.at(-1)?.[1] || "";
+
+  assert.match(app, /const mobileNavigation = navigation\.replace\(/);
+  assert.match(app, /<\/header>\$\{mobileNavigation\}/);
+  assert.match(app, /app\.querySelectorAll\("header nav, \.app-mobile-nav"\)/);
+  assert.match(mobileScrolledHeader, /backdrop-filter:\s*blur\(18px\) saturate\(135%\);/);
+  assert.match(css, /header\.main-header\.app-header\s*>\s*nav\s*\{\s*display:\s*none;/);
+  assert.match(mobileNav, /position:\s*fixed;/);
+  assert.match(mobileNav, /bottom:\s*max\(8px,\s*env\(safe-area-inset-bottom\)\);/);
 });
