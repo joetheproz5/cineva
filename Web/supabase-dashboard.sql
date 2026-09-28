@@ -1,5 +1,5 @@
 -- Aggregate-only SEVEN operations dashboard.
--- Run once in Supabase Dashboard -> SQL Editor.
+-- Run in Supabase Dashboard -> SQL Editor. Safe to run again for updates.
 -- No account identifiers, emails, titles, or playback records are copied into analytics.
 
 create table if not exists public.seven_admin_daily_metrics (
@@ -29,12 +29,46 @@ create table if not exists public.seven_admin_watch_events (
   created_at timestamptz not null default pg_catalog.now()
 );
 
+-- One privacy-safe snapshot imports legacy saved positions as an estimate.
+-- Playback progress stores each title's latest position, not historical sessions.
+create table if not exists public.seven_admin_watch_baseline (
+  singleton boolean primary key default true check (singleton),
+  legacy_seconds numeric not null default 0 check (legacy_seconds >= 0),
+  captured_at timestamptz not null default pg_catalog.now()
+);
+
 alter table public.seven_admin_daily_metrics enable row level security;
 alter table public.seven_admin_visitor_hashes enable row level security;
 alter table public.seven_admin_watch_events enable row level security;
+alter table public.seven_admin_watch_baseline enable row level security;
 revoke all on table public.seven_admin_daily_metrics from public, anon, authenticated, service_role;
 revoke all on table public.seven_admin_visitor_hashes from public, anon, authenticated, service_role;
 revoke all on table public.seven_admin_watch_events from public, anon, authenticated, service_role;
+revoke all on table public.seven_admin_watch_baseline from public, anon, authenticated, service_role;
+
+-- Import existing all-account progress exactly once, then start the live counter
+-- from zero so saved positions and newly measured playback are not double-counted.
+do $$
+declare
+  v_inserted integer;
+begin
+  insert into public.seven_admin_watch_baseline (singleton, legacy_seconds)
+  select true, coalesce(pg_catalog.sum(
+    case
+      when duration_seconds > 0 then least(greatest(progress_seconds, 0), duration_seconds)
+      else greatest(progress_seconds, 0)
+    end
+  ), 0)
+  from public.playback_progress
+  where true
+  on conflict (singleton) do nothing;
+  get diagnostics v_inserted = row_count;
+
+  if v_inserted > 0 then
+    update public.seven_admin_daily_metrics set watch_seconds = 0 where watch_seconds <> 0;
+  end if;
+end;
+$$;
 
 create or replace function public.seven_admin_record_visit(p_fingerprint text)
 returns boolean
@@ -165,7 +199,13 @@ as $$
       'verifiedAccounts', (select pg_catalog.count(*) from auth.users where email_confirmed_at is not null),
       'allTimeVisitors', (select coalesce(pg_catalog.sum(unique_visitors), 0) from public.seven_admin_daily_metrics),
       'allTimeDownloadClicks', (select coalesce(pg_catalog.sum(download_clicks), 0) from public.seven_admin_daily_metrics),
-      'hoursWatched', (select coalesce(pg_catalog.round(pg_catalog.sum(watch_seconds) / 3600.0, 1), 0) from public.seven_admin_daily_metrics),
+      'hoursWatched', (
+        select pg_catalog.round((
+          coalesce((select legacy_seconds from public.seven_admin_watch_baseline where singleton), 0)
+          + coalesce(pg_catalog.sum(watch_seconds), 0)
+        ) / 3600.0, 1)
+        from public.seven_admin_daily_metrics
+      ),
       'visitorsToday', coalesce((select unique_visitors from public.seven_admin_daily_metrics where metric_day = settings.today), 0),
       'downloadsToday', coalesce((select download_clicks from public.seven_admin_daily_metrics where metric_day = settings.today), 0)
     ),

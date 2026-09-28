@@ -42,7 +42,7 @@ test("dashboard is private, responsive, and does not render member-level data", 
   assert.match(dashboardPage, /Unique browsers today/);
   assert.match(dashboardPage, /Hours watched/);
   assert.match(dashboardPage, /id="hoursWatchedValue"/);
-  assert.match(dashboardPage, /since tracking enabled/);
+  assert.match(dashboardPage, /all accounts · history estimated/);
   assert.match(dashboardPage, /Administrator sign in/);
   assert.doesNotMatch(dashboardPage, /The whole picture|Membership pulse|Install signal|Live · aggregate only|privacy-note|login-privacy/);
   assert.doesNotMatch(dashboardPage, /SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|SEVEN_DASHBOARD_SECRET/);
@@ -69,6 +69,9 @@ test("analytics storage contains aggregates, locks raw visitor hashes, and limit
   assert.match(metricsSchema, /seven_admin_record_watch_time/);
   assert.match(metricsSchema, /seven_admin_watch_events/);
   assert.match(metricsSchema, /event_id uuid primary key/i);
+  assert.match(metricsSchema, /seven_admin_watch_baseline/);
+  assert.match(metricsSchema, /from public\.playback_progress/);
+  assert.match(metricsSchema, /on conflict \(singleton\) do nothing/i);
   assert.match(metricsSchema, /from auth\.users/i);
   assert.doesNotMatch(metricsSchema, /user_id|poster_path|content_key|title text/i);
   assert.match(functions, /path === "metrics\/event" \|\| path\.startsWith\("admin\/"\)/);

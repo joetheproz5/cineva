@@ -80,11 +80,11 @@ The account system supports email/password sign-up and sign-in. When the user is
 
 ## SEVEN Studio dashboard
 
-The private operations dashboard is available at /dashboard. It shows daily unique browsers, account totals and signup trends, and install-button clicks by platform. It does not expose member emails, account IDs, titles watched, or playback history. Visitor deduplication uses a random browser token that rotates each UTC day; only its server-side HMAC is kept, for at most 31 days. Do Not Track and Global Privacy Control are respected.
+The private operations dashboard is available at /dashboard. It shows daily unique browsers, account totals and signup trends, install-button clicks by platform, and combined watch time. Historical watch time is estimated from a one-time aggregate of saved playback positions; new time is counted from forward playback. Neither source exposes member emails, account IDs, titles, or per-account viewing activity. Visitor deduplication uses a random browser token that rotates each UTC day; only its server-side HMAC is kept, for at most 31 days. Do Not Track and Global Privacy Control are respected.
 
-One-time setup:
+Setup and updates:
 
-1. In Supabase SQL Editor, run [supabase-dashboard.sql](Web/supabase-dashboard.sql).
+1. In Supabase SQL Editor, run [supabase-dashboard.sql](Web/supabase-dashboard.sql). It is safe to run again when dashboard metrics are updated.
 2. In the Cloudflare Pages project, add **SUPABASE_SECRET_KEY** as an encrypted secret. Keep it server-side; never put it in **Web/** or client code. The legacy **SUPABASE_SERVICE_ROLE_KEY** name is also accepted if that is what your project already has.
 3. Add **SEVEN_ADMIN_PASSWORD** as an encrypted secret. Use a unique passphrase of at least 16 characters. The login name defaults to **admin**; optionally set **SEVEN_ADMIN_USERNAME** as a regular Pages variable to change it.
 4. Add **SEVEN_DASHBOARD_SECRET** as an encrypted secret containing a unique random value of at least 32 characters. It signs the short-lived admin session and daily visitor hashes.
