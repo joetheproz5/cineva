@@ -92,9 +92,12 @@ function cookieHeaders(request, token, clear = false) {
 
 async function supabaseRPC(env, functionName, payload) {
   const key = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+  const headers = { apikey:key, "Content-Type":"application/json", "Cache-Control":"no-store" };
+  // New Supabase secret API keys are not JWTs and must not be sent as Bearer tokens.
+  if (!env.SUPABASE_SECRET_KEY) headers.Authorization = "Bearer " + key;
   const response = await fetch(env.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/rpc/" + functionName, {
     method:"POST",
-    headers:{ apikey:key, Authorization:"Bearer " + key, "Content-Type":"application/json", "Cache-Control":"no-store" },
+    headers,
     body:JSON.stringify(payload)
   });
   if (!response.ok) throw new Error("Analytics storage is unavailable.");

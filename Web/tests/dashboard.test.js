@@ -88,6 +88,7 @@ test("admin stats are server-authenticated and use only the service-side Supabas
     rpcCalls += 1;
     assert.equal(url, "https://example.supabase.co/rest/v1/rpc/seven_admin_get_stats");
     assert.equal(options.headers.apikey, "sb_secret_test_only");
+    assert.equal(options.headers.Authorization, undefined, "new secret API keys are not JWT bearer tokens");
     assert.deepEqual(JSON.parse(options.body), { p_days:7 });
     return Response.json({ totals:{ accounts:5 }, daily:[] });
   };
@@ -96,6 +97,19 @@ test("admin stats are server-authenticated and use only the service-side Supabas
     assert.equal(stats.status, 200);
     assert.deepEqual(await stats.json(), { totals:{ accounts:5 }, daily:[] });
     assert.equal(rpcCalls, 1);
+
+    const legacyCalls = [];
+    global.fetch = async (url, options) => {
+      legacyCalls.push(options.headers);
+      return Response.json({ totals:{ accounts:5 }, daily:[] });
+    };
+    const legacyStats = await run(adminRequest("/api/admin/stats", { headers:{ Cookie:cookie } }), adminEnv({
+      SUPABASE_SECRET_KEY:undefined,
+      SUPABASE_SERVICE_ROLE_KEY:"legacy-service-role-test"
+    }));
+    assert.equal(legacyStats.status, 200);
+    assert.equal(legacyCalls[0].apikey, "legacy-service-role-test");
+    assert.equal(legacyCalls[0].Authorization, "Bearer legacy-service-role-test");
 
     const logout = await run(adminRequest("/api/admin/logout", { method:"POST", headers:{ Cookie:cookie } }), adminEnv());
     assert.equal(logout.status, 200);
