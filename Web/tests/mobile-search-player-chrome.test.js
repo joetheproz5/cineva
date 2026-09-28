@@ -33,7 +33,7 @@ test("the player header presents episode context instead of a cinema brand", () 
 });
 
 test("the mobile navigation does not reserve an extra bottom row", () => {
-  assert.match(css, /#app > \.app-mobile-nav\s*\{[^}]*height:\s*66px;[^}]*min-height:\s*66px;[^}]*padding:\s*6px 8px;/);
+  assert.match(css, /#app > \.app-mobile-nav\s*\{[^}]*height:\s*calc\(66px \+ env\(safe-area-inset-bottom\)\);[^}]*min-height:\s*calc\(66px \+ env\(safe-area-inset-bottom\)\);[^}]*padding:\s*6px 8px calc\(6px \+ env\(safe-area-inset-bottom\)\);/);
   assert.match(css, /\.player-episodes \.episode\s*\{\s*min-height:\s*0;/);
   assert.match(css, /\.player-episodes \.episode-main\s*\{\s*min-height:\s*65px;/);
   assert.match(css, /\.player-episodes \.player-episode-art img\s*\{[\s\S]*?height:\s*100%;/);
@@ -52,5 +52,9 @@ test("the mobile bottom navigation stays viewport-fixed while the header is scro
   assert.match(mobileScrolledHeader, /backdrop-filter:\s*blur\(18px\) saturate\(135%\);/);
   assert.match(css, /header\.main-header\.app-header\s*>\s*nav\s*\{\s*display:\s*none;/);
   assert.match(mobileNav, /position:\s*fixed;/);
-  assert.match(mobileNav, /bottom:\s*max\(8px,\s*env\(safe-area-inset-bottom\)\);/);
+  assert.match(mobileNav, /bottom:\s*0;/);
+  assert.match(mobileNav, /right:\s*0;[^}]*left:\s*0;[^}]*width:\s*100%;/);
+  assert.match(mobileNav, /background:\s*#090a0c;/);
+  assert.match(mobileNav, /backdrop-filter:\s*none;/);
+  assert.match(mobileNav, /border-radius:\s*0;/);
 });
