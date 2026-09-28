@@ -45,6 +45,8 @@ test("the mobile bottom navigation stays viewport-fixed while the header is scro
   const mobileScrolledHeader = scrolledHeaderRules.at(-1)?.[1] || "";
   const mobileNavRules = [...css.matchAll(/#app\s*>\s*\.app-mobile-nav\s*\{([^}]*)\}/g)];
   const mobileNav = mobileNavRules.at(-1)?.[1] || "";
+  const activeNavRules = [...css.matchAll(/#app\s*>\s*\.app-mobile-nav\s+\.nav-link\.active\s*\{([^}]*)\}/g)];
+  const activeNav = activeNavRules.at(-1)?.[1] || "";
 
   assert.match(app, /const mobileNavigation = navigation\.replace\(/);
   assert.match(app, /<\/header>\$\{mobileNavigation\}/);
@@ -54,7 +56,8 @@ test("the mobile bottom navigation stays viewport-fixed while the header is scro
   assert.match(mobileNav, /position:\s*fixed;/);
   assert.match(mobileNav, /bottom:\s*0;/);
   assert.match(mobileNav, /right:\s*0;[^}]*left:\s*0;[^}]*width:\s*100%;/);
-  assert.match(mobileNav, /background:\s*#090a0c;/);
-  assert.match(mobileNav, /backdrop-filter:\s*none;/);
+  assert.match(mobileNav, /background:\s*rgba\(14,15,17,\.78\);/);
+  assert.match(mobileNav, /backdrop-filter:\s*blur\(20px\) saturate\(145%\);/);
   assert.match(mobileNav, /border-radius:\s*0;/);
+  assert.match(activeNav, /border-radius:\s*14px;/);
 });
