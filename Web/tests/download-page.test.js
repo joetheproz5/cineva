@@ -202,6 +202,7 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(desktopHost, /Close_Click\(object sender, RoutedEventArgs e\) => Close\(\)/);
   assert.match(windowsChrome, /x:Name="CaptionBar"/);
   assert.match(desktopHost, /captionMenu\.Items\.Add\(_adBlockingMenuItem\)/);
+  assert.match(desktopHost, /captionMenu\.Items\.Add\(_adBlockingRetryMenuItem\)/);
   assert.match(desktopHost, /captionMenu\.Items\.Add\(_adBlockingStatusMenuItem\)/);
 });
 
@@ -210,6 +211,10 @@ test("the Windows wrapper bundles official uBlock Origin Lite with verified filt
   assert.match(desktopHost, /GetBrowserExtensionsAsync\(\)/);
   assert.match(desktopHost, /AddBrowserExtensionAsync\(extensionPath\)/);
   assert.match(desktopHost, /EnableAsync\(_adBlockingMenuItem\.IsChecked\)/);
+  assert.match(desktopHost, /EnsureContentBlockerWithRetryAsync\(core\)/);
+  assert.match(desktopHost, /await _contentBlockerExtension\.EnableAsync\(true\)/);
+  assert.match(desktopHost, /Retry uBlock installation/);
+  assert.match(desktopHost, /adblock-setup\.log/);
   assert.match(desktopHost, /Trace\.TraceError\("SEVEN could not install uBlock Origin Lite/);
   assert.match(releaseWorkflow, /uBlock Origin Lite rules/);
   assert.match(releaseWorkflow, /65c895c8edb04120d5b9a6eac8b17fa8e4543eda1b7b571eea2bed3c9692ee2d/);
