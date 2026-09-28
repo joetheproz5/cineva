@@ -10,6 +10,17 @@
 /download.html
   Cache-Control: no-store, no-cache, must-revalidate
 
+/dashboard
+  Cache-Control: no-store, no-cache, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/dashboard.html
+  Cache-Control: no-store, no-cache, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/metrics.js
+  Cache-Control: no-store, no-cache, must-revalidate
+
 /app.js
   Cache-Control: no-store, no-cache, must-revalidate
 

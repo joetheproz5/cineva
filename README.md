@@ -78,6 +78,20 @@ The local config file is ignored by Git and the server keeps the token off the i
 
 The account system supports email/password sign-up and sign-in. When the user is signed in, Cineva writes watch position, duration, completion state, title, and timestamp to Supabase and reloads them on the next signed-in session. The private `supabase.local.json` config is ignored by Git.
 
+## SEVEN Studio dashboard
+
+The private operations dashboard is available at /dashboard. It shows daily unique browsers, account totals and signup trends, and install-button clicks by platform. It does not expose member emails, account IDs, titles watched, or playback history. Visitor deduplication uses a random browser token that rotates each UTC day; only its server-side HMAC is kept, for at most 31 days. Do Not Track and Global Privacy Control are respected.
+
+One-time setup:
+
+1. In Supabase SQL Editor, run [supabase-dashboard.sql](Web/supabase-dashboard.sql).
+2. In the Cloudflare Pages project, add **SUPABASE_SECRET_KEY** as an encrypted secret. Keep it server-side; never put it in **Web/** or client code. The legacy **SUPABASE_SERVICE_ROLE_KEY** name is also accepted if that is what your project already has.
+3. Add **SEVEN_ADMIN_PASSWORD** as an encrypted secret. Use a unique passphrase of at least 16 characters. The login name defaults to **admin**; optionally set **SEVEN_ADMIN_USERNAME** as a regular Pages variable to change it.
+4. Add **SEVEN_DASHBOARD_SECRET** as an encrypted secret containing a unique random value of at least 32 characters. It signs the short-lived admin session and daily visitor hashes.
+5. Keep the existing **SUPABASE_URL** Pages variable, then redeploy so the Functions receive the new values.
+
+The dashboard intentionally does not ship a default password. Cloudflare Pages Functions read these values from server-side environment bindings; Supabase's secret key can bypass row-level security, so it must stay out of the browser and source control. See [Cloudflare Pages bindings and secrets](https://developers.cloudflare.com/pages/functions/bindings/) and [Supabase API key security](https://supabase.com/docs/guides/getting-started/api-keys).
+
 ## Project structure
 
 ```

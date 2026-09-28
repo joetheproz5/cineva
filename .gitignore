@@ -22,6 +22,7 @@ Web/cinepro.local.json
 
 # Wrangler local state
 .wrangler/
+.dev.vars*
 
 # macOS
 .DS_Store

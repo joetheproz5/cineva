@@ -9,6 +9,27 @@ function config(name) { try { return JSON.parse(fs.readFileSync(path.join(root, 
 function sendJSON(response, status, payload) { if (response.headersSent) { response.end(); return; } response.writeHead(status, { "Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store" }); response.end(JSON.stringify(payload)); }
 function readBody(request) { return new Promise((resolve, reject) => { let body = ""; request.on("data", chunk => { body += chunk; if (body.length > 50_000) request.destroy(); }); request.on("end", () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error("Invalid JSON.")); } }); request.on("error", reject); }); }
 function supabase() { const local = config("supabase.local.json"), settings = { url:local.url || process.env.SUPABASE_URL, publishableKey:local.publishableKey || process.env.SUPABASE_PUBLISHABLE_KEY, emailRedirectTo:local.emailRedirectTo || process.env.SUPABASE_EMAIL_REDIRECT_TO }; return settings.url && settings.publishableKey ? settings : null; }
+function dashboardEnvironment() { const local = config("supabase.local.json"); return { SUPABASE_URL:local.url || process.env.SUPABASE_URL, SUPABASE_SECRET_KEY:process.env.SUPABASE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY:process.env.SUPABASE_SERVICE_ROLE_KEY, SEVEN_ADMIN_USERNAME:process.env.SEVEN_ADMIN_USERNAME, SEVEN_ADMIN_PASSWORD:process.env.SEVEN_ADMIN_PASSWORD, SEVEN_DASHBOARD_SECRET:process.env.SEVEN_DASHBOARD_SECRET }; }
+async function dashboardAPI(request, response, sourceURL) {
+  try {
+    const headers = new Headers();
+    for (const [name, value] of Object.entries(request.headers)) {
+      if (Array.isArray(value)) value.forEach(item => headers.append(name, item));
+      else if (value !== undefined) headers.set(name, value);
+    }
+    const chunks = [];
+    if (!["GET", "HEAD"].includes(request.method)) for await (const chunk of request) chunks.push(chunk);
+    const body = chunks.length ? Buffer.concat(chunks) : undefined;
+    const webRequest = new Request(sourceURL.href, { method:request.method, headers, ...(body ? { body } : {}) });
+    const module = await import("../shared/admin-dashboard.mjs");
+    const webResponse = await module.handleDashboardRequest(webRequest, dashboardEnvironment());
+    for (const [name, value] of webResponse.headers) response.setHeader(name, value);
+    response.writeHead(webResponse.status);
+    response.end(Buffer.from(await webResponse.arrayBuffer()));
+  } catch {
+    sendJSON(response, 503, { error:"The local dashboard service is unavailable." });
+  }
+}
 function authToken(request) { const header = request.headers.authorization || ""; return header.startsWith("Bearer ") ? header.slice(7) : null; }
 async function upstream(url, options = {}) { const response = await fetch(url, options); const text = await response.text(); let data; try { data = text ? JSON.parse(text) : {}; } catch { data = { error:text }; } return { status:response.status, data }; }
 async function proxyTMDB(response, sourceURL) {
@@ -82,6 +103,7 @@ async function parentAccess(request, response) {
 }
 const server = http.createServer((request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
+  if (sourceURL.pathname === "/api/metrics/event" || sourceURL.pathname.startsWith("/api/admin/")) return void dashboardAPI(request, response, sourceURL);
   if (sourceURL.pathname.startsWith("/api/tmdb/")) return proxyTMDB(response, sourceURL);
   if (sourceURL.pathname === "/api/auth/signup") return auth(request, response, "signup");
   if (sourceURL.pathname === "/api/auth/login") return auth(request, response, "login");
@@ -91,7 +113,7 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/account/list") return myList(request, response, sourceURL);
   if (sourceURL.pathname === "/api/account/settings" && request.method === "PUT") return accountSettings(request, response);
   if (sourceURL.pathname === "/api/account/parent-access") return parentAccess(request, response);
-  const requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
+  let requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); if (requested === "dashboard" || requested === "dashboard/") requested = "dashboard.html"; const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
   if (!file.startsWith(root)) return response.writeHead(403).end();
   fs.readFile(file, (error, data) => { if (error) return response.writeHead(error.code === "ENOENT" ? 404 : 500).end("Not found"); response.writeHead(200, { "Content-Type":types[path.extname(file)] || "application/octet-stream", "Cache-Control":"no-cache" }); response.end(data); });
 });
