@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const repository = path.resolve(__dirname, "../..");
 const dashboardPage = fs.readFileSync(path.join(repository, "Web/dashboard.html"), "utf8");
+const pagesRedirects = fs.existsSync(path.join(repository, "Web/_redirects")) ? fs.readFileSync(path.join(repository, "Web/_redirects"), "utf8") : "";
 const metricsClient = fs.readFileSync(path.join(repository, "Web/metrics.js"), "utf8");
 const metricsSchema = fs.readFileSync(path.join(repository, "Web/supabase-dashboard.sql"), "utf8");
 const entryPage = fs.readFileSync(path.join(repository, "Web/index.html"), "utf8");
@@ -35,6 +36,7 @@ function adminRequest(pathname, options = {}) {
 }
 
 test("dashboard is private, responsive, and does not render member-level data", () => {
+  assert.doesNotMatch(pagesRedirects, /^\/dashboard\s+\/dashboard\.html\s+200\s*$/m);
   assert.match(dashboardPage, /<meta name="robots" content="noindex, nofollow, noarchive">/);
   assert.match(dashboardPage, /aria-label="Analytics date range"/);
   assert.match(dashboardPage, /Unique browsers today/);
