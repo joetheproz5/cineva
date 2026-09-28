@@ -28,15 +28,22 @@ public partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SEVEN",
         "window-placement.json");
-    private readonly AdBlocker _adBlocker = new();
+    private static readonly string ContentBlockerExtensionIdPath = System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SEVEN",
+        "ubol-extension-id.txt");
+    private CoreWebView2BrowserExtension? _contentBlockerExtension;
+    private string? _contentBlockerVersion;
+    private string? _contentBlockerError;
     private readonly MenuItem _adBlockingMenuItem = new()
     {
-        Header = "Block known third-party ads and trackers",
+        Header = "uBlock Origin Lite",
         IsCheckable = true,
+        IsEnabled = false,
     };
     private readonly MenuItem _adBlockingStatusMenuItem = new()
     {
-        Header = "Ad blocking status: waiting for browser",
+        Header = "uBlock Origin Lite: waiting for browser",
         IsEnabled = false,
     };
     private readonly DispatcherTimer _placementSaveTimer;
@@ -126,13 +133,41 @@ public partial class MainWindow : Window
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "SEVEN",
                 "WebView2");
-            var environment = await CoreWebView2Environment.CreateAsync(null, dataFolder);
+            CoreWebView2Environment environment;
+            try
+            {
+                var environmentOptions = new CoreWebView2EnvironmentOptions
+                {
+                    AreBrowserExtensionsEnabled = true,
+                };
+                environment = await CoreWebView2Environment.CreateAsync(null, dataFolder, environmentOptions);
+            }
+            catch (Exception exception)
+            {
+                // Keep the app usable with older or already-running WebView2
+                // environments, but make the unavailable blocker visible.
+                _contentBlockerError = $"WebView2 extensions unavailable ({exception.GetType().Name})";
+                Trace.TraceError("SEVEN could not enable WebView2 extensions: {0}", exception);
+                environment = await CoreWebView2Environment.CreateAsync(null, dataFolder);
+            }
+
             await Browser.EnsureCoreWebView2Async(environment);
 
             var core = Browser.CoreWebView2;
-            _adBlocker.Attach(core, environment);
-            _adBlocker.StateChanged += (_, _) =>
-                Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)UpdateAdBlockingMenu);
+            if (_contentBlockerError is null)
+            {
+                try
+                {
+                    await EnsureContentBlockerAsync(core);
+                }
+                catch (Exception exception)
+                {
+                    _contentBlockerError = exception is FileNotFoundException
+                        ? "Blocker files missing; reinstall SEVEN"
+                        : $"Setup failed ({exception.GetType().Name})";
+                    Trace.TraceError("SEVEN could not install uBlock Origin Lite: {0}", exception);
+                }
+            }
             UpdateAdBlockingMenu();
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsZoomControlEnabled = true;
@@ -198,23 +233,100 @@ public partial class MainWindow : Window
         }
     }
 
-    private void AdBlockingMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void AdBlockingMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        _adBlocker.IsEnabled = _adBlockingMenuItem.IsChecked;
+        if (_contentBlockerExtension is not { } extension)
+        {
+            return;
+        }
+
+        _adBlockingMenuItem.IsEnabled = false;
+        try
+        {
+            await extension.EnableAsync(_adBlockingMenuItem.IsChecked);
+            _contentBlockerError = null;
+        }
+        catch (Exception exception)
+        {
+            _contentBlockerError = $"Could not update state ({exception.GetType().Name})";
+            Trace.TraceError("SEVEN could not change uBlock Origin Lite state: {0}", exception);
+        }
+
         UpdateAdBlockingMenu();
     }
 
     private void UpdateAdBlockingMenu()
     {
-        _adBlockingMenuItem.IsChecked = _adBlocker.IsEnabled;
-        _adBlockingMenuItem.IsEnabled = _adBlocker.IsAttached;
-        var blockedCount = _adBlocker.BlockedRequestCount;
-        var errorCount = _adBlocker.ErrorCount;
-        _adBlockingStatusMenuItem.Header = !_adBlocker.IsAttached
-            ? $"Unavailable · {errorCount} setup/runtime error(s)"
-            : _adBlocker.IsEnabled
-                ? $"On · {blockedCount} blocked · {errorCount} errors"
-                : $"Off · {blockedCount} blocked this session · {errorCount} errors";
+        var extension = _contentBlockerExtension;
+        _adBlockingMenuItem.IsEnabled = extension is not null;
+        _adBlockingMenuItem.IsChecked = extension?.IsEnabled ?? false;
+        _adBlockingStatusMenuItem.Header = _contentBlockerError is not null
+            ? $"Unavailable · {_contentBlockerError}"
+            : extension is null
+                ? "Unavailable · extension not installed"
+                : extension.IsEnabled
+                ? $"Enabled · version {_contentBlockerVersion} · uBlock + EasyList + EasyPrivacy"
+                    : $"Disabled · version {_contentBlockerVersion}";
+    }
+
+    private async Task EnsureContentBlockerAsync(CoreWebView2 core)
+    {
+        var extensionPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Extensions", "uBOLite");
+        var manifestPath = System.IO.Path.Combine(extensionPath, "manifest.json");
+        if (!File.Exists(manifestPath))
+        {
+            throw new FileNotFoundException("The bundled uBlock Origin Lite files are missing.", manifestPath);
+        }
+
+        using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+        _contentBlockerVersion = manifest.RootElement.GetProperty("version").GetString() ?? "unknown";
+
+        var installedExtensions = await core.Profile.GetBrowserExtensionsAsync();
+        var savedExtensionId = ReadContentBlockerExtensionId();
+        _contentBlockerExtension = savedExtensionId is null
+            ? null
+            : installedExtensions.FirstOrDefault(extension =>
+                extension.Id.Equals(savedExtensionId, StringComparison.OrdinalIgnoreCase));
+        _contentBlockerExtension ??= installedExtensions.FirstOrDefault(extension =>
+            extension.Name.Contains("uBlock Origin Lite", StringComparison.OrdinalIgnoreCase));
+        _contentBlockerExtension ??= await core.Profile.AddBrowserExtensionAsync(extensionPath);
+        SaveContentBlockerExtensionId(_contentBlockerExtension.Id);
+        _contentBlockerError = null;
+    }
+
+    private static string? ReadContentBlockerExtensionId()
+    {
+        try
+        {
+            var extensionId = File.ReadAllText(ContentBlockerExtensionIdPath).Trim();
+            return extensionId.Length == 0 ? null : extensionId;
+        }
+        catch (FileNotFoundException)
+        {
+            return null;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return null;
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("SEVEN could not read the uBlock Origin Lite ID: {0}", exception);
+            return null;
+        }
+    }
+
+    private static void SaveContentBlockerExtensionId(string extensionId)
+    {
+        try
+        {
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ContentBlockerExtensionIdPath)!);
+            File.WriteAllText(ContentBlockerExtensionIdPath, extensionId);
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("SEVEN could not save the uBlock Origin Lite ID: {0}", exception);
+        }
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);

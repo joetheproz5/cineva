@@ -12,7 +12,7 @@ The SEVEN web app plays titles through cloud-hosted embed players — VidLink, V
 - Progress messages are accepted only when they come from the active iframe, match the selected provider's exact origin, and contain finite, sensible time and duration values.
 - The Android WebView blocks unsolicited new windows and cross-site top-level navigation. The iOS player view does the same and only forwards valid player events from its configured provider origin.
 - Browser-level filtering of resources inside an embedded cross-origin player requires a separately installed browser extension; it is not a capability claimed by the web app.
-- The Windows shell's embedded browser blocks requests to a curated list of known third-party ad, pop-under, and tracking domains, including requests from player frames and workers. It is domain-list based, so first-party ads and newly introduced ad hosts may still appear. Right-click the otherwise minimal title bar to toggle blocking and view blocked-request and error counts; the choice persists per install.
+- The Windows shell bundles the official uBlock Origin Lite Edge extension, with its uBlock, EasyList, and EasyPrivacy rules, for content and network filtering inside the embedded browser. Right-click the otherwise minimal title bar to enable or disable it. The extension is shipped under GPL-3.0; see `Windows/Seven.Desktop/ThirdPartyNotices.txt`.
 
 ### Chrome/Edge popup guard
 

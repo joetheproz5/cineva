@@ -44,6 +44,31 @@ jobs:
           -p:DebugType=None
           -p:DebugSymbols=false
 
+      - name: Bundle verified uBlock Origin Lite rules
+        shell: pwsh
+        run: |
+          $version = "2026.920.1710"
+          $expectedSha256 = "65c895c8edb04120d5b9a6eac8b17fa8e4543eda1b7b571eea2bed3c9692ee2d"
+          $archive = Join-Path $env:RUNNER_TEMP "uBOLite-$version-edge.zip"
+          $uri = "https://github.com/uBlockOrigin/uBOL-home/releases/download/$version/uBOLite_$version.edge.zip"
+          Invoke-WebRequest -Uri $uri -OutFile $archive
+
+          $actualSha256 = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualSha256 -ne $expectedSha256) {
+            throw "uBlock Origin Lite checksum mismatch: $actualSha256"
+          }
+
+          $extensionPath = Join-Path $env:GITHUB_WORKSPACE "dist/windows/Extensions/uBOLite"
+          New-Item -ItemType Directory -Path $extensionPath -Force | Out-Null
+          Expand-Archive -LiteralPath $archive -DestinationPath $extensionPath -Force
+          $manifest = Get-Content -LiteralPath (Join-Path $extensionPath "manifest.json") -Raw | ConvertFrom-Json
+          if ($manifest.version -ne $version) {
+            throw "Expected uBlock Origin Lite $version, received $($manifest.version)"
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $extensionPath "LICENSE.txt"))) {
+            throw "The bundled uBlock Origin Lite license file is missing"
+          }
+
       - name: Create Windows installer
         shell: pwsh
         run: |
@@ -151,7 +176,7 @@ jobs:
           RELEASE_NOTES: |
             SEVEN desktop apps for Windows and macOS.
 
-            Windows: 64-bit Windows 10 and 11. Run SEVEN-Setup-win-x64.exe to install for your Windows user. Setup creates a Start menu shortcut and supports normal uninstall. Microsoft Edge WebView2 is required; if it is missing, the app opens Microsoft's official runtime download page. The installer is unsigned and Windows may show a SmartScreen warning.
+            Windows: 64-bit Windows 10 and 11. Run SEVEN-Setup-win-x64.exe to install for your Windows user. Setup creates a Start menu shortcut and supports normal uninstall. The app bundles uBlock Origin Lite with its default ad and tracker rules. Microsoft Edge WebView2 is required; if it is missing, the app opens Microsoft's official runtime download page. The installer is unsigned and Windows may show a SmartScreen warning.
 
             macOS: universal app for Apple Silicon and Intel, macOS 13 or later. Open SEVEN-macOS.dmg and drag SEVEN to Applications. This build is not signed or notarized; on first launch, Control-click SEVEN in Applications and choose Open to approve it in Gatekeeper.
         shell: bash

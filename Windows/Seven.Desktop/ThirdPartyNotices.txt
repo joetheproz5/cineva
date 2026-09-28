@@ -1,0 +1,12 @@
+SEVEN includes uBlock Origin Lite (uBOL)
+Version: 2026.920.1710
+Copyright Raymond Hill and contributors.
+License: GNU General Public License, version 3.0 (GPL-3.0).
+
+The unmodified Microsoft Edge extension is bundled from the official release:
+https://github.com/uBlockOrigin/uBOL-home/releases/tag/2026.920.1710
+
+The corresponding source and license are available at:
+https://github.com/uBlockOrigin/uBOL-home/tree/2026.920.1710
+
+The extension's LICENSE.txt is also included in the Extensions\uBOLite folder.

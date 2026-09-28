@@ -4,13 +4,13 @@ const path = require("node:path");
 const test = require("node:test");
 
 const repository = path.resolve(__dirname, "../..");
+const readme = fs.readFileSync(path.join(repository, "README.md"), "utf8");
 const downloadPage = fs.readFileSync(path.join(repository, "Web/download.html"), "utf8");
 const responseHeaders = fs.readFileSync(path.join(repository, "Web/_headers"), "utf8");
 const releaseWorkflow = fs.readFileSync(path.join(repository, ".github/workflows/desktop-build.yml"), "utf8");
 const installerScript = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/installer.iss"), "utf8");
 const desktopHost = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/MainWindow.xaml.cs"), "utf8");
 const windowsChrome = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/MainWindow.xaml"), "utf8");
-const adBlocker = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/AdBlocker.cs"), "utf8");
 const macHost = fs.readFileSync(path.join(repository, "Mac/Sources/SEVENApp.swift"), "utf8");
 const macManifest = fs.readFileSync(path.join(repository, "Mac/Info.plist"), "utf8");
 
@@ -202,16 +202,22 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(desktopHost, /Close_Click\(object sender, RoutedEventArgs e\) => Close\(\)/);
   assert.match(windowsChrome, /x:Name="CaptionBar"/);
   assert.match(desktopHost, /captionMenu\.Items\.Add\(_adBlockingMenuItem\)/);
+  assert.match(desktopHost, /captionMenu\.Items\.Add\(_adBlockingStatusMenuItem\)/);
 });
 
-test("the Windows ad blocker filters iframe resources and reports failures", () => {
-  assert.match(adBlocker, /AddWebResourceRequestedFilter\([\s\S]*?CoreWebView2WebResourceContext\.All,[\s\S]*?CoreWebView2WebResourceRequestSourceKinds\.All\)/);
-  assert.match(adBlocker, /RemoveWebResourceRequestedFilter\([\s\S]*?CoreWebView2WebResourceRequestSourceKinds\.All\)/);
-  assert.match(adBlocker, /Trace\.TraceError/);
-  assert.match(adBlocker, /public long ErrorCount/);
-  assert.match(adBlocker, /public bool IsAttached/);
-  assert.match(desktopHost, /Block known third-party ads and trackers/);
-  assert.match(desktopHost, /_adBlocker\.ErrorCount/);
+test("the Windows wrapper bundles official uBlock Origin Lite with verified filter rules", () => {
+  assert.match(desktopHost, /AreBrowserExtensionsEnabled = true/);
+  assert.match(desktopHost, /GetBrowserExtensionsAsync\(\)/);
+  assert.match(desktopHost, /AddBrowserExtensionAsync\(extensionPath\)/);
+  assert.match(desktopHost, /EnableAsync\(_adBlockingMenuItem\.IsChecked\)/);
+  assert.match(desktopHost, /Trace\.TraceError\("SEVEN could not install uBlock Origin Lite/);
+  assert.match(releaseWorkflow, /uBlock Origin Lite rules/);
+  assert.match(releaseWorkflow, /65c895c8edb04120d5b9a6eac8b17fa8e4543eda1b7b571eea2bed3c9692ee2d/);
+  assert.match(releaseWorkflow, /uBOLite_\$version\.edge\.zip/);
+  assert.match(installerScript, /Extensions\\\*.*recursesubdirs createallsubdirs/);
+  assert.match(installerScript, /ThirdPartyNotices\.txt/);
+  assert.match(readme, /official uBlock Origin Lite Edge extension/);
+  assert.match(releaseWorkflow, /bundles uBlock Origin Lite with its default ad and tracker rules/);
 });
 
 test("WebView2 player fullscreen hides the app chrome and covers the whole monitor", () => {

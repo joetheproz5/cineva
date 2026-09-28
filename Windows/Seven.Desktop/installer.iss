@@ -26,6 +26,8 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "..\..\dist\windows\{#AppExecutable}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\dist\windows\Extensions\*"; DestDir: "{app}\Extensions"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "ThirdPartyNotices.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\SEVEN"; Filename: "{app}\{#AppExecutable}"
