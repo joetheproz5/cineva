@@ -100,7 +100,18 @@ async function supabaseRPC(env, functionName, payload) {
     headers,
     body:JSON.stringify(payload)
   });
-  if (!response.ok) throw new Error("Analytics storage is unavailable.");
+  if (!response.ok) {
+    let databaseCode = "";
+    try {
+      const errorBody = await response.json();
+      if (typeof errorBody.code === "string") databaseCode = errorBody.code.slice(0, 32);
+    } catch {}
+    const error = new Error("Analytics storage is unavailable.");
+    error.httpStatus = response.status;
+    error.databaseCode = databaseCode;
+    error.rpc = functionName;
+    throw error;
+  }
   return response.json();
 }
 
@@ -171,7 +182,15 @@ async function recordMetric(request, env) {
       return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
     }
     return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
-  } catch { return json({ error:"Analytics event could not be recorded." }, 503); }
+  } catch (error) {
+    console.error("seven_metrics_write_failed", {
+      event:body.event,
+      rpc:error?.rpc || "unknown",
+      status:error?.httpStatus || null,
+      code:error?.databaseCode || "unknown"
+    });
+    return json({ error:"Analytics event could not be recorded." }, 503);
+  }
 }
 
 async function stats(request, env) {

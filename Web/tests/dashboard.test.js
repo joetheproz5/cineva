@@ -64,6 +64,9 @@ test("browser metrics are daily, anonymous, and respect privacy signals", () => 
   assert.match(metricsClient, /navigator\.globalPrivacyControl === true/);
   assert.match(metricsClient, /saved\.day === today/);
   assert.match(metricsClient, /localStorage\.setItem\(storageKey/);
+  assert.match(metricsClient, /keepalive:Boolean\(keepalive\)/);
+  assert.match(metricsClient, /response\.ok/);
+  assert.doesNotMatch(metricsClient, /navigator\.sendBeacon/);
   assert.doesNotMatch(metricsClient, /navigator\.userAgent|document\.cookie|email|playback_progress/);
 });
 
@@ -214,6 +217,31 @@ test("visit, download, and guest watch events persist only validated aggregate R
     assert.match(rpcCalls[2].url, /seven_admin_record_guest_watch_time$/);
   } finally {
     global.fetch = originalFetch;
+  }
+});
+
+test("analytics write failures return a generic response and log only safe RPC diagnostics", async () => {
+  const run = await handler();
+  const originalFetch = global.fetch;
+  const originalConsoleError = console.error;
+  const logs = [];
+  global.fetch = async () => Response.json({ code:"42501", message:"must not leak database details" }, { status:401 });
+  console.error = (...args) => logs.push(args);
+  try {
+    const response = await run(adminRequest("/api/metrics/event", {
+      method:"POST",
+      headers:{ Origin:"https://seven.example", "Content-Type":"text/plain" },
+      body:JSON.stringify({ event:"download", platform:"windows" })
+    }), adminEnv());
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error:"Analytics event could not be recorded." });
+    assert.equal(logs.length, 1);
+    assert.equal(logs[0][0], "seven_metrics_write_failed");
+    assert.deepEqual(logs[0][1], { event:"download", rpc:"seven_admin_record_download", status:401, code:"42501" });
+    assert.doesNotMatch(JSON.stringify(logs), /must not leak database details/);
+  } finally {
+    global.fetch = originalFetch;
+    console.error = originalConsoleError;
   }
 });
 

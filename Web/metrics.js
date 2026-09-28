@@ -23,20 +23,20 @@
 
   function send(payload, keepalive, accessToken) {
     var body = JSON.stringify(payload);
-    if (keepalive && !accessToken && navigator.sendBeacon) {
-      try {
-        if (navigator.sendBeacon("/api/metrics/event", new Blob([body], { type:"text/plain;charset=UTF-8" }))) return;
-      } catch {}
-    }
     var headers = { "Content-Type":"text/plain;charset=UTF-8" };
     if (accessToken) headers.Authorization = "Bearer " + accessToken;
     fetch("/api/metrics/event", {
       method:"POST",
       credentials:"same-origin",
       keepalive:Boolean(keepalive),
+      cache:"no-store",
       headers:headers,
       body:body
-    }).catch(function () {});
+    }).then(function (response) {
+      if (!response.ok) console.warn("SEVEN analytics request failed with HTTP " + response.status + ".");
+    }).catch(function () {
+      console.warn("SEVEN analytics request did not reach the server.");
+    });
   }
 
   if (visitorId) send({ event:"visit", visitorId:visitorId }, true);
