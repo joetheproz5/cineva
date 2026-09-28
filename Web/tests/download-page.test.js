@@ -51,6 +51,14 @@ test("the download page provides four platform jump links and dedicated install 
   assert.match(responseHeaders, /\/download\.html\s+Cache-Control: no-store, no-cache, must-revalidate/);
 });
 
+test("the download page opens straight into a compact hero without the top bar", () => {
+  assert.doesNotMatch(downloadPage, /<header class="topbar">/);
+  assert.match(downloadPage, /main\{padding-top:0\}/);
+  assert.match(downloadPage, /\.hero\{min-height:clamp\(540px,68svh,600px\)\}/);
+  assert.match(downloadPage, /\.hero-visual\{min-height:clamp\(540px,68svh,600px\)\}/);
+  assert.match(downloadPage, /html\{scroll-padding-top:32px\}/);
+});
+
 test("refreshing the download page clears a stale platform anchor and returns to the top", () => {
   const refreshHandler = downloadPage.match(/<script id="reset-scroll-on-refresh">([\s\S]*?)<\/script>/)?.[1];
   assert.ok(refreshHandler, "the early refresh handler runs before the page can restore an anchor");

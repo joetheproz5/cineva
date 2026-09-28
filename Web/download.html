@@ -122,11 +122,18 @@
     .motion-ready .chapter-visual.reveal:not(.is-visible) .chapter-phone{--preview-y:0deg}
     @media(max-width:860px){.hero-phone{transform:rotateY(0deg) rotateZ(5deg)}}
     @media(max-width:680px){.hero-phone,.chapter-phone{padding:3px}.hero-phone{border-radius:23px}.chapter-phone{border-radius:30px}.hero-phone .device-screen{border-radius:20px}.chapter-phone .device-screen{border-radius:26px}}
+    /* Start directly with the install story; no sticky bar above the hero. */
+    html{scroll-padding-top:32px}
+    main{padding-top:0}
+    .hero{min-height:clamp(540px,68svh,600px)}
+    .chapter{scroll-margin-top:32px}
+    @media(min-width:861px){.hero-visual{min-height:clamp(540px,68svh,600px)}}
+    @media(max-width:860px){.hero{padding-top:26px}}
+    @media(max-width:680px){.hero{padding-top:18px}}
   </style>
 </head>
 <body>
   <div class="page">
-    <header class="topbar"><a href="/" aria-label="SEVEN home"><img class="wordmark" src="/assets/seven-wordmark-download.webp" alt="SEVEN" width="420" height="140" fetchpriority="high"></a><div class="topbar-right"><span class="top-note">One library. Every screen.</span><a class="header-cta" href="#platforms">Choose your device<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 8 5 5 5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div></header>
     <main>
       <section class="hero" aria-labelledby="pageTitle">
         <div class="hero-copy reveal"><div class="eyebrow">A better way to watch</div><h1 id="pageTitle">Good stories,<br><span>one tap away.</span></h1><p>Your SEVEN home travels with you. Find your next favourite, pick up where you left off, and settle in on the screen that feels right.</p><div class="hero-actions"><a class="hero-link" href="#platforms">Find your SEVEN<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a><a class="text-link" href="#install-mac">Take a look</a></div><div class="trust-line"><span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Your profile follows</span><span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Free to install</span></div></div>
