@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Shell;
@@ -27,6 +28,17 @@ public partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SEVEN",
         "window-placement.json");
+    private readonly AdBlocker _adBlocker = new();
+    private readonly MenuItem _adBlockingMenuItem = new()
+    {
+        Header = "Block known third-party ads and trackers",
+        IsCheckable = true,
+    };
+    private readonly MenuItem _adBlockingStatusMenuItem = new()
+    {
+        Header = "Ad blocking status: waiting for browser",
+        IsEnabled = false,
+    };
     private readonly DispatcherTimer _placementSaveTimer;
     private bool _restoringPlacement = true;
     private bool _isPlayerFullscreen;
@@ -37,6 +49,12 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _adBlockingMenuItem.Click += AdBlockingMenuItem_Click;
+        var captionMenu = new ContextMenu();
+        captionMenu.Items.Add(_adBlockingMenuItem);
+        captionMenu.Items.Add(new Separator());
+        captionMenu.Items.Add(_adBlockingStatusMenuItem);
+        CaptionBar.ContextMenu = captionMenu;
         _placementSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _placementSaveTimer.Tick += PlacementSaveTimer_Tick;
         RestoreWindowPlacement();
@@ -112,6 +130,10 @@ public partial class MainWindow : Window
             await Browser.EnsureCoreWebView2Async(environment);
 
             var core = Browser.CoreWebView2;
+            _adBlocker.Attach(core, environment);
+            _adBlocker.StateChanged += (_, _) =>
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)UpdateAdBlockingMenu);
+            UpdateAdBlockingMenu();
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsZoomControlEnabled = true;
             core.Settings.IsStatusBarEnabled = false;
@@ -174,6 +196,25 @@ public partial class MainWindow : Window
         {
             // A missing browser association should not bring down the desktop shell.
         }
+    }
+
+    private void AdBlockingMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _adBlocker.IsEnabled = _adBlockingMenuItem.IsChecked;
+        UpdateAdBlockingMenu();
+    }
+
+    private void UpdateAdBlockingMenu()
+    {
+        _adBlockingMenuItem.IsChecked = _adBlocker.IsEnabled;
+        _adBlockingMenuItem.IsEnabled = _adBlocker.IsAttached;
+        var blockedCount = _adBlocker.BlockedRequestCount;
+        var errorCount = _adBlocker.ErrorCount;
+        _adBlockingStatusMenuItem.Header = !_adBlocker.IsAttached
+            ? $"Unavailable · {errorCount} setup/runtime error(s)"
+            : _adBlocker.IsEnabled
+                ? $"On · {blockedCount} blocked · {errorCount} errors"
+                : $"Off · {blockedCount} blocked this session · {errorCount} errors";
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);

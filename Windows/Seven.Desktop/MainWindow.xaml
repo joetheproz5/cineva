@@ -19,7 +19,7 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <Border Grid.Row="0" Background="#101114" BorderBrush="#24252A" BorderThickness="0,0,0,1">
+    <Border x:Name="CaptionBar" Grid.Row="0" Background="#101114" BorderBrush="#24252A" BorderThickness="0,0,0,1">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />

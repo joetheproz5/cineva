@@ -10,6 +10,7 @@ const releaseWorkflow = fs.readFileSync(path.join(repository, ".github/workflows
 const installerScript = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/installer.iss"), "utf8");
 const desktopHost = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/MainWindow.xaml.cs"), "utf8");
 const windowsChrome = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/MainWindow.xaml"), "utf8");
+const adBlocker = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/AdBlocker.cs"), "utf8");
 const macHost = fs.readFileSync(path.join(repository, "Mac/Sources/SEVENApp.swift"), "utf8");
 const macManifest = fs.readFileSync(path.join(repository, "Mac/Info.plist"), "utf8");
 
@@ -174,9 +175,11 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(windowsChrome, /WindowStyle="None" ResizeMode="CanResize"/);
   assert.match(windowsChrome, /<shell:WindowChrome CaptionHeight="42"/);
   assert.match(windowsChrome, /shell:WindowChrome\.IsHitTestVisibleInChrome="True"/);
-  const titleBar = windowsChrome.match(/<Border Grid\.Row="0"[\s\S]*?<\/Border>/)?.[0];
+  const titleBar = windowsChrome.match(/<Border(?: x:Name="CaptionBar")? Grid\.Row="0"[\s\S]*?<\/Border>/)?.[0];
   assert.ok(titleBar, "the custom title bar exists");
-  assert.equal((titleBar.match(/<Button\b/g) ?? []).length, 3, "the title bar contains only three window controls");
+  assert.equal((titleBar.match(/<Button\b/g) ?? []).length, 3, "the title bar contains only the three window controls");
+  assert.equal((titleBar.match(/Click=\"(?:Minimize_Click|MaximizeRestore_Click|Close_Click)\"/g) ?? []).length, 3,
+    "the title bar retains all three window controls");
   assert.doesNotMatch(titleBar, /<Image\b|<TextBlock\b|Back_Click|Forward_Click|Reload_Click|OpenInBrowser_Click/);
   assert.match(windowsChrome, /Click="Minimize_Click"/);
   assert.match(windowsChrome, /Click="MaximizeRestore_Click"/);
@@ -197,6 +200,18 @@ test("the Windows wrapper uses a compact custom title bar with working window co
   assert.match(desktopHost, /SizeChanged \+=/);
   assert.match(desktopHost, /JsonSerializer\.Serialize\(placement\)/);
   assert.match(desktopHost, /Close_Click\(object sender, RoutedEventArgs e\) => Close\(\)/);
+  assert.match(windowsChrome, /x:Name="CaptionBar"/);
+  assert.match(desktopHost, /captionMenu\.Items\.Add\(_adBlockingMenuItem\)/);
+});
+
+test("the Windows ad blocker filters iframe resources and reports failures", () => {
+  assert.match(adBlocker, /AddWebResourceRequestedFilter\([\s\S]*?CoreWebView2WebResourceContext\.All,[\s\S]*?CoreWebView2WebResourceRequestSourceKinds\.All\)/);
+  assert.match(adBlocker, /RemoveWebResourceRequestedFilter\([\s\S]*?CoreWebView2WebResourceRequestSourceKinds\.All\)/);
+  assert.match(adBlocker, /Trace\.TraceError/);
+  assert.match(adBlocker, /public long ErrorCount/);
+  assert.match(adBlocker, /public bool IsAttached/);
+  assert.match(desktopHost, /Block known third-party ads and trackers/);
+  assert.match(desktopHost, /_adBlocker\.ErrorCount/);
 });
 
 test("WebView2 player fullscreen hides the app chrome and covers the whole monitor", () => {
