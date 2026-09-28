@@ -24,6 +24,7 @@ function adminEnv(overrides = {}) {
     SEVEN_ADMIN_PASSWORD:"a purposely long test passphrase",
     SEVEN_DASHBOARD_SECRET:"a-test-session-secret-that-is-long-enough",
     SUPABASE_URL:"https://example.supabase.co",
+    SUPABASE_PUBLISHABLE_KEY:"sb_publishable_test",
     SUPABASE_SECRET_KEY:"sb_secret_test_only",
     ...overrides
   };
@@ -39,10 +40,16 @@ test("dashboard is private, responsive, and does not render member-level data", 
   assert.doesNotMatch(pagesRedirects, /^\/dashboard\s+\/dashboard\.html\s+200\s*$/m);
   assert.match(dashboardPage, /<meta name="robots" content="noindex, nofollow, noarchive">/);
   assert.match(dashboardPage, /aria-label="Analytics date range"/);
-  assert.match(dashboardPage, /Unique browsers today/);
+  assert.match(dashboardPage, /Active users today/);
+  assert.match(dashboardPage, /All-time user-days/);
+  assert.match(dashboardPage, /id="guestsTodayValue"/);
+  assert.match(dashboardPage, /id="accountsTodayValue"/);
+  assert.match(dashboardPage, /id="allTimeGuestsValue"/);
+  assert.match(dashboardPage, /id="allTimeAccountVisitorsValue"/);
   assert.match(dashboardPage, /Hours watched/);
   assert.match(dashboardPage, /id="hoursWatchedValue"/);
-  assert.match(dashboardPage, /all accounts · history estimated/);
+  assert.match(dashboardPage, /id="accountHoursValue"/);
+  assert.match(dashboardPage, /id="guestHoursValue"/);
   assert.match(dashboardPage, /Administrator sign in/);
   assert.doesNotMatch(dashboardPage, /The whole picture|Membership pulse|Install signal|Live · aggregate only|privacy-note|login-privacy/);
   assert.doesNotMatch(dashboardPage, /SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|SEVEN_DASHBOARD_SECRET/);
@@ -66,7 +73,14 @@ test("analytics storage contains aggregates, locks raw visitor hashes, and limit
   assert.match(metricsSchema, /delete from public\.seven_admin_visitor_hashes\s+where visitor_day < v_day - 30/i);
   assert.match(metricsSchema, /grant execute on function public\.seven_admin_get_stats\(integer\) to service_role/i);
   assert.match(metricsSchema, /hoursWatched/);
+  assert.match(metricsSchema, /watch_seconds_guest/);
+  assert.match(metricsSchema, /watch_seconds_account/);
+  assert.match(metricsSchema, /guest_visitors/);
+  assert.match(metricsSchema, /account_visitors/);
   assert.match(metricsSchema, /seven_admin_record_watch_time/);
+  assert.match(metricsSchema, /seven_admin_record_guest_watch_time/);
+  assert.match(metricsSchema, /accountHoursWatched/);
+  assert.match(metricsSchema, /guestHoursWatched/);
   assert.match(metricsSchema, /seven_admin_watch_events/);
   assert.match(metricsSchema, /event_id uuid primary key/i);
   assert.match(metricsSchema, /seven_admin_watch_baseline/);
@@ -78,6 +92,9 @@ test("analytics storage contains aggregates, locks raw visitor hashes, and limit
   assert.match(functions, /path === "account\/watch-time"/);
   assert.match(functions, /seven_admin_record_watch_time/);
   assert.match(fs.readFileSync(path.join(repository, "Web/app.js"), "utf8"), /samplePlaybackWatchTime\(currentTime\)/);
+  assert.match(fs.readFileSync(path.join(repository, "Web/app.js"), "utf8"), /playbackWatch\.bufferType = userType/);
+  assert.match(fs.readFileSync(path.join(repository, "Web/app.js"), "utf8"), /window\.addEventListener\("pagehide"/);
+  assert.match(metricsClient, /trackAccountVisit:function/);
 });
 
 test("admin stats are server-authenticated and use only the service-side Supabase RPC", async () => {
@@ -159,7 +176,7 @@ test("login rejects cross-origin attempts and visit tracking honors DNT without 
   }
 });
 
-test("visit and download events persist only validated aggregate RPC payloads", async () => {
+test("visit, download, and guest watch events persist only validated aggregate RPC payloads", async () => {
   const run = await handler();
   const originalFetch = global.fetch;
   const rpcCalls = [];
@@ -179,13 +196,56 @@ test("visit and download events persist only validated aggregate RPC payloads", 
       headers:{ Origin:"https://seven.example", "Content-Type":"text/plain" },
       body:JSON.stringify({ event:"download", platform:"windows" })
     }), adminEnv());
+    const watch = await run(adminRequest("/api/metrics/event", {
+      method:"POST",
+      headers:{ Origin:"https://seven.example", "Content-Type":"text/plain" },
+      body:JSON.stringify({ event:"watch-time", eventId:"11111111-1111-4111-8111-111111111111", seconds:15 })
+    }), adminEnv());
     assert.equal(visit.status, 204);
     assert.equal(download.status, 204);
-    assert.equal(rpcCalls.length, 2);
+    assert.equal(watch.status, 204);
+    assert.equal(rpcCalls.length, 3);
     assert.match(rpcCalls[0].payload.p_fingerprint, /^[a-f0-9]{64}$/);
     assert.notEqual(rpcCalls[0].payload.p_fingerprint, visitId);
+    assert.deepEqual(rpcCalls[0].payload, { p_fingerprint:rpcCalls[0].payload.p_fingerprint, p_visitor_type:"guest", p_guest_fingerprint:null });
     assert.deepEqual(rpcCalls[1].payload, { p_platform:"windows" });
     assert.match(rpcCalls[1].url, /seven_admin_record_download$/);
+    assert.deepEqual(rpcCalls[2].payload, { p_event_id:"11111111-1111-4111-8111-111111111111", p_seconds:15 });
+    assert.match(rpcCalls[2].url, /seven_admin_record_guest_watch_time$/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("account visits verify the session and store only daily HMAC fingerprints", async () => {
+  const run = await handler();
+  const originalFetch = global.fetch;
+  const requests = [];
+  const accountId = "12345678-1234-4123-8123-123456789abc";
+  global.fetch = async (url, options) => {
+    requests.push({ url, options });
+    if (url.endsWith("/auth/v1/user")) return Response.json({ id:accountId });
+    return Response.json(true);
+  };
+  try {
+    const visitorId = "abcdef0123456789abcdef0123456789";
+    const response = await run(adminRequest("/api/metrics/event", {
+      method:"POST",
+      headers:{ Origin:"https://seven.example", "Content-Type":"text/plain", Authorization:"Bearer valid-account-session" },
+      body:JSON.stringify({ event:"visit", visitorId })
+    }), adminEnv());
+    assert.equal(response.status, 204);
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].url, "https://example.supabase.co/auth/v1/user");
+    assert.equal(requests[0].options.headers.apikey, "sb_publishable_test");
+    assert.equal(requests[0].options.headers.Authorization, "Bearer valid-account-session");
+    const rpcPayload = JSON.parse(requests[1].options.body);
+    assert.equal(rpcPayload.p_visitor_type, "account");
+    assert.match(rpcPayload.p_fingerprint, /^[a-f0-9]{64}$/);
+    assert.match(rpcPayload.p_guest_fingerprint, /^[a-f0-9]{64}$/);
+    assert.notEqual(rpcPayload.p_fingerprint, accountId);
+    assert.notEqual(rpcPayload.p_guest_fingerprint, visitorId);
+    assert.match(requests[1].url, /seven_admin_record_visit$/);
   } finally {
     global.fetch = originalFetch;
   }

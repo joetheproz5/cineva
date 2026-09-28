@@ -35,7 +35,7 @@
     .range-switch{display:inline-flex;gap:3px;padding:4px;border:1px solid var(--line);border-radius:999px;background:#0e1012}
     .range-switch button,.chart-switch button{padding:8px 13px;border:0;border-radius:999px;color:#9599a0;background:transparent;font-size:10px;font-weight:700;cursor:pointer;transition:color .18s,background .18s}
     .range-switch button[aria-pressed="true"],.chart-switch button[aria-pressed="true"]{color:#fff;background:#292b2f}
-    .summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:13px}
+    .summary-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:13px}
     .summary-card{min-width:0;min-height:145px;padding:18px;border:1px solid var(--line);border-radius:13px;background:#111316}
     .metric-label{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#a3a6ac;font-size:10px;font-weight:650}
     .metric-icon{width:28px;height:28px;display:grid;place-items:center;border:1px solid #ffffff13;border-radius:9px;color:#c4c8ce;background:#ffffff06}
@@ -43,6 +43,8 @@
     .metric-value{display:block;margin-top:17px;font-size:34px;font-weight:720;letter-spacing:-.06em;line-height:1}
     .metric-meta{display:flex;align-items:center;gap:7px;margin-top:11px;color:#858a91;font-size:9px}
     .metric-meta strong{color:#c5c8ce;font-weight:650}
+    .metric-breakdown{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:12px;color:#858a91;font-size:8px}
+    .metric-breakdown b{margin-left:3px;color:#d5d6d7;font-weight:650;font-variant-numeric:tabular-nums}
     .content-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr);gap:14px;margin-top:14px}
     .panel{min-width:0;border:1px solid var(--line);border-radius:17px;background:linear-gradient(145deg,#121417,#0f1012 84%);box-shadow:0 18px 48px #0002}
     .panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 21px 0}
@@ -144,9 +146,14 @@
 
         <section class="summary-grid" aria-label="SEVEN at a glance">
           <article class="summary-card visitors">
-            <div class="metric-label"><span>Unique browsers today</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M3.8 9h16.4M8 4.3l3 5.1-3.2 9.1m8.1-14.2-3 5.1 3.2 9.1" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></div>
+            <div class="metric-label"><span>Active users today</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M3.8 9h16.4M8 4.3l3 5.1-3.2 9.1m8.1-14.2-3 5.1 3.2 9.1" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></div>
             <strong class="metric-value" id="visitorValue">—</strong>
-            <div class="metric-meta"><strong id="visitorToday">— visitor-days</strong><span>in selected window</span></div>
+            <div class="metric-breakdown"><span>Guests<b id="guestsTodayValue">—</b></span><span>Accounts<b id="accountsTodayValue">—</b></span></div>
+          </article>
+          <article class="summary-card all-visitors">
+            <div class="metric-label"><span>All-time user-days</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></div>
+            <strong class="metric-value" id="allTimeVisitorValue">—</strong>
+            <div class="metric-breakdown"><span>Guests<b id="allTimeGuestsValue">—</b></span><span>Accounts<b id="allTimeAccountVisitorsValue">—</b></span><span title="Visitor totals recorded before guest/account classification">Earlier<b id="allTimeUnclassifiedValue">—</b></span></div>
           </article>
           <article class="summary-card accounts">
             <div class="metric-label"><span>Member accounts</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M3.7 19c.5-3 2.2-4.8 5.3-4.8s4.8 1.8 5.3 4.8M16 5.6a3.2 3.2 0 0 1 0 6.3m1.1 2.4c2.1.5 3.2 2.1 3.4 4.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></div>
@@ -166,22 +173,22 @@
           <article class="summary-card hours">
             <div class="metric-label"><span>Hours watched</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
             <strong class="metric-value" id="hoursWatchedValue">—</strong>
-            <div class="metric-meta"><span>all accounts · history estimated</span></div>
+            <div class="metric-breakdown"><span>Accounts<b id="accountHoursValue">—</b></span><span>Guests<b id="guestHoursValue">—</b></span></div>
           </article>
         </section>
 
         <div class="content-grid">
           <section class="panel" aria-labelledby="activityTitle">
             <div class="panel-heading">
-              <div><h2 id="activityTitle">Audience activity</h2><p id="chartSubtitle">Daily unique browsers · UTC</p></div>
+              <div><h2 id="activityTitle">Audience activity</h2><p id="chartSubtitle">Daily users · UTC</p></div>
               <div class="chart-switch" role="group" aria-label="Chart metric">
-                <button type="button" data-metric="visitors" aria-pressed="true">Visitors</button>
+                <button type="button" data-metric="visitors" aria-pressed="true">Users</button>
                 <button type="button" data-metric="downloads" aria-pressed="false">Clicks</button>
                 <button type="button" data-metric="signups" aria-pressed="false">Accounts</button>
               </div>
             </div>
             <div class="chart-wrap">
-              <svg id="activityChart" viewBox="0 0 920 248" role="img" aria-label="Daily visitors chart"></svg>
+              <svg id="activityChart" viewBox="0 0 920 248" role="img" aria-label="Daily users chart"></svg>
               <div class="chart-labels"><span id="chartStart">—</span><span id="chartMiddle">—</span><span id="chartEnd">—</span></div>
             </div>
             <div class="chart-caption"><span id="chartSummary">—</span><b id="chartPeak">—</b></div>
@@ -274,7 +281,7 @@
       }
       function renderChart(rows) {
         var keys = { visitors:"visitors", downloads:"downloads", signups:"signups" };
-        var labels = { visitors:"Daily unique browsers · UTC", downloads:"Daily install clicks · UTC", signups:"Daily new accounts · UTC" };
+        var labels = { visitors:"Daily users · UTC", downloads:"Daily install clicks · UTC", signups:"Daily new accounts · UTC" };
         if (!rows.length) {
           document.getElementById("activityChart").innerHTML = '<text class="empty-chart" x="460" y="112" text-anchor="middle">No data</text>';
           document.getElementById("chartStart").textContent = "—";
@@ -336,13 +343,20 @@
         var totals = selectedTotals(rows);
         var all = data.totals || {};
         document.getElementById("visitorValue").textContent = number(all.visitorsToday);
-        document.getElementById("visitorToday").textContent = number(totals.visitors) + " visitor-days";
+        document.getElementById("guestsTodayValue").textContent = number(all.guestsToday);
+        document.getElementById("accountsTodayValue").textContent = number(all.accountUsersToday);
+        document.getElementById("allTimeVisitorValue").textContent = number(all.allTimeVisitors);
+        document.getElementById("allTimeGuestsValue").textContent = number(all.allTimeGuests);
+        document.getElementById("allTimeAccountVisitorsValue").textContent = number(all.allTimeAccountUsers);
+        document.getElementById("allTimeUnclassifiedValue").textContent = number(all.allTimeUnclassifiedVisitors);
         document.getElementById("accountValue").textContent = number(all.accounts);
         document.getElementById("verifiedValue").textContent = number(all.verifiedAccounts) + " verified";
         document.getElementById("signupValue").textContent = number(totals.signups);
         document.getElementById("downloadValue").textContent = number(totals.downloads);
         document.getElementById("downloadToday").textContent = number(all.downloadsToday) + " today";
         document.getElementById("hoursWatchedValue").textContent = (Number(all.hoursWatched) || 0).toLocaleString(undefined, { minimumFractionDigits:1, maximumFractionDigits:1 });
+        document.getElementById("accountHoursValue").textContent = (Number(all.accountHoursWatched) || 0).toLocaleString(undefined, { minimumFractionDigits:1, maximumFractionDigits:1 }) + "h";
+        document.getElementById("guestHoursValue").textContent = (Number(all.guestHoursWatched) || 0).toLocaleString(undefined, { minimumFractionDigits:1, maximumFractionDigits:1 }) + "h";
         document.getElementById("accountPeriod").textContent = number(totals.signups);
         document.getElementById("accountAverage").textContent = (rows.length ? totals.signups / rows.length : 0).toLocaleString(undefined, { minimumFractionDigits:1, maximumFractionDigits:1 });
         document.getElementById("verifiedShare").textContent = all.accounts ? Math.round((all.verifiedAccounts / all.accounts) * 100) + "%" : "—";

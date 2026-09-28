@@ -9,7 +9,7 @@ function config(name) { try { return JSON.parse(fs.readFileSync(path.join(root, 
 function sendJSON(response, status, payload) { if (response.headersSent) { response.end(); return; } response.writeHead(status, { "Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store" }); response.end(JSON.stringify(payload)); }
 function readBody(request) { return new Promise((resolve, reject) => { let body = ""; request.on("data", chunk => { body += chunk; if (body.length > 50_000) request.destroy(); }); request.on("end", () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error("Invalid JSON.")); } }); request.on("error", reject); }); }
 function supabase() { const local = config("supabase.local.json"), settings = { url:local.url || process.env.SUPABASE_URL, publishableKey:local.publishableKey || process.env.SUPABASE_PUBLISHABLE_KEY, emailRedirectTo:local.emailRedirectTo || process.env.SUPABASE_EMAIL_REDIRECT_TO }; return settings.url && settings.publishableKey ? settings : null; }
-function dashboardEnvironment() { const local = config("supabase.local.json"); return { SUPABASE_URL:local.url || process.env.SUPABASE_URL, SUPABASE_SECRET_KEY:process.env.SUPABASE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY:process.env.SUPABASE_SERVICE_ROLE_KEY, SEVEN_ADMIN_USERNAME:process.env.SEVEN_ADMIN_USERNAME, SEVEN_ADMIN_PASSWORD:process.env.SEVEN_ADMIN_PASSWORD, SEVEN_DASHBOARD_SECRET:process.env.SEVEN_DASHBOARD_SECRET }; }
+function dashboardEnvironment() { const local = config("supabase.local.json"); return { SUPABASE_URL:local.url || process.env.SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY:local.publishableKey || process.env.SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY:process.env.SUPABASE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY:process.env.SUPABASE_SERVICE_ROLE_KEY, SEVEN_ADMIN_USERNAME:process.env.SEVEN_ADMIN_USERNAME, SEVEN_ADMIN_PASSWORD:process.env.SEVEN_ADMIN_PASSWORD, SEVEN_DASHBOARD_SECRET:process.env.SEVEN_DASHBOARD_SECRET }; }
 async function dashboardAPI(request, response, sourceURL) {
   try {
     const headers = new Headers();
@@ -65,6 +65,7 @@ async function progress(request, response) {
 async function watchTime(request, response) {
   const settings = supabase(), token = authToken(request);
   if (request.method !== "POST") return sendJSON(response, 405, { error:"Method not allowed." });
+  if (request.headers.dnt === "1" || request.headers["sec-gpc"] === "1") return sendJSON(response, 204, null);
   if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." });
   if (!token) return sendJSON(response, 401, { error:"Sign in required." });
   try {

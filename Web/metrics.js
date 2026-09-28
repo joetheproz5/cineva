@@ -21,18 +21,20 @@
     // If browser storage is unavailable, skip this privacy-preserving unique-visit count.
   }
 
-  function send(payload, keepalive) {
+  function send(payload, keepalive, accessToken) {
     var body = JSON.stringify(payload);
-    if (keepalive && navigator.sendBeacon) {
+    if (keepalive && !accessToken && navigator.sendBeacon) {
       try {
         if (navigator.sendBeacon("/api/metrics/event", new Blob([body], { type:"text/plain;charset=UTF-8" }))) return;
       } catch {}
     }
+    var headers = { "Content-Type":"text/plain;charset=UTF-8" };
+    if (accessToken) headers.Authorization = "Bearer " + accessToken;
     fetch("/api/metrics/event", {
       method:"POST",
       credentials:"same-origin",
       keepalive:Boolean(keepalive),
-      headers:{ "Content-Type":"text/plain;charset=UTF-8" },
+      headers:headers,
       body:body
     }).catch(function () {});
   }
@@ -40,6 +42,9 @@
   if (visitorId) send({ event:"visit", visitorId:visitorId }, true);
 
   window.SevenMetrics = Object.freeze({
+    trackAccountVisit:function (accessToken) {
+      if (accessToken) send({ event:"visit", visitorId:visitorId }, true, accessToken);
+    },
     trackDownload:function (platform) {
       if (["mac", "ios", "windows", "android"].indexOf(platform) !== -1) send({ event:"download", platform:platform }, true);
     }

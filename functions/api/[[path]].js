@@ -98,6 +98,7 @@ async function progress(request, requestURL, env) {
 
 async function watchTime(request, env) {
   if (request.method !== "POST") return json({ error:"Method not allowed." }, 405, { Allow:"POST" });
+  if (request.headers.get("DNT") === "1" || request.headers.get("Sec-GPC") === "1") return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
   const settings = supabase(env);
   const token = authorization(request);
   if (!settings) return json({ error:"Supabase is not configured." }, 503);

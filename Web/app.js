@@ -9,7 +9,7 @@ let sessionRefreshTimer;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0 };
-const playbackWatch = { sample:null, buffered:0, batch:null, sending:false, timer:null };
+const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const ACCOUNT_KEY = "seven.account.settings";
@@ -124,16 +124,28 @@ function animateScrollToTop() {
 
 async function localAPI(path, options = {}) { const response = await fetch(path, options); const data = await response.json().catch(() => ({})); if (!response.ok) { const error = new Error(data.error || data.msg || "Request failed."); error.status = response.status; throw error; } return data; }
 function authorizedHeaders() { return state.session?.access_token ? { Authorization:`Bearer ${state.session.access_token}` } : {}; }
-function resetPlaybackWatchTracking() { clearTimeout(playbackWatch.timer); playbackWatch.sample = null; playbackWatch.buffered = 0; playbackWatch.batch = null; playbackWatch.sending = false; playbackWatch.timer = null; }
+function analyticsAllowed() { return navigator.doNotTrack !== "1" && window.doNotTrack !== "1" && navigator.globalPrivacyControl !== true; }
+function reportAccountVisit() { if (state.session?.access_token) window.SevenMetrics?.trackAccountVisit(state.session.access_token); }
+function resetPlaybackWatchTracking() { clearTimeout(playbackWatch.timer); playbackWatch.sample = null; playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.batch = null; playbackWatch.sending = false; playbackWatch.timer = null; }
 function watchTimeEventId() { if (crypto.randomUUID) return crypto.randomUUID(); const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128; const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join(""); return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`; }
 function scheduleWatchTimeFlush(delay = 12000) { if (!playbackWatch.timer) playbackWatch.timer = setTimeout(() => { playbackWatch.timer = null; void flushWatchTime(); }, delay); }
 async function flushWatchTime() {
-  if (!state.session) { resetPlaybackWatchTracking(); return; }
-  if (!playbackWatch.batch && playbackWatch.buffered >= 0.5) { const seconds = Math.round(playbackWatch.buffered * 10) / 10; playbackWatch.buffered = 0; playbackWatch.batch = { eventId:watchTimeEventId(), seconds }; }
+  if (!analyticsAllowed()) { resetPlaybackWatchTracking(); return; }
+  if (!playbackWatch.batch && playbackWatch.buffered >= 0.5) {
+    const seconds = Math.round(playbackWatch.buffered * 10) / 10;
+    playbackWatch.batch = { eventId:watchTimeEventId(), seconds, userType:playbackWatch.bufferType || (state.session ? "account" : "guest"), accessToken:playbackWatch.accessToken || state.session?.access_token || null };
+    playbackWatch.buffered = 0;
+    playbackWatch.bufferType = null;
+    playbackWatch.accessToken = null;
+  }
   if (!playbackWatch.batch || playbackWatch.sending) return;
   playbackWatch.sending = true;
   try {
-    await localAPI("/api/account/watch-time", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify(playbackWatch.batch), keepalive:true });
+    const batch = playbackWatch.batch, isAccount = batch.userType === "account", path = isAccount ? "/api/account/watch-time" : "/api/metrics/event";
+    const body = isAccount ? { eventId:batch.eventId, seconds:batch.seconds } : { event:"watch-time", eventId:batch.eventId, seconds:batch.seconds };
+    const headers = { "Content-Type":"application/json" };
+    if (isAccount && (batch.accessToken || state.session?.access_token)) headers.Authorization = `Bearer ${batch.accessToken || state.session.access_token}`;
+    await localAPI(path, { method:"POST", headers, body:JSON.stringify(body), keepalive:true });
     playbackWatch.batch = null;
   } catch { /* Retry the same idempotent event when another sample arrives. */ }
   finally {
@@ -142,18 +154,29 @@ async function flushWatchTime() {
   }
 }
 function samplePlaybackWatchTime(currentTime) {
-  const now = Date.now(), key = state.player ? watchKey(state.player) : "", previous = playbackWatch.sample;
-  playbackWatch.sample = { key, currentTime, at:now };
-  if (!state.session) { playbackWatch.buffered = 0; playbackWatch.batch = null; return; }
-  if (!previous || previous.key !== key) return;
-  const elapsed = (now - previous.at) / 1000, advanced = currentTime - previous.currentTime;
+  const now = Date.now(), key = state.player ? watchKey(state.player) : "", userType = state.session ? "account" : "guest", previous = playbackWatch.sample;
+  if (!analyticsAllowed()) { resetPlaybackWatchTracking(); return; }
+  if (previous && previous.userType !== userType) {
+    if (playbackWatch.buffered >= 0.5) void flushWatchTime();
+    else { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; }
+    playbackWatch.sample = null;
+  }
+  const priorSample = playbackWatch.sample;
+  playbackWatch.sample = { key, currentTime, at:now, userType };
+  if (!priorSample || priorSample.userType !== userType) return;
+  if (priorSample.key !== key) return;
+  const elapsed = (now - priorSample.at) / 1000, advanced = currentTime - priorSample.currentTime;
   // Count forward-playing media time; discard seeks, rewinds and long gaps.
   if (elapsed > 0 && elapsed <= 30 && advanced > 0.15 && advanced <= elapsed * 2.25 + 1) {
+    playbackWatch.bufferType = userType;
+    playbackWatch.accessToken = userType === "account" ? state.session?.access_token || playbackWatch.accessToken : null;
     playbackWatch.buffered += advanced;
     if (playbackWatch.buffered >= 15) void flushWatchTime();
     else scheduleWatchTimeFlush();
   }
 }
+window.addEventListener("pagehide", () => { void flushWatchTime(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushWatchTime(); });
 function defaultAccount() { const name = state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile"; return { activeProfileId:"main", profiles:[{ id:"main", name, color:"#d3131c", kids:false }], preferences:{ ...DEFAULT_PREFERENCES } }; }
 const EMPTY_SECRET_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 function hydrateAccount() { const saved = state.user?.user_metadata?.seven_account || JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null") || {}, fallback = defaultAccount(); state.account = { ...fallback, ...saved, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } }; if (state.account.parentPinHash === EMPTY_SECRET_HASH) delete state.account.parentPinHash; let migratedKidsPin = false, cleanedEmptyPin = false; state.account.profiles.forEach(profile => { if (profile.pinHash === EMPTY_SECRET_HASH) { delete profile.pinHash; cleanedEmptyPin = true; } if (!profile.kids || !profile.pinHash) return; if (!state.account.parentPinHash) state.account.parentPinHash = profile.pinHash; delete profile.pinHash; migratedKidsPin = true; }); if (!state.account.profiles.some(profile => profile.id === state.account.activeProfileId)) state.account.activeProfileId = state.account.profiles[0].id; if (["cinepro", "vidlink", "vidking"].includes(state.account.preferences.playerProvider)) state.account.preferences.playerProvider = "cinesrc"; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); if ((migratedKidsPin || cleanedEmptyPin) && state.session) void saveAccount(); }
@@ -162,8 +185,9 @@ function parentAccessConfigured() { return Boolean(state.account?.parentAccessEn
 async function refreshParentAccessStatus() { if (!state.session || !state.account) return; try { const data = await localAPI("/api/account/parent-access", { headers:authorizedHeaders() }); if (data.enabled) { const hadLegacyHash = Boolean(state.account.parentPinHash); state.account.parentAccessEnabled = true; delete state.account.parentPinHash; if (hadLegacyHash) await saveAccount(); } else if (!state.account.parentPinHash) state.account.parentAccessEnabled = false; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); } catch { /* Keep a legacy local verifier available until the user migrates it. */ } }
 async function saveAccount(remote = true) { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); if (!remote || !state.session) return; const account = JSON.parse(JSON.stringify(state.account)); if (account.parentAccessEnabled) delete account.parentPinHash; try { const user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) }); state.user = user; } catch { /* Local account preferences remain available if sync is offline. */ } }
 function sessionStartedAt(session) { const saved = Number(session?.seven_started_at); if (saved) return saved; const expiresAt = Number(session?.expires_at), expiresIn = Number(session?.expires_in); return expiresAt && expiresIn ? expiresAt * 1000 - expiresIn * 1000 : Date.now(); }
-function persistSession(session, startedAt = sessionStartedAt(session)) { state.session = { ...session, seven_started_at:startedAt }; localStorage.setItem(SESSION_KEY, JSON.stringify(state.session)); }
-function clearSession() { clearTimeout(sessionRefreshTimer); clearTimeout(state.progressTimer); resetPlaybackWatchTracking(); state.pendingProgress = null; state.accountProgress = []; localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem("seven.parent-access"); state.session = null; state.user = null; }
+function flushWatchTypeChange() { void flushWatchTime(); playbackWatch.sample = null; if (playbackWatch.buffered < 0.5) { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; } }
+function persistSession(session, startedAt = sessionStartedAt(session)) { if (!state.session && session?.access_token) flushWatchTypeChange(); state.session = { ...session, seven_started_at:startedAt }; localStorage.setItem(SESSION_KEY, JSON.stringify(state.session)); reportAccountVisit(); }
+function clearSession() { flushWatchTypeChange(); clearTimeout(sessionRefreshTimer); clearTimeout(state.progressTimer); state.pendingProgress = null; state.accountProgress = []; localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem("seven.parent-access"); state.session = null; state.user = null; }
 function signOut() { clearSession(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
 function sessionExpired(session = state.session) { return Date.now() - sessionStartedAt(session) >= SESSION_MAX_AGE; }
 function accessTokenExpiresSoon(session = state.session) { return !session?.access_token || !session.expires_at || Number(session.expires_at) * 1000 - Date.now() < 90 * 1000; }

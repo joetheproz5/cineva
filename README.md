@@ -80,7 +80,7 @@ The account system supports email/password sign-up and sign-in. When the user is
 
 ## SEVEN Studio dashboard
 
-The private operations dashboard is available at /dashboard. It shows daily unique browsers, account totals and signup trends, install-button clicks by platform, and combined watch time. Historical watch time is estimated from a one-time aggregate of saved playback positions; new time is counted from forward playback. Neither source exposes member emails, account IDs, titles, or per-account viewing activity. Visitor deduplication uses a random browser token that rotates each UTC day; only its server-side HMAC is kept, for at most 31 days. Do Not Track and Global Privacy Control are respected.
+The private operations dashboard is available at /dashboard. It shows daily active users split into guests and signed-in accounts, all-time visitor-days, account totals and signup trends, install-button clicks by platform, and watch time split by guest/account. All-time visitor-days sum each day's unique counts (repeat users count again on a later day); visits recorded before the split remain unclassified. Historical account watch time is estimated from a one-time aggregate of saved playback positions; guest history cannot be reconstructed because it only existed locally, so guest and account live watch time starts after deployment. No member emails, account IDs, titles, or per-account viewing activity are stored in analytics. Daily visitor HMACs expire after 31 days. Do Not Track and Global Privacy Control are respected.
 
 Setup and updates:
 
@@ -88,7 +88,7 @@ Setup and updates:
 2. In the Cloudflare Pages project, add **SUPABASE_SECRET_KEY** as an encrypted secret. Keep it server-side; never put it in **Web/** or client code. The legacy **SUPABASE_SERVICE_ROLE_KEY** name is also accepted if that is what your project already has.
 3. Add **SEVEN_ADMIN_PASSWORD** as an encrypted secret. Use a unique passphrase of at least 16 characters. The login name defaults to **admin**; optionally set **SEVEN_ADMIN_USERNAME** as a regular Pages variable to change it.
 4. Add **SEVEN_DASHBOARD_SECRET** as an encrypted secret containing a unique random value of at least 32 characters. It signs the short-lived admin session and daily visitor hashes.
-5. Keep the existing **SUPABASE_URL** Pages variable, then redeploy so the Functions receive the new values.
+5. Set **SUPABASE_URL** and **SUPABASE_PUBLISHABLE_KEY** as Pages variables, then redeploy so the Functions receive the new values. The publishable key is not a secret; the secret API key remains encrypted and server-only.
 
 The dashboard intentionally does not ship a default password. Cloudflare Pages Functions read these values from server-side environment bindings; Supabase's secret key can bypass row-level security, so it must stay out of the browser and source control. See [Cloudflare Pages bindings and secrets](https://developers.cloudflare.com/pages/functions/bindings/) and [Supabase API key security](https://supabase.com/docs/guides/getting-started/api-keys).
 

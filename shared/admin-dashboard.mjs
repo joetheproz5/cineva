@@ -104,6 +104,18 @@ async function supabaseRPC(env, functionName, payload) {
   return response.json();
 }
 
+async function authenticatedAccountId(token, env) {
+  if (!token || !env.SUPABASE_PUBLISHABLE_KEY) return "";
+  try {
+    const response = await fetch(env.SUPABASE_URL.replace(/\/$/, "") + "/auth/v1/user", {
+      headers:{ apikey:env.SUPABASE_PUBLISHABLE_KEY, Authorization:"Bearer " + token, "Cache-Control":"no-store" }
+    });
+    if (!response.ok) return "";
+    const user = await response.json();
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(user.id || "") ? user.id : "";
+  } catch { return ""; }
+}
+
 async function login(request, env) {
   if (!originIsSame(request)) return json({ error:"Request origin rejected." }, 403);
   if (!configuredAdmin(env)) return json({ error:"Admin credentials are not configured. Set the SEVEN dashboard secrets in Cloudflare Pages." }, 503);
@@ -133,13 +145,28 @@ async function recordMetric(request, env) {
   catch { return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } }); }
   try {
     if (body.event === "visit") {
-      if (!configuredAdmin(env) || !/^[a-f0-9]{32}$/i.test(body.visitorId || "")) return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
+      if (!configuredAdmin(env)) return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
       const day = new Date().toISOString().slice(0, 10);
-      const signedFingerprint = await sign("visitor:v1:" + day + ":" + body.visitorId.toLowerCase(), env.SEVEN_DASHBOARD_SECRET);
+      const visitorId = /^[a-f0-9]{32}$/i.test(body.visitorId || "") ? body.visitorId.toLowerCase() : "";
+      const token = (request.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1] || "";
+      const accountId = await authenticatedAccountId(token, env);
+      const fingerprintSource = accountId ? "account:v1:" + day + ":" + accountId : visitorId ? "visitor:v1:" + day + ":" + visitorId : "";
+      if (!fingerprintSource) return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
+      const signedFingerprint = await sign(fingerprintSource, env.SEVEN_DASHBOARD_SECRET);
       const fingerprint = [...signedFingerprint].map(byte => byte.toString(16).padStart(2, "0")).join("");
-      await supabaseRPC(env, "seven_admin_record_visit", { p_fingerprint:fingerprint });
+      let guestFingerprint = null;
+      if (accountId && visitorId) {
+        const guestHash = await sign("visitor:v1:" + day + ":" + visitorId, env.SEVEN_DASHBOARD_SECRET);
+        guestFingerprint = [...guestHash].map(byte => byte.toString(16).padStart(2, "0")).join("");
+      }
+      await supabaseRPC(env, "seven_admin_record_visit", { p_fingerprint:fingerprint, p_visitor_type:accountId ? "account" : "guest", p_guest_fingerprint:guestFingerprint });
     } else if (body.event === "download" && DOWNLOAD_PLATFORMS.has(body.platform)) {
       await supabaseRPC(env, "seven_admin_record_download", { p_platform:body.platform });
+    } else if (body.event === "watch-time") {
+      const validId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.eventId || "");
+      const seconds = Number(body.seconds);
+      if (!validId || !Number.isFinite(seconds) || seconds < 0.5 || seconds > 300) return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
+      await supabaseRPC(env, "seven_admin_record_guest_watch_time", { p_event_id:body.eventId, p_seconds:seconds });
     } else {
       return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
     }
