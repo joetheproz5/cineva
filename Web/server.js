@@ -62,6 +62,18 @@ async function progress(request, response) {
     const body = await readBody(request); const result = await upstream(`${settings.url}/rest/v1/playback_progress?on_conflict=user_id,content_key`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(body) }); sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Progress sync failed." }); }
 }
+async function watchTime(request, response) {
+  const settings = supabase(), token = authToken(request);
+  if (request.method !== "POST") return sendJSON(response, 405, { error:"Method not allowed." });
+  if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." });
+  if (!token) return sendJSON(response, 401, { error:"Sign in required." });
+  try {
+    const body = await readBody(request);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.eventId || "") || !Number.isFinite(Number(body.seconds)) || Number(body.seconds) < 0.5 || Number(body.seconds) > 300) return sendJSON(response, 400, { error:"Invalid watch-time event." });
+    const result = await upstream(`${settings.url}/rest/v1/rpc/seven_admin_record_watch_time`, { method:"POST", headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, body:JSON.stringify({ p_event_id:body.eventId, p_seconds:Number(body.seconds) }) });
+    return sendJSON(response, result.status, result.data);
+  } catch (error) { return sendJSON(response, 400, { error:error.message || "Watch time could not be recorded." }); }
+}
 async function myList(request, response, sourceURL) {
   const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
   const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
@@ -110,6 +122,7 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/auth/refresh") return auth(request, response, "refresh");
   if (sourceURL.pathname === "/api/auth/user") return auth(request, response, "user");
   if (sourceURL.pathname === "/api/account/progress") return progress(request, response);
+  if (sourceURL.pathname === "/api/account/watch-time") return watchTime(request, response);
   if (sourceURL.pathname === "/api/account/list") return myList(request, response, sourceURL);
   if (sourceURL.pathname === "/api/account/settings" && request.method === "PUT") return accountSettings(request, response);
   if (sourceURL.pathname === "/api/account/parent-access") return parentAccess(request, response);

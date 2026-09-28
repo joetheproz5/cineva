@@ -6,11 +6,16 @@ create table if not exists public.seven_admin_daily_metrics (
   metric_day date primary key,
   unique_visitors bigint not null default 0 check (unique_visitors >= 0),
   download_clicks bigint not null default 0 check (download_clicks >= 0),
+  watch_seconds numeric not null default 0 check (watch_seconds >= 0),
   mac_clicks bigint not null default 0 check (mac_clicks >= 0),
   ios_clicks bigint not null default 0 check (ios_clicks >= 0),
   windows_clicks bigint not null default 0 check (windows_clicks >= 0),
   android_clicks bigint not null default 0 check (android_clicks >= 0)
 );
+
+-- Safe to re-run after this dashboard is already installed.
+alter table public.seven_admin_daily_metrics
+  add column if not exists watch_seconds numeric not null default 0 check (watch_seconds >= 0);
 
 create table if not exists public.seven_admin_visitor_hashes (
   visitor_day date not null,
@@ -18,10 +23,18 @@ create table if not exists public.seven_admin_visitor_hashes (
   primary key (visitor_day, visitor_hash)
 );
 
+-- Random idempotency keys only: no user, profile, title, or account identifier.
+create table if not exists public.seven_admin_watch_events (
+  event_id uuid primary key,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
 alter table public.seven_admin_daily_metrics enable row level security;
 alter table public.seven_admin_visitor_hashes enable row level security;
+alter table public.seven_admin_watch_events enable row level security;
 revoke all on table public.seven_admin_daily_metrics from public, anon, authenticated, service_role;
 revoke all on table public.seven_admin_visitor_hashes from public, anon, authenticated, service_role;
+revoke all on table public.seven_admin_watch_events from public, anon, authenticated, service_role;
 
 create or replace function public.seven_admin_record_visit(p_fingerprint text)
 returns boolean
@@ -92,6 +105,41 @@ begin
 end;
 $$;
 
+create or replace function public.seven_admin_record_watch_time(p_event_id uuid, p_seconds numeric)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_day date := (pg_catalog.now() at time zone 'utc')::date;
+  v_inserted integer;
+begin
+  -- Only an authenticated member's player can report playback time.
+  if auth.uid() is null or p_event_id is null or p_seconds is null or p_seconds < 0.5 or p_seconds > 300 then
+    return false;
+  end if;
+
+  delete from public.seven_admin_watch_events
+  where created_at < pg_catalog.now() - interval '30 days';
+
+  insert into public.seven_admin_watch_events (event_id)
+  values (p_event_id)
+  on conflict do nothing;
+  get diagnostics v_inserted = row_count;
+
+  if v_inserted = 0 then
+    return false;
+  end if;
+
+  insert into public.seven_admin_daily_metrics (metric_day, watch_seconds)
+  values (v_day, p_seconds)
+  on conflict (metric_day) do update
+    set watch_seconds = public.seven_admin_daily_metrics.watch_seconds + excluded.watch_seconds;
+  return true;
+end;
+$$;
+
 create or replace function public.seven_admin_get_stats(p_days integer default 30)
 returns jsonb
 language sql
@@ -117,6 +165,7 @@ as $$
       'verifiedAccounts', (select pg_catalog.count(*) from auth.users where email_confirmed_at is not null),
       'allTimeVisitors', (select coalesce(pg_catalog.sum(unique_visitors), 0) from public.seven_admin_daily_metrics),
       'allTimeDownloadClicks', (select coalesce(pg_catalog.sum(download_clicks), 0) from public.seven_admin_daily_metrics),
+      'hoursWatched', (select coalesce(pg_catalog.round(pg_catalog.sum(watch_seconds) / 3600.0, 1), 0) from public.seven_admin_daily_metrics),
       'visitorsToday', coalesce((select unique_visitors from public.seven_admin_daily_metrics where metric_day = settings.today), 0),
       'downloadsToday', coalesce((select download_clicks from public.seven_admin_daily_metrics where metric_day = settings.today), 0)
     ),
@@ -150,7 +199,9 @@ $$;
 
 revoke all on function public.seven_admin_record_visit(text) from public, anon, authenticated;
 revoke all on function public.seven_admin_record_download(text) from public, anon, authenticated;
+revoke all on function public.seven_admin_record_watch_time(uuid, numeric) from public, anon, authenticated, service_role;
 revoke all on function public.seven_admin_get_stats(integer) from public, anon, authenticated;
 grant execute on function public.seven_admin_record_visit(text) to service_role;
 grant execute on function public.seven_admin_record_download(text) to service_role;
+grant execute on function public.seven_admin_record_watch_time(uuid, numeric) to authenticated;
 grant execute on function public.seven_admin_get_stats(integer) to service_role;

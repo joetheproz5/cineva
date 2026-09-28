@@ -40,8 +40,11 @@ test("dashboard is private, responsive, and does not render member-level data", 
   assert.match(dashboardPage, /<meta name="robots" content="noindex, nofollow, noarchive">/);
   assert.match(dashboardPage, /aria-label="Analytics date range"/);
   assert.match(dashboardPage, /Unique browsers today/);
-  assert.match(dashboardPage, /button clicks, not installs/);
-  assert.match(dashboardPage, /titles watched, or playback history/);
+  assert.match(dashboardPage, /Hours watched/);
+  assert.match(dashboardPage, /id="hoursWatchedValue"/);
+  assert.match(dashboardPage, /since tracking enabled/);
+  assert.match(dashboardPage, /Administrator sign in/);
+  assert.doesNotMatch(dashboardPage, /The whole picture|Membership pulse|Install signal|Live · aggregate only|privacy-note|login-privacy/);
   assert.doesNotMatch(dashboardPage, /SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|SEVEN_DASHBOARD_SECRET/);
   assert.match(dashboardPage, /autocomplete="current-password"/);
   assert.match(dashboardPage, /@media\(max-width:600px\)/);
@@ -62,9 +65,16 @@ test("analytics storage contains aggregates, locks raw visitor hashes, and limit
   assert.match(metricsSchema, /alter table public\.seven_admin_visitor_hashes enable row level security/i);
   assert.match(metricsSchema, /delete from public\.seven_admin_visitor_hashes\s+where visitor_day < v_day - 30/i);
   assert.match(metricsSchema, /grant execute on function public\.seven_admin_get_stats\(integer\) to service_role/i);
+  assert.match(metricsSchema, /hoursWatched/);
+  assert.match(metricsSchema, /seven_admin_record_watch_time/);
+  assert.match(metricsSchema, /seven_admin_watch_events/);
+  assert.match(metricsSchema, /event_id uuid primary key/i);
   assert.match(metricsSchema, /from auth\.users/i);
   assert.doesNotMatch(metricsSchema, /user_id|poster_path|content_key|title text/i);
   assert.match(functions, /path === "metrics\/event" \|\| path\.startsWith\("admin\/"\)/);
+  assert.match(functions, /path === "account\/watch-time"/);
+  assert.match(functions, /seven_admin_record_watch_time/);
+  assert.match(fs.readFileSync(path.join(repository, "Web/app.js"), "utf8"), /samplePlaybackWatchTime\(currentTime\)/);
 });
 
 test("admin stats are server-authenticated and use only the service-side Supabase RPC", async () => {

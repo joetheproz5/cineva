@@ -96,6 +96,27 @@ async function progress(request, requestURL, env) {
   } catch (error) { return json({ error:error.message || "Progress sync failed." }, 400); }
 }
 
+async function watchTime(request, env) {
+  if (request.method !== "POST") return json({ error:"Method not allowed." }, 405, { Allow:"POST" });
+  const settings = supabase(env);
+  const token = authorization(request);
+  if (!settings) return json({ error:"Supabase is not configured." }, 503);
+  if (!token) return json({ error:"Sign in required." }, 401);
+  let body;
+  try { body = await readJSON(request); }
+  catch (error) { return json({ error:error.message || "Invalid watch-time event." }, 400); }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.eventId || "") || !Number.isFinite(Number(body.seconds)) || Number(body.seconds) < 0.5 || Number(body.seconds) > 300) {
+    return json({ error:"Invalid watch-time event." }, 400);
+  }
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
+  try {
+    const result = await upstream(`${settings.url}/rest/v1/rpc/seven_admin_record_watch_time`, {
+      method:"POST", headers, body:JSON.stringify({ p_event_id:body.eventId, p_seconds:Number(body.seconds) })
+    });
+    return json(result.data, result.status);
+  } catch (error) { return json({ error:error.message || "Watch time could not be recorded." }, 400); }
+}
+
 async function myList(request, requestURL, env) {
   const settings = supabase(env);
   const token = authorization(request);
@@ -210,6 +231,7 @@ export async function onRequest(context) {
   const requestURL = new URL(request.url);
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
   if (path === "metrics/event" || path.startsWith("admin/")) return handleDashboardRequest(request, env);
+  if (path === "account/watch-time") return watchTime(request, env);
   if (path === "config" && request.method === "GET") return config(env);
   if (path.startsWith("tmdb/")) return tmdb(path.slice(5), requestURL, env);
   if (path === "auth/signup" && request.method === "POST") return auth("signup", request, env);
