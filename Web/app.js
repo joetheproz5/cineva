@@ -1396,7 +1396,7 @@ async function removeHistoryItem(key) { localStorage.removeItem(key); forgetAcco
 function showAuth(mode = "login", message = "", email = "") {
   document.querySelector(".modal")?.remove();
   const create = mode === "signup";
-  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="${create ? "new-password" : "current-password"}" placeholder="At least 8 characters"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p></section></form></div>`);
+  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="${create ? "new-password" : "current-password"}" placeholder="At least 8 characters"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
   if (email) document.querySelector('#auth-form input[name="email"]').value = email;
   document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove();
   document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
@@ -1441,6 +1441,15 @@ function showAuthPending(email, pending = null) {
   form.querySelector("[data-auth-success-copy]").textContent = `We sent a verification link to ${email}. This screen will stay here until your email is verified.`;
   form.querySelector("[data-close]").disabled = true;
   form.querySelectorAll("input, [data-switch], [type=submit]").forEach(control => { control.disabled = true; });
+  const continueButton = form.querySelector("[data-pending-login]");
+  if (continueButton) {
+    continueButton.hidden = false;
+    continueButton.onclick = () => {
+      localStorage.removeItem(PENDING_EMAIL_VERIFICATION_KEY);
+      state.pendingEmailVerification = null;
+      showAuth("login", "Sign in to finish setting up your account.", email);
+    };
+  }
   form.classList.remove("auth-submitting");
   form.classList.add("auth-success", "auth-waiting");
   form.setAttribute("aria-busy", "false");
@@ -1502,6 +1511,8 @@ async function submitAuth(event, mode) {
     }
     if (!data.session?.access_token) throw new Error("No sign-in session was returned. Please try again.");
     persistSession(data.session, Date.now());
+    localStorage.removeItem(PENDING_EMAIL_VERIFICATION_KEY);
+    state.pendingEmailVerification = null;
     state.user = data.user || data.session.user || await localAPI("/api/auth/user", { headers:authorizedHeaders() });
     hydrateAccount();
     await refreshParentAccessStatus();
@@ -1558,7 +1569,13 @@ const ONBOARDING_GENRES = [[28,"Action",10759],[12,"Adventure",10759],[16,"Anima
 const FAMILY_FRIENDLY_GENRES = new Set([12,16,35,99,10751]);
 function isProfileAvatar(value) { return AVATAR_OPTIONS.some(([, path]) => path === value) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(value || "")); }
 function prepareUploadedAvatar(file) { return new Promise((resolve, reject) => { if (!file?.type?.startsWith("image/")) return reject(new Error("Choose an image file.")); if (file.size > 10 * 1024 * 1024) return reject(new Error("Choose an image smaller than 10 MB.")); const reader = new FileReader(); reader.onerror = () => reject(new Error("That image could not be read.")); reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("That image format is not supported.")); image.onload = () => { const edge = 120, canvas = document.createElement("canvas"), scale = Math.max(edge / image.naturalWidth, edge / image.naturalHeight), width = image.naturalWidth * scale, height = image.naturalHeight * scale; canvas.width = edge; canvas.height = edge; canvas.getContext("2d").drawImage(image, (edge - width) / 2, (edge - height) / 2, width, height); const avatar = canvas.toDataURL("image/jpeg", .78); if (avatar.length > 30000) return reject(new Error("Choose a simpler photo so it can sync with your profile.")); resolve(avatar); }; image.src = String(reader.result); }; reader.readAsDataURL(file); }); }
-function needsFirstRunOnboarding() { return state.account?.onboardingComplete === false; }
+function needsFirstRunOnboarding() {
+  const saved = state.user?.user_metadata?.seven_account;
+  if (saved && Object.hasOwn(saved, "onboardingComplete")) return saved.onboardingComplete === false;
+  if (state.account?.onboardingComplete === false) return true;
+  const createdAt = Date.parse(state.user?.created_at || "");
+  return Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
+}
 function beginOnboarding() {
   const profile = currentProfile() || state.account?.profiles?.[0] || defaultAccount().profiles[0], preferences = currentPreferences();
   state.onboardingStep = state.account?.onboardingStep === 2 ? 2 : 1;
@@ -1957,7 +1974,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=296", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=297", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

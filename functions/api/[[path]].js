@@ -25,6 +25,16 @@ function authorization(request) {
   return value.startsWith("Bearer ") ? value.slice(7) : "";
 }
 
+function normalizeAuthResponse(action, data) {
+  if (!data || !["signup", "login", "refresh"].includes(action)) return data;
+  const session = data.session || (data.access_token ? data : null);
+  if (!session?.access_token) return data;
+  return {
+    session:{ ...session, expires_at:Number(session.expires_at) || Math.floor(Date.now() / 1000) + (Number(session.expires_in) || 3600) },
+    user:session.user || data.user || null
+  };
+}
+
 function supabase(env) {
   return env.SUPABASE_URL && env.SUPABASE_PUBLISHABLE_KEY ? { url:env.SUPABASE_URL, publishableKey:env.SUPABASE_PUBLISHABLE_KEY, emailRedirectTo:env.SUPABASE_EMAIL_REDIRECT_TO || "" } : null;
 }
@@ -61,13 +71,13 @@ async function auth(action, request, env) {
     let payload = body;
     if (action === "signup") {
       route = `/auth/v1/signup${settings.emailRedirectTo ? `?redirect_to=${encodeURIComponent(settings.emailRedirectTo)}` : ""}`;
-      payload = { email:body.email, password:body.password, data:{ display_name:body.displayName || "" } };
+      payload = { email:body.email, password:body.password, data:{ display_name:body.displayName || "", seven_account:{ onboardingComplete:false, onboardingStep:1 } } };
     }
     if (action === "login") route = "/auth/v1/token?grant_type=password";
     if (action === "refresh") route = "/auth/v1/token?grant_type=refresh_token";
     if (!route) return json({ error:"Unknown auth action." }, 404);
     const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify(payload) });
-    if ((action === "login" || action === "refresh") && result.data?.access_token) result.data = { session:result.data, user:result.data.user };
+    result.data = normalizeAuthResponse(action, result.data);
     return json(result.data, result.status);
   } catch (error) { return json({ error:error.message || "Authentication request failed." }, 400); }
 }

@@ -16,7 +16,7 @@ const forYou = app.slice(forYouStart, forYouEnd);
 
 test("new accounts enter profile-first onboarding and existing accounts keep the profile picker", () => {
   assert.match(server, /seven_account:\{ onboardingComplete:false, onboardingStep:1 \}/);
-  assert.match(app, /function needsFirstRunOnboarding\(\) \{ return state\.account\?\.onboardingComplete === false; \}/);
+  assert.match(app, /function needsFirstRunOnboarding\(\)[\s\S]*saved\.onboardingComplete === false[\s\S]*Date\.now\(\) - createdAt < 7 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(app, /if \(firstRun\) \{ beginOnboarding\(\); state\.route = "onboarding"; \}[\s\S]*else state\.route = "profiles"/);
   assert.match(app, /if \(state\.route === "onboarding" && state\.user\) return renderOnboarding\(\)/);
 });

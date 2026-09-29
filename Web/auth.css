@@ -86,6 +86,8 @@
 .auth-success-stage .brand { margin: 0 0 4px; color: #8a8a8a; }
 .auth-success-stage h2 { margin: 5px 0 6px; color: #f2f2f2; font-size: clamp(24px,6vw,30px); letter-spacing: -.7px; }
 .auth-success-stage p { max-width: 30ch; margin: 0; color: #a0a0a0; font-size: 13px; line-height: 1.5; }
+.auth-success-stage .auth-pending-login { margin-top: 18px; padding: 11px 18px; border: 1px solid #3b3b3b; border-radius: 5px; color: #eee; background: #171717; font-size: 12px; font-weight: 750; }
+.auth-success-stage .auth-pending-login:hover { border-color: #b9141d; background: #211012; }
 .auth-flow.auth-success { border-color: #303030; background: linear-gradient(150deg, #171717, #0d0d0d); box-shadow: 0 24px 100px #000; }
 .auth-flow.auth-success .auth-content { opacity: 0; visibility: hidden; transform: translateY(9px) scale(.97); filter: blur(9px); pointer-events: none; transition: opacity .3s ease, transform .4s cubic-bezier(.2,.75,.25,1), filter .34s ease, visibility 0s linear .38s; }
 .auth-flow.auth-success .auth-success-stage { opacity: 1; visibility: visible; transform: translateY(0) scale(1); transition-delay: .08s, .08s, 0s; }

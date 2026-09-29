@@ -18,6 +18,7 @@ test("sign-in and sign-up forms expose loading and animated success states acces
   assert.match(authMarkup, /class="auth-success-stage" role="status" aria-live="polite"/);
   assert.match(authMarkup, /data-auth-success-title/);
   assert.match(authMarkup, /data-auth-success-copy/);
+  assert.match(authMarkup, /data-pending-login hidden/);
   assert.doesNotMatch(authMarkup, /auth-success-mark|<svg/);
   assert.match(submitAuth, /formElement\.classList\.add\("auth-submitting"\)/);
   assert.match(submitAuth, /submit\.setAttribute\("aria-busy", "true"\)/);
@@ -53,4 +54,6 @@ test("signup stays on a verification state until the confirmation redirect arriv
   assert.match(styles, /\.auth-flow\.auth-waiting \.auth-success-stage::before/);
   assert.doesNotMatch(submitAuth, /\/api\/auth\/login/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.auth-flow/);
+  assert.match(app, /data-pending-login/);
+  assert.match(app, /localStorage\.removeItem\(PENDING_EMAIL_VERIFICATION_KEY\);\s*state\.pendingEmailVerification = null;\s*showAuth\("login", "Sign in to finish setting up your account\."/);
 });
