@@ -1597,6 +1597,41 @@ function renderOnboarding() {
   app.innerHTML = `<main class="onboarding-page"><header class="onboarding-top"><span class="brand">SEVEN</span><span>YOUR EXPERIENCE</span></header><div class="onboarding-progress" role="progressbar" aria-label="Personalization progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="${step}"><i style="width:${step * 25}%"></i></div><div class="onboarding-step-count">STEP ${String(step).padStart(2,"0")} <span>OF 04</span></div>${stepMarkup}</main>`;
   bindOnboarding();
 }
+function updateOnboardingAvatarUI() {
+  const draft = state.onboardingDraft;
+  document.querySelectorAll("[data-onboarding-avatar]").forEach(button => {
+    const selected = draft.avatar === button.dataset.onboardingAvatar;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  const preview = document.querySelector(".onboarding-avatar-preview");
+  if (preview) preview.innerHTML = profileAvatar({ name:draft.name, avatar:draft.avatar, color:"#d3131c" });
+}
+function updateOnboardingGenresUI() {
+  const draft = state.onboardingDraft;
+  document.querySelectorAll("[data-onboarding-genre]").forEach(button => {
+    const selected = draft.favoriteGenres.includes(Number(button.dataset.onboardingGenre));
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+    button.disabled = draft.favoriteGenres.length >= 3 && !selected;
+  });
+  const count = document.querySelector(".onboarding-choice-heading span");
+  if (count) count.textContent = `${draft.favoriteGenres.length} of 3 selected`;
+}
+function updateOnboardingMixUI() {
+  document.querySelectorAll("[data-onboarding-mix]").forEach(button => {
+    const selected = state.onboardingDraft.contentMix === button.dataset.onboardingMix;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
+function updateOnboardingFamilyUI() {
+  document.querySelectorAll("[data-onboarding-safe]").forEach(button => {
+    const selected = state.onboardingDraft.familySafe === (button.dataset.onboardingSafe === "true");
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
 function bindOnboarding() {
   const draft = state.onboardingDraft;
   document.querySelector("[data-onboarding-name]")?.addEventListener("input", event => { draft.name = event.currentTarget.value; });
@@ -1605,21 +1640,21 @@ function bindOnboarding() {
     if (!draft.name) { document.querySelector("[data-onboarding-error]").textContent = "Add a profile name to continue."; return; }
     void saveOnboardingProfile();
   });
-  document.querySelectorAll("[data-onboarding-avatar]").forEach(button => button.addEventListener("click", () => { draft.avatar = button.dataset.onboardingAvatar; renderOnboarding(); }));
+  document.querySelectorAll("[data-onboarding-avatar]").forEach(button => button.addEventListener("click", () => { draft.avatar = button.dataset.onboardingAvatar; updateOnboardingAvatarUI(); }));
   document.querySelector("[data-onboarding-upload]")?.addEventListener("change", async event => {
-    try { draft.avatar = await prepareUploadedAvatar(event.currentTarget.files?.[0]); renderOnboarding(); }
+    try { draft.avatar = await prepareUploadedAvatar(event.currentTarget.files?.[0]); updateOnboardingAvatarUI(); }
     catch (error) { document.querySelector("[data-onboarding-error]").textContent = error.message; }
   });
   document.querySelectorAll("[data-onboarding-genre]").forEach(button => button.addEventListener("click", () => {
     const id = Number(button.dataset.onboardingGenre), selected = new Set(draft.favoriteGenres);
     if (selected.has(id)) selected.delete(id); else if (selected.size < 3) selected.add(id);
-    draft.favoriteGenres = [...selected]; renderOnboarding();
+    draft.favoriteGenres = [...selected]; updateOnboardingGenresUI();
   }));
-  document.querySelectorAll("[data-onboarding-mix]").forEach(button => button.addEventListener("click", () => { draft.contentMix = button.dataset.onboardingMix; renderOnboarding(); }));
+  document.querySelectorAll("[data-onboarding-mix]").forEach(button => button.addEventListener("click", () => { draft.contentMix = button.dataset.onboardingMix; updateOnboardingMixUI(); }));
   document.querySelectorAll("[data-onboarding-safe]").forEach(button => button.addEventListener("click", () => {
     draft.familySafe = button.dataset.onboardingSafe === "true";
     if (draft.familySafe) draft.favoriteGenres = draft.favoriteGenres.filter(id => FAMILY_FRIENDLY_GENRES.has(id));
-    renderOnboarding();
+    updateOnboardingFamilyUI();
   }));
   document.querySelector("[data-onboarding-continue]")?.addEventListener("click", event => {
     const nextStep = Number(event.currentTarget.dataset.nextStep);
@@ -2006,7 +2041,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=299", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=300", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

@@ -64,6 +64,18 @@ test("taste answers change the actual For You requests and Skip setup restores t
   assert.match(onboarding, /data-onboarding-safe="false"/);
 });
 
+test("changing profile choices updates only those controls instead of rebuilding the page", () => {
+  assert.match(onboarding, /function updateOnboardingAvatarUI\(\)[\s\S]*button\.classList\.toggle\("selected", selected\)[\s\S]*preview\.innerHTML = profileAvatar/);
+  assert.match(onboarding, /function updateOnboardingGenresUI\(\)[\s\S]*button\.disabled = draft\.favoriteGenres\.length >= 3 && !selected[\s\S]*count\.textContent/);
+  assert.match(onboarding, /function updateOnboardingMixUI\(\)[\s\S]*button\.setAttribute\("aria-pressed", String\(selected\)\)/);
+  assert.match(onboarding, /function updateOnboardingFamilyUI\(\)[\s\S]*button\.setAttribute\("aria-pressed", String\(selected\)\)/);
+  assert.match(onboarding, /draft\.avatar = button\.dataset\.onboardingAvatar; updateOnboardingAvatarUI\(\)/);
+  assert.match(onboarding, /draft\.favoriteGenres = \[\.\.\.selected\]; updateOnboardingGenresUI\(\)/);
+  assert.match(onboarding, /draft\.contentMix = button\.dataset\.onboardingMix; updateOnboardingMixUI\(\)/);
+  assert.match(onboarding, /draft\.familySafe = button\.dataset\.onboardingSafe === "true";[\s\S]*updateOnboardingFamilyUI\(\)/);
+  assert.doesNotMatch(onboarding, /data-onboarding-avatar[\s\S]{0,180}renderOnboarding\(\)/);
+});
+
 test("profile-picker avatar focus and borders use SEVEN red rather than the browser blue ring", () => {
   assert.match(styles, /\.profile-gate \.profile-choice \.profile-avatar \{ border-color: #b9141d/);
   assert.match(styles, /\.profile-gate \.profile-choice:focus-visible \.profile-avatar \{ border-color: #fff; box-shadow: 0 0 0 2px #d3131c/);
