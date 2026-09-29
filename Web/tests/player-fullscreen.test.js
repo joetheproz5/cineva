@@ -13,3 +13,10 @@ test("the server iframe has mobile-compatible fullscreen permission", () => {
   assert.match(source, /allow="autoplay; encrypted-media; fullscreen; picture-in-picture"/);
   assert.match(source, /allowfullscreen webkitallowfullscreen mozallowfullscreen/);
 });
+
+test("the player iframe blocks popups and top-level redirects without disabling playback", () => {
+  assert.match(source, /sandbox="\$\{PLAYER_IFRAME_SANDBOX\}"/);
+  assert.match(source, /const PLAYER_IFRAME_SANDBOX = "allow-scripts allow-same-origin allow-forms allow-presentation allow-orientation-lock allow-pointer-lock"/);
+  assert.doesNotMatch(source.match(/const PLAYER_IFRAME_SANDBOX = "([^"]+)"/)?.[1] || "", /allow-popups|allow-top-navigation|allow-downloads/);
+  assert.match(source, /allow="autoplay; encrypted-media; fullscreen; picture-in-picture"/);
+});

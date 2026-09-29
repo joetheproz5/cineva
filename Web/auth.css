@@ -1029,6 +1029,12 @@
 .profile-settings-redesign .profile-pin-card { margin: 18px 0 0; padding: 22px; border-radius: 10px; background: #171719; }
 .profile-settings-redesign .profile-pin-card h2 { margin-bottom: 7px; font-size: 17px; }
 .profile-settings-redesign .profile-pin-card p { margin-bottom: 17px; font-size: 12px; line-height: 1.55; }
+.profile-settings-redesign .dns-filtering-card { margin-top: 18px; border-color: #303033; }
+.profile-settings-redesign .dns-filtering-card > .brand { color: #aaa; }
+.profile-settings-redesign .dns-filtering-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; margin: 2px 0 12px; padding: 0 16px; border: 1px solid #e50914; border-radius: 7px; color: #fff; background: #c81019; font-size: 13px; font-weight: 700; text-decoration: none; transition: background .18s ease, transform .18s ease; }
+.profile-settings-redesign .dns-filtering-link:hover { background: #e50914; transform: translateY(-1px); }
+.profile-settings-redesign .dns-filtering-link:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.profile-settings-redesign .dns-filtering-card > small { display: block; max-width: 72ch; color: #9a9a9d; font-size: 11px; line-height: 1.55; }
 .profile-settings-redesign .profile-pin-field { font-size: 12px; }
 .profile-settings-redesign .profile-pin-field input { min-height: 46px; max-width: 420px; margin-top: 9px; border-radius: 7px; font-size: 15px; }
 .profile-settings-redesign .profile-danger-zone { margin-top: 30px; padding-top: 22px; }

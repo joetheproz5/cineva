@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.resolve(__dirname, "..", "app.js"), "utf8");
 const styles = fs.readFileSync(path.resolve(__dirname, "..", "auth.css"), "utf8");
 const homeSource = source.slice(source.indexOf("function profileCategoryRow("), source.indexOf("\nfunction profileSettingsDetail("));
 const detailStart = source.indexOf("function profileSettingsDetail(");
-const detailSource = source.slice(detailStart, source.indexOf("\nfunction renderProfileSettings()", detailStart));
+const detailSource = source.slice(source.indexOf("function iosDnsProtectionCard()"), source.indexOf("\nfunction renderProfileSettings()", detailStart));
 
 function settingsContext() {
   const context = {
@@ -88,4 +88,17 @@ test("the startup intro honors the active profile preference before account defa
   vm.createContext(context);
   vm.runInContext(introSource, context);
   assert.equal(context.launchIntroEnabled(), false);
+});
+
+test("privacy settings provide an explicit, device-wide iPhone DNS filtering guide", () => {
+  const context = settingsContext();
+  const adult = context.profileSettingsDetail({ id:"main", name:"Joe", kids:false }, "security", {}, false);
+  const child = context.profileSettingsDetail({ id:"kids", name:"Kids", kids:true }, "security", {}, false);
+  const card = context.iosDnsProtectionCard();
+  assert.match(card, /https:\/\/adguard-dns\.io\/en\/public-dns\.html/);
+  assert.match(card, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(card, /whole iPhone, not just SEVEN/);
+  assert.match(adult, /Profile PIN/);
+  assert.match(child, /Parent access code/);
+  assert.match(source, /category === "security"\) document\.querySelector\("\.profile-settings-detail-page"\)\?\.insertAdjacentHTML\("beforeend", iosDnsProtectionCard\(\)\)/);
 });

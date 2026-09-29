@@ -9,6 +9,8 @@ The SEVEN web app plays titles through cloud-hosted embed players — VidLink, V
 ## Player safety and platform limits
 
 - The web/PWA uses direct cross-origin provider iframes. It does not proxy, rewrite, or inspect provider media requests. A website service worker cannot reliably filter requests made inside a foreign iframe.
+- The PWA sandboxes its player frames: playback scripts and fullscreen remain enabled, while popups, downloads, and top-level redirects are blocked. This can stop many intrusive ad launches on iOS without an extension, but ads rendered inside the provider player can still appear.
+- The iPhone PWA's Privacy & Security settings link to AdGuard's optional public DNS profile for device-wide domain filtering. Installing it is a manual iOS Settings action; it affects the entire phone and may affect playback.
 - Progress messages are accepted only when they come from the active iframe, match the selected provider's exact origin, and contain finite, sensible time and duration values.
 - The Android WebView blocks unsolicited new windows and cross-site top-level navigation. The iOS player view does the same and only forwards valid player events from its configured provider origin.
 - The Android wrapper also filters matching ad/tracker host requests inside its own WebView using a cached, periodically refreshed [AdGuard DNS filter](https://github.com/AdguardTeam/AdGuardSDNSFilter), distributed under GPL-3.0. This is app-only host filtering, not a system-wide VPN or the full uBlock Origin extension; unsupported or context-specific rules are ignored to avoid guessing and overblocking.
