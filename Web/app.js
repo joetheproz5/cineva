@@ -9,11 +9,12 @@ let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0 };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
 const ACCOUNT_KEY = "seven.account.settings";
+const ACCOUNT_OWNER_KEY = "seven.account.owner";
 const MY_LIST_KEY = "seven.my-list";
 const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const UI_STRINGS = {
@@ -131,6 +132,49 @@ function authorizedHeaders() { return state.session?.access_token ? { Authorizat
 function analyticsAllowed() { return navigator.doNotTrack !== "1" && window.doNotTrack !== "1" && navigator.globalPrivacyControl !== true; }
 function reportAccountVisit() { if (state.session?.access_token) window.SevenMetrics?.trackAccountVisit(state.session.access_token); }
 function resetPlaybackWatchTracking() { clearTimeout(playbackWatch.timer); playbackWatch.sample = null; playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.batch = null; playbackWatch.sending = false; playbackWatch.timer = null; }
+function recordProfileWatchTime(item, seconds) {
+  const profile = currentProfile(), stats = window.SEVENProfileStats;
+  if (!state.session || !profile || !stats) return;
+  stats.ensureWatchStats(profile, progressEntries());
+  stats.addWatchTime(profile, item, seconds);
+  persistLocalAccount();
+  state.watchStatsSyncPending = true;
+  scheduleProfileWatchStatsSync();
+}
+function persistLocalAccount() {
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account));
+  const owner = state.user?.id || state.session?.user?.id;
+  if (owner) localStorage.setItem(ACCOUNT_OWNER_KEY, owner);
+}
+async function clearProfilePlaybackStats(profileId = activeProfileId()) {
+  if (state.watchStatsSyncPromise) await state.watchStatsSyncPromise;
+  const profile = state.account?.profiles?.find(item => item.id === profileId);
+  if (profile && window.SEVENProfileStats) window.SEVENProfileStats.clearWatchStats(profile);
+  clearTimeout(state.watchStatsSyncTimer); state.watchStatsSyncTimer = null; state.watchStatsSyncPending = false;
+  await saveAccount();
+}
+function scheduleProfileWatchStatsSync() {
+  if (!state.session || !state.account || !state.watchStatsSyncPending || state.watchStatsSyncTimer) return;
+  state.watchStatsSyncTimer = setTimeout(() => { state.watchStatsSyncTimer = null; void flushProfileWatchStats(); }, 120000);
+}
+async function flushProfileWatchStats(keepalive = false) {
+  clearTimeout(state.watchStatsSyncTimer); state.watchStatsSyncTimer = null;
+  if (!state.session || !state.account || !state.watchStatsSyncPending) return;
+  if (state.watchStatsSyncPromise) {
+    await state.watchStatsSyncPromise;
+    if (keepalive && state.watchStatsSyncPending) return flushProfileWatchStats(true);
+    return;
+  }
+  const snapshot = JSON.stringify({ account:state.account });
+  state.watchStatsSyncPending = false;
+  state.watchStatsSyncPromise = (async () => {
+    try {
+      await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:snapshot, keepalive });
+    } catch { state.watchStatsSyncPending = true; }
+    finally { state.watchStatsSyncPromise = null; if (state.watchStatsSyncPending) scheduleProfileWatchStatsSync(); }
+  })();
+  await state.watchStatsSyncPromise;
+}
 function watchTimeEventId() { if (crypto.randomUUID) return crypto.randomUUID(); const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128; const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join(""); return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`; }
 function scheduleWatchTimeFlush(delay = 12000) { if (!playbackWatch.timer) playbackWatch.timer = setTimeout(() => { playbackWatch.timer = null; void flushWatchTime(); }, delay); }
 async function flushWatchTime() {
@@ -159,9 +203,8 @@ async function flushWatchTime() {
 }
 function samplePlaybackWatchTime(currentTime) {
   const now = Date.now(), key = state.player ? watchKey(state.player) : "", userType = state.session ? "account" : "guest", previous = playbackWatch.sample;
-  if (!analyticsAllowed()) { resetPlaybackWatchTracking(); return; }
   if (previous && previous.userType !== userType) {
-    if (playbackWatch.buffered >= 0.5) void flushWatchTime();
+    if (analyticsAllowed() && playbackWatch.buffered >= 0.5) void flushWatchTime();
     else { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; }
     playbackWatch.sample = null;
   }
@@ -172,6 +215,8 @@ function samplePlaybackWatchTime(currentTime) {
   const elapsed = (now - priorSample.at) / 1000, advanced = currentTime - priorSample.currentTime;
   // Count forward-playing media time; discard seeks, rewinds and long gaps.
   if (elapsed > 0 && elapsed <= 30 && advanced > 0.15 && advanced <= elapsed * 2.25 + 1) {
+    recordProfileWatchTime(state.player, advanced);
+    if (!analyticsAllowed()) { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; return; }
     playbackWatch.bufferType = userType;
     playbackWatch.accessToken = userType === "account" ? state.session?.access_token || playbackWatch.accessToken : null;
     playbackWatch.buffered += advanced;
@@ -179,27 +224,80 @@ function samplePlaybackWatchTime(currentTime) {
     else scheduleWatchTimeFlush();
   }
 }
-window.addEventListener("pagehide", () => { void flushWatchTime(); });
+window.addEventListener("pagehide", () => { void flushWatchTime(); void flushProfileWatchStats(true); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushWatchTime(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushProfileWatchStats(true); });
 function defaultAccount() { const name = state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile"; return { activeProfileId:"main", profiles:[{ id:"main", name, color:"#d3131c", kids:false }], preferences:{ ...DEFAULT_PREFERENCES } }; }
 const EMPTY_SECRET_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-function hydrateAccount() { const saved = state.user?.user_metadata?.seven_account || JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null") || {}, fallback = defaultAccount(); state.account = { ...fallback, ...saved, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } }; if (state.account.parentPinHash === EMPTY_SECRET_HASH) delete state.account.parentPinHash; let migratedKidsPin = false, cleanedEmptyPin = false; state.account.profiles.forEach(profile => { if (profile.pinHash === EMPTY_SECRET_HASH) { delete profile.pinHash; cleanedEmptyPin = true; } if (!profile.kids || !profile.pinHash) return; if (!state.account.parentPinHash) state.account.parentPinHash = profile.pinHash; delete profile.pinHash; migratedKidsPin = true; }); if (!state.account.profiles.some(profile => profile.id === state.account.activeProfileId)) state.account.activeProfileId = state.account.profiles[0].id; if (["cinepro", "vidlink", "vidking"].includes(state.account.preferences.playerProvider)) state.account.preferences.playerProvider = "cinesrc"; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); if ((migratedKidsPin || cleanedEmptyPin) && state.session) void saveAccount(); }
+function hydrateAccount() {
+  let local = null;
+  try {
+    const candidate = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"), owner = localStorage.getItem(ACCOUNT_OWNER_KEY);
+    if ((!state.user?.id && !owner) || (state.user?.id && owner === state.user.id)) local = candidate;
+  } catch {}
+  const remote = state.user?.user_metadata?.seven_account, saved = remote || local || {}, fallback = defaultAccount();
+  state.account = { ...fallback, ...saved, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } };
+  let migratedKidsPin = false, cleanedEmptyPin = false, mergedLocalStats = false;
+  state.account.profiles.forEach(profile => {
+    const deviceProfile = local?.profiles?.find(item => item.id === profile.id);
+    if (remote && deviceProfile?.watchStats && window.SEVENProfileStats) {
+      const merged = window.SEVENProfileStats.mergeWatchStats(profile.watchStats, deviceProfile.watchStats);
+      if (merged && JSON.stringify(merged) !== JSON.stringify(profile.watchStats || null)) mergedLocalStats = true;
+      if (merged) profile.watchStats = merged;
+    }
+    if (profile.pinHash === EMPTY_SECRET_HASH) { delete profile.pinHash; cleanedEmptyPin = true; }
+    if (!profile.kids || !profile.pinHash) return;
+    if (!state.account.parentPinHash) state.account.parentPinHash = profile.pinHash;
+    delete profile.pinHash;
+    migratedKidsPin = true;
+  });
+  if (!state.account.profiles.some(profile => profile.id === state.account.activeProfileId)) state.account.activeProfileId = state.account.profiles[0].id;
+  if (["cinepro", "vidlink", "vidking"].includes(state.account.preferences.playerProvider)) state.account.preferences.playerProvider = "cinesrc";
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account));
+  if (state.user?.id) localStorage.setItem(ACCOUNT_OWNER_KEY, state.user.id);
+  if (mergedLocalStats && state.session) { state.watchStatsSyncPending = true; scheduleProfileWatchStatsSync(); }
+  if ((migratedKidsPin || cleanedEmptyPin) && state.session) void saveAccount();
+}
 function migrateLegacyProgress() { const prefix = `seven-progress-${activeProfileId()}-`; Object.keys(localStorage).filter(key => key.startsWith("cineva-progress-")).forEach(key => { const next = key.replace("cineva-progress-", prefix); if (!localStorage.getItem(next)) localStorage.setItem(next, localStorage.getItem(key)); }); }
 function parentAccessConfigured() { return Boolean(state.account?.parentAccessEnabled || state.account?.parentPinHash); }
 async function refreshParentAccessStatus() { if (!state.session || !state.account) return; try { const data = await localAPI("/api/account/parent-access", { headers:authorizedHeaders() }); if (data.enabled) { const hadLegacyHash = Boolean(state.account.parentPinHash); state.account.parentAccessEnabled = true; delete state.account.parentPinHash; if (hadLegacyHash) await saveAccount(); } else if (!state.account.parentPinHash) state.account.parentAccessEnabled = false; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); } catch { /* Keep a legacy local verifier available until the user migrates it. */ } }
-async function saveAccount(remote = true) { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); if (!remote || !state.session) return; const account = JSON.parse(JSON.stringify(state.account)); if (account.parentAccessEnabled) delete account.parentPinHash; try { const user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) }); state.user = user; } catch { /* Local account preferences remain available if sync is offline. */ } }
+async function saveAccount(remote = true) { persistLocalAccount(); if (!remote || !state.session) return; const account = JSON.parse(JSON.stringify(state.account)); if (account.parentAccessEnabled) delete account.parentPinHash; try { const user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) }); state.user = user; } catch { /* Local account preferences remain available if sync is offline. */ } }
 function readStoredSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } }
 function sessionStartedAt(session) { const saved = Number(session?.seven_started_at); if (saved) return saved; const expiresAt = Number(session?.expires_at), expiresIn = Number(session?.expires_in); return expiresAt && expiresIn ? expiresAt * 1000 - expiresIn * 1000 : Date.now(); }
 function flushWatchTypeChange() { void flushWatchTime(); playbackWatch.sample = null; if (playbackWatch.buffered < 0.5) { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; } }
 function persistSession(session, startedAt = sessionStartedAt(session)) {
   const stored = readStoredSession(), sameUser = !stored?.user?.id || !session?.user?.id || stored.user.id === session.user.id;
+  const owner = localStorage.getItem(ACCOUNT_OWNER_KEY), incomingUser = session?.user?.id;
+  if (owner && incomingUser && owner !== incomingUser) {
+    void flushProfileWatchStats();
+    clearTimeout(state.watchStatsSyncTimer); state.watchStatsSyncTimer = null; state.watchStatsSyncPending = false;
+    Object.keys(localStorage).filter(key => key.startsWith("seven-progress-") || key.startsWith("cineva-progress-")).forEach(key => localStorage.removeItem(key));
+    localStorage.removeItem(MY_LIST_KEY);
+    state.accountProgress = [];
+    state.myList = [];
+  }
   if (sameUser && stored?.refresh_token && Number(stored.expires_at || 0) > Number(session?.expires_at || 0)) { session = stored; startedAt = sessionStartedAt(stored); }
   if (!state.session && session?.access_token) flushWatchTypeChange();
   state.session = { ...session, seven_started_at:startedAt };
   localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
   reportAccountVisit();
 }
-function clearSession() { flushWatchTypeChange(); clearTimeout(sessionRefreshTimer); clearTimeout(state.progressTimer); state.pendingProgress = null; state.accountProgress = []; localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem("seven.parent-access"); state.session = null; state.user = null; }
+function clearSession() {
+  void flushProfileWatchStats();
+  flushWatchTypeChange();
+  clearTimeout(sessionRefreshTimer);
+  clearTimeout(state.progressTimer);
+  state.pendingProgress = null;
+  state.accountProgress = [];
+  state.myList = [];
+  Object.keys(localStorage).filter(key => key.startsWith("seven-progress-") || key.startsWith("cineva-progress-")).forEach(key => localStorage.removeItem(key));
+  localStorage.removeItem(MY_LIST_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem("seven.parent-access");
+  state.session = null;
+  state.user = null;
+  state.account = defaultAccount();
+}
 function signOut() { clearSession(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
 function accessTokenExpiresSoon(session = state.session) { return !session?.access_token || !session.expires_at || Number(session.expires_at) * 1000 - Date.now() < 90 * 1000; }
 function scheduleSessionRefresh() { clearTimeout(sessionRefreshTimer); if (!state.session?.refresh_token) return; const delay = Math.max(30_000, Math.min(45 * 60 * 1000, Number(state.session.expires_at || 0) * 1000 - Date.now() - 90_000)); sessionRefreshTimer = setTimeout(async () => { try { await refreshSession(); } catch (error) { if ([400, 401, 403].includes(error.status)) clearSession(); } scheduleSessionRefresh(); }, delay); }
@@ -244,8 +342,8 @@ function upsertAccountProgress(row) { if (!state.session || !row.content_key) re
 async function loadCloudProgress() { const rows = await localAPI("/api/account/progress", { headers:authorizedHeaders() }); state.accountProgress = (Array.isArray(rows) ? rows : []).map(accountProgressRecord).filter(row => row.key && row.type && row.id); state.accountProgress.forEach(row => localStorage.setItem(row.key, JSON.stringify(row))); }
 function listKey(item) { return `${item.profileId}:${item.type}:${item.id}`; }
 function listRecord(row) { return { profileId:row.profileId || row.profile_id || "main", type:row.type || row.content_type, id:Number(row.id || row.tmdb_id), title:row.title || "Untitled", poster_path:row.poster_path || row.posterPath || null, backdrop_path:row.backdrop_path || row.backdropPath || null, release_date:row.release_date || row.releaseDate || null, vote_average:Number(row.vote_average || row.voteAverage) || 0, addedAt:row.addedAt || row.added_at || new Date().toISOString() }; }
-function hydrateMyList() { try { state.myList = JSON.parse(localStorage.getItem(MY_LIST_KEY) || "[]").map(listRecord).filter(item => item.type && item.id); } catch { state.myList = []; } }
-function persistMyList() { localStorage.setItem(MY_LIST_KEY, JSON.stringify(state.myList)); }
+function hydrateMyList() { const owner = localStorage.getItem(ACCOUNT_OWNER_KEY); if (owner && (!state.user?.id || owner !== state.user.id)) { state.myList = []; return; } try { state.myList = JSON.parse(localStorage.getItem(MY_LIST_KEY) || "[]").map(listRecord).filter(item => item.type && item.id); } catch { state.myList = []; } }
+function persistMyList() { localStorage.setItem(MY_LIST_KEY, JSON.stringify(state.myList)); const owner = state.user?.id || state.session?.user?.id; if (owner) localStorage.setItem(ACCOUNT_OWNER_KEY, owner); }
 function listItems() { return state.myList.filter(item => item.profileId === activeProfileId()).sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)); }
 function isInMyList(item) { return state.myList.some(entry => entry.profileId === activeProfileId() && entry.type === item.type && Number(entry.id) === Number(item.id)); }
 async function loadMyList() { if (!state.session) return; const rows = await localAPI("/api/account/list", { headers:authorizedHeaders() }); const merged = new Map(state.myList.map(item => [listKey(item), item])); rows.map(listRecord).forEach(item => merged.set(listKey(item), item)); state.myList = [...merged.values()]; persistMyList(); }
@@ -535,10 +633,14 @@ function watchTimeLabel(seconds) { const hours = Math.floor(seconds / 3600), min
 function dateToken(value) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? "" : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function longestWatchStreak(entries) { const dates = [...new Set(entries.map(entry => dateToken(entry.lastWatchedAt)).filter(Boolean))].sort(); let longest = 0, run = 0, previous = null; dates.forEach(token => { const day = new Date(`${token}T00:00:00`); run = previous && (day - previous) / 86400000 === 1 ? run + 1 : 1; longest = Math.max(longest, run); previous = day; }); return longest; }
 function profileStats() {
-  const entries = progressEntries().filter(entry => entry?.type && entry.id && entry.title), titleMap = new Map(), genreCounts = {};
-  entries.forEach(entry => { const key = `${entry.type}:${entry.id}`, record = titleMap.get(key) || { ...entry, seconds:0 }; record.seconds += watchDuration(entry); titleMap.set(key, record); (entry.genreIds || []).forEach(id => { genreCounts[id] = (genreCounts[id] || 0) + 1; }); });
-  const moviesFinished = entries.filter(entry => entry.type === "movie" && (entry.watched || Number(entry.progress) >= 90)).length, episodesWatched = entries.filter(entry => entry.type === "tv" && (entry.watched || Number(entry.progress) >= 90)).length;
-  return { entries, titles:[...titleMap.values()].sort((a, b) => b.seconds - a.seconds), seconds:entries.reduce((total, entry) => total + watchDuration(entry), 0), moviesFinished, episodesWatched, titlesStarted:titleMap.size, streak:longestWatchStreak(entries), genres:Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).map(([id]) => GENRES[Number(id)]).filter(Boolean).slice(0, 4) };
+  const entries = progressEntries().filter(entry => entry?.type && entry.id && entry.title), profile = currentProfile(), previousVersion = profile?.watchStats?.version;
+  const summary = window.SEVENProfileStats.summarize(entries, profile);
+  if (profile && previousVersion !== window.SEVENProfileStats.VERSION) {
+    persistLocalAccount();
+    state.watchStatsSyncPending = true;
+    scheduleProfileWatchStatsSync();
+  }
+  return { ...summary, genres:summary.genres.map(id => GENRES[Number(id)]).filter(Boolean).slice(0, 4) };
 }
 function savedProgress(item) { try { return JSON.parse(localStorage.getItem(watchKey(item)) || "{}"); } catch { return {}; } }
 function isWatched(item) { const saved = savedProgress(item); return Boolean(saved.watched) || Number(saved.progress) >= 90; }
@@ -1327,7 +1429,7 @@ async function submitAuth(event, mode) {
 }
 function renderProfileStats() {
   const profile = currentProfile(), stats = profileStats(), top = stats.titles.slice(0, 4);
-  app.innerHTML = `${header()}<main class="profile-stats-page"><button class="account-back" data-stats-back>‹ Account</button><span class="brand">YOUR VIEWING RECAP</span><h1>${escapeHTML(profile?.name || "Your")} stats</h1><p>Real playback totals from this profile’s saved viewing activity.</p>${stats.entries.length ? `<section class="stats-summary"><div><strong>${watchTimeLabel(stats.seconds)}</strong><span>Watch time</span></div><div><strong>${stats.titlesStarted}</strong><span>Titles started</span></div><div><strong>${stats.moviesFinished}</strong><span>Movies finished</span></div><div><strong>${stats.episodesWatched}</strong><span>Episodes watched</span></div></section><section class="stats-detail-grid"><article><span class="brand">WATCHING STREAK</span><strong>${stats.streak} ${stats.streak === 1 ? "day" : "days"}</strong><p>Longest run of consecutive days with playback.</p></article><article><span class="brand">TOP GENRES</span><div class="stats-genres">${stats.genres.length ? stats.genres.map(genre => `<span>${escapeHTML(genre)}</span>`).join("") : "<small>Watch a title to reveal your tastes.</small>"}</div></article></section><section class="stats-most-watched"><div class="rail-title"><div><span class="brand">MOST WATCHED</span><h2>Time well spent</h2></div><span>Based on playback time</span></div><div class="stats-title-grid">${top.map(item => `<button class="stats-title" data-open="${item.type}:${item.id}"><img src="${item.posterPath ? TMDB_IMAGE + item.posterPath : "icon.svg"}" alt=""><span><b>${escapeHTML(item.title)}</b><small>${item.type === "tv" ? "Series" : "Movie"} · ${watchTimeLabel(item.seconds)}</small></span></button>`).join("")}</div></section>` : `<section class="stats-empty"><b>Your recap will appear here</b><p>Start watching a movie or episode and SEVEN will build your real profile stats.</p><button class="primary" data-home>Browse titles</button></section>`}</main>${footer()}`;
+  app.innerHTML = `${header()}<main class="profile-stats-page"><button class="account-back" data-stats-back>‹ Account</button><span class="brand">YOUR VIEWING RECAP</span><h1>${escapeHTML(profile?.name || "Your")} stats</h1><p>Earlier saved progress is an estimate; new watch time is counted as playback advances.</p>${stats.titlesStarted ? `<section class="stats-summary"><div><strong>${watchTimeLabel(stats.seconds)}</strong><span>Watch time</span></div><div><strong>${stats.titlesStarted}</strong><span>Titles started</span></div><div><strong>${stats.moviesFinished}</strong><span>Movies finished</span></div><div><strong>${stats.episodesWatched}</strong><span>Episodes watched</span></div></section><section class="stats-detail-grid"><article><span class="brand">WATCHING STREAK</span><strong>${stats.streak} ${stats.streak === 1 ? "day" : "days"}</strong><p>Longest run of consecutive days with playback.</p></article><article><span class="brand">TOP GENRES</span><div class="stats-genres">${stats.genres.length ? stats.genres.map(genre => `<span>${escapeHTML(genre)}</span>`).join("") : "<small>Watch a title to reveal your tastes.</small>"}</div></article></section><section class="stats-most-watched"><div class="rail-title"><div><span class="brand">MOST WATCHED</span><h2>Time well spent</h2></div><span>Based on playback time</span></div><div class="stats-title-grid">${top.map(item => `<button class="stats-title" data-open="${item.type}:${item.id}"><img src="${item.posterPath ? TMDB_IMAGE + item.posterPath : "icon.svg"}" alt=""><span><b>${escapeHTML(item.title)}</b><small>${item.type === "tv" ? "Series" : "Movie"} · ${watchTimeLabel(item.seconds)}</small></span></button>`).join("")}</div></section>` : `<section class="stats-empty"><b>Your recap will appear here</b><p>Start watching a movie or episode and SEVEN will build your real profile stats.</p><button class="primary" data-home>Browse titles</button></section>`}</main>${footer()}`;
   bindCommon();
   document.querySelectorAll("[data-stats-back]").forEach(button => button.onclick = () => { state.route = "account"; render(); });
 }
@@ -1521,7 +1623,7 @@ function renderProfileSettings() {
   document.querySelector("[data-liked-titles]")?.addEventListener("click", () => { state.route = "liked"; scrollToTop(); render(); });
   document.querySelector("[data-hidden-titles]")?.addEventListener("click", () => { state.route = "hidden"; scrollToTop(); render(); });
   document.querySelector("[data-install-seven]")?.addEventListener("click", showInstallSEVEN);
-  document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${profile.name || "this profile"}?`)) return; const profileId = activeProfileId(), prefix = `seven-progress-${profileId}-`; Object.keys(localStorage).filter(key => key.startsWith(prefix)).forEach(key => localStorage.removeItem(key)); forgetProfileProgress(profileId); if (state.session) try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(profileId)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderProfileSettings(); });
+  document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${profile.name || "this profile"}?`)) return; const profileId = activeProfileId(), prefix = `seven-progress-${profileId}-`; Object.keys(localStorage).filter(key => key.startsWith(prefix)).forEach(key => localStorage.removeItem(key)); forgetProfileProgress(profileId); await clearProfilePlaybackStats(profileId); if (state.session) try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(profileId)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderProfileSettings(); });
   if (category === "security") {
     document.querySelector(".profile-category-actions")?.insertAdjacentHTML("afterbegin", accountAction("⌁", "Change account password", "Use your current password to set a new one", "data-change-password", "Change"));
     document.querySelector(".profile-category-actions")?.insertAdjacentHTML("afterbegin", accountAction("↪", "Sign out", "Sign out of your SEVEN account on this device", "data-signout", "Sign out"));
@@ -1545,7 +1647,7 @@ function renderAccount() {
   document.querySelector("[data-liked-titles]")?.addEventListener("click", () => { state.route = "liked"; scrollToTop(); render(); });
   document.querySelector("[data-install-seven]")?.addEventListener("click", showInstallSEVEN);
   document.querySelectorAll("[data-pref]").forEach(field => field.onchange = async () => { if (field.dataset.pref === "episodeAlerts" && field.checked && !await requestEpisodeAlerts()) field.checked = false; updateCurrentPreferences({ [field.dataset.pref]:field.type === "checkbox" ? field.checked : field.value }); await saveAccount(); if (field.dataset.pref === "episodeAlerts" && field.checked) notifyNewEpisodes(); if (["language", "maturity"].includes(field.dataset.pref)) { applyLocale(); try { await refreshCatalogForLanguage(); } catch { /* The saved setting is used by the next successful TMDB request. */ } } });
-  document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${currentProfile()?.name || "this profile"}?`)) return; const profileId = activeProfileId(), prefix = `seven-progress-${profileId}-`; Object.keys(localStorage).filter(key => key.startsWith(prefix)).forEach(key => localStorage.removeItem(key)); forgetProfileProgress(profileId); if (state.session) try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(profileId)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} showAccount(); });
+  document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${currentProfile()?.name || "this profile"}?`)) return; const profileId = activeProfileId(), prefix = `seven-progress-${profileId}-`; Object.keys(localStorage).filter(key => key.startsWith(prefix)).forEach(key => localStorage.removeItem(key)); forgetProfileProgress(profileId); await clearProfilePlaybackStats(profileId); if (state.session) try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(profileId)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} showAccount(); });
   document.querySelector("[data-change-password]")?.addEventListener("click", showChangePassword);
   document.querySelector("[data-signout]")?.addEventListener("click", signOut);
 }
@@ -1659,7 +1761,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=295", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=296", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

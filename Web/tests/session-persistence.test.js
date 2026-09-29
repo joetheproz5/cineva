@@ -20,6 +20,8 @@ function createContext({ session, localAPI, lockRequest } = {}) {
   const navigator = { locks:{ request:lockRequest || ((_name, _options, callback) => callback()) } };
   const context = {
     SESSION_KEY:"cineva.supabase.session",
+    ACCOUNT_OWNER_KEY:"seven.account.owner",
+    MY_LIST_KEY:"seven.my-list",
     SESSION_REFRESH_LOCK:"seven-auth-session-refresh",
     state,
     window:{ addEventListener(){} },
