@@ -223,10 +223,15 @@ public partial class MainWindow : Window
     private void Browser_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
     {
         e.Handled = true;
-        if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var target))
+        if (!e.IsUserInitiated
+            || !Uri.TryCreate(e.OriginalSourceFrameInfo.Source, UriKind.Absolute, out var source)
+            || !source.IdnHost.Equals(AppHost, StringComparison.OrdinalIgnoreCase)
+            || !Uri.TryCreate(e.Uri, UriKind.Absolute, out var target))
         {
-            OpenExternal(target);
+            return;
         }
+
+        OpenExternal(target);
     }
 
     private static void OpenExternal(Uri target)
@@ -330,7 +335,11 @@ public partial class MainWindow : Window
 
     private async Task EnsureContentBlockerAsync(CoreWebView2 core)
     {
-        var extensionPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Extensions", "uBOLite");
+        var processPath = Environment.ProcessPath;
+        var applicationDirectory = string.IsNullOrWhiteSpace(processPath)
+            ? AppContext.BaseDirectory
+            : System.IO.Path.GetDirectoryName(processPath) ?? AppContext.BaseDirectory;
+        var extensionPath = System.IO.Path.Combine(applicationDirectory, "Extensions", "uBOLite");
         var manifestPath = System.IO.Path.Combine(extensionPath, "manifest.json");
         if (!File.Exists(manifestPath))
         {

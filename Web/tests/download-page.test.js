@@ -171,6 +171,13 @@ test("the desktop wrapper confines embedded navigation to SEVEN and opens web li
   assert.match(macHost, /NSWorkspace\.shared\.open\(url\)/);
 });
 
+test("the Windows wrapper blocks provider popups instead of launching ads externally", () => {
+  assert.match(desktopHost, /e\.Handled = true;\s*if \(!e\.IsUserInitiated/);
+  assert.match(desktopHost, /e\.OriginalSourceFrameInfo\.Source/);
+  assert.match(desktopHost, /source\.IdnHost\.Equals\(AppHost/);
+  assert.match(desktopHost, /OpenExternal\(target\)/);
+});
+
 test("the Windows wrapper uses a compact custom title bar with working window controls", () => {
   assert.match(windowsChrome, /WindowStyle="None" ResizeMode="CanResize"/);
   assert.match(windowsChrome, /<shell:WindowChrome CaptionHeight="42"/);
@@ -215,6 +222,9 @@ test("the Windows wrapper bundles official uBlock Origin Lite with verified filt
   assert.match(desktopHost, /await _contentBlockerExtension\.EnableAsync\(true\)/);
   assert.match(desktopHost, /Retry uBlock installation/);
   assert.match(desktopHost, /adblock-setup\.log/);
+  assert.match(desktopHost, /var processPath = Environment\.ProcessPath/);
+  assert.match(desktopHost, /Path\.GetDirectoryName\(processPath\) \?\? AppContext\.BaseDirectory/);
+  assert.doesNotMatch(desktopHost, /Path\.Combine\(AppContext\.BaseDirectory, "Extensions"/);
   assert.match(desktopHost, /Trace\.TraceError\("SEVEN could not install uBlock Origin Lite/);
   assert.match(releaseWorkflow, /uBlock Origin Lite rules/);
   assert.match(releaseWorkflow, /65c895c8edb04120d5b9a6eac8b17fa8e4543eda1b7b571eea2bed3c9692ee2d/);
