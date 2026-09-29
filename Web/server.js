@@ -39,7 +39,7 @@ async function downloadRedirect(request, response, sourceURL) {
     }
     const webRequest = new Request(sourceURL.href, { method:request.method, headers });
     const module = await import("../shared/admin-dashboard.mjs");
-    const webResponse = await module.handleDownloadRedirect(webRequest, dashboardEnvironment(), sourceURL.pathname.slice("/go/".length));
+    const webResponse = await module.handleDownloadRedirect(webRequest, dashboardEnvironment(), sourceURL.pathname.slice("/api/install/".length));
     for (const [name, value] of webResponse.headers) response.setHeader(name, value);
     response.writeHead(webResponse.status);
     response.end(Buffer.from(await webResponse.arrayBuffer()));
@@ -135,7 +135,7 @@ async function parentAccess(request, response) {
 }
 const server = http.createServer((request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
-  if (sourceURL.pathname.startsWith("/go/")) return void downloadRedirect(request, response, sourceURL);
+  if (sourceURL.pathname.startsWith("/api/install/")) return void downloadRedirect(request, response, sourceURL);
   if (sourceURL.pathname === "/api/metrics/event" || sourceURL.pathname.startsWith("/api/admin/")) return void dashboardAPI(request, response, sourceURL);
   if (sourceURL.pathname.startsWith("/api/tmdb/")) return proxyTMDB(response, sourceURL);
   if (sourceURL.pathname === "/api/auth/signup") return auth(request, response, "signup");

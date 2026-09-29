@@ -59,7 +59,7 @@ test("dashboard is private, responsive, and does not render member-level data", 
 
 test("browser metrics are daily, anonymous, and respect privacy signals", () => {
   assert.match(entryPage, /src="metrics\.js\?v=1"/);
-  assert.match(downloadPage, /id="windowsBtn"[^>]*href="\/go\/windows"/);
+  assert.match(downloadPage, /id="windowsBtn"[^>]*href="\/api\/install\/windows"/);
   assert.doesNotMatch(downloadPage, /trackDownload/);
   assert.match(metricsClient, /navigator\.doNotTrack === "1"/);
   assert.match(metricsClient, /navigator\.globalPrivacyControl === true/);
@@ -181,33 +181,33 @@ test("login rejects cross-origin attempts and visit tracking honors DNT without 
 });
 
 test("platform install clicks are recorded server-side before redirects and still honor privacy signals", async () => {
-  const route = await import(pathToFileURL(path.join(repository, "functions/go/[platform].js")).href);
+  const route = await import(pathToFileURL(path.join(repository, "functions/api/[[path]].js")).href);
   const originalFetch = global.fetch;
   const calls = [];
   global.fetch = async (url, options) => { calls.push({ url, payload:JSON.parse(options.body) }); return Response.json(true); };
   try {
-    const redirect = await route.onRequest({ request:new Request("https://seven.example/go/windows", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ platform:"windows" } });
+    const redirect = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
     assert.equal(redirect.status, 302);
     assert.equal(redirect.headers.get("location"), "https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-Setup-win-x64.exe");
     assert.equal(redirect.headers.get("cache-control"), "no-store");
     assert.deepEqual(calls, [{ url:"https://example.supabase.co/rest/v1/rpc/seven_admin_record_download", payload:{ p_platform:"windows" } }]);
 
-    const optedOut = await route.onRequest({ request:new Request("https://seven.example/go/windows", { headers:{ "Sec-Fetch-Site":"same-origin", "Sec-GPC":"1" } }), env:adminEnv(), params:{ platform:"windows" } });
+    const optedOut = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { headers:{ "Sec-Fetch-Site":"same-origin", "Sec-GPC":"1" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
     assert.equal(optedOut.status, 302);
     assert.equal(calls.length, 1);
-    const head = await route.onRequest({ request:new Request("https://seven.example/go/windows", { method:"HEAD", headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ platform:"windows" } });
+    const head = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { method:"HEAD", headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
     assert.equal(head.status, 302);
     assert.equal(calls.length, 1, "link previews must not increment install clicks");
-    const android = await route.onRequest({ request:new Request("https://seven.example/go/android", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ platform:"android" } });
+    const android = await route.onRequest({ request:new Request("https://seven.example/api/install/android", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "android"] } });
     assert.equal(android.headers.get("location"), "https://seven.example/downloads/seven.apk");
     assert.deepEqual(calls[1].payload, { p_platform:"android" });
-    const mac = await route.onRequest({ request:new Request("https://seven.example/go/mac", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ platform:"mac" } });
+    const mac = await route.onRequest({ request:new Request("https://seven.example/api/install/mac", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "mac"] } });
     assert.equal(mac.headers.get("location"), "https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-macOS.dmg");
     assert.deepEqual(calls[2].payload, { p_platform:"mac" });
-    const ios = await route.onRequest({ request:new Request("https://seven.example/go/ios", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ platform:"ios" } });
+    const ios = await route.onRequest({ request:new Request("https://seven.example/api/install/ios", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "ios"] } });
     assert.equal(ios.headers.get("location"), "https://seven.example/");
     assert.deepEqual(calls[3].payload, { p_platform:"ios" });
-    const unknown = await route.onRequest({ request:new Request("https://seven.example/go/nope"), env:adminEnv(), params:{ platform:"nope" } });
+    const unknown = await route.onRequest({ request:new Request("https://seven.example/api/install/nope"), env:adminEnv(), params:{ path:["install", "nope"] } });
     assert.equal(unknown.status, 404);
   } finally {
     global.fetch = originalFetch;

@@ -1,4 +1,4 @@
-import { handleDashboardRequest } from "../../shared/admin-dashboard.mjs";
+import { handleDashboardRequest, handleDownloadRedirect } from "../../shared/admin-dashboard.mjs";
 
 const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos)?)?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos))?)|person\/\d+|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
 
@@ -231,6 +231,7 @@ export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
+  if (path.startsWith("install/")) return handleDownloadRedirect(request, env, path.slice("install/".length));
   if (path === "metrics/event" || path.startsWith("admin/")) return handleDashboardRequest(request, env);
   if (path === "account/watch-time") return watchTime(request, env);
   if (path === "config" && request.method === "GET") return config(env);
