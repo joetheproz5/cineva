@@ -6,12 +6,13 @@ const app = document.querySelector("#app");
 let searchRequest = 0;
 let coverflowResizeTimer;
 let sessionRefreshTimer;
+let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0 };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
-const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
 const ACCOUNT_KEY = "seven.account.settings";
 const MY_LIST_KEY = "seven.my-list";
 const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
@@ -187,16 +188,57 @@ function migrateLegacyProgress() { const prefix = `seven-progress-${activeProfil
 function parentAccessConfigured() { return Boolean(state.account?.parentAccessEnabled || state.account?.parentPinHash); }
 async function refreshParentAccessStatus() { if (!state.session || !state.account) return; try { const data = await localAPI("/api/account/parent-access", { headers:authorizedHeaders() }); if (data.enabled) { const hadLegacyHash = Boolean(state.account.parentPinHash); state.account.parentAccessEnabled = true; delete state.account.parentPinHash; if (hadLegacyHash) await saveAccount(); } else if (!state.account.parentPinHash) state.account.parentAccessEnabled = false; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); } catch { /* Keep a legacy local verifier available until the user migrates it. */ } }
 async function saveAccount(remote = true) { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); if (!remote || !state.session) return; const account = JSON.parse(JSON.stringify(state.account)); if (account.parentAccessEnabled) delete account.parentPinHash; try { const user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) }); state.user = user; } catch { /* Local account preferences remain available if sync is offline. */ } }
+function readStoredSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } }
 function sessionStartedAt(session) { const saved = Number(session?.seven_started_at); if (saved) return saved; const expiresAt = Number(session?.expires_at), expiresIn = Number(session?.expires_in); return expiresAt && expiresIn ? expiresAt * 1000 - expiresIn * 1000 : Date.now(); }
 function flushWatchTypeChange() { void flushWatchTime(); playbackWatch.sample = null; if (playbackWatch.buffered < 0.5) { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; } }
-function persistSession(session, startedAt = sessionStartedAt(session)) { if (!state.session && session?.access_token) flushWatchTypeChange(); state.session = { ...session, seven_started_at:startedAt }; localStorage.setItem(SESSION_KEY, JSON.stringify(state.session)); reportAccountVisit(); }
+function persistSession(session, startedAt = sessionStartedAt(session)) {
+  const stored = readStoredSession(), sameUser = !stored?.user?.id || !session?.user?.id || stored.user.id === session.user.id;
+  if (sameUser && stored?.refresh_token && Number(stored.expires_at || 0) > Number(session?.expires_at || 0)) { session = stored; startedAt = sessionStartedAt(stored); }
+  if (!state.session && session?.access_token) flushWatchTypeChange();
+  state.session = { ...session, seven_started_at:startedAt };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
+  reportAccountVisit();
+}
 function clearSession() { flushWatchTypeChange(); clearTimeout(sessionRefreshTimer); clearTimeout(state.progressTimer); state.pendingProgress = null; state.accountProgress = []; localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem("seven.parent-access"); state.session = null; state.user = null; }
 function signOut() { clearSession(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
-function sessionExpired(session = state.session) { return Date.now() - sessionStartedAt(session) >= SESSION_MAX_AGE; }
 function accessTokenExpiresSoon(session = state.session) { return !session?.access_token || !session.expires_at || Number(session.expires_at) * 1000 - Date.now() < 90 * 1000; }
-function scheduleSessionRefresh() { clearTimeout(sessionRefreshTimer); if (!state.session?.refresh_token || sessionExpired()) return; const delay = Math.max(30_000, Math.min(45 * 60 * 1000, Number(state.session.expires_at || 0) * 1000 - Date.now() - 90_000)); sessionRefreshTimer = setTimeout(async () => { try { await refreshSession(); } catch {} scheduleSessionRefresh(); }, delay); }
-async function refreshSession() { if (!state.session?.refresh_token || sessionExpired()) throw new Error("Your session has expired."); const startedAt = sessionStartedAt(state.session), data = await localAPI("/api/auth/refresh", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ refresh_token:state.session.refresh_token }) }); if (!data.session?.access_token) throw new Error("Could not refresh your session."); persistSession(data.session, startedAt); state.user = data.user || data.session.user || state.user; return state.session; }
-async function restoreSession() { let stored; try { stored = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch {} if (!stored?.access_token) { hydrateAccount(); hydrateMyList(); return; } persistSession(stored, sessionStartedAt(stored)); if (sessionExpired()) { clearSession(); hydrateAccount(); hydrateMyList(); return; } try { if (accessTokenExpiresSoon()) await refreshSession(); state.user = await localAPI("/api/auth/user", { headers:authorizedHeaders() }); } catch (error) { try { await refreshSession(); state.user = await localAPI("/api/auth/user", { headers:authorizedHeaders() }); } catch (refreshError) { if ([400, 401, 403].includes(refreshError.status) || [401, 403].includes(error.status)) clearSession(); else state.user = state.session?.user || null; } } hydrateAccount(); await refreshParentAccessStatus(); hydrateMyList(); if (state.session) { await Promise.allSettled([loadCloudProgress(), loadMyList()]); migrateLegacyProgress(); scheduleSessionRefresh(); } }
+function scheduleSessionRefresh() { clearTimeout(sessionRefreshTimer); if (!state.session?.refresh_token) return; const delay = Math.max(30_000, Math.min(45 * 60 * 1000, Number(state.session.expires_at || 0) * 1000 - Date.now() - 90_000)); sessionRefreshTimer = setTimeout(async () => { try { await refreshSession(); } catch (error) { if ([400, 401, 403].includes(error.status)) clearSession(); } scheduleSessionRefresh(); }, delay); }
+async function withSessionRefreshLock(callback) {
+  if (navigator.locks?.request) return navigator.locks.request(SESSION_REFRESH_LOCK, { mode:"exclusive" }, callback);
+  return callback();
+}
+async function refreshSession() {
+  if (sessionRefreshPromise) return sessionRefreshPromise;
+  const observedRefreshToken = state.session?.refresh_token;
+  sessionRefreshPromise = withSessionRefreshLock(async () => {
+    const stored = readStoredSession(), storedIsNewer = stored?.refresh_token && Number(stored.expires_at || 0) > Number(state.session?.expires_at || 0);
+    if (storedIsNewer) { state.session = stored; state.user = stored.user || state.user; }
+    if (!state.session?.refresh_token) throw new Error("Your session has expired.");
+    // Another tab may have rotated the one-use refresh token while this tab waited for the lock.
+    if (observedRefreshToken && state.session.refresh_token !== observedRefreshToken && !accessTokenExpiresSoon()) return state.session;
+    const startedAt = sessionStartedAt(state.session), data = await localAPI("/api/auth/refresh", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ refresh_token:state.session.refresh_token }) });
+    if (!data.session?.access_token) throw new Error("Could not refresh your session.");
+    persistSession(data.session, startedAt);
+    state.user = data.user || data.session.user || state.user;
+    return state.session;
+  }).finally(() => { sessionRefreshPromise = null; });
+  return sessionRefreshPromise;
+}
+function refreshSessionIfNeeded() {
+  if (!state.session?.refresh_token || !accessTokenExpiresSoon()) return;
+  void refreshSession().then(scheduleSessionRefresh).catch(error => { if ([400, 401, 403].includes(error.status)) clearSession(); else scheduleSessionRefresh(); });
+}
+window.addEventListener("storage", event => {
+  if (event.key !== SESSION_KEY || !event.newValue) return;
+  let incoming; try { incoming = JSON.parse(event.newValue); } catch { return; }
+  const sameUser = !state.session?.user?.id || !incoming?.user?.id || state.session.user.id === incoming.user.id;
+  if (incoming?.access_token && sameUser && Number(incoming.expires_at || 0) > Number(state.session?.expires_at || 0)) {
+    state.session = incoming;
+    state.user = incoming.user || state.user;
+    scheduleSessionRefresh();
+  }
+});
+async function restoreSession() { let stored; try { stored = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch {} if (!stored?.access_token) { hydrateAccount(); hydrateMyList(); return; } persistSession(stored, sessionStartedAt(stored)); try { if (accessTokenExpiresSoon()) await refreshSession(); state.user = await localAPI("/api/auth/user", { headers:authorizedHeaders() }); } catch (error) { try { await refreshSession(); state.user = await localAPI("/api/auth/user", { headers:authorizedHeaders() }); } catch (refreshError) { if ([400, 401, 403].includes(refreshError.status) || [401, 403].includes(error.status)) clearSession(); else state.user = state.session?.user || null; } } hydrateAccount(); await refreshParentAccessStatus(); hydrateMyList(); if (state.session) { await Promise.allSettled([loadCloudProgress(), loadMyList()]); migrateLegacyProgress(); scheduleSessionRefresh(); } }
 function accountProgressRecord(row) { const duration = Number(row.duration_seconds) || 0, currentTime = Number(row.progress_seconds) || 0; return { key:row.content_key, currentTime, duration, progress:duration > 0 ? Math.min(100, currentTime / duration * 100) : 0, watched:Boolean(row.is_watched), type:row.content_type, id:Number(row.tmdb_id), season:Number(row.season) || null, episode:Number(row.episode) || null, title:row.title || "Untitled", posterPath:row.poster_path || null, lastWatchedAt:row.last_watched_at || new Date().toISOString() }; }
 function upsertAccountProgress(row) { if (!state.session || !row.content_key) return; const record = accountProgressRecord(row); state.accountProgress = [record, ...state.accountProgress.filter(item => item.key !== record.key)].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
 async function loadCloudProgress() { const rows = await localAPI("/api/account/progress", { headers:authorizedHeaders() }); state.accountProgress = (Array.isArray(rows) ? rows : []).map(accountProgressRecord).filter(row => row.key && row.type && row.id); state.accountProgress.forEach(row => localStorage.setItem(row.key, JSON.stringify(row))); }
@@ -1555,7 +1597,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=292", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=293", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
@@ -1594,8 +1636,9 @@ app.addEventListener("click", event => {
   scrollToTop();
   render();
 });
-window.addEventListener("online", () => { if (document.querySelector(".offline-screen")) void retryConnection(); });
-window.addEventListener("visibilitychange", () => { if (!document.hidden) tickScreenTime(); });
+window.addEventListener("online", () => { if (document.querySelector(".offline-screen")) void retryConnection(); refreshSessionIfNeeded(); });
+window.addEventListener("focus", refreshSessionIfNeeded);
+window.addEventListener("visibilitychange", () => { if (!document.hidden) { tickScreenTime(); refreshSessionIfNeeded(); } });
 window.addEventListener("pagehide", () => { void flushWatchTime(); });
 setInterval(tickScreenTime, 60000);
 renderLaunchIntro();
