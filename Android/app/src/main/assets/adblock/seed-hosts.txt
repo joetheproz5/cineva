@@ -1,0 +1,27 @@
+# Small offline starter set. The full AdGuard DNS filter is fetched and cached in-app.
+ad.doubleclick.net
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+adservice.google.com
+adnxs.com
+adform.net
+adsrvr.org
+adroll.com
+criteo.com
+taboola.com
+outbrain.com
+scorecardresearch.com
+quantserve.com
+moatads.com
+amazon-adsystem.com
+pubmatic.com
+rubiconproject.com
+openx.net
+smartadserver.com
+zedo.com
+popads.net
+popcash.net
+trafficjunky.net
+exoclick.com
+onclickads.net

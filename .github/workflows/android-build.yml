@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Build release APK
-        run: gradle -p Android assembleRelease --no-daemon
+        run: gradle -p Android testReleaseUnitTest assembleRelease --no-daemon
 
       - name: Publish assetlinks for app links
         run: |

@@ -17,8 +17,8 @@ android {
         applicationId = "com.example.cineva"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.3.0"
     }
     signingConfigs {
         if (keystoreProperties.containsKey("storeFile")) {
@@ -47,4 +47,5 @@ android {
 
 dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    testImplementation("junit:junit:4.13.2")
 }
