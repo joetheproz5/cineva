@@ -1172,13 +1172,13 @@
 .onboarding-family-choice.selected { border-color: #d3131c; background: linear-gradient(120deg,#261214,#111 78%); }
 .onboarding-family-icon { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #3a3030; border-radius: 9px; color: #e62a34; background: #1c1213; font-size: 17px; }
 .onboarding-error { min-height: 18px; margin-top: 8px !important; color: #e38d91 !important; font-size: 12px !important; }
-.onboarding-actions { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; margin-top: 23px; }
-.onboarding-actions-profile { grid-template-columns: 1fr auto; }
-.onboarding-actions-simple { grid-template-columns: 1fr auto; }
+.onboarding-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 23px; }
+.onboarding-actions-start { display: flex; min-width: 0; align-items: center; gap: 14px; }
 .onboarding-actions .primary { min-height: 46px; padding: 0 19px; border-radius: 7px; background: #e50914; font-size: 12px; }
 .onboarding-actions .primary:hover { background: #f21a25; }
-.onboarding-back, .onboarding-current { min-height: 42px; padding: 0 9px; color: #bdbdbd; background: transparent; font-size: 11px; font-weight: 750; }
-.onboarding-current { color: #e0e0e0; text-decoration: underline; text-underline-offset: 4px; }
+.onboarding-back, .onboarding-skip { min-height: 42px; padding: 0; color: #bdbdbd; background: transparent; text-align: left; white-space: nowrap; font-size: 11px; font-weight: 750; }
+.onboarding-skip { color: #858585; }
+.onboarding-back:hover, .onboarding-skip:hover { color: #fff; }
 @keyframes onboarding-enter { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 640px) {
   .onboarding-page { padding: 15px 18px 34px; }
@@ -1201,9 +1201,9 @@
   .onboarding-mix { min-height: 82px; align-items: center; padding: 14px; }
   .onboarding-mix small, .onboarding-family-choice small { margin-top: 5px; }
   .onboarding-family-choice { min-height: 105px; align-items: center; padding: 14px; }
-  .onboarding-actions { grid-template-columns: auto minmax(0,1fr) auto; gap: 5px; }
-  .onboarding-actions-simple { grid-template-columns: 1fr auto; gap: 8px; }
+  .onboarding-actions { gap: 8px; }
+  .onboarding-actions-start { gap: 10px; }
   .onboarding-actions .primary { padding: 0 13px; font-size: 11px; }
-  .onboarding-current { padding: 0 4px; font-size: 10px; }
+  .onboarding-back, .onboarding-skip { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .onboarding-panel, .onboarding-progress i, .onboarding-avatar, .onboarding-chip, .onboarding-mix, .onboarding-family-choice { animation: none; transition-duration: .01ms; } }
