@@ -1242,7 +1242,24 @@ function renderMyList() {
 }
 function openHistoryItem(key) { const saved = JSON.parse(localStorage.getItem(key) || "{}"), item = { type:saved.type, id:Number(saved.id), season:Number(saved.season) || undefined, episode:Number(saved.episode) || undefined, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(saved) }; if (!item.type || !item.id) return; state.player = item; state.route = "player"; render(); scrollToTop(); }
 async function removeHistoryItem(key) { localStorage.removeItem(key); forgetAccountProgress(key); if (state.session) try { await localAPI(`/api/account/progress?key=${encodeURIComponent(key)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderHistory(); }
-function showAuth(mode = "login", message = "") { document.querySelector(".modal")?.remove(); const create = mode === "signup"; app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card" id="auth-form"><button type="button" class="modal-close" data-close>×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="${create ? "new-password" : "current-password"}" placeholder="At least 8 characters"></label><p class="form-error" id="auth-message">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></form></div>`); document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove(); document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup"); document.querySelector("#auth-form").onsubmit = event => submitAuth(event, mode); }
+function showAuth(mode = "login", message = "") {
+  document.querySelector(".modal")?.remove();
+  const create = mode === "signup";
+  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="${create ? "new-password" : "current-password"}" placeholder="At least 8 characters"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="auth-success-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.2 4.2L19 7"/></svg></span><span class="brand">SEVEN</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p></section></form></div>`);
+  document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove();
+  document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
+  document.querySelector("#auth-form").onsubmit = event => submitAuth(event, mode);
+}
+async function showAuthSuccess(form, title, description) {
+  form.querySelector("[data-auth-success-title]").textContent = title;
+  form.querySelector("[data-auth-success-copy]").textContent = description;
+  form.querySelector("[data-close]").disabled = true;
+  form.classList.remove("auth-submitting");
+  form.classList.add("auth-success");
+  form.setAttribute("aria-busy", "false");
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  await new Promise(resolve => setTimeout(resolve, reducedMotion ? 180 : 900));
+}
 function showChangePassword() {
   document.querySelector(".modal")?.remove();
   app.insertAdjacentHTML("beforeend", `<div class="modal password-change"><form class="auth-card" id="password-change-form"><button type="button" class="modal-close" data-close>×</button><span class="brand">ACCOUNT SECURITY</span><h2>Change password</h2><p>Enter your current password, then choose a new one. Email confirmation can be added later.</p><label>Current password<input name="currentPassword" type="password" required autocomplete="current-password"></label><label>New password<input name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label><label>Confirm new password<input name="confirmPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Repeat your new password"></label><p class="form-error" id="password-change-error"></p><button class="primary auth-submit" type="submit">Update password</button></form></div>`);
@@ -1262,7 +1279,52 @@ function showChangePassword() {
     } catch (error) { message.textContent = error.message; } finally { submit.disabled = false; }
   };
 }
-async function submitAuth(event, mode) { event.preventDefault(); const form = new FormData(event.currentTarget), message = document.querySelector("#auth-message"), submit = event.currentTarget.querySelector("[type=submit]"); submit.disabled = true; message.textContent = ""; try { const payload = { email:form.get("email"), password:form.get("password"), displayName:form.get("displayName") }; let data = await localAPI(`/api/auth/${mode === "signup" ? "signup" : "login"}`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) }); if (!data.session && mode === "signup") data = await localAPI("/api/auth/login", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) }); if (!data.session) { message.textContent = "No sign-in session was returned. Try signing in again."; return; } persistSession(data.session, Date.now()); state.user = data.user || data.session.user || await localAPI("/api/auth/user", { headers:authorizedHeaders() }); hydrateAccount(); await refreshParentAccessStatus(); hydrateMyList(); await Promise.all([loadCloudProgress(), loadMyList()]); migrateLegacyProgress(); scheduleSessionRefresh(); state.route = "profiles"; document.querySelector(".modal")?.remove(); render(); } catch (error) { message.textContent = error.message; } finally { submit.disabled = false; } }
+async function submitAuth(event, mode) {
+  event.preventDefault();
+  const formElement = event.currentTarget, values = new FormData(formElement), message = formElement.querySelector("#auth-message"), submit = formElement.querySelector("[type=submit]"), close = formElement.querySelector("[data-close]"), create = mode === "signup";
+  submit.disabled = true;
+  submit.setAttribute("aria-busy", "true");
+  submit.textContent = create ? "Creating account…" : "Signing in…";
+  close.disabled = true;
+  formElement.querySelectorAll("input, [data-switch]").forEach(control => { control.disabled = true; });
+  formElement.classList.add("auth-submitting");
+  formElement.setAttribute("aria-busy", "true");
+  message.textContent = "";
+  try {
+    const payload = { email:values.get("email"), password:values.get("password"), displayName:values.get("displayName") };
+    const data = await localAPI(`/api/auth/${create ? "signup" : "login"}`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+    if (create && !data.session?.access_token && data.user) {
+      await showAuthSuccess(formElement, "Check your email", "Your account is ready. Verify your email, then come back to sign in.");
+      showAuth("login", "Account created. Verify your email before signing in.");
+      return;
+    }
+    if (!data.session?.access_token) throw new Error("No sign-in session was returned. Please try again.");
+    persistSession(data.session, Date.now());
+    state.user = data.user || data.session.user || await localAPI("/api/auth/user", { headers:authorizedHeaders() });
+    hydrateAccount();
+    await refreshParentAccessStatus();
+    hydrateMyList();
+    await Promise.allSettled([loadCloudProgress(), loadMyList()]);
+    migrateLegacyProgress();
+    scheduleSessionRefresh();
+    await showAuthSuccess(formElement, create ? "Account created" : "Signed in successfully", "Taking you to your profiles…");
+    document.querySelector(".modal")?.remove();
+    state.route = "profiles";
+    render();
+  } catch (error) {
+    formElement.classList.remove("auth-submitting", "auth-success");
+    formElement.setAttribute("aria-busy", "false");
+    message.textContent = error.message || "We couldn’t sign you in. Please try again.";
+  } finally {
+    submit.disabled = false;
+    submit.removeAttribute("aria-busy");
+    if (formElement.isConnected && !formElement.classList.contains("auth-success")) {
+      submit.textContent = create ? "Create account" : "Sign in";
+      close.disabled = false;
+      formElement.querySelectorAll("input, [data-switch]").forEach(control => { control.disabled = false; });
+    }
+  }
+}
 function renderProfileStats() {
   const profile = currentProfile(), stats = profileStats(), top = stats.titles.slice(0, 4);
   app.innerHTML = `${header()}<main class="profile-stats-page"><button class="account-back" data-stats-back>‹ Account</button><span class="brand">YOUR VIEWING RECAP</span><h1>${escapeHTML(profile?.name || "Your")} stats</h1><p>Real playback totals from this profile’s saved viewing activity.</p>${stats.entries.length ? `<section class="stats-summary"><div><strong>${watchTimeLabel(stats.seconds)}</strong><span>Watch time</span></div><div><strong>${stats.titlesStarted}</strong><span>Titles started</span></div><div><strong>${stats.moviesFinished}</strong><span>Movies finished</span></div><div><strong>${stats.episodesWatched}</strong><span>Episodes watched</span></div></section><section class="stats-detail-grid"><article><span class="brand">WATCHING STREAK</span><strong>${stats.streak} ${stats.streak === 1 ? "day" : "days"}</strong><p>Longest run of consecutive days with playback.</p></article><article><span class="brand">TOP GENRES</span><div class="stats-genres">${stats.genres.length ? stats.genres.map(genre => `<span>${escapeHTML(genre)}</span>`).join("") : "<small>Watch a title to reveal your tastes.</small>"}</div></article></section><section class="stats-most-watched"><div class="rail-title"><div><span class="brand">MOST WATCHED</span><h2>Time well spent</h2></div><span>Based on playback time</span></div><div class="stats-title-grid">${top.map(item => `<button class="stats-title" data-open="${item.type}:${item.id}"><img src="${item.posterPath ? TMDB_IMAGE + item.posterPath : "icon.svg"}" alt=""><span><b>${escapeHTML(item.title)}</b><small>${item.type === "tv" ? "Series" : "Movie"} · ${watchTimeLabel(item.seconds)}</small></span></button>`).join("")}</div></section>` : `<section class="stats-empty"><b>Your recap will appear here</b><p>Start watching a movie or episode and SEVEN will build your real profile stats.</p><button class="primary" data-home>Browse titles</button></section>`}</main>${footer()}`;
@@ -1597,7 +1659,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=293", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=294", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
