@@ -15,7 +15,7 @@ const macHost = fs.readFileSync(path.join(repository, "Mac/Sources/SEVENApp.swif
 const macManifest = fs.readFileSync(path.join(repository, "Mac/Info.plist"), "utf8");
 
 test("the Windows download points at the installer in the combined desktop release", () => {
-  assert.match(downloadPage, /href="https:\/\/github\.com\/joetheproz5\/cineva\/releases\/latest\/download\/SEVEN-Setup-win-x64\.exe"/);
+  assert.match(downloadPage, /id="windowsBtn"[^>]*href="\/go\/windows"/);
   assert.match(releaseWorkflow, /Publish self-contained Windows app/);
   assert.match(releaseWorkflow, /--output dist\/windows/);
   assert.match(releaseWorkflow, /dist\/installer\/SEVEN-Setup-win-x64\.exe/);
@@ -26,7 +26,7 @@ test("the Windows download points at the installer in the combined desktop relea
 });
 
 test("the Mac wrapper is native, universal, and published as a disk image", () => {
-  assert.match(downloadPage, /id="macBtn"[^>]*href="https:\/\/github\.com\/joetheproz5\/cineva\/releases\/latest\/download\/SEVEN-macOS\.dmg"/);
+  assert.match(downloadPage, /id="macBtn"[^>]*href="\/go\/mac"/);
   assert.match(releaseWorkflow, /swift build --configuration release --arch arm64/);
   assert.match(releaseWorkflow, /swift build --configuration release --arch x86_64/);
   assert.match(releaseWorkflow, /lipo -create/);
@@ -47,8 +47,8 @@ test("the download page provides four platform jump links and dedicated install 
     assert.match(downloadPage, new RegExp(`href="#${anchor}"`));
   }
   assert.match(downloadPage, /aria-label="Choose a platform"/);
-  assert.match(downloadPage, /id="iosBtn"/);
-  assert.match(downloadPage, /id="androidBtn"[^>]*href="\/downloads\/seven\.apk"/);
+  assert.match(downloadPage, /id="iosBtn"[^>]*href="\/go\/ios"/);
+  assert.match(downloadPage, /id="androidBtn"[^>]*href="\/go\/android"/);
   assert.match(responseHeaders, /\/download\.html\s+Cache-Control: no-store, no-cache, must-revalidate/);
 });
 
@@ -156,7 +156,7 @@ test("the long-form install page keeps motion accessible and every platform inst
   }
 
   assert.match(downloadPage, /androidButton\.setAttribute\("aria-label", "Install SEVEN on Android is temporarily unavailable"\)/);
-  assert.match(downloadPage, /window\.location\.assign\(appUrl\)/);
+  assert.match(downloadPage, /id="iosBtn"[^>]*href="\/go\/ios"/);
   assert.match(downloadPage, /if \(!response\.ok\) throw new Error\("Android install unavailable"\)/);
   assert.match(downloadPage, /Install SEVEN/);
   assert.doesNotMatch(downloadPage, /Download for Mac|Download APK/);

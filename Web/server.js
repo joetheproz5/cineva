@@ -30,6 +30,25 @@ async function dashboardAPI(request, response, sourceURL) {
     sendJSON(response, 503, { error:"The local dashboard service is unavailable." });
   }
 }
+async function downloadRedirect(request, response, sourceURL) {
+  try {
+    const headers = new Headers();
+    for (const [name, value] of Object.entries(request.headers)) {
+      if (Array.isArray(value)) value.forEach(item => headers.append(name, item));
+      else if (value !== undefined) headers.set(name, value);
+    }
+    const webRequest = new Request(sourceURL.href, { method:request.method, headers });
+    const module = await import("../shared/admin-dashboard.mjs");
+    const webResponse = await module.handleDownloadRedirect(webRequest, dashboardEnvironment(), sourceURL.pathname.slice("/go/".length));
+    for (const [name, value] of webResponse.headers) response.setHeader(name, value);
+    response.writeHead(webResponse.status);
+    response.end(Buffer.from(await webResponse.arrayBuffer()));
+  } catch {
+    const fallback = { mac:"https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-macOS.dmg", ios:"/", windows:"https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-Setup-win-x64.exe", android:"/downloads/seven.apk" }[sourceURL.pathname.slice("/go/".length)];
+    response.writeHead(fallback ? 302 : 404, { ...(fallback ? { Location:fallback } : {}), "Cache-Control":"no-store" });
+    response.end();
+  }
+}
 function authToken(request) { const header = request.headers.authorization || ""; return header.startsWith("Bearer ") ? header.slice(7) : null; }
 async function upstream(url, options = {}) { const response = await fetch(url, options); const text = await response.text(); let data; try { data = text ? JSON.parse(text) : {}; } catch { data = { error:text }; } return { status:response.status, data }; }
 async function proxyTMDB(response, sourceURL) {
@@ -116,6 +135,7 @@ async function parentAccess(request, response) {
 }
 const server = http.createServer((request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
+  if (sourceURL.pathname.startsWith("/go/")) return void downloadRedirect(request, response, sourceURL);
   if (sourceURL.pathname === "/api/metrics/event" || sourceURL.pathname.startsWith("/api/admin/")) return void dashboardAPI(request, response, sourceURL);
   if (sourceURL.pathname.startsWith("/api/tmdb/")) return proxyTMDB(response, sourceURL);
   if (sourceURL.pathname === "/api/auth/signup") return auth(request, response, "signup");

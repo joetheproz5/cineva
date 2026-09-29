@@ -44,9 +44,6 @@
   window.SevenMetrics = Object.freeze({
     trackAccountVisit:function (accessToken) {
       if (accessToken) send({ event:"visit", visitorId:visitorId }, true, accessToken);
-    },
-    trackDownload:function (platform) {
-      if (["mac", "ios", "windows", "android"].indexOf(platform) !== -1) send({ event:"download", platform:platform }, true);
     }
   });
 })();

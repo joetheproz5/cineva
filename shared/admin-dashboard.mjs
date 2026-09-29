@@ -2,6 +2,10 @@ const encoder = new TextEncoder();
 const COOKIE_NAME = "seven_admin";
 const SESSION_SECONDS = 6 * 60 * 60;
 const DOWNLOAD_PLATFORMS = new Set(["mac", "ios", "windows", "android"]);
+const DOWNLOAD_TARGETS = {
+  mac:"https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-macOS.dmg",
+  windows:"https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-Setup-win-x64.exe"
+};
 
 function json(payload, status = 200, headers = {}) {
   return Response.json(payload, { status, headers:{ "Cache-Control":"no-store", "X-Content-Type-Options":"nosniff", ...headers } });
@@ -90,7 +94,7 @@ function cookieHeaders(request, token, clear = false) {
   return { "Set-Cookie":COOKIE_NAME + "=" + value + "; Path=/api/admin; Max-Age=" + maxAge + "; HttpOnly; SameSite=Strict" + secure };
 }
 
-async function supabaseRPC(env, functionName, payload) {
+async function supabaseRPC(env, functionName, payload, signal) {
   const key = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
   const headers = { apikey:key, "Content-Type":"application/json", "Cache-Control":"no-store" };
   // New Supabase secret API keys are not JWTs and must not be sent as Bearer tokens.
@@ -98,7 +102,8 @@ async function supabaseRPC(env, functionName, payload) {
   const response = await fetch(env.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/rpc/" + functionName, {
     method:"POST",
     headers,
-    body:JSON.stringify(payload)
+    body:JSON.stringify(payload),
+    ...(signal ? { signal } : {})
   });
   if (!response.ok) {
     let databaseCode = "";
@@ -202,6 +207,38 @@ async function stats(request, env) {
     const data = await supabaseRPC(env, "seven_admin_get_stats", { p_days:days });
     return json(data);
   } catch { return json({ error:"Couldn’t load the aggregate analytics right now." }, 502); }
+}
+
+export async function handleDownloadRedirect(request, env = {}, platform) {
+  if (!DOWNLOAD_PLATFORMS.has(platform)) return json({ error:"Unknown download platform." }, 404);
+  if (request.method !== "GET" && request.method !== "HEAD") return json({ error:"Method not allowed." }, 405, { Allow:"GET, HEAD" });
+
+  const url = new URL(request.url);
+  const destination = DOWNLOAD_TARGETS[platform] || new URL(platform === "ios" ? "/" : "/downloads/seven.apk", url.origin).href;
+  const optedOut = request.headers.get("DNT") === "1" || request.headers.get("Sec-GPC") === "1";
+  if (request.method === "GET" && !optedOut && originIsSame(request) && configuredSupabase(env)) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    try {
+      await supabaseRPC(env, "seven_admin_record_download", { p_platform:platform }, controller.signal);
+    } catch (error) {
+      console.error("seven_metrics_write_failed", {
+        event:"download",
+        rpc:error?.rpc || "seven_admin_record_download",
+        status:error?.httpStatus || null,
+        code:error?.databaseCode || "unknown"
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  return new Response(null, { status:302, headers:{
+    Location:destination,
+    "Cache-Control":"no-store",
+    "Referrer-Policy":"no-referrer",
+    "X-Content-Type-Options":"nosniff"
+  } });
 }
 
 export async function handleDashboardRequest(request, env = {}) {
