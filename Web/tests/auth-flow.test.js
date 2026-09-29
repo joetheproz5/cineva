@@ -18,10 +18,13 @@ test("sign-in and sign-up forms expose loading and animated success states acces
   assert.match(authMarkup, /class="auth-success-stage" role="status" aria-live="polite"/);
   assert.match(authMarkup, /data-auth-success-title/);
   assert.match(authMarkup, /data-auth-success-copy/);
+  assert.doesNotMatch(authMarkup, /auth-success-mark|<svg/);
   assert.match(submitAuth, /formElement\.classList\.add\("auth-submitting"\)/);
   assert.match(submitAuth, /submit\.setAttribute\("aria-busy", "true"\)/);
   assert.match(styles, /\.auth-submit\[aria-busy="true"\]::before[^}]*animation: auth-spinner/);
   assert.match(styles, /\.auth-flow\.auth-success \.auth-content[^}]*filter: blur\(9px\)/);
+  assert.match(styles, /\.auth-flow\.auth-success \{[^}]*border-color: #303030;[^}]*linear-gradient\(150deg, #171717, #0d0d0d\)/);
+  assert.doesNotMatch(styles, /auth-success-mark|90e7bd|117,225,179/);
 });
 
 test("successful authentication animates before opening the profile selector", () => {
