@@ -30,8 +30,8 @@ class HostFilterRulesTest {
     fun ignoresScopedAndPathRulesInsteadOfOverblockingTheirWholeDomain() {
         val rules = HostFilterRules.fromFilterText(
             "||ads.example.com/banner.js\n" +
-                "||scoped.example.com^$domain=example.org\n" +
-                "@@||scoped-exception.example.com^$script\n",
+                "||scoped.example.com^\$domain=example.org\n" +
+                "@@||scoped-exception.example.com^\$script\n",
         )
 
         assertFalse(rules.blocks("ads.example.com"))
@@ -53,7 +53,7 @@ class HostFilterRulesTest {
     @Test
     fun rejectsMalformedDomainsAndBadfilterRules() {
         val rules = HostFilterRules.fromFilterText(
-            "||-bad.example^\n||bad..example^\n||disabled.example^$badfilter\n||ok.example^\n",
+            "||-bad.example^\n||bad..example^\n||disabled.example^\$badfilter\n||ok.example^\n",
         )
 
         assertFalse(rules.blocks("-bad.example"))
