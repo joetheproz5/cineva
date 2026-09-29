@@ -1501,7 +1501,20 @@ function bindCommon() {
   document.querySelectorAll("[data-msearch]").forEach(button => button.onclick = openMobileSearch);
   document.querySelectorAll("[data-account]").forEach(button => button.onclick = showAccount);
 }
-function syncHeaderScroll() { document.querySelector("header.main-header")?.classList.toggle("scrolled", (window.scrollY || 0) > 12); }
+let lastMobileHeaderY = window.scrollY || 0;
+function syncHeaderScroll() {
+  const header = document.querySelector("header.main-header.app-header"), currentY = Math.max(0, window.scrollY || 0);
+  if (!header) { lastMobileHeaderY = currentY; return; }
+  header.classList.toggle("scrolled", currentY > 12);
+  if (!window.matchMedia("(max-width: 650px)").matches) {
+    header.classList.remove("scroll-hidden"); lastMobileHeaderY = currentY; return;
+  }
+  const delta = currentY - lastMobileHeaderY;
+  if (currentY <= 48) header.classList.remove("scroll-hidden");
+  else if (delta >= 6 && !header.contains(document.activeElement) && !document.querySelector(".msearch-page")) header.classList.add("scroll-hidden");
+  else if (delta <= -6) header.classList.remove("scroll-hidden");
+  if (Math.abs(delta) >= 6 || currentY <= 48) lastMobileHeaderY = currentY;
+}
 window.addEventListener("scroll", syncHeaderScroll, { passive: true });
 window.addEventListener("click", () => { const providerList = document.querySelector("[data-provider-list]"); if (providerList && !providerList.hidden) providerList.hidden = true; });
 function recordPlaybackEvent(data) {
@@ -1542,13 +1555,16 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=291", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=292", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
 function keepFavouritesUI() {
   app.querySelectorAll("header nav, .app-mobile-nav").forEach(navigation => {
     if (!navigation.querySelector("[data-favourites]")) navigation.insertAdjacentHTML("beforeend", `<button class="nav-link" data-favourites><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.4a5.5 5.5 0 0 0-.1-7.8Z"/></svg><span>${t("Favourites")}</span></button>`);
+    const favourites = navigation.querySelector("[data-favourites]"), active = state.route === "my-list";
+    favourites?.classList.toggle("active", active);
+    if (active) favourites?.setAttribute("aria-current", "page"); else favourites?.removeAttribute("aria-current");
   });
   app.querySelectorAll("[data-toggle-my-list]").forEach(button => { button.textContent = button.classList.contains("saved") ? "♥ In Favourites" : "♡ Add to Favourites"; });
   const favouritePage = app.querySelector(".my-list-page");

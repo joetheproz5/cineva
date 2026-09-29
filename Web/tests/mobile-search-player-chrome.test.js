@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const web = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(web, "app.js"), "utf8");
@@ -60,4 +61,53 @@ test("the mobile bottom navigation stays viewport-fixed while the header is scro
   assert.match(mobileNav, /backdrop-filter:\s*blur\(20px\) saturate\(145%\);/);
   assert.match(mobileNav, /border-radius:\s*0;/);
   assert.match(activeNav, /border-radius:\s*14px;/);
+});
+
+test("Favourites gets the same active tab treatment when its page is open", () => {
+  assert.match(app, /const favourites = navigation\.querySelector\("\[data-favourites\]"\), active = state\.route === "my-list"/);
+  assert.match(app, /favourites\?\.classList\.toggle\("active", active\)/);
+  assert.match(app, /favourites\?\.setAttribute\("aria-current", "page"\)/);
+  assert.match(css, /#app > \.app-mobile-nav \.nav-link\.active\s*\{[^}]*border-radius:\s*14px;[^}]*background:/);
+});
+
+test("the mobile header fully hides while scrolling down and returns on scroll-up", () => {
+  const start = app.indexOf("let lastMobileHeaderY =");
+  const end = app.indexOf('\nwindow.addEventListener("scroll", syncHeaderScroll', start);
+  const classes = new Set();
+  let isMobile = true, focused = false;
+  const header = {
+    classList: {
+      toggle(name, enabled) { if (enabled) classes.add(name); else classes.delete(name); },
+      add(name) { classes.add(name); },
+      remove(name) { classes.delete(name); }
+    },
+    contains() { return focused; }
+  };
+  const window = { scrollY:0, matchMedia:() => ({ matches:isMobile }) };
+  const document = { activeElement:{}, querySelector:selector => selector === "header.main-header.app-header" ? header : null };
+  const context = { window, document, Math };
+  vm.createContext(context);
+  vm.runInContext(app.slice(start, end), context);
+
+  context.syncHeaderScroll();
+  window.scrollY = 90;
+  context.syncHeaderScroll();
+  assert.equal(classes.has("scroll-hidden"), true);
+  window.scrollY = 74;
+  context.syncHeaderScroll();
+  assert.equal(classes.has("scroll-hidden"), false);
+  focused = true;
+  window.scrollY = 90;
+  context.syncHeaderScroll();
+  assert.equal(classes.has("scroll-hidden"), false);
+  focused = false;
+  window.scrollY = 110;
+  context.syncHeaderScroll();
+  assert.equal(classes.has("scroll-hidden"), true);
+  isMobile = false;
+  window.scrollY = 150;
+  context.syncHeaderScroll();
+  assert.equal(classes.has("scroll-hidden"), false);
+
+  assert.match(css, /header\.main-header\.app-header\.scroll-hidden\s*\{[^}]*transform:\s*translate3d\(0,calc\(-100% - 24px\),0\);[^}]*opacity:\s*0;[^}]*visibility:\s*hidden;[^}]*pointer-events:\s*none;/);
 });
