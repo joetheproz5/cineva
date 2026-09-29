@@ -37,10 +37,20 @@ test("successful authentication animates before opening the profile selector", (
   assert.match(submitAuth, /Account created/);
 });
 
-test("signup is ready for email verification without attempting a premature login", () => {
+test("signup skips email verification when Supabase returns a session", () => {
   assert.match(submitAuth, /if \(create && !data\.session\?\.access_token && data\.user\)/);
-  assert.match(submitAuth, /showAuthSuccess\(formElement, "Check your email"/);
-  assert.match(submitAuth, /showAuth\("login", "Account created\. Verify your email before signing in\."\)/);
+  assert.match(submitAuth, /persistSession\(data\.session, Date\.now\(\)\)/);
+  assert.doesNotMatch(submitAuth, /Account created\. Verify your email before signing in\./);
+});
+
+test("signup stays on a verification state until the confirmation redirect arrives", () => {
+  assert.match(submitAuth, /if \(create && !data\.session\?\.access_token && data\.user\)/);
+  assert.match(submitAuth, /localStorage\.setItem\(PENDING_EMAIL_VERIFICATION_KEY/);
+  assert.match(submitAuth, /showAuthPending\(pending\.email, pending\)/);
+  assert.match(app, /async function consumeEmailVerificationRedirect\(\)/);
+  assert.match(app, /verified\?\.email\?\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(app, /Email verified successfully\. Sign in to continue\./);
+  assert.match(styles, /\.auth-flow\.auth-waiting \.auth-success-stage::before/);
   assert.doesNotMatch(submitAuth, /\/api\/auth\/login/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.auth-flow/);
 });

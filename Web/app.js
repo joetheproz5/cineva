@@ -13,6 +13,8 @@ const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: n
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
+const PENDING_EMAIL_VERIFICATION_KEY = "seven.auth.pending-email-verification";
+const VERIFIED_EMAIL_KEY = "seven.auth.email-verified";
 const ACCOUNT_KEY = "seven.account.settings";
 const ACCOUNT_OWNER_KEY = "seven.account.owner";
 const MY_LIST_KEY = "seven.my-list";
@@ -83,7 +85,7 @@ function applyLocale() {
   document.documentElement.lang = { English:"en", Arabic:"ar", French:"fr" }[language] || "en";
   document.documentElement.dir = language === "Arabic" ? "rtl" : "ltr";
 }
-const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"cinesrc" };
+const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, favoriteGenres:[], contentMix:"both", blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"cinesrc" };
 const PLAYER_PROVIDERS = Object.freeze(["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"]);
 // Keep provider scripts and playback working, but do not let an embedded player
 // spawn ad windows or navigate the installed PWA away from SEVEN.
@@ -227,7 +229,7 @@ function samplePlaybackWatchTime(currentTime) {
 window.addEventListener("pagehide", () => { void flushWatchTime(); void flushProfileWatchStats(true); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushWatchTime(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushProfileWatchStats(true); });
-function defaultAccount() { const name = state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile"; return { activeProfileId:"main", profiles:[{ id:"main", name, color:"#d3131c", kids:false }], preferences:{ ...DEFAULT_PREFERENCES } }; }
+function defaultAccount() { const name = state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile"; return { activeProfileId:"main", onboardingComplete:true, onboardingStep:1, profiles:[{ id:"main", name, color:"#d3131c", kids:false }], preferences:{ ...DEFAULT_PREFERENCES } }; }
 const EMPTY_SECRET_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 function hydrateAccount() {
   let local = null;
@@ -407,6 +409,7 @@ async function refreshCatalogNow() {
 function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
 async function boot() {
   renderLoading();
+  const verifiedEmail = await consumeEmailVerificationRedirect();
   await restoreSession();
   applyLocale();
   const params = new URLSearchParams(location.search);
@@ -420,8 +423,13 @@ async function boot() {
   }
   if (deep) { await openItem(deep[1], Number(deep[2])); return; }
   if (!navigator.onLine) return renderOfflineScreen();
-  if (state.user) { state.route = "profiles"; render(); } else renderLoading();
+  if (state.user) { state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles"; if (state.route === "onboarding") beginOnboarding(); render(); } else renderLoading();
   await loadStartupData();
+  if (verifiedEmail) await finishEmailVerification(verifiedEmail);
+  else {
+    const pendingVerification = readPendingEmailVerification();
+    if (pendingVerification) showAuthPending(pendingVerification.email);
+  }
 }
 async function loadStartupData() {
   if (!navigator.onLine) return renderOfflineScreen();
@@ -465,7 +473,7 @@ function header() {
   return `<header class="main-header app-header"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>${mobileNavigation}`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-shell"><div class="footer-main"><div class="footer-brand"><button class="footer-wordmark" data-home aria-label="SEVEN home">SEVEN</button><span>${t("Stories worth finding.")}</span></div><nav class="footer-links" aria-label="Footer navigation"><button data-home>${t("Home")}</button><button data-for-you>${t("For You")}</button><button data-movies>${t("Movies")}</button><button data-shows>${t("Series")}</button><button data-favourites>${t("Favourites")}</button></nav><a class="footer-top" href="#app" aria-label="${t("Back to top")}"><span aria-hidden="true">↑</span></a></div><div class="footer-bottom"><small class="footer-disclaimer">Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></div></footer>`; }
-function render() { if (state.route !== "player") stopPlayerProgressPolling(); if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = ""; if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
+function render() { if (state.route !== "player") stopPlayerProgressPolling(); if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = ""; if (state.route === "onboarding" && state.user) return renderOnboarding(); if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
 async function profileSecret(value) { if (!globalThis.crypto?.subtle) throw new Error("Profile locks need a modern browser."); const bytes = new TextEncoder().encode(value), hash = await globalThis.crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join(""); }
 const PARENT_ACCESS_KEY = "seven.parent-access";
 function hasParentAccess() { return !parentAccessConfigured(); }
@@ -1315,7 +1323,48 @@ async function suggestSearch(input) { const query = input.value.trim(), request 
 function renderSearch() { const filter = state.searchFilter || "all", items = state.searchResults.filter(item => filter === "all" || item.type === filter); app.innerHTML = `${header()}<section class="search-page"><span class="brand">DISCOVER</span><h2>Search results</h2>${state.searchResults.length ? `<div class="search-filters" role="group" aria-label="Filter search results">${[["all","All"],["movie","Movies"],["tv","Series"]].map(([value, label]) => `<button class="${filter === value ? "active" : ""}" data-search-filter="${value}">${label}</button>`).join("")}</div>${items.length ? `<div class="result-grid">${items.map(card).join("")}</div>` : `<p class="search-empty">No ${filter === "movie" ? "movies" : "series"} match this search.</p>`}` : "<p>No matches found. Try a movie, series, or actor name.</p>"}</section>${footer()}`; bindCommon(); document.querySelectorAll("[data-search-filter]").forEach(button => button.onclick = () => { state.searchFilter = button.dataset.searchFilter; renderSearch(); }); }
 const GENRES = { 12:"Adventure", 16:"Animation", 18:"Drama", 28:"Action", 35:"Comedy", 53:"Thriller", 80:"Crime", 99:"Documentary", 10749:"Romance", 878:"Science fiction", 9648:"Mystery", 10751:"Family", 10759:"Action & adventure", 10765:"Sci-fi & fantasy" };
 function watchedGenres(type = "") { const counts = {}; likedTitles().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 3; })); historyEntries().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; })); return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([id]) => Number(id)); }
-async function openForYou() { state.route = "for-you"; state.forYou = { loading:true }; render(); const activity = historyEntries(), latest = activity[0], latestLike = likedTitles()[0], anchor = latestLike || latest, movieGenre = watchedGenres("movie")[0] || watchedGenres()[0], seriesGenre = watchedGenres("tv")[0] || watchedGenres()[0], movieParams = movieGenre ? { with_genres:movieGenre, sort_by:"popularity.desc" } : {}, seriesParams = seriesGenre ? { with_genres:seriesGenre, sort_by:"popularity.desc" } : {}, reason = latestLike ? `Built around what ${currentProfile()?.name || "you"} likes.` : latest ? `Built around ${currentProfile()?.name || "your"} viewing activity.` : "Play a title or rate one to tune this page."; try { const [movies, series, freshMovies, freshSeries] = await Promise.all([api("discover/movie", movieParams), api("discover/tv", seriesParams), api("movie/now_playing"), api("tv/on_the_air")]); state.forYou = { genre:movieGenre || seriesGenre, latest, reason, rails:{ [movieGenre ? `${anchor?.title ? latestLike ? `Because you liked ${anchor.title}` : `Because you watched ${anchor.title}` : `${GENRES[movieGenre] || "Personalized"} movies for you`}` : "Popular movies for you"]:results(movies), [seriesGenre ? `${GENRES[seriesGenre] || "Personalized"} series for you` : "Popular series for you"]:results(series), "New movies":results(freshMovies), "New series":results(freshSeries) } }; } catch (error) { state.forYou = { error:error.message, rails:{} }; } render(); }
+async function openForYou() {
+  state.route = "for-you";
+  state.forYou = { loading:true };
+  render();
+  const activity = historyEntries(), latest = activity[0], latestLike = likedTitles()[0], anchor = latestLike || latest;
+  const preferences = currentPreferences(), savedGenreIds = new Set((Array.isArray(preferences.favoriteGenres) ? preferences.favoriteGenres : []).map(Number));
+  const pickedGenres = ONBOARDING_GENRES.filter(([id]) => savedGenreIds.has(id)).slice(0, 3);
+  const movieGenre = pickedGenres.length ? pickedGenres.map(([id]) => id).join("|") : watchedGenres("movie")[0] || watchedGenres()[0];
+  const seriesGenre = pickedGenres.length ? [...new Set(pickedGenres.map(([, , tvId]) => tvId).filter(Boolean))].join("|") : watchedGenres("tv")[0] || watchedGenres()[0];
+  const showMovies = preferences.contentMix !== "series", showSeries = preferences.contentMix !== "movies", familySafe = useFamilyCatalog();
+  const movieParams = { ...(movieGenre ? { with_genres:movieGenre } : {}), sort_by:"popularity.desc" };
+  const seriesParams = { ...(seriesGenre ? { with_genres:seriesGenre } : {}), sort_by:"popularity.desc" };
+  if (familySafe) {
+    movieParams.certification_country = "US";
+    movieParams["certification.lte"] = currentProfile()?.kids ? "PG" : "PG-13";
+    seriesParams.certification_country = "US";
+    seriesParams["certification.lte"] = "TV-PG";
+  }
+  const pickedNames = pickedGenres.map(([, name]) => name);
+  const reason = pickedNames.length ? `Selected for your taste: ${pickedNames.join(", ")}.` : latestLike ? `Built around what ${currentProfile()?.name || "you"} likes.` : latest ? `Built around ${currentProfile()?.name || "your"} viewing activity.` : "Play a title or rate one to tune this page.";
+  try {
+    const [movies, series, freshMovies, freshSeries] = await Promise.all([
+      showMovies ? api("discover/movie", movieParams) : Promise.resolve({ results:[] }),
+      showSeries ? api("discover/tv", seriesParams) : Promise.resolve({ results:[] }),
+      showMovies ? (pickedGenres.length || familySafe ? api("discover/movie", { ...movieParams, "primary_release_date.gte":`${new Date().getFullYear() - 1}-01-01`, "primary_release_date.lte":new Date().toISOString().slice(0,10), sort_by:"primary_release_date.desc" }) : api("movie/now_playing")) : Promise.resolve({ results:[] }),
+      showSeries ? (pickedGenres.length || familySafe ? api("discover/tv", { ...seriesParams, "first_air_date.gte":`${new Date().getFullYear() - 1}-01-01`, "first_air_date.lte":new Date().toISOString().slice(0,10), sort_by:"first_air_date.desc" }) : api("tv/on_the_air")) : Promise.resolve({ results:[] })
+    ]);
+    const rails = {};
+    if (showMovies) {
+      const movieHeading = pickedNames.length ? `More ${pickedNames.slice(0, 2).join(" & ")} movies` : movieGenre ? anchor?.title ? latestLike ? `Because you liked ${anchor.title}` : `Because you watched ${anchor.title}` : `${GENRES[movieGenre] || "Personalized"} movies for you` : "Popular movies for you";
+      rails[movieHeading] = results(movies);
+      rails["New movies"] = results(freshMovies);
+    }
+    if (showSeries) {
+      const seriesHeading = pickedNames.length ? `More ${pickedNames.slice(0, 2).join(" & ")} series` : seriesGenre ? `${GENRES[seriesGenre] || "Personalized"} series for you` : "Popular series for you";
+      rails[seriesHeading] = results(series);
+      rails["New series"] = results(freshSeries);
+    }
+    state.forYou = { genre:movieGenre || seriesGenre, latest, reason, rails };
+  } catch (error) { state.forYou = { error:error.message, rails:{} }; }
+  render();
+}
 function renderForYou() { const view = state.forYou || { loading:true }; app.innerHTML = `${header()}<section class="browse-page"><span class="brand">MADE FOR YOU</span><h2>For You</h2><p>${escapeHTML(view.reason || (view.genre ? `Personal picks based on ${currentProfile()?.name || "your profile"}’s viewing activity.` : "Play a title or rate one to tune this page."))}</p></section>${view.loading ? `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>` : view.error ? `<p class="setup">${escapeHTML(view.error)}</p>` : Object.entries(view.rails).map(([name, items]) => rail(name, items)).join("")}${footer()}`; bindCommon(); }
 const MOVIE_FILTERS = [["All",null],["Action",28],["Adventure",12],["Animation",16],["Comedy",35],["Crime",80],["Drama",18],["Family",10751],["Horror",27],["Romance",10749],["Sci-Fi",878],["Thriller",53]];
 const SERIES_FILTERS = [["All",null],["Action",10759],["Animation",16],["Comedy",35],["Crime",80],["Documentary",99],["Drama",18],["Mystery",9648],["Sci-Fi",10765]];
@@ -1344,10 +1393,11 @@ function renderMyList() {
 }
 function openHistoryItem(key) { const saved = JSON.parse(localStorage.getItem(key) || "{}"), item = { type:saved.type, id:Number(saved.id), season:Number(saved.season) || undefined, episode:Number(saved.episode) || undefined, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(saved) }; if (!item.type || !item.id) return; state.player = item; state.route = "player"; render(); scrollToTop(); }
 async function removeHistoryItem(key) { localStorage.removeItem(key); forgetAccountProgress(key); if (state.session) try { await localAPI(`/api/account/progress?key=${encodeURIComponent(key)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderHistory(); }
-function showAuth(mode = "login", message = "") {
+function showAuth(mode = "login", message = "", email = "") {
   document.querySelector(".modal")?.remove();
   const create = mode === "signup";
   app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="${create ? "new-password" : "current-password"}" placeholder="At least 8 characters"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p></section></form></div>`);
+  if (email) document.querySelector('#auth-form input[name="email"]').value = email;
   document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove();
   document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
   document.querySelector("#auth-form").onsubmit = event => submitAuth(event, mode);
@@ -1356,12 +1406,60 @@ async function showAuthSuccess(form, title, description) {
   form.querySelector("[data-auth-success-title]").textContent = title;
   form.querySelector("[data-auth-success-copy]").textContent = description;
   form.querySelector("[data-close]").disabled = true;
-  form.classList.remove("auth-submitting");
+  form.classList.remove("auth-submitting", "auth-waiting");
   form.classList.add("auth-success");
   form.setAttribute("aria-busy", "false");
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   await new Promise(resolve => setTimeout(resolve, reducedMotion ? 180 : 900));
 }
+function readPendingEmailVerification() {
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_EMAIL_VERIFICATION_KEY) || "null");
+    return pending?.email ? { email:String(pending.email), createdAt:Number(pending.createdAt) || 0 } : null;
+  } catch { return null; }
+}
+async function consumeEmailVerificationRedirect() {
+  const params = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const accessToken = params.get("access_token"), type = params.get("type"), pending = readPendingEmailVerification();
+  if (!accessToken || (type && type !== "signup") || (!type && !pending)) return null;
+  history.replaceState(history.state, "", `${location.pathname}${location.search}`);
+  try {
+    const user = await localAPI("/api/auth/user", { headers:{ Authorization:`Bearer ${accessToken}` } });
+    const email = String(user?.email || "").trim().toLowerCase();
+    if (!email || (pending?.email && pending.email.trim().toLowerCase() !== email)) return null;
+    localStorage.setItem(VERIFIED_EMAIL_KEY, JSON.stringify({ email, verifiedAt:Date.now() }));
+    localStorage.removeItem(PENDING_EMAIL_VERIFICATION_KEY);
+    return email;
+  } catch { return null; }
+}
+function showAuthPending(email, pending = null) {
+  let form = document.querySelector("#auth-form");
+  if (!form) { showAuth("signup"); form = document.querySelector("#auth-form"); }
+  const current = pending || readPendingEmailVerification() || { email, createdAt:Date.now() };
+  state.pendingEmailVerification = { email:String(email || current.email), createdAt:current.createdAt };
+  form.querySelector("[data-auth-success-title]").textContent = "Verify your email";
+  form.querySelector("[data-auth-success-copy]").textContent = `We sent a verification link to ${email}. This screen will stay here until your email is verified.`;
+  form.querySelector("[data-close]").disabled = true;
+  form.querySelectorAll("input, [data-switch], [type=submit]").forEach(control => { control.disabled = true; });
+  form.classList.remove("auth-submitting");
+  form.classList.add("auth-success", "auth-waiting");
+  form.setAttribute("aria-busy", "false");
+}
+async function finishEmailVerification(email) {
+  localStorage.removeItem(PENDING_EMAIL_VERIFICATION_KEY);
+  state.pendingEmailVerification = null;
+  let form = document.querySelector("#auth-form");
+  if (!form) { showAuth("login"); form = document.querySelector("#auth-form"); }
+  await showAuthSuccess(form, "Email verified successfully", "Taking you to sign in…");
+  showAuth("login", "Email verified successfully. Sign in to continue.", email);
+}
+window.addEventListener("storage", event => {
+  if (event.key !== VERIFIED_EMAIL_KEY || !event.newValue || !state.pendingEmailVerification) return;
+  try {
+    const verified = JSON.parse(event.newValue), pending = state.pendingEmailVerification;
+    if (verified?.email?.trim().toLowerCase() === pending.email.trim().toLowerCase() && Number(verified.verifiedAt) >= pending.createdAt) void finishEmailVerification(verified.email);
+  } catch { /* Ignore invalid cross-tab auth notices. */ }
+});
 function showChangePassword() {
   document.querySelector(".modal")?.remove();
   app.insertAdjacentHTML("beforeend", `<div class="modal password-change"><form class="auth-card" id="password-change-form"><button type="button" class="modal-close" data-close>×</button><span class="brand">ACCOUNT SECURITY</span><h2>Change password</h2><p>Enter your current password, then choose a new one. Email confirmation can be added later.</p><label>Current password<input name="currentPassword" type="password" required autocomplete="current-password"></label><label>New password<input name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label><label>Confirm new password<input name="confirmPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Repeat your new password"></label><p class="form-error" id="password-change-error"></p><button class="primary auth-submit" type="submit">Update password</button></form></div>`);
@@ -1396,8 +1494,10 @@ async function submitAuth(event, mode) {
     const payload = { email:values.get("email"), password:values.get("password"), displayName:values.get("displayName") };
     const data = await localAPI(`/api/auth/${create ? "signup" : "login"}`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) });
     if (create && !data.session?.access_token && data.user) {
-      await showAuthSuccess(formElement, "Check your email", "Your account is ready. Verify your email, then come back to sign in.");
-      showAuth("login", "Account created. Verify your email before signing in.");
+      const pending = { email:String(payload.email || "").trim().toLowerCase(), createdAt:Date.now() };
+      state.pendingEmailVerification = pending;
+      localStorage.setItem(PENDING_EMAIL_VERIFICATION_KEY, JSON.stringify(pending));
+      showAuthPending(pending.email, pending);
       return;
     }
     if (!data.session?.access_token) throw new Error("No sign-in session was returned. Please try again.");
@@ -1409,9 +1509,11 @@ async function submitAuth(event, mode) {
     await Promise.allSettled([loadCloudProgress(), loadMyList()]);
     migrateLegacyProgress();
     scheduleSessionRefresh();
-    await showAuthSuccess(formElement, create ? "Account created" : "Signed in successfully", "Taking you to your profiles…");
+    const firstRun = create || needsFirstRunOnboarding();
+    await showAuthSuccess(formElement, create ? "Account created" : "Signed in successfully", firstRun ? "Let’s set up your profile…" : "Taking you to your profiles…");
     document.querySelector(".modal")?.remove();
-    state.route = "profiles";
+    if (firstRun) { beginOnboarding(); state.route = "onboarding"; }
+    else state.route = "profiles";
     render();
   } catch (error) {
     formElement.classList.remove("auth-submitting", "auth-success");
@@ -1452,8 +1554,102 @@ const AVATAR_OPTIONS = [
   ["Red panda", "assets/avatars/red-panda.png"], ["Black cat", "assets/avatars/black-cat.png"], ["Astronaut", "assets/avatars/astronaut.png"],
   ["Dinosaur", "assets/avatars/dino.png"], ["Duck", "assets/avatars/duck.png"], ["Robot", "assets/avatars/robot.png"]
 ];
+const ONBOARDING_GENRES = [[28,"Action",10759],[12,"Adventure",10759],[16,"Animation",16],[35,"Comedy",35],[80,"Crime",80],[99,"Documentary",99],[18,"Drama",18],[10751,"Family",10751],[27,"Horror",27],[9648,"Mystery",9648],[10749,"Romance",10749],[53,"Thriller",53]];
+const FAMILY_FRIENDLY_GENRES = new Set([12,16,35,99,10751]);
 function isProfileAvatar(value) { return AVATAR_OPTIONS.some(([, path]) => path === value) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(value || "")); }
 function prepareUploadedAvatar(file) { return new Promise((resolve, reject) => { if (!file?.type?.startsWith("image/")) return reject(new Error("Choose an image file.")); if (file.size > 10 * 1024 * 1024) return reject(new Error("Choose an image smaller than 10 MB.")); const reader = new FileReader(); reader.onerror = () => reject(new Error("That image could not be read.")); reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("That image format is not supported.")); image.onload = () => { const edge = 120, canvas = document.createElement("canvas"), scale = Math.max(edge / image.naturalWidth, edge / image.naturalHeight), width = image.naturalWidth * scale, height = image.naturalHeight * scale; canvas.width = edge; canvas.height = edge; canvas.getContext("2d").drawImage(image, (edge - width) / 2, (edge - height) / 2, width, height); const avatar = canvas.toDataURL("image/jpeg", .78); if (avatar.length > 30000) return reject(new Error("Choose a simpler photo so it can sync with your profile.")); resolve(avatar); }; image.src = String(reader.result); }; reader.readAsDataURL(file); }); }
+function needsFirstRunOnboarding() { return state.account?.onboardingComplete === false; }
+function beginOnboarding() {
+  const profile = currentProfile() || state.account?.profiles?.[0] || defaultAccount().profiles[0], preferences = currentPreferences();
+  state.onboardingStep = state.account?.onboardingStep === 2 ? 2 : 1;
+  state.onboardingDraft = { name:profile.name || "", avatar:profile.avatar || AVATAR_OPTIONS[0][1], favoriteGenres:(preferences.favoriteGenres || []).map(Number).filter(id => ONBOARDING_GENRES.some(([genreId]) => genreId === id)).slice(0,3), contentMix:preferences.contentMix || "both", familySafe:preferences.familySafe === true };
+}
+function renderOnboarding() {
+  if (!state.onboardingDraft) beginOnboarding();
+  const draft = state.onboardingDraft, step = state.onboardingStep || 1, profile = { name:draft.name, avatar:draft.avatar, color:"#d3131c" };
+  const avatarChoices = AVATAR_OPTIONS.map(([name, path]) => `<button type="button" class="onboarding-avatar ${draft.avatar === path ? "selected" : ""}" data-onboarding-avatar="${path}" aria-label="Choose ${name}" aria-pressed="${draft.avatar === path}"><img src="${path}" alt=""><span>${name}</span></button>`).join("");
+  const genreChoices = ONBOARDING_GENRES.filter(([id]) => !draft.familySafe || FAMILY_FRIENDLY_GENRES.has(id)).map(([id, name]) => `<button type="button" class="onboarding-chip ${draft.favoriteGenres.includes(id) ? "selected" : ""}" data-onboarding-genre="${id}" aria-pressed="${draft.favoriteGenres.includes(id)}" ${draft.favoriteGenres.length >= 3 && !draft.favoriteGenres.includes(id) ? "disabled" : ""}>${name}</button>`).join("");
+  const mixChoices = [["both","Movies & series"],["movies","Movies only"],["series","Series only"]].map(([value,label]) => `<button type="button" class="onboarding-mix ${draft.contentMix === value ? "selected" : ""}" data-onboarding-mix="${value}" aria-pressed="${draft.contentMix === value}"><span>${label}</span><i aria-hidden="true"></i></button>`).join("");
+  const profileStep = `<section class="onboarding-panel"><div class="onboarding-kicker">01 / PROFILE</div><h1>Let’s make this profile yours.</h1><p>Choose a name and picture. You can change them later.</p><div class="onboarding-identity"><div class="onboarding-avatar-preview">${profileAvatar(profile)}</div><label class="onboarding-name">Profile name<input data-onboarding-name maxlength="24" required value="${escapeHTML(draft.name)}" placeholder="What should we call you?"></label></div><div class="onboarding-avatar-grid">${avatarChoices}<label class="onboarding-avatar-upload"><input type="file" accept="image/png,image/jpeg,image/webp" data-onboarding-upload><span>＋</span><b>Use a photo</b></label></div><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions onboarding-actions-profile"><span></span><button class="primary" type="button" data-onboarding-next>Continue <span aria-hidden="true">→</span></button></div></section>`;
+  const tasteStep = `<section class="onboarding-panel"><div class="onboarding-kicker">02 / YOUR TASTE</div><h1>What do you like watching?</h1><p>Pick up to three. We’ll use them to shape your For You page.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Genres</b><span>${draft.favoriteGenres.length} of 3 selected</span></div><div class="onboarding-genre-grid">${genreChoices}</div></div><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Your mix</b><span>Choose what For You shows</span></div><div class="onboarding-mix-grid">${mixChoices}</div></div><button class="onboarding-safe ${draft.familySafe ? "selected" : ""}" type="button" data-onboarding-safe aria-pressed="${draft.familySafe}"><span><b>Keep it family-friendly</b><small>Favor age-friendly picks across browsing and recommendations.</small></span><i aria-hidden="true"></i></button><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions"><button class="onboarding-back" type="button" data-onboarding-back>← Back</button><button class="onboarding-current" type="button" data-onboarding-current>Keep SEVEN’s current mix</button><button class="primary" type="button" data-onboarding-finish>Start watching <span aria-hidden="true">→</span></button></div></section>`;
+  app.innerHTML = `<main class="onboarding-page"><header class="onboarding-top"><span class="brand">SEVEN</span><span>YOUR EXPERIENCE</span></header><div class="onboarding-progress" aria-label="Step ${step} of 2"><i style="width:${step === 1 ? "50%" : "100%"}"></i></div>${step === 1 ? profileStep : tasteStep}</main>`;
+  bindOnboarding();
+}
+function bindOnboarding() {
+  const draft = state.onboardingDraft;
+  document.querySelector("[data-onboarding-name]")?.addEventListener("input", event => { draft.name = event.currentTarget.value; });
+  document.querySelector("[data-onboarding-next]")?.addEventListener("click", () => {
+    draft.name = String(document.querySelector("[data-onboarding-name]")?.value || "").trim();
+    if (!draft.name) { document.querySelector("[data-onboarding-error]").textContent = "Add a profile name to continue."; return; }
+    void saveOnboardingProfile();
+  });
+  document.querySelectorAll("[data-onboarding-avatar]").forEach(button => button.addEventListener("click", () => { draft.avatar = button.dataset.onboardingAvatar; renderOnboarding(); }));
+  document.querySelector("[data-onboarding-upload]")?.addEventListener("change", async event => {
+    try { draft.avatar = await prepareUploadedAvatar(event.currentTarget.files?.[0]); renderOnboarding(); }
+    catch (error) { document.querySelector("[data-onboarding-error]").textContent = error.message; }
+  });
+  document.querySelectorAll("[data-onboarding-genre]").forEach(button => button.addEventListener("click", () => {
+    const id = Number(button.dataset.onboardingGenre), selected = new Set(draft.favoriteGenres);
+    if (selected.has(id)) selected.delete(id); else if (selected.size < 3) selected.add(id);
+    draft.favoriteGenres = [...selected]; renderOnboarding();
+  }));
+  document.querySelectorAll("[data-onboarding-mix]").forEach(button => button.addEventListener("click", () => { draft.contentMix = button.dataset.onboardingMix; renderOnboarding(); }));
+  document.querySelector("[data-onboarding-safe]")?.addEventListener("click", () => {
+    draft.familySafe = !draft.familySafe;
+    if (draft.familySafe) draft.favoriteGenres = draft.favoriteGenres.filter(id => FAMILY_FRIENDLY_GENRES.has(id));
+    renderOnboarding();
+  });
+  document.querySelector("[data-onboarding-back]")?.addEventListener("click", () => { state.onboardingStep = 1; renderOnboarding(); });
+  document.querySelector("[data-onboarding-current]")?.addEventListener("click", () => { draft.favoriteGenres = []; draft.contentMix = "both"; draft.familySafe = false; void finishOnboarding(); });
+  document.querySelector("[data-onboarding-finish]")?.addEventListener("click", () => void finishOnboarding());
+}
+async function persistOnboardingAccount() {
+  if (!state.session?.access_token) throw new Error("Sign in again to save this profile.");
+  persistLocalAccount();
+  const account = JSON.parse(JSON.stringify(state.account));
+  if (account.parentAccessEnabled) delete account.parentPinHash;
+  state.user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) });
+}
+async function saveOnboardingProfile() {
+  const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = document.querySelector("[data-onboarding-next]");
+  if (!draft || !profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
+  if (button) { button.disabled = true; button.textContent = "Saving profile…"; }
+  profile.name = String(draft.name).trim().slice(0,24);
+  profile.avatar = isProfileAvatar(draft.avatar) ? draft.avatar : AVATAR_OPTIONS[0][1];
+  profile.color = "#d3131c";
+  state.account.onboardingComplete = false;
+  state.account.onboardingStep = 2;
+  try { await persistOnboardingAccount(); state.onboardingStep = 2; renderOnboarding(); }
+  catch (failure) {
+    if (error) error.textContent = failure.message || "We couldn’t save your profile. Try again.";
+    if (button) { button.disabled = false; button.innerHTML = 'Continue <span aria-hidden="true">→</span>'; }
+  }
+}
+async function finishOnboarding() {
+  const draft = state.onboardingDraft, error = document.querySelector("[data-onboarding-error]"), submit = document.querySelector("[data-onboarding-finish], [data-onboarding-current]");
+  if (!draft || !state.session?.access_token) { if (error) error.textContent = "Sign in again to save this profile."; return; }
+  const profile = currentProfile();
+  if (!profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
+  if (!String(draft.name || "").trim()) { if (error) error.textContent = "Add a profile name before continuing."; return; }
+  if (submit) { submit.disabled = true; submit.textContent = "Saving your profile…"; }
+  profile.name = String(draft.name).trim().slice(0,24);
+  profile.avatar = isProfileAvatar(draft.avatar) ? draft.avatar : AVATAR_OPTIONS[0][1];
+  profile.color = "#d3131c";
+  profile.preferences = { ...currentPreferences(), favoriteGenres:draft.favoriteGenres.slice(0,3), contentMix:["movies","series"].includes(draft.contentMix) ? draft.contentMix : "both", familySafe:draft.familySafe === true };
+  state.account.activeProfileId = profile.id;
+  state.account.onboardingComplete = true;
+  delete state.account.onboardingStep;
+  try {
+    await persistOnboardingAccount();
+    state.catalogKey = null; state.catalogRequest = null; state.onboardingDraft = null;
+    state.route = "profiles"; render();
+  } catch (failure) {
+    state.account.onboardingComplete = false;
+    state.account.onboardingStep = 2;
+    if (error) error.textContent = failure.message || "We couldn’t save your profile. Try again.";
+    if (submit) { submit.disabled = false; submit.innerHTML = submit.hasAttribute("data-onboarding-current") ? "Keep SEVEN’s current mix" : 'Start watching <span aria-hidden="true">→</span>'; }
+  }
+}
 function currentProfile() { return state.account?.profiles?.find(profile => profile.id === activeProfileId()) || state.account?.profiles?.[0]; }
 function recentSearches(profile = currentProfile()) {
   if (Array.isArray(profile?.recentSearches)) return profile.recentSearches.filter(query => typeof query === "string" && query.trim());
