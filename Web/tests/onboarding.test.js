@@ -30,8 +30,19 @@ test("first step creates a named profile with an avatar before taste questions",
   assert.match(onboarding, /async function saveOnboardingProfile\(\)[\s\S]*await persistOnboardingAccount\(\); state\.onboardingStep = 2/);
 });
 
+test("genres, content mix, and family preferences each have a separate onboarding page", () => {
+  assert.match(onboarding, /02 \/ YOUR TASTE[\s\S]*Pick up to three genres/);
+  assert.match(onboarding, /03 \/ YOUR MIX[\s\S]*What would you like to browse/);
+  assert.match(onboarding, /04 \/ CONTENT FILTER[\s\S]*Who’s watching/);
+  assert.match(onboarding, /aria-valuemax="4" aria-valuenow="\$\{step\}"/);
+  assert.match(app, /onboardingStep = Number\.isInteger\(savedStep\)[\s\S]*savedStep <= 4 \? savedStep : 1/);
+  assert.match(onboarding, /async function saveOnboardingChoices\(nextStep\)[\s\S]*state\.account\.onboardingStep = nextStep[\s\S]*await persistOnboardingAccount\(\); state\.onboardingStep = nextStep/);
+  assert.match(onboarding, /data-next-step="\$\{nextStep\}"/);
+  assert.match(onboarding, /state\.onboardingStep = Math\.max\(1, Number\(state\.onboardingStep \|\| 1\) - 1\)/);
+});
+
 test("taste answers change the actual For You requests and current-mix option preserves existing behavior", () => {
-  assert.match(onboarding, /Pick up to three\. We’ll use them to shape your For You page\./);
+  assert.match(onboarding, /Pick up to three genres\. We’ll use them to shape your For You page\./);
   assert.match(onboarding, /Keep SEVEN’s current mix/);
   assert.match(onboarding, /draft\.favoriteGenres = \[\]; draft\.contentMix = "both"; draft\.familySafe = false/);
   assert.match(onboarding, /favoriteGenres:draft\.favoriteGenres\.slice\(0,3\)/);
@@ -43,7 +54,9 @@ test("taste answers change the actual For You requests and current-mix option pr
   assert.match(forYou, /preferences\.contentMix !== "series"/);
   assert.match(forYou, /preferences\.contentMix !== "movies"/);
   assert.match(forYou, /if \(familySafe\)/);
-  assert.match(onboarding, /\[\["both","Movies & series"\],\["movies","Movies only"\],\["series","Series only"\]\]/);
+  assert.match(onboarding, /\[\["both","Movies & series","A balanced mix of films and series\."\],\["movies","Movies only","Keep your discovery focused on films\."\],\["series","Series only","Find your next series to settle into\."\]\]/);
+  assert.match(onboarding, /data-onboarding-safe="true"/);
+  assert.match(onboarding, /data-onboarding-safe="false"/);
 });
 
 test("profile-picker avatar focus and borders use SEVEN red rather than the browser blue ring", () => {
