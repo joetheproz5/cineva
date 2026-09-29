@@ -87,9 +87,6 @@ function applyLocale() {
 }
 const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, favoriteGenres:[], contentMix:"both", blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"cinesrc" };
 const PLAYER_PROVIDERS = Object.freeze(["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"]);
-// Keep provider scripts and playback working, but do not let an embedded player
-// spawn ad windows or navigate the installed PWA away from SEVEN.
-const PLAYER_IFRAME_SANDBOX = "allow-scripts allow-same-origin allow-forms allow-presentation allow-orientation-lock allow-pointer-lock";
 const PREVIOUS_EPISODE_WATCHED_PERCENT = 50;
 const NEXT_EPISODE_CONFIRMATION_PERCENT = 25;
 function selectedPlayerProvider() { const provider = currentPreferences().playerProvider; return PLAYER_PROVIDERS.includes(provider) ? provider : "cinesrc"; }
@@ -1279,7 +1276,7 @@ function providerMenuHTML() {
   return `<div class="provider-menu"><button class="provider-toggle" data-provider-menu>${labels[current] || "CineSrc 4K"} ▾</button><div class="provider-list" data-provider-list hidden>${PLAYER_PROVIDERS.map(provider => `<button class="provider-option ${provider === current ? "active" : ""}" data-provider-select="${provider}">${labels[provider]}${provider === current ? " ✓" : ""}</button>`).join("")}</div></div>`;}
 function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", startAt = party.code ? Math.max(0, Number(party.syncPosition) || 0) : Math.max(0, Number(p.startAt) || 0), playbackNote = startAt ? (party.code ? `Playing with your party from ${timeLabel(startAt)}` : `Resuming from ${timeLabel(startAt)}`) : savedStart(p) ? `Resume is available from ${timeLabel(savedStart(p))}` : escapeHTML(p.overview || "Playback progress is saved on this device.");
-  const media = `<iframe class="player" src="${playerURL(p, startAt)}" sandbox="${PLAYER_IFRAME_SANDBOX}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>`;
+  const media = `<iframe class="player" src="${playerURL(p, startAt)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>`;
   const partyControl = party.code ? "" : `<button class="party-quick" data-party-modal aria-label="Watch together" title="Watch together"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8.1" r="2.25"/><path d="M3.9 17.9c.45-3.03 1.92-4.62 4.1-4.62s3.65 1.59 4.1 4.62"/><circle cx="15.9" cy="9.3" r="1.7"/><path d="M14.2 14.3c.6-.58 1.18-.87 1.78-.87 1.6 0 2.72 1.22 3.08 3.46"/><path class="party-play" d="m16.8 5.2 3.35 1.95-3.35 1.95z"/></svg></button>`;
   app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="player-stage-context" data-player-episode-label>${label}</span><div class="player-stage-actions">${providerMenuHTML()}</div></div><div class="player-frame">${media}</div></section><section class="now"><div class="now-heading"><div><span class="brand">NOW PLAYING</span><h2 data-now-playing-title>${escapeHTML(p.title)}</h2></div>${partyControl}</div><div class="progress player-saved-progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time" class="player-saved-time">${playbackNote}</p></section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
@@ -2049,7 +2046,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=301", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=302", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
