@@ -27,7 +27,7 @@ test("first step creates a named profile with an avatar before taste questions",
   assert.match(onboarding, /data-onboarding-upload/);
   assert.match(onboarding, /function finishOnboarding\(submitButton = null\)[\s\S]*profile\.name = String\(draft\.name\)/);
   assert.match(onboarding, /profile\.avatar = isProfileAvatar\(draft\.avatar\)/);
-  assert.match(onboarding, /async function saveOnboardingProfile\(\)[\s\S]*await persistOnboardingAccount\(\); state\.onboardingStep = 2/);
+  assert.match(onboarding, /async function saveOnboardingProfile\(submitButton = null\)[\s\S]*await persistOnboardingAccount\(\); state\.onboardingStep = 2/);
 });
 
 test("genres, content mix, and family preferences each have a separate onboarding page", () => {
@@ -36,20 +36,27 @@ test("genres, content mix, and family preferences each have a separate onboardin
   assert.match(onboarding, /04 \/ CONTENT FILTER[\s\S]*Who’s watching/);
   assert.match(onboarding, /aria-valuemax="4" aria-valuenow="\$\{step\}"/);
   assert.match(app, /onboardingStep = Number\.isInteger\(savedStep\)[\s\S]*savedStep <= 4 \? savedStep : 1/);
-  assert.match(onboarding, /async function saveOnboardingChoices\(nextStep\)[\s\S]*state\.account\.onboardingStep = nextStep[\s\S]*await persistOnboardingAccount\(\); state\.onboardingStep = nextStep/);
+  assert.match(onboarding, /async function saveOnboardingChoices\(nextStep, submitButton = null\)[\s\S]*state\.account\.onboardingStep = nextStep[\s\S]*await persistOnboardingAccount\(\); state\.onboardingStep = nextStep/);
   assert.match(onboarding, /data-next-step="\$\{nextStep\}"/);
   assert.match(onboarding, /state\.onboardingStep = Math\.max\(1, Number\(state\.onboardingStep \|\| 1\) - 1\)/);
-  assert.equal((onboarding.match(/data-onboarding-skip/g) || []).length, 5);
-  assert.match(onboarding, /draft\.favoriteGenres = \[\];\s*draft\.contentMix = "both";\s*draft\.familySafe = false;\s*void finishOnboarding\(event\.currentTarget\)/);
-  assert.match(onboarding, /submit\.hasAttribute\("data-onboarding-skip"\) \? "Skip setup"/);
+  assert.equal((onboarding.match(/data-onboarding-default=/g) || []).length, 1);
+  assert.match(onboarding, /defaultAction\("Keep current profile", 1\)/);
+  assert.match(onboarding, /defaultAction\("No genre preference", 2\)/);
+  assert.match(onboarding, /defaultAction\("Keep both", 3\)/);
+  assert.match(onboarding, /defaultAction\("Show everything", 4\)/);
+  assert.match(onboarding, /if \(step === 1\)[\s\S]*saveOnboardingProfile\(button\)[\s\S]*step === 2[\s\S]*saveOnboardingChoices\(3, button\)[\s\S]*step === 3[\s\S]*saveOnboardingChoices\(4, button\)[\s\S]*step === 4[\s\S]*finishOnboarding\(button\)/);
+  assert.match(onboarding, /submit\.hasAttribute\("data-onboarding-default"\) \? "Saving…"/);
   assert.match(styles, /\.onboarding-actions-start \{ display: flex; min-width: 0; align-items: center;/);
-  assert.match(styles, /\.onboarding-back, \.onboarding-skip \{[^}]*text-align: left;/);
+  assert.match(styles, /\.onboarding-back \{[^}]*text-align: left;/);
   assert.match(styles, /\.onboarding-actions \{ display: flex; align-items: center; justify-content: space-between/);
+  assert.match(styles, /\.onboarding-default-action \{ display: flex; min-height: 44px;[^}]*border: 1px solid/);
 });
 
-test("taste answers change the actual For You requests and Skip setup restores the original mix", () => {
+test("taste answers change the actual For You requests and each page can keep its own default", () => {
   assert.match(onboarding, /Pick up to three genres\. We’ll use them to shape your For You page\./);
-  assert.match(onboarding, /draft\.favoriteGenres = \[\];\s*draft\.contentMix = "both";\s*draft\.familySafe = false/);
+  assert.match(onboarding, /draft\.favoriteGenres = \[\];\s*void saveOnboardingChoices\(3, button\)/);
+  assert.match(onboarding, /draft\.contentMix = "both";\s*void saveOnboardingChoices\(4, button\)/);
+  assert.match(onboarding, /draft\.familySafe = false;\s*void finishOnboarding\(button\)/);
   assert.match(onboarding, /favoriteGenres:draft\.favoriteGenres\.slice\(0,3\)/);
   assert.match(onboarding, /contentMix:\["movies","series"\]\.includes\(draft\.contentMix\) \? draft\.contentMix : "both"/);
   assert.match(onboarding, /localAPI\("\/api\/account\/settings"/);
@@ -62,6 +69,7 @@ test("taste answers change the actual For You requests and Skip setup restores t
   assert.match(onboarding, /\[\["both","Movies & series","A balanced mix of films and series\."\],\["movies","Movies only","Keep your discovery focused on films\."\],\["series","Series only","Find your next series to settle into\."\]\]/);
   assert.match(onboarding, /data-onboarding-safe="true"/);
   assert.match(onboarding, /data-onboarding-safe="false"/);
+  assert.doesNotMatch(onboarding, /Skip setup|data-onboarding-skip/);
 });
 
 test("changing profile choices updates only those controls instead of rebuilding the page", () => {

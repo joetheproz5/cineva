@@ -1588,11 +1588,12 @@ function renderOnboarding() {
   const avatarChoices = AVATAR_OPTIONS.map(([name, path]) => `<button type="button" class="onboarding-avatar ${draft.avatar === path ? "selected" : ""}" data-onboarding-avatar="${path}" aria-label="Choose ${name}" aria-pressed="${draft.avatar === path}"><img src="${path}" alt=""><span>${name}</span></button>`).join("");
   const genreChoices = ONBOARDING_GENRES.filter(([id]) => !draft.familySafe || FAMILY_FRIENDLY_GENRES.has(id)).map(([id, name]) => `<button type="button" class="onboarding-chip ${draft.favoriteGenres.includes(id) ? "selected" : ""}" data-onboarding-genre="${id}" aria-pressed="${draft.favoriteGenres.includes(id)}" ${draft.favoriteGenres.length >= 3 && !draft.favoriteGenres.includes(id) ? "disabled" : ""}>${name}</button>`).join("");
   const mixChoices = [["both","Movies & series","A balanced mix of films and series."],["movies","Movies only","Keep your discovery focused on films."],["series","Series only","Find your next series to settle into."]].map(([value,label,detail]) => `<button type="button" class="onboarding-mix ${draft.contentMix === value ? "selected" : ""}" data-onboarding-mix="${value}" aria-pressed="${draft.contentMix === value}"><span><b>${label}</b><small>${detail}</small></span><i aria-hidden="true"></i></button>`).join("");
-  const actions = (label, nextStep) => `<p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions"><div class="onboarding-actions-start"><button class="onboarding-back" type="button" data-onboarding-back>← Back</button><button class="onboarding-skip" type="button" data-onboarding-skip>Skip setup</button></div><button class="primary" type="button" data-onboarding-continue data-next-step="${nextStep}">${label} <span aria-hidden="true">→</span></button></div>`;
-  const profileStep = `<section class="onboarding-panel"><div class="onboarding-kicker">01 / PROFILE</div><h1>Let’s make this profile yours.</h1><p>Choose a name and picture. You can change them later.</p><div class="onboarding-identity"><div class="onboarding-avatar-preview">${profileAvatar(profile)}</div><label class="onboarding-name">Profile name<input data-onboarding-name maxlength="24" required value="${escapeHTML(draft.name)}" placeholder="What should we call you?"></label></div><div class="onboarding-avatar-grid">${avatarChoices}<label class="onboarding-avatar-upload"><input type="file" accept="image/png,image/jpeg,image/webp" data-onboarding-upload><span>＋</span><b>Use a photo</b></label></div><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions onboarding-actions-profile"><div class="onboarding-actions-start"><button class="onboarding-skip" type="button" data-onboarding-skip>Skip setup</button></div><button class="primary" type="button" data-onboarding-next>Continue <span aria-hidden="true">→</span></button></div></section>`;
-  const genresStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">02 / YOUR TASTE</div><h1>What do you like watching?</h1><p>Pick up to three genres. We’ll use them to shape your For You page.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Choose your favourites</b><span>${draft.favoriteGenres.length} of 3 selected</span></div><div class="onboarding-genre-grid">${genreChoices}</div></div>${actions("Continue", 3)}</section>`;
-  const mixStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">03 / YOUR MIX</div><h1>What would you like to browse?</h1><p>We’ll tune your movie and series rows around what you enjoy.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Your SEVEN mix</b><span>Choose one</span></div><div class="onboarding-mix-grid">${mixChoices}</div></div>${actions("Continue", 4)}</section>`;
-  const familyStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">04 / CONTENT FILTER</div><h1>Who’s watching?</h1><p>Set the tone for browsing and recommendations. You can change this any time in profile settings.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Content preferences</b><span>Choose one</span></div><div class="onboarding-family-grid"><button class="onboarding-family-choice ${!draft.familySafe ? "selected" : ""}" type="button" data-onboarding-safe="false" aria-pressed="${!draft.familySafe}"><span class="onboarding-family-icon" aria-hidden="true">◉</span><span><b>Show me everything</b><small>Keep the full SEVEN catalog in browsing and picks.</small></span><i aria-hidden="true"></i></button><button class="onboarding-family-choice ${draft.familySafe ? "selected" : ""}" type="button" data-onboarding-safe="true" aria-pressed="${draft.familySafe}"><span class="onboarding-family-icon" aria-hidden="true">✦</span><span><b>Keep it family-friendly</b><small>Favor age-friendly titles across browsing and recommendations.</small></span><i aria-hidden="true"></i></button></div></div>${actions("Start watching", 4)}</section>`;
+  const actions = (label, nextStep) => `<p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions"><div class="onboarding-actions-start"><button class="onboarding-back" type="button" data-onboarding-back>← Back</button></div><button class="primary" type="button" data-onboarding-continue data-next-step="${nextStep}">${label} <span aria-hidden="true">→</span></button></div>`;
+  const defaultAction = (label, step) => `<button class="onboarding-default-action" type="button" data-onboarding-default="${step}" data-default-label="${escapeHTML(label)}"><span>${label}</span><i aria-hidden="true">→</i></button>`;
+  const profileStep = `<section class="onboarding-panel"><div class="onboarding-kicker">01 / PROFILE</div><h1>Let’s make this profile yours.</h1><p>Choose a name and picture. You can change them later.</p><div class="onboarding-identity"><div class="onboarding-avatar-preview">${profileAvatar(profile)}</div><label class="onboarding-name">Profile name<input data-onboarding-name maxlength="24" required value="${escapeHTML(draft.name)}" placeholder="What should we call you?"></label></div><div class="onboarding-avatar-grid">${avatarChoices}<label class="onboarding-avatar-upload"><input type="file" accept="image/png,image/jpeg,image/webp" data-onboarding-upload><span>＋</span><b>Use a photo</b></label></div><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions onboarding-actions-profile"><div class="onboarding-actions-start"></div><button class="primary" type="button" data-onboarding-next>Continue <span aria-hidden="true">→</span></button></div>${defaultAction("Keep current profile", 1)}</section>`;
+  const genresStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">02 / YOUR TASTE</div><h1>What do you like watching?</h1><p>Pick up to three genres. We’ll use them to shape your For You page.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Choose your favourites</b><span>${draft.favoriteGenres.length} of 3 selected</span></div><div class="onboarding-genre-grid">${genreChoices}</div></div>${actions("Continue", 3)}${defaultAction("No genre preference", 2)}</section>`;
+  const mixStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">03 / YOUR MIX</div><h1>What would you like to browse?</h1><p>We’ll tune your movie and series rows around what you enjoy.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Your SEVEN mix</b><span>Choose one</span></div><div class="onboarding-mix-grid">${mixChoices}</div></div>${actions("Continue", 4)}${defaultAction("Keep both", 3)}</section>`;
+  const familyStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">04 / CONTENT FILTER</div><h1>Who’s watching?</h1><p>Set the tone for browsing and recommendations. You can change this any time in profile settings.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Content preferences</b><span>Choose one</span></div><div class="onboarding-family-grid"><button class="onboarding-family-choice ${!draft.familySafe ? "selected" : ""}" type="button" data-onboarding-safe="false" aria-pressed="${!draft.familySafe}"><span class="onboarding-family-icon" aria-hidden="true">◉</span><span><b>Show me everything</b><small>Keep the full SEVEN catalog in browsing and picks.</small></span><i aria-hidden="true"></i></button><button class="onboarding-family-choice ${draft.familySafe ? "selected" : ""}" type="button" data-onboarding-safe="true" aria-pressed="${draft.familySafe}"><span class="onboarding-family-icon" aria-hidden="true">✦</span><span><b>Keep it family-friendly</b><small>Favor age-friendly titles across browsing and recommendations.</small></span><i aria-hidden="true"></i></button></div></div>${actions("Start watching", 4)}${defaultAction("Show everything", 4)}</section>`;
   const steps = { 1:profileStep, 2:genresStep, 3:mixStep, 4:familyStep }, stepMarkup = steps[step] || profileStep;
   app.innerHTML = `<main class="onboarding-page"><header class="onboarding-top"><span class="brand">SEVEN</span><span>YOUR EXPERIENCE</span></header><div class="onboarding-progress" role="progressbar" aria-label="Personalization progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="${step}"><i style="width:${step * 25}%"></i></div><div class="onboarding-step-count">STEP ${String(step).padStart(2,"0")} <span>OF 04</span></div>${stepMarkup}</main>`;
   bindOnboarding();
@@ -1661,16 +1662,23 @@ function bindOnboarding() {
     if (Number(state.onboardingStep) === 4) void finishOnboarding();
     else void saveOnboardingChoices(nextStep);
   });
-  document.querySelector("[data-onboarding-skip]")?.addEventListener("click", event => {
-    if (Number(state.onboardingStep) === 1) {
+  document.querySelector("[data-onboarding-default]")?.addEventListener("click", event => {
+    const button = event.currentTarget, step = Number(button.dataset.onboardingDefault);
+    if (step === 1) {
       const profile = currentProfile();
       draft.name = profile?.name || state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile";
       draft.avatar = profile?.avatar || AVATAR_OPTIONS[0][1];
+      void saveOnboardingProfile(button);
+    } else if (step === 2) {
+      draft.favoriteGenres = [];
+      void saveOnboardingChoices(3, button);
+    } else if (step === 3) {
+      draft.contentMix = "both";
+      void saveOnboardingChoices(4, button);
+    } else if (step === 4) {
+      draft.familySafe = false;
+      void finishOnboarding(button);
     }
-    draft.favoriteGenres = [];
-    draft.contentMix = "both";
-    draft.familySafe = false;
-    void finishOnboarding(event.currentTarget);
   });
   document.querySelector("[data-onboarding-back]")?.addEventListener("click", () => { state.onboardingStep = Math.max(1, Number(state.onboardingStep || 1) - 1); renderOnboarding(); });
 }
@@ -1681,10 +1689,10 @@ async function persistOnboardingAccount() {
   if (account.parentAccessEnabled) delete account.parentPinHash;
   state.user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) });
 }
-async function saveOnboardingProfile() {
-  const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = document.querySelector("[data-onboarding-next]");
+async function saveOnboardingProfile(submitButton = null) {
+  const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = submitButton || document.querySelector("[data-onboarding-next]");
   if (!draft || !profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
-  if (button) { button.disabled = true; button.textContent = "Saving profile…"; }
+  if (button) { button.disabled = true; button.textContent = submitButton ? "Keeping profile…" : "Saving profile…"; }
   profile.name = String(draft.name).trim().slice(0,24);
   profile.avatar = isProfileAvatar(draft.avatar) ? draft.avatar : AVATAR_OPTIONS[0][1];
   profile.color = "#d3131c";
@@ -1693,20 +1701,20 @@ async function saveOnboardingProfile() {
   try { await persistOnboardingAccount(); state.onboardingStep = 2; renderOnboarding(); }
   catch (failure) {
     if (error) error.textContent = failure.message || "We couldn’t save your profile. Try again.";
-    if (button) { button.disabled = false; button.innerHTML = 'Continue <span aria-hidden="true">→</span>'; }
+    if (button) { button.disabled = false; button.innerHTML = submitButton ? `<span>${escapeHTML(button.dataset.defaultLabel)}</span><i aria-hidden="true">→</i>` : 'Continue <span aria-hidden="true">→</span>'; }
   }
 }
-async function saveOnboardingChoices(nextStep) {
-  const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = document.querySelector("[data-onboarding-continue]");
+async function saveOnboardingChoices(nextStep, submitButton = null) {
+  const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = submitButton || document.querySelector("[data-onboarding-continue]");
   if (!draft || !profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
-  if (button) { button.disabled = true; button.textContent = "Saving your choices…"; }
+  if (button) { button.disabled = true; button.textContent = submitButton ? "Saving…" : "Saving your choices…"; }
   profile.preferences = { ...currentPreferences(), favoriteGenres:draft.favoriteGenres.slice(0,3), contentMix:["movies","series"].includes(draft.contentMix) ? draft.contentMix : "both", familySafe:draft.familySafe === true };
   state.account.onboardingComplete = false;
   state.account.onboardingStep = nextStep;
   try { await persistOnboardingAccount(); state.onboardingStep = nextStep; renderOnboarding(); }
   catch (failure) {
     if (error) error.textContent = failure.message || "We couldn’t save your choices. Try again.";
-    if (button) { button.disabled = false; button.innerHTML = 'Continue <span aria-hidden="true">→</span>'; }
+    if (button) { button.disabled = false; button.innerHTML = submitButton ? `<span>${escapeHTML(button.dataset.defaultLabel)}</span><i aria-hidden="true">→</i>` : 'Continue <span aria-hidden="true">→</span>'; }
   }
 }
 async function finishOnboarding(submitButton = null) {
@@ -1715,7 +1723,7 @@ async function finishOnboarding(submitButton = null) {
   const profile = currentProfile();
   if (!profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
   if (!String(draft.name || "").trim()) { if (error) error.textContent = "Add a profile name before continuing."; return; }
-  if (submit) { submit.disabled = true; submit.textContent = submit.hasAttribute("data-onboarding-skip") ? "Saving defaults…" : "Saving your profile…"; }
+  if (submit) { submit.disabled = true; submit.textContent = submit.hasAttribute("data-onboarding-default") ? "Saving…" : "Saving your profile…"; }
   profile.name = String(draft.name).trim().slice(0,24);
   profile.avatar = isProfileAvatar(draft.avatar) ? draft.avatar : AVATAR_OPTIONS[0][1];
   profile.color = "#d3131c";
@@ -1731,7 +1739,7 @@ async function finishOnboarding(submitButton = null) {
     state.account.onboardingComplete = false;
     state.account.onboardingStep = Number(state.onboardingStep) || 1;
     if (error) error.textContent = failure.message || "We couldn’t save your profile. Try again.";
-    if (submit) { submit.disabled = false; submit.innerHTML = submit.hasAttribute("data-onboarding-skip") ? "Skip setup" : 'Start watching <span aria-hidden="true">→</span>'; }
+    if (submit) { submit.disabled = false; submit.innerHTML = submit.hasAttribute("data-onboarding-default") ? `<span>${escapeHTML(submit.dataset.defaultLabel)}</span><i aria-hidden="true">→</i>` : 'Start watching <span aria-hidden="true">→</span>'; }
   }
 }
 function currentProfile() { return state.account?.profiles?.find(profile => profile.id === activeProfileId()) || state.account?.profiles?.[0]; }
@@ -2041,7 +2049,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=300", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=301", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
