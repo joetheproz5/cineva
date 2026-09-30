@@ -1511,6 +1511,7 @@ async function submitAuth(event, mode) {
     localStorage.removeItem(PENDING_EMAIL_VERIFICATION_KEY);
     state.pendingEmailVerification = null;
     state.user = data.user || data.session.user || await localAPI("/api/auth/user", { headers:authorizedHeaders() });
+    if (!state.user?.id) throw new Error("Your account was created, but we couldn’t finish signing you in. Please try signing in.");
     hydrateAccount();
     await refreshParentAccessStatus();
     hydrateMyList();
@@ -1519,7 +1520,6 @@ async function submitAuth(event, mode) {
     scheduleSessionRefresh();
     const firstRun = create || needsFirstRunOnboarding();
     await showAuthSuccess(formElement, create ? "Account created" : "Signed in successfully", firstRun ? "Let’s set up your profile…" : "Taking you to your profiles…");
-    document.querySelector(".modal")?.remove();
     if (firstRun) { beginOnboarding(); state.route = "onboarding"; }
     else state.route = "profiles";
     render();
@@ -2046,7 +2046,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=302", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=303", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });

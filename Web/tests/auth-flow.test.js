@@ -38,6 +38,13 @@ test("successful authentication animates before opening the profile selector", (
   assert.match(submitAuth, /Account created/);
 });
 
+test("signup only leaves the auth form after resolving a signed-in user", () => {
+  assert.match(submitAuth, /if \(!state\.user\?\.id\) throw new Error\("Your account was created/);
+  assert.ok(submitAuth.indexOf('state.route = "onboarding"') > submitAuth.indexOf("if (!state.user?.id)"));
+  assert.ok(submitAuth.indexOf("render();") > submitAuth.indexOf('state.route = "onboarding"'));
+  assert.doesNotMatch(submitAuth, /document\.querySelector\("\.modal"\)\?\.remove\(\)/);
+});
+
 test("signup skips email verification when Supabase returns a session", () => {
   assert.match(submitAuth, /if \(create && !data\.session\?\.access_token && data\.user\)/);
   assert.match(submitAuth, /persistSession\(data\.session, Date\.now\(\)\)/);
