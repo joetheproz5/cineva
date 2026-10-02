@@ -106,7 +106,13 @@ class MainActivity : Activity() {
 
         refreshLayout = SwipeRefreshLayout(this).apply {
             setOnRefreshListener {
-                if (offline) web.loadUrl(APP_URL) else web.reload()
+                web.evaluateJavascript("Boolean(document.querySelector('.modal'))") { hasModal ->
+                    refreshLayout.isRefreshing = false
+                    // Pulling inside a dialog (especially while the keyboard is open) must not
+                    // reload the app and throw away the form.
+                    if (hasModal != "false") return@evaluateJavascript
+                    if (offline) web.loadUrl(APP_URL) else web.reload()
+                }
             }
             addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }

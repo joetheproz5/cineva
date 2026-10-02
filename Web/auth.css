@@ -26,22 +26,31 @@
 }
 .modal {
   position: fixed;
-  z-index: 20;
+  z-index: 120;
   inset: 0;
   display: grid;
   place-items: center;
   padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #000b;
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .auth-card {
   position: relative;
   width: min(100%, 400px);
+  max-height: calc(100vh - 24px);
   padding: 30px;
   border: 1px solid #343434;
   border-radius: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: linear-gradient(150deg, #1b1b1b, #0d0d0d);
   box-shadow: 0 24px 100px #000;
+}
+@supports (height: 100dvh) {
+  .auth-card { max-height: calc(100dvh - 24px); }
 }
 .auth-card h2 {
   margin: 8px 0;
@@ -77,7 +86,7 @@
   width: 100%;
   margin-top: 12px;
 }
-.auth-flow { overflow: hidden; transition: border-color .4s ease, background .5s ease, box-shadow .5s ease; }
+.auth-flow { overflow-x: hidden; overflow-y: auto; scroll-padding-block: 16px; transition: border-color .4s ease, background .5s ease, box-shadow .5s ease; }
 .auth-flow .auth-content { transition: opacity .32s ease, transform .42s cubic-bezier(.2,.75,.25,1), filter .36s ease, visibility 0s linear; }
 .auth-flow.auth-submitting { border-color: rgba(229,9,20,.48); box-shadow: 0 24px 100px #000, 0 0 34px rgba(229,9,20,.12); }
 .auth-submit[aria-busy="true"] { display: inline-flex; align-items: center; justify-content: center; gap: 10px; cursor: wait; }
