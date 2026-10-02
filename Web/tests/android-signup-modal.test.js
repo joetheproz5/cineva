@@ -8,6 +8,7 @@ const authCss = fs.readFileSync(path.join(root, "Web", "auth.css"), "utf8");
 const mobileCss = fs.readFileSync(path.join(root, "Web", "ui.css"), "utf8");
 const appJs = fs.readFileSync(path.join(root, "Web", "app.js"), "utf8");
 const android = fs.readFileSync(path.join(root, "Android", "app", "src", "main", "java", "com", "example", "cineva", "MainActivity.kt"), "utf8");
+const androidGradle = fs.readFileSync(path.join(root, "Android", "app", "build.gradle.kts"), "utf8");
 
 function zIndex(rule) {
   return Number(rule.match(/z-index:\s*(\d+)/)?.[1] || 0);
@@ -26,9 +27,20 @@ test("account dialogs scroll within the keyboard-adjusted viewport", () => {
   assert.match(authCss, /\.auth-flow\s*\{[^}]*overflow-x:\s*hidden;\s*overflow-y:\s*auto;/);
 });
 
-test("Android pull-to-refresh cannot discard an open dialog", () => {
-  assert.match(android, /evaluateJavascript\("Boolean\(document\.querySelector\('\.modal'\)\)"\)\s*\{\s*hasModal\s*->/);
-  assert.match(android, /if\s*\(hasModal\s*!=\s*"false"\)\s*return@evaluateJavascript/);
+test("the Android app has no pull-to-refresh wrapper", () => {
+  assert.doesNotMatch(android, /SwipeRefreshLayout|refreshLayout|\.reload\(\)/);
+  assert.doesNotMatch(androidGradle, /swiperefreshlayout/i);
+  assert.match(android, /root\.addView\(web,/);
+});
+
+test("pull-to-refresh is disabled only for installed PWAs, not browser pages", () => {
+  const rules = [...mobileCss.matchAll(/([^{}]+)\{([^{}]*overscroll-behavior-y\s*:[^{}]*)\}/g)];
+
+  assert.equal(rules.length, 1);
+  assert.match(rules[0][1], /html\.seven-installed-pwa/);
+  assert.match(rules[0][2], /overscroll-behavior-y:\s*none/);
+  assert.match(appJs, /display-mode:\s*standalone[\s\S]*navigator\.standalone\s*===\s*true/);
+  assert.match(appJs, /classList\.add\("seven-installed-pwa"\)/);
 });
 
 test("Android keyboard viewport resize cannot redraw away the signup dialog", () => {

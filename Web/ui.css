@@ -1006,3 +1006,6 @@ header.main-header.app-header .account.account-guest b { display: none; }
 @media (max-width: 650px) and (prefers-reduced-motion: reduce) {
   header.main-header.app-header, header.main-header.app-header.scroll-hidden { transition-duration: .01ms; }
 }
+
+html.seven-installed-pwa,
+html.seven-installed-pwa body { overscroll-behavior-y: none; }
