@@ -5,6 +5,7 @@ const FEATURED_ID = 71712;
 const app = document.querySelector("#app");
 let searchRequest = 0;
 let coverflowResizeTimer;
+let coverflowViewportWidth = window.innerWidth;
 let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
@@ -2046,10 +2047,21 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=303", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=304", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
-window.addEventListener("resize", () => { clearTimeout(coverflowResizeTimer); coverflowResizeTimer = setTimeout(() => { if (state.route === "home") render(); }, 120); }, { passive:true });
+window.addEventListener("resize", () => {
+  clearTimeout(coverflowResizeTimer);
+  coverflowResizeTimer = setTimeout(() => {
+    // Android resizes the viewport when its keyboard opens. The auth dialog is
+    // mounted inside #app, so re-rendering home here would destroy the form.
+    if (document.querySelector(".modal")) return;
+    const viewportWidth = window.innerWidth;
+    if (viewportWidth === coverflowViewportWidth) return;
+    coverflowViewportWidth = viewportWidth;
+    if (state.route === "home") render();
+  }, 120);
+}, { passive:true });
 function keepFavouritesUI() {
   app.querySelectorAll("header nav, .app-mobile-nav").forEach(navigation => {
     if (!navigation.querySelector("[data-favourites]")) navigation.insertAdjacentHTML("beforeend", `<button class="nav-link" data-favourites><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.4a5.5 5.5 0 0 0-.1-7.8Z"/></svg><span>${t("Favourites")}</span></button>`);
