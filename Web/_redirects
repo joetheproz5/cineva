@@ -1,2 +1,2 @@
-/dashboard/accounts /dashboard.html 200
-/dashboard/accounts/ /dashboard.html 200
+/dashboard/accounts /dashboard?view=accounts 302
+/dashboard/accounts/ /dashboard?view=accounts 302

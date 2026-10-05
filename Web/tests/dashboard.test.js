@@ -40,7 +40,8 @@ function adminRequest(pathname, options = {}) {
 
 test("dashboard pages are private and account data stays on the admin-only accounts view", () => {
   assert.doesNotMatch(pagesRedirects, /^\/dashboard\s+\/dashboard\.html\s+200\s*$/m);
-  assert.match(pagesRedirects, /^\/dashboard\/accounts\s+\/dashboard\.html\s+200\s*$/m);
+  assert.match(pagesRedirects, /^\/dashboard\/accounts\s+\/dashboard\?view=accounts\s+302\s*$/m);
+  assert.match(pagesRedirects, /^\/dashboard\/accounts\/\s+\/dashboard\?view=accounts\s+302\s*$/m);
   assert.match(dashboardHeaders, /\/dashboard\/accounts[\s\S]*?X-Robots-Tag: noindex, nofollow, noarchive/);
   assert.match(localServer, /"dashboard\/accounts\/"\]\.includes\(requested\)\) requested = "dashboard\.html"/);
   assert.match(dashboardPage, /<meta name="robots" content="noindex, nofollow, noarchive">/);
@@ -56,7 +57,10 @@ test("dashboard pages are private and account data stays on the admin-only accou
   assert.match(dashboardPage, /id="accountHoursValue"/);
   assert.match(dashboardPage, /id="guestHoursValue"/);
   assert.match(dashboardPage, /href="\/dashboard" data-dashboard-link="overview">Overview/);
-  assert.match(dashboardPage, /href="\/dashboard\/accounts" data-dashboard-link="accounts">Accounts/);
+  assert.match(dashboardPage, /href="\/dashboard\?view=accounts" data-dashboard-link="accounts">Accounts/);
+  assert.match(dashboardPage, /new URLSearchParams\(window\.location\.search\)\.get\("view"\) === "accounts"/);
+  assert.match(dashboardPage, /\.dashboard-nav a\[aria-current="page"\]\{color:#fff;background:#282a2e\}/);
+  assert.match(dashboardPage, /@media\(max-width:520px\)\{\.topbar\{height:auto;min-height:0;grid-template-columns:minmax\(0,1fr\) auto/);
   assert.match(dashboardPage, /id="overviewContent"/);
   assert.match(dashboardPage, /id="accountsContent" hidden/);
   assert.match(dashboardPage, /id="accountsTitle">Member accounts/);

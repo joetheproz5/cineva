@@ -17,15 +17,16 @@
     a{color:inherit}
     [hidden]{display:none!important}
     .page{width:min(var(--page),calc(100% - 56px));margin-inline:auto}
-    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff0d}
-    .brand-link{display:inline-flex;align-items:center;gap:15px;text-decoration:none}
+    .topbar{height:74px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:20px;border-bottom:1px solid #ffffff0d}
+    .brand-link{display:inline-flex;align-items:center;gap:15px;text-decoration:none;white-space:nowrap}
     .brand-link img{width:86px;height:auto}
     .brand-divider{width:1px;height:22px;background:#ffffff22}
     .brand-subtitle{color:#c1c3c7;font-size:10px;font-weight:720;letter-spacing:.18em}
-    .dashboard-nav{display:flex;align-items:center;gap:4px;margin-right:auto}
-    .dashboard-nav a{padding:8px 12px;border-radius:8px;color:#8f949b;text-decoration:none;font-size:10px;font-weight:650;transition:color .16s,background .16s}
-    .dashboard-nav a:hover{color:#f2f2f0;background:#ffffff08}
-    .dashboard-nav a[aria-current="page"]{color:#f4f4f2;background:#ffffff10}
+    .dashboard-nav{display:flex;align-items:center;gap:3px;width:max-content;max-width:100%;min-width:0;margin:0;padding:3px;border:1px solid #ffffff10;border-radius:11px;background:#0e1012}
+    .dashboard-nav a{min-height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0 13px;border-radius:8px;color:#969ba3;text-decoration:none;font-size:10px;font-weight:650;line-height:1;white-space:nowrap;transition:color .16s,background .16s}
+    .dashboard-nav a:hover{color:#f2f2f0;background:#ffffff09}
+    .dashboard-nav a[aria-current="page"]{color:#fff;background:#282a2e}
+    .dashboard-nav a:focus-visible{outline:2px solid #e3545b;outline-offset:2px}
     .top-actions{display:flex;align-items:center;gap:17px}
     .icon-button{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:#ffffff05;cursor:pointer;transition:background .18s,border-color .18s}
     .icon-button:hover{border-color:#ffffff30;background:#ffffff0d}
@@ -130,8 +131,9 @@
     @media(max-width:1100px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-grid,.lower-grid{grid-template-columns:1fr}.platform-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}.platform-foot{margin-top:20px}}
     @media(max-width:600px){.page{width:calc(100% - 30px)}.topbar{height:63px}.brand-link{gap:10px}.brand-link img{width:75px}.brand-subtitle{font-size:8px;letter-spacing:.13em}.top-actions{gap:10px}.logout-label{display:none}main{padding:31px 0 38px}.intro{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:19px}.intro>div:first-child{max-width:100%}h1{font-size:36px}.range-switch{align-self:flex-start}.summary-grid{gap:8px}.summary-card{min-height:125px;padding:13px;border-radius:11px}.metric-label{font-size:9px}.metric-icon{width:25px;height:25px}.metric-value{margin-top:16px;font-size:29px}.metric-meta{flex-wrap:wrap;margin-top:8px;font-size:8px}.content-grid,.lower-grid{gap:9px;margin-top:9px}.panel{border-radius:14px}.panel-heading{padding:16px 15px 0}.panel-heading h2{font-size:12px}.panel-heading p{font-size:8px}.chart-switch{gap:0}.chart-switch button{padding:6px 7px;font-size:8px}.chart-wrap{padding:8px 8px 0}.chart-labels{padding:0 21px 13px 28px;font-size:7px}.chart-caption{margin:0 15px 14px;font-size:8px}.platform-list{grid-template-columns:1fr;gap:13px;margin:18px 15px 0}.platform-foot{margin-inline:15px}.account-panel,.conversion-panel{padding:16px 15px}.account-stats{gap:6px}.account-stat{padding:10px 8px}.account-stat b{font-size:15px}.account-stat small{font-size:7px}.account-directory{margin-top:9px}.account-directory-heading{align-items:flex-start;padding:15px}.account-directory-heading h2{font-size:12px}.account-sort{gap:5px;font-size:8px}.account-sort select{min-width:112px;width:118px;height:32px;padding-left:8px;font-size:9px}.account-table{min-width:590px}.account-table th{padding:10px 13px}.account-table td{padding:12px 13px}.conversion-number strong{font-size:34px}.footer-line{margin-top:17px;font-size:7px}.login-screen{min-height:calc(100vh - 140px)}.login-card{padding:24px 20px;border-radius:12px}}
-    @media(max-width:600px){.topbar{justify-content:space-between;gap:8px}.brand-link{gap:8px}.brand-link img{width:68px}.dashboard-nav{gap:1px}.dashboard-nav a{padding:7px 8px;font-size:9px}.top-actions{gap:8px}.account-directory{margin-top:9px}.account-table{min-width:780px}.guest-account{padding:16px 15px}.guest-stat-grid{gap:6px}.guest-stat{padding:11px 8px}.guest-stat b{font-size:18px}.guest-stat span{font-size:8px}}
-    @media(max-width:380px){.brand-divider,.brand-subtitle{display:none}.brand-link img{width:61px}.dashboard-nav a{padding-inline:6px;font-size:8px}.top-actions{gap:5px}.icon-button{width:31px;height:31px}}
+    @media(max-width:720px){.topbar{height:64px;grid-template-columns:auto minmax(0,1fr) auto;gap:10px}.brand-link{gap:9px}.brand-link img{width:69px}.dashboard-nav a{min-height:31px;padding-inline:10px;font-size:9px}.top-actions{gap:7px}}
+    @media(max-width:520px){.topbar{height:auto;min-height:0;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:8px 10px;padding:11px 0}.brand-link{grid-column:1;grid-row:1}.top-actions{grid-column:2;grid-row:1}.dashboard-nav{grid-column:1/-1;grid-row:2;justify-self:start}}
+    @media(max-width:380px){.brand-divider,.brand-subtitle{display:none}.brand-link img{width:61px}.dashboard-nav a{padding-inline:8px;font-size:8px}.top-actions{gap:5px}.icon-button{width:31px;height:31px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important}}
   </style>
 </head>
@@ -145,7 +147,7 @@
       </a>
       <nav class="dashboard-nav" id="dashboardNav" aria-label="Dashboard pages" hidden>
         <a href="/dashboard" data-dashboard-link="overview">Overview</a>
-        <a href="/dashboard/accounts" data-dashboard-link="accounts">Accounts</a>
+        <a href="/dashboard?view=accounts" data-dashboard-link="accounts">Accounts</a>
       </nav>
       <div class="top-actions">
         <button class="icon-button" id="refreshButton" type="button" aria-label="Refresh dashboard" title="Refresh" hidden>
@@ -293,7 +295,7 @@
       var loginMessage = document.getElementById("loginMessage");
       var logoutButton = document.getElementById("logoutButton");
       var refreshButton = document.getElementById("refreshButton");
-      var accountPage = window.location.pathname.replace(/\/+$/, "") === "/dashboard/accounts";
+      var accountPage = window.location.pathname.replace(/\/+$/, "") === "/dashboard/accounts" || new URLSearchParams(window.location.search).get("view") === "accounts";
       var rangeDays = 30;
       var chartMetric = "visitors";
       var lastData = null;
