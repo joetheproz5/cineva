@@ -78,6 +78,24 @@
     .account-stat{padding:13px;border:1px solid #ffffff0e;border-radius:11px;background:#ffffff03}
     .account-stat b{display:block;font-size:18px;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
     .account-stat small{display:block;margin-top:5px;color:#858991;font-size:8px}
+    .account-directory{margin-top:14px;overflow:hidden}
+    .account-directory-heading{align-items:center;padding:19px 21px 16px}
+    .account-directory-heading p{margin-top:4px}
+    .account-directory-heading h2{font-size:14px}
+    .account-directory-count{display:block;margin-top:5px;color:#7f848c;font-size:9px;font-variant-numeric:tabular-nums}
+    .account-sort{display:flex;align-items:center;gap:9px;color:#92969d;font-size:9px;white-space:nowrap}
+    .account-sort select{min-width:142px;height:35px;padding:0 30px 0 11px;border:1px solid #ffffff18;border-radius:8px;outline:none;color:#e7e8e8;background:#15171a;font-size:10px;cursor:pointer}
+    .account-sort select:focus{border-color:#ffffff45}
+    .account-table-wrap{overflow-x:auto;border-top:1px solid #ffffff0b}
+    .account-table{width:100%;min-width:620px;border-collapse:collapse;text-align:left;font-size:10px}
+    .account-table th{padding:11px 20px;color:#777c84;font-size:8px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+    .account-table td{padding:13px 20px;border-top:1px solid #ffffff0a;color:#c6c8cb;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .account-table tbody tr{transition:background .16s}
+    .account-table tbody tr:hover{background:#ffffff04}
+    .account-table td:first-child{max-width:270px;color:#f1f1ef;font-size:11px;font-weight:650;overflow:hidden;text-overflow:ellipsis}
+    .account-table td:not(:first-child){color:#b7bbc1}
+    .account-table .hours-cell{color:#f1f1ef;font-weight:700}
+    .account-table .empty-row td{height:75px;text-align:center;color:#82868d;font-size:10px;font-weight:450}
     .conversion-panel{display:flex;flex-direction:column;justify-content:space-between;padding:20px 21px}
     .conversion-number{display:flex;align-items:baseline;gap:8px;margin:17px 0 4px}
     .conversion-number strong{font-size:39px;font-weight:720;letter-spacing:-.07em;line-height:1}
@@ -98,7 +116,7 @@
     .empty-chart{fill:#777c84;font-size:11px}
     @media(max-width:1100px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-grid,.lower-grid{grid-template-columns:1fr}.platform-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}.platform-foot{margin-top:20px}}
-    @media(max-width:600px){.page{width:calc(100% - 30px)}.topbar{height:63px}.brand-link{gap:10px}.brand-link img{width:75px}.brand-subtitle{font-size:8px;letter-spacing:.13em}.top-actions{gap:10px}.logout-label{display:none}main{padding:31px 0 38px}.intro{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:19px}.intro>div:first-child{max-width:100%}h1{font-size:36px}.range-switch{align-self:flex-start}.summary-grid{gap:8px}.summary-card{min-height:125px;padding:13px;border-radius:11px}.metric-label{font-size:9px}.metric-icon{width:25px;height:25px}.metric-value{margin-top:16px;font-size:29px}.metric-meta{flex-wrap:wrap;margin-top:8px;font-size:8px}.content-grid,.lower-grid{gap:9px;margin-top:9px}.panel{border-radius:14px}.panel-heading{padding:16px 15px 0}.panel-heading h2{font-size:12px}.panel-heading p{font-size:8px}.chart-switch{gap:0}.chart-switch button{padding:6px 7px;font-size:8px}.chart-wrap{padding:8px 8px 0}.chart-labels{padding:0 21px 13px 28px;font-size:7px}.chart-caption{margin:0 15px 14px;font-size:8px}.platform-list{grid-template-columns:1fr;gap:13px;margin:18px 15px 0}.platform-foot{margin-inline:15px}.account-panel,.conversion-panel{padding:16px 15px}.account-stats{gap:6px}.account-stat{padding:10px 8px}.account-stat b{font-size:15px}.account-stat small{font-size:7px}.conversion-number strong{font-size:34px}.footer-line{margin-top:17px;font-size:7px}.login-screen{min-height:calc(100vh - 140px)}.login-card{padding:24px 20px;border-radius:12px}}
+    @media(max-width:600px){.page{width:calc(100% - 30px)}.topbar{height:63px}.brand-link{gap:10px}.brand-link img{width:75px}.brand-subtitle{font-size:8px;letter-spacing:.13em}.top-actions{gap:10px}.logout-label{display:none}main{padding:31px 0 38px}.intro{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:19px}.intro>div:first-child{max-width:100%}h1{font-size:36px}.range-switch{align-self:flex-start}.summary-grid{gap:8px}.summary-card{min-height:125px;padding:13px;border-radius:11px}.metric-label{font-size:9px}.metric-icon{width:25px;height:25px}.metric-value{margin-top:16px;font-size:29px}.metric-meta{flex-wrap:wrap;margin-top:8px;font-size:8px}.content-grid,.lower-grid{gap:9px;margin-top:9px}.panel{border-radius:14px}.panel-heading{padding:16px 15px 0}.panel-heading h2{font-size:12px}.panel-heading p{font-size:8px}.chart-switch{gap:0}.chart-switch button{padding:6px 7px;font-size:8px}.chart-wrap{padding:8px 8px 0}.chart-labels{padding:0 21px 13px 28px;font-size:7px}.chart-caption{margin:0 15px 14px;font-size:8px}.platform-list{grid-template-columns:1fr;gap:13px;margin:18px 15px 0}.platform-foot{margin-inline:15px}.account-panel,.conversion-panel{padding:16px 15px}.account-stats{gap:6px}.account-stat{padding:10px 8px}.account-stat b{font-size:15px}.account-stat small{font-size:7px}.account-directory{margin-top:9px}.account-directory-heading{align-items:flex-start;padding:15px}.account-directory-heading h2{font-size:12px}.account-sort{gap:5px;font-size:8px}.account-sort select{min-width:112px;width:118px;height:32px;padding-left:8px;font-size:9px}.account-table{min-width:590px}.account-table th{padding:10px 13px}.account-table td{padding:12px 13px}.conversion-number strong{font-size:34px}.footer-line{margin-top:17px;font-size:7px}.login-screen{min-height:calc(100vh - 140px)}.login-card{padding:24px 20px;border-radius:12px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important}}
   </style>
 </head>
@@ -217,6 +235,19 @@
             </div>
           </section>
         </div>
+
+        <section class="panel account-directory" aria-labelledby="accountsTitle">
+          <div class="panel-heading account-directory-heading">
+            <div><h2 id="accountsTitle">Accounts</h2><p>Viewing totals by account</p><span class="account-directory-count" id="accountCount" role="status" aria-live="polite">Loading account summaries…</span></div>
+            <label class="account-sort">Sort by<select id="accountSort" aria-label="Sort accounts by"><option value="hours">Hours watched</option><option value="titles">Titles tracked</option><option value="profiles">Profiles</option><option value="streak">Longest streak</option><option value="name">Name</option></select></label>
+          </div>
+          <div class="account-table-wrap" tabindex="0" aria-label="Account summaries table">
+            <table class="account-table">
+              <thead><tr><th scope="col">Account</th><th scope="col">Hours watched</th><th scope="col">Titles tracked</th><th scope="col">Profiles</th><th scope="col">Longest streak</th></tr></thead>
+              <tbody id="accountRows"><tr class="empty-row"><td colspan="5">Loading account summaries…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
         <div class="footer-line"><span id="updatedAt"></span></div>
       </section>
     </main>
@@ -234,10 +265,12 @@
       var rangeDays = 30;
       var chartMetric = "visitors";
       var lastData = null;
+      var accountData = [];
       var busy = false;
       var format = new Intl.NumberFormat();
 
       function number(value) { return format.format(Number(value) || 0); }
+      function hours(value) { return (Number(value) || 0).toLocaleString(undefined, { minimumFractionDigits:1, maximumFractionDigits:1 }) + " h"; }
       function dateLabel(value) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return "—";
         return new Date(value + "T00:00:00Z").toLocaleDateString(undefined, { month:"short", day:"numeric", timeZone:"UTC" });
@@ -366,13 +399,75 @@
         var generated = data.generatedAt ? new Date(data.generatedAt) : new Date();
         document.getElementById("updatedAt").textContent = "Updated " + generated.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" }) + " · UTC day";
       }
+      function renderAccountState(message) {
+        var body = document.getElementById("accountRows");
+        var row = document.createElement("tr");
+        row.className = "empty-row";
+        var cell = document.createElement("td");
+        cell.colSpan = 5;
+        cell.textContent = message;
+        row.appendChild(cell);
+        body.replaceChildren(row);
+        document.getElementById("accountCount").textContent = message;
+      }
+      function renderAccounts(accounts) {
+        accountData = Array.isArray(accounts) ? accounts.filter(function (account) { return account && typeof account === "object"; }) : [];
+        var sortBy = document.getElementById("accountSort").value;
+        var sorted = accountData.slice().sort(function (left, right) {
+          if (sortBy === "name") return String(left.displayName || "").localeCompare(String(right.displayName || ""), undefined, { sensitivity:"base" });
+          var fields = { hours:"watchHours", titles:"titlesTracked", profiles:"profileCount", streak:"longestStreak" };
+          return (Number(right[fields[sortBy]]) || 0) - (Number(left[fields[sortBy]]) || 0) || String(left.displayName || "").localeCompare(String(right.displayName || ""), undefined, { sensitivity:"base" });
+        });
+        var body = document.getElementById("accountRows");
+        body.replaceChildren();
+        var count = sorted.length;
+        document.getElementById("accountCount").textContent = number(count) + (count === 1 ? " account" : " accounts");
+        if (!count) {
+          renderAccountState("No accounts to show.");
+          return;
+        }
+        sorted.forEach(function (account) {
+          var row = document.createElement("tr");
+          var nameCell = document.createElement("td");
+          nameCell.textContent = typeof account.displayName === "string" && account.displayName.trim() ? account.displayName.trim().slice(0, 60) : "Unnamed account";
+          row.appendChild(nameCell);
+          var hoursCell = document.createElement("td");
+          hoursCell.className = "hours-cell";
+          hoursCell.textContent = hours(account.watchHours);
+          row.appendChild(hoursCell);
+          [account.titlesTracked, account.profileCount].forEach(function (value) {
+            var cell = document.createElement("td");
+            cell.textContent = number(value);
+            row.appendChild(cell);
+          });
+          var streakCell = document.createElement("td");
+          var streak = Math.max(0, Number(account.longestStreak) || 0);
+          streakCell.textContent = number(streak) + (streak === 1 ? " day" : " days");
+          row.appendChild(streakCell);
+          body.appendChild(row);
+        });
+      }
       async function loadStats() {
         if (busy) return;
         busy = true;
         refreshButton.disabled = true;
         try {
-          var data = await api("/api/admin/stats?days=" + rangeDays);
-          setDashboard(data);
+          var responses = await Promise.all([
+            api("/api/admin/stats?days=" + rangeDays).then(function (value) { return { value:value }; }, function (error) { return { error:error }; }),
+            api("/api/admin/accounts").then(function (value) { return { value:value }; }, function (error) { return { error:error }; })
+          ]);
+          if (responses[0].error) {
+            var statsError = responses[0].error;
+            if (statsError.status === 401) setLogin("");
+            else if (dashboardView.hidden) setLogin(statsError.message);
+            else document.getElementById("updatedAt").textContent = "Update failed · " + statsError.message;
+            return;
+          }
+          setDashboard(responses[0].value);
+          if (responses[1].error) {
+            if (responses[1].error.status === 401) setLogin("");
+            else renderAccountState("Account summaries unavailable. Try refreshing.");
+          } else renderAccounts(responses[1].value.accounts);
         } catch (error) {
           if (error.status === 401) setLogin("");
           else if (dashboardView.hidden) setLogin(error.message);
@@ -427,6 +522,7 @@
           if (lastData) renderChart(Array.isArray(lastData.daily) ? lastData.daily : []);
         });
       });
+      document.getElementById("accountSort").addEventListener("change", function () { renderAccounts(accountData); });
       loadStats();
       window.setInterval(loadStats, 60000);
     })();

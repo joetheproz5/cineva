@@ -349,13 +349,105 @@ as $$
   from settings;
 $$;
 
+-- Exposes only display names and per-account watch aggregates to the private admin dashboard.
+-- Account IDs, emails, profile names, and individual watched titles are never returned.
+create or replace function public.seven_admin_get_accounts()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with account_sources as (
+    select
+      auth_user.id,
+      auth_user.created_at,
+      COALESCE(auth_user.raw_user_meta_data, '{}'::jsonb) as metadata,
+      case
+        when pg_catalog.jsonb_typeof(auth_user.raw_user_meta_data -> 'seven_account' -> 'profiles') = 'array'
+          then auth_user.raw_user_meta_data -> 'seven_account' -> 'profiles'
+        else '[]'::jsonb
+      end as profiles
+    from auth.users as auth_user
+  ),
+  profile_rows as (
+    select account_sources.id as account_id, profile.value as profile_data
+    from account_sources
+    cross join lateral pg_catalog.jsonb_array_elements(account_sources.profiles) as profile(value)
+  ),
+  profile_totals as (
+    select
+      profile_rows.account_id,
+      pg_catalog.count(*)::integer as profile_count,
+      pg_catalog.round(pg_catalog.sum(
+        case
+          when pg_catalog.jsonb_typeof(profile_rows.profile_data -> 'watchStats' -> 'totalSeconds') = 'number'
+            then GREATEST(0::numeric, (profile_rows.profile_data -> 'watchStats' ->> 'totalSeconds')::numeric)
+          else 0::numeric
+        end
+      ) / 3600.0, 1) as watch_hours,
+      COALESCE(pg_catalog.max(
+        case
+          when pg_catalog.jsonb_typeof(profile_rows.profile_data -> 'watchStats' -> 'longestStreak') = 'number'
+            then GREATEST(0::numeric, (profile_rows.profile_data -> 'watchStats' ->> 'longestStreak')::numeric)
+          else 0::numeric
+        end
+      ), 0) as longest_streak
+    from profile_rows
+    group by profile_rows.account_id
+  ),
+  title_totals as (
+    select profile_rows.account_id, pg_catalog.count(distinct title_key.key)::integer as titles_tracked
+    from profile_rows
+    cross join lateral pg_catalog.jsonb_object_keys(
+      case
+        when pg_catalog.jsonb_typeof(profile_rows.profile_data -> 'watchStats' -> 'byTitle') = 'object'
+          then profile_rows.profile_data -> 'watchStats' -> 'byTitle'
+        else '{}'::jsonb
+      end
+    ) as title_key(key)
+    group by profile_rows.account_id
+  ),
+  numbered_accounts as (
+    select
+      account_sources.id,
+      NULLIF(pg_catalog.left(pg_catalog.btrim(account_sources.metadata ->> 'display_name'), 60), '') as display_name,
+      pg_catalog.row_number() over (order by account_sources.created_at, account_sources.id) as fallback_number,
+      COALESCE(profile_totals.profile_count, 0) as profile_count,
+      COALESCE(profile_totals.watch_hours, 0) as watch_hours,
+      COALESCE(title_totals.titles_tracked, 0) as titles_tracked,
+      profile_totals.longest_streak
+    from account_sources
+    left join profile_totals on profile_totals.account_id = account_sources.id
+    left join title_totals on title_totals.account_id = account_sources.id
+  )
+  select pg_catalog.jsonb_build_object(
+    'totalAccounts', pg_catalog.count(*),
+    'accounts', COALESCE(
+      pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'displayName', COALESCE(numbered_accounts.display_name, 'Account ' || numbered_accounts.fallback_number::text),
+          'watchHours', numbered_accounts.watch_hours,
+          'titlesTracked', numbered_accounts.titles_tracked,
+          'profileCount', numbered_accounts.profile_count,
+          'longestStreak', COALESCE(numbered_accounts.longest_streak, 0)
+        ) order by numbered_accounts.fallback_number
+      ),
+      '[]'::jsonb
+    )
+  )
+  from numbered_accounts;
+$$;
+
 revoke all on function public.seven_admin_record_visit(text, text, text) from public, anon, authenticated;
 revoke all on function public.seven_admin_record_download(text) from public, anon, authenticated;
 revoke all on function public.seven_admin_record_watch_time(uuid, numeric) from public, anon, authenticated, service_role;
 revoke all on function public.seven_admin_record_guest_watch_time(uuid, numeric) from public, anon, authenticated, service_role;
 revoke all on function public.seven_admin_get_stats(integer) from public, anon, authenticated;
+revoke all on function public.seven_admin_get_accounts() from public, anon, authenticated, service_role;
 grant execute on function public.seven_admin_record_visit(text, text, text) to service_role;
 grant execute on function public.seven_admin_record_download(text) to service_role;
 grant execute on function public.seven_admin_record_watch_time(uuid, numeric) to authenticated;
 grant execute on function public.seven_admin_record_guest_watch_time(uuid, numeric) to service_role;
 grant execute on function public.seven_admin_get_stats(integer) to service_role;
+grant execute on function public.seven_admin_get_accounts() to service_role;

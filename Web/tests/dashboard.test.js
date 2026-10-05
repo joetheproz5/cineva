@@ -36,7 +36,7 @@ function adminRequest(pathname, options = {}) {
   return new Request("https://seven.example" + pathname, { ...options, headers });
 }
 
-test("dashboard is private, responsive, and does not render member-level data", () => {
+test("dashboard is private, responsive, and limits the account directory to aggregate stats", () => {
   assert.doesNotMatch(pagesRedirects, /^\/dashboard\s+\/dashboard\.html\s+200\s*$/m);
   assert.match(dashboardPage, /<meta name="robots" content="noindex, nofollow, noarchive">/);
   assert.match(dashboardPage, /aria-label="Analytics date range"/);
@@ -50,6 +50,12 @@ test("dashboard is private, responsive, and does not render member-level data", 
   assert.match(dashboardPage, /id="hoursWatchedValue"/);
   assert.match(dashboardPage, /id="accountHoursValue"/);
   assert.match(dashboardPage, /id="guestHoursValue"/);
+  assert.match(dashboardPage, /id="accountsTitle">Accounts/);
+  assert.match(dashboardPage, /id="accountSort"/);
+  assert.match(dashboardPage, /Hours watched<\/th><th scope="col">Titles tracked/);
+  assert.match(dashboardPage, /\/api\/admin\/accounts/);
+  assert.match(dashboardPage, /nameCell\.textContent/);
+  assert.doesNotMatch(dashboardPage, /account\.email|account\.id|user_metadata|byTitle/);
   assert.match(dashboardPage, /Administrator sign in/);
   assert.doesNotMatch(dashboardPage, /The whole picture|Membership pulse|Install signal|Live · aggregate only|privacy-note|login-privacy/);
   assert.doesNotMatch(dashboardPage, /SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|SEVEN_DASHBOARD_SECRET/);
@@ -76,6 +82,11 @@ test("analytics storage contains aggregates, locks raw visitor hashes, and limit
   assert.match(metricsSchema, /alter table public\.seven_admin_visitor_hashes enable row level security/i);
   assert.match(metricsSchema, /delete from public\.seven_admin_visitor_hashes\s+where visitor_day < v_day - 30/i);
   assert.match(metricsSchema, /grant execute on function public\.seven_admin_get_stats\(integer\) to service_role/i);
+  assert.match(metricsSchema, /create or replace function public\.seven_admin_get_accounts\(\)[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
+  assert.match(metricsSchema, /revoke all on function public\.seven_admin_get_accounts\(\) from public, anon, authenticated, service_role/i);
+  assert.match(metricsSchema, /grant execute on function public\.seven_admin_get_accounts\(\) to service_role/i);
+  assert.match(metricsSchema, /'watchHours', numbered_accounts\.watch_hours/);
+  assert.match(metricsSchema, /'titlesTracked', numbered_accounts\.titles_tracked/);
   assert.match(metricsSchema, /hoursWatched/);
   assert.match(metricsSchema, /watch_seconds_guest/);
   assert.match(metricsSchema, /watch_seconds_account/);
@@ -150,6 +161,39 @@ test("admin stats are server-authenticated and use only the service-side Supabas
     const logout = await run(adminRequest("/api/admin/logout", { method:"POST", headers:{ Cookie:cookie } }), adminEnv());
     assert.equal(logout.status, 200);
     assert.match(logout.headers.get("set-cookie"), /Max-Age=0/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("account summaries require the admin session and call only the server-side summary RPC", async () => {
+  const run = await handler();
+  const unauthorized = await run(adminRequest("/api/admin/accounts"), adminEnv());
+  assert.equal(unauthorized.status, 401);
+
+  const login = await run(adminRequest("/api/admin/login", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ username:"admin", password:"a purposely long test passphrase" })
+  }), adminEnv());
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+  const originalFetch = global.fetch;
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({ totalAccounts:1, accounts:[{ displayName:"Sample Member", watchHours:4.5, titlesTracked:3, profileCount:2, longestStreak:5 }] });
+  };
+  try {
+    const response = await run(adminRequest("/api/admin/accounts", { headers:{ Cookie:cookie } }), adminEnv());
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { totalAccounts:1, accounts:[{ displayName:"Sample Member", watchHours:4.5, titlesTracked:3, profileCount:2, longestStreak:5 }] });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/seven_admin_get_accounts");
+    assert.equal(calls[0].options.headers.apikey, "sb_secret_test_only");
+    assert.equal(calls[0].options.headers.Authorization, undefined);
+    assert.deepEqual(JSON.parse(calls[0].options.body), {});
+    const method = await run(adminRequest("/api/admin/accounts", { method:"POST", headers:{ Cookie:cookie } }), adminEnv());
+    assert.equal(method.status, 405);
   } finally {
     global.fetch = originalFetch;
   }

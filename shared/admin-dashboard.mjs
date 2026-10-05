@@ -209,6 +209,15 @@ async function stats(request, env) {
   } catch { return json({ error:"Couldn’t load the aggregate analytics right now." }, 502); }
 }
 
+async function accountSummaries(request, env) {
+  if (!await hasAdminSession(request, env)) return json({ error:"Admin sign-in required." }, 401);
+  if (!configuredSupabase(env)) return json({ error:"Dashboard storage is not configured." }, 503);
+  try {
+    const data = await supabaseRPC(env, "seven_admin_get_accounts", {});
+    return json(data);
+  } catch { return json({ error:"Couldn’t load account summaries right now." }, 502); }
+}
+
 export async function handleDownloadRedirect(request, env = {}, platform) {
   if (!DOWNLOAD_PLATFORMS.has(platform)) return json({ error:"Unknown download platform." }, 404);
   if (request.method !== "GET" && request.method !== "HEAD") return json({ error:"Method not allowed." }, 405, { Allow:"GET, HEAD" });
@@ -251,5 +260,6 @@ export async function handleDashboardRequest(request, env = {}) {
     return json({ ok:true }, 200, cookieHeaders(request, "", true));
   }
   if (path === "/api/admin/stats") return request.method === "GET" ? stats(request, env) : json({ error:"Method not allowed." }, 405, { Allow:"GET" });
+  if (path === "/api/admin/accounts") return request.method === "GET" ? accountSummaries(request, env) : json({ error:"Method not allowed." }, 405, { Allow:"GET" });
   return json({ error:"Not found." }, 404);
 }
