@@ -59,6 +59,12 @@ test("dashboard pages are private and account data stays on the admin-only accou
   assert.match(dashboardPage, /href="\/dashboard" data-dashboard-link="overview">Overview/);
   assert.match(dashboardPage, /href="\/dashboard\?view=accounts" data-dashboard-link="accounts">Accounts/);
   assert.match(dashboardPage, /new URLSearchParams\(window\.location\.search\)\.get\("view"\) === "accounts"/);
+  assert.match(dashboardPage, /dashboardNav\.addEventListener\("click"/);
+  assert.match(dashboardPage, /window\.history\.pushState\(/);
+  assert.match(dashboardPage, /window\.addEventListener\("popstate"/);
+  assert.match(dashboardPage, /if \(accountDataLoaded\) renderAccounts\(accountData\);\s*else loadAccountSummaries\(\)/);
+  assert.match(dashboardPage, /async function loadAccountSummaries\(\)/);
+  assert.match(dashboardPage, /includeAccounts = accountPage/);
   assert.match(dashboardPage, /\.dashboard-nav a\[aria-current="page"\]\{color:#fff;background:#282a2e\}/);
   assert.match(dashboardPage, /@media\(max-width:520px\)\{\.topbar\{height:auto;min-height:0;grid-template-columns:minmax\(0,1fr\) auto/);
   assert.match(dashboardPage, /id="overviewContent"/);
