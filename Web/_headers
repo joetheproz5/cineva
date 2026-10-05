@@ -14,6 +14,10 @@
   Cache-Control: no-store, no-cache, must-revalidate
   X-Robots-Tag: noindex, nofollow, noarchive
 
+/dashboard/accounts
+  Cache-Control: no-store, no-cache, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive
+
 /dashboard.html
   Cache-Control: no-store, no-cache, must-revalidate
   X-Robots-Tag: noindex, nofollow, noarchive

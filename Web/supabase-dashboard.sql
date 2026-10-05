@@ -349,8 +349,8 @@ as $$
   from settings;
 $$;
 
--- Exposes only display names and per-account watch aggregates to the private admin dashboard.
--- Account IDs, emails, profile names, and individual watched titles are never returned.
+-- Exposes display names, email, and per-account watch aggregates only to the private admin dashboard.
+-- Account IDs, profile names, and individual watched titles are never returned.
 create or replace function public.seven_admin_get_accounts()
 returns jsonb
 language sql
@@ -362,6 +362,7 @@ as $$
     select
       auth_user.id,
       auth_user.created_at,
+      auth_user.email,
       COALESCE(auth_user.raw_user_meta_data, '{}'::jsonb) as metadata,
       case
         when pg_catalog.jsonb_typeof(auth_user.raw_user_meta_data -> 'seven_account' -> 'profiles') = 'array'
@@ -411,6 +412,7 @@ as $$
   numbered_accounts as (
     select
       account_sources.id,
+      account_sources.email,
       NULLIF(pg_catalog.left(pg_catalog.btrim(account_sources.metadata ->> 'display_name'), 60), '') as display_name,
       pg_catalog.row_number() over (order by account_sources.created_at, account_sources.id) as fallback_number,
       COALESCE(profile_totals.profile_count, 0) as profile_count,
@@ -427,6 +429,7 @@ as $$
       pg_catalog.jsonb_agg(
         pg_catalog.jsonb_build_object(
           'displayName', COALESCE(numbered_accounts.display_name, 'Account ' || numbered_accounts.fallback_number::text),
+          'email', numbered_accounts.email,
           'watchHours', numbered_accounts.watch_hours,
           'titlesTracked', numbered_accounts.titles_tracked,
           'profileCount', numbered_accounts.profile_count,

@@ -148,7 +148,7 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/account/list") return myList(request, response, sourceURL);
   if (sourceURL.pathname === "/api/account/settings" && request.method === "PUT") return accountSettings(request, response);
   if (sourceURL.pathname === "/api/account/parent-access") return parentAccess(request, response);
-  let requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); if (requested === "dashboard" || requested === "dashboard/") requested = "dashboard.html"; const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
+  let requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); if (["dashboard", "dashboard/", "dashboard/accounts", "dashboard/accounts/"].includes(requested)) requested = "dashboard.html"; const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
   if (!file.startsWith(root)) return response.writeHead(403).end();
   fs.readFile(file, (error, data) => { if (error) return response.writeHead(error.code === "ENOENT" ? 404 : 500).end("Not found"); response.writeHead(200, { "Content-Type":types[path.extname(file)] || "application/octet-stream", "Cache-Control":"no-cache" }); response.end(data); });
 });

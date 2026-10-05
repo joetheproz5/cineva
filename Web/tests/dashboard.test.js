@@ -7,6 +7,8 @@ const test = require("node:test");
 const repository = path.resolve(__dirname, "../..");
 const dashboardPage = fs.readFileSync(path.join(repository, "Web/dashboard.html"), "utf8");
 const pagesRedirects = fs.existsSync(path.join(repository, "Web/_redirects")) ? fs.readFileSync(path.join(repository, "Web/_redirects"), "utf8") : "";
+const dashboardHeaders = fs.readFileSync(path.join(repository, "Web/_headers"), "utf8");
+const localServer = fs.readFileSync(path.join(repository, "Web/server.js"), "utf8");
 const metricsClient = fs.readFileSync(path.join(repository, "Web/metrics.js"), "utf8");
 const metricsSchema = fs.readFileSync(path.join(repository, "Web/supabase-dashboard.sql"), "utf8");
 const entryPage = fs.readFileSync(path.join(repository, "Web/index.html"), "utf8");
@@ -36,8 +38,11 @@ function adminRequest(pathname, options = {}) {
   return new Request("https://seven.example" + pathname, { ...options, headers });
 }
 
-test("dashboard is private, responsive, and limits the account directory to aggregate stats", () => {
+test("dashboard pages are private and account data stays on the admin-only accounts view", () => {
   assert.doesNotMatch(pagesRedirects, /^\/dashboard\s+\/dashboard\.html\s+200\s*$/m);
+  assert.match(pagesRedirects, /^\/dashboard\/accounts\s+\/dashboard\.html\s+200\s*$/m);
+  assert.match(dashboardHeaders, /\/dashboard\/accounts[\s\S]*?X-Robots-Tag: noindex, nofollow, noarchive/);
+  assert.match(localServer, /"dashboard\/accounts\/"\]\.includes\(requested\)\) requested = "dashboard\.html"/);
   assert.match(dashboardPage, /<meta name="robots" content="noindex, nofollow, noarchive">/);
   assert.match(dashboardPage, /aria-label="Analytics date range"/);
   assert.match(dashboardPage, /Active users today/);
@@ -50,12 +55,21 @@ test("dashboard is private, responsive, and limits the account directory to aggr
   assert.match(dashboardPage, /id="hoursWatchedValue"/);
   assert.match(dashboardPage, /id="accountHoursValue"/);
   assert.match(dashboardPage, /id="guestHoursValue"/);
-  assert.match(dashboardPage, /id="accountsTitle">Accounts/);
+  assert.match(dashboardPage, /href="\/dashboard" data-dashboard-link="overview">Overview/);
+  assert.match(dashboardPage, /href="\/dashboard\/accounts" data-dashboard-link="accounts">Accounts/);
+  assert.match(dashboardPage, /id="overviewContent"/);
+  assert.match(dashboardPage, /id="accountsContent" hidden/);
+  assert.match(dashboardPage, /id="accountsTitle">Member accounts/);
   assert.match(dashboardPage, /id="accountSort"/);
-  assert.match(dashboardPage, /Hours watched<\/th><th scope="col">Titles tracked/);
+  assert.match(dashboardPage, /Email<\/th><th scope="col">Hours watched/);
+  assert.match(dashboardPage, /Guest account/);
+  assert.match(dashboardPage, /id="guestAccountHours"/);
+  assert.match(dashboardPage, /id="guestAccountToday"/);
+  assert.match(dashboardPage, /id="guestAccountUserDays"/);
   assert.match(dashboardPage, /\/api\/admin\/accounts/);
   assert.match(dashboardPage, /nameCell\.textContent/);
-  assert.doesNotMatch(dashboardPage, /account\.email|account\.id|user_metadata|byTitle/);
+  assert.match(dashboardPage, /emailCell\.textContent/);
+  assert.doesNotMatch(dashboardPage, /account\.id|user_metadata|byTitle/);
   assert.match(dashboardPage, /Administrator sign in/);
   assert.doesNotMatch(dashboardPage, /The whole picture|Membership pulse|Install signal|Live · aggregate only|privacy-note|login-privacy/);
   assert.doesNotMatch(dashboardPage, /SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|SEVEN_DASHBOARD_SECRET/);
@@ -87,6 +101,7 @@ test("analytics storage contains aggregates, locks raw visitor hashes, and limit
   assert.match(metricsSchema, /grant execute on function public\.seven_admin_get_accounts\(\) to service_role/i);
   assert.match(metricsSchema, /'watchHours', numbered_accounts\.watch_hours/);
   assert.match(metricsSchema, /'titlesTracked', numbered_accounts\.titles_tracked/);
+  assert.match(metricsSchema, /'email', numbered_accounts\.email/);
   assert.match(metricsSchema, /hoursWatched/);
   assert.match(metricsSchema, /watch_seconds_guest/);
   assert.match(metricsSchema, /watch_seconds_account/);
@@ -166,7 +181,7 @@ test("admin stats are server-authenticated and use only the service-side Supabas
   }
 });
 
-test("account summaries require the admin session and call only the server-side summary RPC", async () => {
+test("private account summaries require the admin session and call only the server-side RPC", async () => {
   const run = await handler();
   const unauthorized = await run(adminRequest("/api/admin/accounts"), adminEnv());
   assert.equal(unauthorized.status, 401);
@@ -181,12 +196,12 @@ test("account summaries require the admin session and call only the server-side 
   const calls = [];
   global.fetch = async (url, options) => {
     calls.push({ url, options });
-    return Response.json({ totalAccounts:1, accounts:[{ displayName:"Sample Member", watchHours:4.5, titlesTracked:3, profileCount:2, longestStreak:5 }] });
+    return Response.json({ totalAccounts:1, accounts:[{ displayName:"Sample Member", email:"member@example.test", watchHours:4.5, titlesTracked:3, profileCount:2, longestStreak:5 }] });
   };
   try {
     const response = await run(adminRequest("/api/admin/accounts", { headers:{ Cookie:cookie } }), adminEnv());
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { totalAccounts:1, accounts:[{ displayName:"Sample Member", watchHours:4.5, titlesTracked:3, profileCount:2, longestStreak:5 }] });
+    assert.deepEqual(await response.json(), { totalAccounts:1, accounts:[{ displayName:"Sample Member", email:"member@example.test", watchHours:4.5, titlesTracked:3, profileCount:2, longestStreak:5 }] });
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/seven_admin_get_accounts");
     assert.equal(calls[0].options.headers.apikey, "sb_secret_test_only");
