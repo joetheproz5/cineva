@@ -16,6 +16,10 @@ const gate = app.slice(gateStart, gateEnd);
 test("profile picker uses the animated, cinematic selector and keeps each profile selectable", () => {
   assert.match(gate, /profileGateShowcaseMarkup\(items\)/);
   assert.match(gate, /data-profile-backdrop/);
+  assert.match(gate, /data-profile-backdrop-next/);
+  assert.match(gate, /function transitionProfileGateArtwork\(gate, item\)[\s\S]*?await next\.decode\(\)[\s\S]*?next\.classList\.add\("is-active"\)/);
+  assert.match(styles, /\.profile-gate-backdrop\.is-active \{ opacity: \.98; \}/);
+  assert.match(styles, /transition: opacity \.72s cubic-bezier\(\.22,1,\.36,1\)/);
   assert.match(gate, /data-profile-track/);
   assert.match(gate, /data-watch-profile=/);
   assert.match(gate, /showProfileUnlock\(profile\)/);
@@ -99,10 +103,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=259/);
-  assert.match(index, /app\.js\?v=329/);
-  assert.match(serviceWorker, /seven-v329/);
-  assert.match(serviceWorker, /auth\.css\?v=259/);
-  assert.match(serviceWorker, /app\.js\?v=329/);
+  assert.match(index, /auth\.css\?v=260/);
+  assert.match(index, /app\.js\?v=330/);
+  assert.match(serviceWorker, /seven-v330/);
+  assert.match(serviceWorker, /auth\.css\?v=260/);
+  assert.match(serviceWorker, /app\.js\?v=330/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

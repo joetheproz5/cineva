@@ -1173,10 +1173,10 @@
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }
   .profile-gate-logo { display: none; }
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; height: 100%; overflow: hidden; background: #0b0b0d; }
-  .profile-gate-backdrop { position: absolute; top: 0; left: 50%; width: auto; max-width: 100%; height: auto; max-height: 92svh; object-fit: contain; object-position: top center; opacity: .98; transition: opacity .85s ease, filter .85s ease; transform: translateX(-50%); }
+  .profile-gate-backdrop { position: absolute; top: 0; left: 50%; width: auto; max-width: 100%; height: auto; max-height: 92svh; object-fit: contain; object-position: top center; opacity: 0; transition: opacity .72s cubic-bezier(.22,1,.36,1), filter .85s ease; transform: translateX(-50%); }
+  .profile-gate-backdrop.is-active { opacity: .98; }
   .profile-gate-art-shade { position: absolute; inset: 0; background: linear-gradient(180deg, #05050612 0%, #05050605 35%, #05050645 62%, #050506cc 78%, #050506f2 100%), linear-gradient(90deg, #05050622, transparent 45%, #05050622); }
   .profile-gate-feature, .profile-gate-carousel { display: none; }
-  .profile-gate-changing .profile-gate-backdrop { opacity: .7; }
   .profile-gate-selecting .profile-gate-backdrop { opacity: 0; filter: brightness(.12); }
   .profile-gate-selecting .profile-gate-art-shade { background: #050506; transition: background .8s ease; }
   .profile-gate-kicker { display: block; margin-bottom: 7px; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 2.1px; text-shadow: 0 1px 14px #000; }
