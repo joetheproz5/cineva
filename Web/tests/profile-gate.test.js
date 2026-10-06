@@ -54,20 +54,22 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
   assert.match(gate, /prefers-reduced-motion: reduce/);
   assert.match(gate, /data-profile-backdrop/);
   assert.match(gate, /data-profile-backdrop \$\{first \?/);
-  assert.match(gate, /\$\{item\.backdrop_path\}/);
+  assert.match(gate, /\$\{item\.poster_path\}/);
   assert.match(gate, /data-profile-kind/);
   assert.match(gate, /data-profile-title/);
 });
 
-test("mobile picker uses sharp cinematic backdrop art with no branding or poster captions", () => {
-  assert.match(gate, /first\.backdrop_path/);
-  assert.match(gate, /w1280/);
+test("mobile picker fits a high-resolution portrait poster without cropping or branding", () => {
+  assert.match(gate, /first\.poster_path/);
+  assert.match(gate, /filter\(item => item\?\.poster_path\)/);
+  assert.match(gate, /original/);
+  assert.match(styles, /max-height: 78svh; object-fit: contain/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
   assert.match(styles, /\.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
   assert.match(styles, /\.profile-gate-showcase \{[^}]*inset: 0;[^}]*height: 100%/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 43svh/);
   assert.match(styles, /backdrop-filter: blur\(16px\)/);
-  assert.match(styles, /object-position: center 24%/);
+  assert.match(styles, /object-position: top center/);
 });
 
 test("mobile profile selection checks PIN first, then centers the selected avatar and waits for profile data", () => {
@@ -96,10 +98,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=257/);
-  assert.match(index, /app\.js\?v=327/);
-  assert.match(serviceWorker, /seven-v327/);
-  assert.match(serviceWorker, /auth\.css\?v=257/);
-  assert.match(serviceWorker, /app\.js\?v=327/);
+  assert.match(index, /auth\.css\?v=258/);
+  assert.match(index, /app\.js\?v=328/);
+  assert.match(serviceWorker, /seven-v328/);
+  assert.match(serviceWorker, /auth\.css\?v=258/);
+  assert.match(serviceWorker, /app\.js\?v=328/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

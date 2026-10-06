@@ -687,11 +687,11 @@ function beginProfileGateSelection(id) {
   void activateProfile(id, { mobileHandoff:true });
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
-function profileGateItems() { return (state.featuredPool || []).filter(item => item?.backdrop_path && item?.poster_path).slice(0, 8); }
+function profileGateItems() { return (state.featuredPool || []).filter(item => item?.poster_path).slice(0, 8); }
 function profileGateShowcaseMarkup(items) {
   const first = items[0];
   const carousel = items.length ? [0, 1, 2].map(copy => items.map((item, index) => `<span class="profile-gate-poster ${copy === 1 && index === 0 ? "is-active" : ""}" data-profile-card="${copy * items.length + index}"><img src="${escapeHTML(posterOf(item))}" alt="" loading="lazy" decoding="async"></span>`).join("")).join("") : "";
-  return `<div class="profile-gate-showcase" aria-hidden="true"><img class="profile-gate-backdrop" data-profile-backdrop ${first ? `src="${escapeHTML(`${TMDB_IMAGE.replace("/w500/", "/w1280/")}${first.backdrop_path}`)}" fetchpriority="high"` : ""} alt="" decoding="async"><div class="profile-gate-art-shade"></div><div class="profile-gate-feature"><span class="profile-gate-kicker" data-profile-kind>${first ? (contentType(first) === "movie" ? "FEATURED FILM" : "FEATURED SERIES") : "TONIGHT ON SEVEN"}</span><h2 data-profile-title>${first ? escapeHTML(titleOf(first)) : "Find your next story"}</h2><span class="profile-gate-count" data-profile-count>${first ? `01 <i>/ ${String(items.length).padStart(2, "0")}</i>` : ""}</span></div><div class="profile-gate-carousel"><div class="profile-gate-carousel-track" data-profile-track>${carousel}</div></div></div>`;
+  return `<div class="profile-gate-showcase" aria-hidden="true"><img class="profile-gate-backdrop" data-profile-backdrop ${first ? `src="${escapeHTML(`${TMDB_IMAGE.replace("/w500/", "/original/")}${first.poster_path}`)}" fetchpriority="high"` : ""} alt="" decoding="async"><div class="profile-gate-art-shade"></div><div class="profile-gate-feature"><span class="profile-gate-kicker" data-profile-kind>${first ? (contentType(first) === "movie" ? "FEATURED FILM" : "FEATURED SERIES") : "TONIGHT ON SEVEN"}</span><h2 data-profile-title>${first ? escapeHTML(titleOf(first)) : "Find your next story"}</h2><span class="profile-gate-count" data-profile-count>${first ? `01 <i>/ ${String(items.length).padStart(2, "0")}</i>` : ""}</span></div><div class="profile-gate-carousel"><div class="profile-gate-carousel-track" data-profile-track>${carousel}</div></div></div>`;
 }
 function stopProfileGateShowcase() {
   clearInterval(state.profileGateTimer);
@@ -706,7 +706,7 @@ function paintProfileGateShowcase(items, animate = true) {
   if (!gate || !item) return;
   const image = gate.querySelector("[data-profile-backdrop]"), title = gate.querySelector("[data-profile-title]"), kind = gate.querySelector("[data-profile-kind]"), count = gate.querySelector("[data-profile-count]"), track = gate.querySelector("[data-profile-track]"), cards = gate.querySelectorAll("[data-profile-card]");
   const update = () => {
-    if (image) image.src = `${TMDB_IMAGE.replace("/w500/", "/w1280/")}${item.backdrop_path}`;
+    if (image) image.src = `${TMDB_IMAGE.replace("/w500/", "/original/")}${item.poster_path}`;
     if (title) title.textContent = titleOf(item);
     if (kind) kind.textContent = contentType(item) === "movie" ? "FEATURED FILM" : "FEATURED SERIES";
     if (count) count.innerHTML = `${String(state.profileGateIndex % items.length + 1).padStart(2, "0")} <i>/ ${String(items.length).padStart(2, "0")}</i>`;
@@ -2288,7 +2288,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=327", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=328", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
