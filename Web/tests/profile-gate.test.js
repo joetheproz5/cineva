@@ -42,7 +42,7 @@ test("profile picker has a working add-profile tile and does not exceed five pro
 test("desktop profile picker has no poster backdrop and softly spotlights the center", () => {
   assert.match(styles, /@media \(min-width: 651px\)[\s\S]*?\.profile-gate-showcase \{[\s\S]*?display: block/);
   assert.match(styles, /\.profile-gate \{ background: radial-gradient\(ellipse 48% 58% at 50% 52%, #211518/);
-  assert.match(styles, /\.profile-gate-showcase > img, \.profile-gate-art-shade, \.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
+  assert.match(styles, /\.profile-gate-showcase > img, \.profile-gate-art-shade, \.profile-gate-feature, \.profile-gate-carousel, \.profile-gate-release \{ display: none/);
   assert.match(styles, /\.profile-gate-showcase::before \{[^}]*background: radial-gradient\(ellipse at center, #6a202944/);
   assert.match(styles, /@keyframes profile-stage-glow/);
   assert.doesNotMatch(gate, /data-profile-art/);
@@ -59,7 +59,10 @@ test("desktop profile picker has no poster backdrop and softly spotlights the ce
 
 test("profile showcase artwork rotates from the loaded catalogue and respects reduced motion", () => {
   assert.match(gate, /state\.catalog\?\.\["Coming soon"\]/);
-  assert.match(gate, /contentType\(item\) === "movie"/);
+  assert.match(gate, /contentType\(item\) === "movie" && releaseDate && releaseDate >= today/);
+  assert.match(app, /function profileGateReleaseLabel\(item\)[\s\S]*?Releases today[\s\S]*?Intl\.DateTimeFormat/);
+  assert.match(gate, /data-profile-release/);
+  assert.match(gate, /release\.textContent = profileGateReleaseLabel\(item\)/);
   assert.match(gate, /setInterval\(\(\) =>/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
   assert.match(gate, /data-profile-backdrop/);
@@ -71,7 +74,7 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
 
 test("mobile picker fills the space above the curved sheet with portrait artwork", () => {
   assert.match(gate, /first\.poster_path/);
-  assert.match(gate, /filter\(item => item\?\.poster_path && contentType\(item\) === "movie"\)/);
+  assert.match(gate, /filter\(item => \{[\s\S]*?const releaseDate = profileGateReleaseDate\(item\);[\s\S]*?releaseDate >= today/);
   assert.match(gate, /original/);
   assert.match(styles, /width: 100%; height: 100%; object-fit: cover; object-position: center bottom/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
@@ -80,6 +83,7 @@ test("mobile picker fills the space above the curved sheet with portrait artwork
   assert.match(app, /function syncProfileGateLayout\(\)[\s\S]*?gate\.clientHeight - sheet\.offsetHeight/);
   assert.match(app, /new ResizeObserver\(syncProfileGateLayout\)/);
   assert.match(styles, /\.profile-gate-backdrop \{[^}]*inset: 0;[^}]*width: 100%; height: 100%;[^}]*object-position: center bottom/);
+  assert.match(styles, /\.profile-gate-release \{[^}]*border: 1px solid #[a-f0-9]+;[^}]*backdrop-filter: blur\(16px\)/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: max\(34svh, 300px\)/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: max\(43svh, 290px\); max-height: 76svh/);
   assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 18px 4px; width: min\(100%, 350px\)/);
@@ -126,10 +130,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=268/);
-  assert.match(index, /app\.js\?v=340/);
-  assert.match(serviceWorker, /seven-v340/);
-  assert.match(serviceWorker, /auth\.css\?v=268/);
-  assert.match(serviceWorker, /app\.js\?v=340/);
+  assert.match(index, /auth\.css\?v=269/);
+  assert.match(index, /app\.js\?v=341/);
+  assert.match(serviceWorker, /seven-v341/);
+  assert.match(serviceWorker, /auth\.css\?v=269/);
+  assert.match(serviceWorker, /app\.js\?v=341/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

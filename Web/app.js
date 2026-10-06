@@ -28,6 +28,7 @@ const PROFILE_WATCHLIST_STORAGE_PREFIX = "seven.profile.watchlist.";
 const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const UI_STRINGS = {
   Arabic: {
+    "Releases":"يُعرض", "Releases today":"يُعرض اليوم",
     "Home":"الرئيسية", "For You":"مخصص لك", "Movies":"أفلام", "Series":"مسلسلات", "Favourites":"المفضلة", "Favs":"المفضلة",
     "Titles, movies, series":"عناوين، أفلام، مسلسلات", "Account":"الحساب", "Search":"بحث",
     "Play something":"شغّل شيئاً", "We’ll pick a trailer for you":"سنختار لك إعلاناً تشويقياً",
@@ -57,6 +58,7 @@ const UI_STRINGS = {
     "Password updated.":"تم تحديث كلمة المرور.", "Done":"تم"
   },
   French: {
+    "Releases":"Sort le", "Releases today":"Sort aujourd’hui",
     "Home":"Accueil", "For You":"Pour vous", "Movies":"Films", "Series":"Séries", "Favourites":"Favoris", "Favs":"Favoris",
     "Titles, movies, series":"Titres, films, séries", "Account":"Compte", "Search":"Rechercher",
     "Play something":"Lancer quelque chose", "We’ll pick a trailer for you":"On choisit une bande-annonce pour vous",
@@ -687,7 +689,31 @@ function beginProfileGateSelection(id) {
   void activateProfile(id, { mobileHandoff:true });
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
-function profileGateItems() { return (state.catalog?.["Coming soon"] || []).filter(item => item?.poster_path && contentType(item) === "movie").slice(0, 8); }
+function profileGateDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+function profileGateReleaseDate(item) {
+  const date = String(item?.release_date || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  const timestamp = Date.parse(`${date}T00:00:00Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === date ? date : "";
+}
+function profileGateReleaseLabel(item) {
+  const releaseDate = profileGateReleaseDate(item);
+  if (!releaseDate) return "";
+  if (releaseDate === profileGateDateKey()) return t("Releases today");
+  const [year, month, day] = releaseDate.split("-").map(Number);
+  const locale = DISPLAY_LANGUAGES[currentPreferences().language] || DISPLAY_LANGUAGES.English;
+  return `${t("Releases")} ${new Intl.DateTimeFormat(locale, { month:"long", day:"numeric" }).format(new Date(year, month - 1, day, 12))}`;
+}
+function profileGateItems() {
+  const today = profileGateDateKey();
+  return (state.catalog?.["Coming soon"] || []).filter(item => {
+    const releaseDate = profileGateReleaseDate(item);
+    return item?.poster_path && contentType(item) === "movie" && releaseDate && releaseDate >= today;
+  }).slice(0, 8);
+}
+function profileGateReleaseMarkup(item) {
+  return `<div class="profile-gate-release"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M7.5 3v4M16.5 3v4M4 9.5h16M8 13h2M14 13h2M8 17h2"/></svg><span data-profile-release>${escapeHTML(profileGateReleaseLabel(item))}</span></div>`;
+}
 function profileGateShowcaseMarkup(items) {
   const first = items[0];
   const carousel = items.length ? [0, 1, 2].map(copy => items.map((item, index) => `<span class="profile-gate-poster ${copy === 1 && index === 0 ? "is-active" : ""}" data-profile-card="${copy * items.length + index}"><img src="${escapeHTML(posterOf(item))}" alt="" loading="lazy" decoding="async"></span>`).join("")).join("") : "";
@@ -707,11 +733,17 @@ function paintProfileGateShowcase(items, animate = true) {
   const gate = document.querySelector(".profile-gate"), item = items[state.profileGateIndex % items.length];
   if (!gate || !item) return;
   const title = gate.querySelector("[data-profile-title]"), kind = gate.querySelector("[data-profile-kind]"), count = gate.querySelector("[data-profile-count]"), track = gate.querySelector("[data-profile-track]"), cards = gate.querySelectorAll("[data-profile-card]");
+  let release = gate.querySelector("[data-profile-release]");
+  if (!release) {
+    gate.querySelector(".profile-gate-art-shade")?.insertAdjacentHTML("afterend", profileGateReleaseMarkup(item));
+    release = gate.querySelector("[data-profile-release]");
+  }
   const update = () => {
     void transitionProfileGateArtwork(gate, item);
     if (title) title.textContent = titleOf(item);
     if (kind) kind.textContent = contentType(item) === "movie" ? "FEATURED FILM" : "FEATURED SERIES";
     if (count) count.innerHTML = `${String(state.profileGateIndex % items.length + 1).padStart(2, "0")} <i>/ ${String(items.length).padStart(2, "0")}</i>`;
+    if (release) release.textContent = profileGateReleaseLabel(item);
     cards.forEach(card => card.classList.toggle("is-active", Number(card.dataset.profileCard) === state.profileGateIndex));
     positionProfileGateCarousel();
   };
@@ -2327,7 +2359,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=340", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=341", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
