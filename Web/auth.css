@@ -1163,15 +1163,14 @@
 @keyframes profile-choice-arrive { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (min-width: 651px) {
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; pointer-events: none; }
-  .profile-gate-showcase > img:not(.profile-gate-art-backdrop), .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
-  .profile-gate-art-backdrop { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .82; filter: blur(15px) saturate(.78) brightness(.54); transform: scale(1.1); transition: opacity .6s ease, filter .6s ease, transform 7s ease; }
-  .profile-gate-ready .profile-gate-art-backdrop { transform: scale(1.12); }
-  .profile-gate-changing .profile-gate-art-backdrop { opacity: .62; filter: blur(17px) saturate(.65) brightness(.46); }
-  .profile-gate-showcase::after { position: absolute; z-index: 1; inset: 0; background: radial-gradient(ellipse 48% 44% at 50% 52%, #050607d9 0%, #050607b8 52%, #0506074a 100%), radial-gradient(ellipse at 50% 50%, transparent 4%, #05060740 100%), linear-gradient(180deg, #05060762 0%, transparent 29%, transparent 72%, #05060791 100%); content: ""; pointer-events: none; }
+  .profile-gate { background: radial-gradient(ellipse 48% 58% at 50% 52%, #211518 0%, #151315 52%, #08090a 100%); }
+  .profile-gate-showcase > img, .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
+  .profile-gate-showcase::before { position: absolute; top: 52%; left: 50%; width: min(82vw, 1080px); height: min(64vh, 620px); border-radius: 50%; background: radial-gradient(ellipse at center, #6a202944 0%, #3820272e 42%, #21191f15 68%, transparent 78%); content: ""; filter: blur(42px); transform: translate(-50%, -50%); animation: profile-stage-glow 16s ease-in-out infinite alternate; }
+  .profile-gate-showcase::after { position: absolute; z-index: 1; inset: 0; background: radial-gradient(ellipse 52% 50% at 50% 52%, transparent 0%, #05060718 76%, #05060770 100%); content: ""; pointer-events: none; }
+  @keyframes profile-stage-glow { from { opacity: .76; transform: translate(-51%, -50%) scale(.97); } to { opacity: 1; transform: translate(-49%, -52%) scale(1.03); } }
 }
 @media (max-width: 650px) {
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }
-  .profile-gate-art-backdrop { display: none; }
   .profile-gate-logo { top: max(16px, env(safe-area-inset-top)); left: max(18px, env(safe-area-inset-left)); }
   .profile-gate-logo img { width: 78px; }
   .profile-gate-showcase { position: absolute; inset: 0 0 auto; display: block; height: 65svh; overflow: hidden; background: #0b0b0d; }
