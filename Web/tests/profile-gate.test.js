@@ -53,6 +53,7 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
   assert.match(gate, /setInterval\(\(\) =>/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
   assert.match(gate, /data-profile-poster/);
+  assert.match(gate, /data-profile-poster \$\{first \?/);
   assert.match(gate, /\$\{item\.poster_path\}/);
   assert.match(gate, /data-profile-kind/);
   assert.match(gate, /data-profile-title/);
@@ -67,9 +68,9 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=253/);
-  assert.match(index, /app\.js\?v=322/);
-  assert.match(serviceWorker, /seven-v322/);
+  assert.match(index, /app\.js\?v=323/);
+  assert.match(serviceWorker, /seven-v323/);
   assert.match(serviceWorker, /auth\.css\?v=253/);
-  assert.match(serviceWorker, /app\.js\?v=322/);
+  assert.match(serviceWorker, /app\.js\?v=323/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
