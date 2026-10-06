@@ -1143,7 +1143,7 @@
 .profile-gate .profile-choice-add:hover b, .profile-gate .profile-choice-add:focus-visible b { color: #fff; }
 
 /* Cinematic profile handoff after the SEVEN ident. */
-.profile-gate { position: fixed; z-index: 0; inset: 0; isolation: isolate; display: grid; width: 100vw; height: 100vh; height: 100dvh; min-height: 100vh; min-height: 100dvh; margin: 0; padding: 88px 28px 64px; overflow: hidden; place-items: center; color: #f5f5f5; background: radial-gradient(ellipse at 50% 54%, #121313 0%, #0a0b0d 42%, #060708 82%); }
+.profile-gate { position: fixed; z-index: 0; inset: 0; isolation: isolate; display: grid; width: 100vw; height: 100vh; height: 100dvh; min-height: 100vh; min-height: 100dvh; margin: 0; padding: 88px 28px 64px; overflow: hidden; place-items: center; color: #f5f5f5; background: radial-gradient(ellipse 48% 66% at 50% 53%, #241519 0%, #181316 38%, #0d0d10 72%, #070809 100%); }
 .profile-gate-logo { z-index: 5; top: max(22px, env(safe-area-inset-top)); left: max(26px, env(safe-area-inset-left)); }
 .profile-gate-logo img { width: 94px; }
 .profile-gate-showcase { display: none; }
@@ -1164,9 +1164,9 @@
 @media (min-width: 651px) {
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; pointer-events: none; }
   .profile-gate-showcase > img, .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
-  .profile-gate-showcase::before { position: absolute; top: 52%; left: 50%; width: min(112vw, 1800px); height: min(76vh, 740px); border-radius: 50%; background: radial-gradient(ellipse at 50% 50%, #76151d2b 0%, #3b101515 31%, #2220220a 54%, transparent 73%); content: ""; filter: blur(35px); transform: translate(-50%, -50%); animation: profile-stage-drift 15s ease-in-out infinite alternate; }
-  .profile-gate-showcase::after { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 54%, transparent 0%, #08090a1c 47%, #050607a8 100%), linear-gradient(180deg, #05060777 0%, transparent 28%, transparent 76%, #05060782 100%); content: ""; }
-  @keyframes profile-stage-drift { from { opacity: .72; transform: translate(-52%, -49%) scale(.94); } to { opacity: 1; transform: translate(-48%, -53%) scale(1.07); } }
+  .profile-gate-showcase::before { position: absolute; top: 51%; left: 50%; width: min(100vw, 1580px); height: min(88vh, 820px); border-radius: 50%; background: radial-gradient(ellipse at 50% 50%, #8c202d55 0%, #591d2745 31%, #30202a24 57%, transparent 78%); content: ""; filter: blur(24px); transform: translate(-50%, -50%); animation: profile-stage-drift 15s ease-in-out infinite alternate; }
+  .profile-gate-showcase::after { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 52%, transparent 0%, #08090a10 43%, #05060776 100%), linear-gradient(180deg, #05060744 0%, transparent 34%, transparent 72%, #05060767 100%); content: ""; }
+  @keyframes profile-stage-drift { from { opacity: .84; transform: translate(-52%, -49%) scale(.96); } to { opacity: 1; transform: translate(-48%, -53%) scale(1.04); } }
 }
 @media (max-width: 650px) {
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }

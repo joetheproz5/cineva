@@ -32,7 +32,8 @@ test("profile picker has a working add-profile tile and does not exceed five pro
 
 test("desktop profile picker uses a tight centered row and a softly animated abstract cinema glow", () => {
   assert.match(styles, /@media \(min-width: 651px\)[\s\S]*?\.profile-gate-showcase \{[\s\S]*?display: block/);
-  assert.match(styles, /\.profile-gate-showcase::before \{[^}]*radial-gradient\(ellipse at 50% 50%/);
+  assert.match(styles, /\.profile-gate-showcase::before \{[^}]*top: 51%; left: 50%;[^}]*#8c202d55/);
+  assert.match(styles, /\.profile-gate \{[^}]*background: radial-gradient\(ellipse 48% 66% at 50% 53%, #241519/);
   assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*?\.profile-gate-showcase::before \{ animation: none/);
   assert.match(styles, /\.profile-gate-showcase > img, \.profile-gate-art-shade, \.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
   assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap;[\s\S]*?gap: 30px/);
@@ -62,10 +63,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=250/);
-  assert.match(index, /app\.js\?v=319/);
-  assert.match(serviceWorker, /seven-v319/);
-  assert.match(serviceWorker, /auth\.css\?v=250/);
-  assert.match(serviceWorker, /app\.js\?v=319/);
+  assert.match(index, /auth\.css\?v=251/);
+  assert.match(index, /app\.js\?v=320/);
+  assert.match(serviceWorker, /seven-v320/);
+  assert.match(serviceWorker, /auth\.css\?v=251/);
+  assert.match(serviceWorker, /app\.js\?v=320/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
