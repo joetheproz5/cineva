@@ -31,6 +31,8 @@ test("profile picker uses the animated, cinematic selector and keeps each profil
 
 test("profile picker has a working add-profile tile and does not exceed five profiles", () => {
   assert.match(gate, /account\.profiles\.length < 5[\s\S]*?data-add-profile-gate/);
+  assert.match(gate, /account\.profiles\.length >= 3 && account\.profiles\.length < 5 \? "profile-gate-add-below"/);
+  assert.match(gate, /account\.profiles\.length >= 5 \? "profile-gate-at-cap"/);
   assert.match(gate, /data-add-profile-gate[\s\S]*?showProfileEditor\("", "profiles", "profile"\)/);
   assert.match(app, /function showProfileEditor\(id = "", returnRoute = "account", initialCategory = "home"\)/);
   assert.match(app, /if \(!existing && state\.account\.profiles\.length >= 5\) return/);
@@ -66,21 +68,27 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
   assert.match(gate, /data-profile-title/);
 });
 
-test("mobile picker fits a high-resolution portrait poster without cropping or branding", () => {
+test("mobile picker fills the space above the curved sheet with portrait artwork", () => {
   assert.match(gate, /first\.poster_path/);
   assert.match(gate, /filter\(item => item\?\.poster_path\)/);
   assert.match(gate, /original/);
-  assert.match(styles, /width: 100%; height: 100%; object-fit: contain; object-position: center bottom/);
+  assert.match(styles, /width: 100%; height: 100%; object-fit: cover; object-position: center bottom/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
   assert.match(styles, /\.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
-  assert.match(styles, /\.profile-gate-showcase \{[^}]*inset: 0 0 auto;[^}]*height: calc\(100% - 39svh\)/);
+  assert.match(styles, /\.profile-gate-showcase \{[^}]*inset: 0 0 auto;[^}]*height: calc\(100% - 34svh\)/);
   assert.match(app, /function syncProfileGateLayout\(\)[\s\S]*?gate\.clientHeight - sheet\.offsetHeight/);
   assert.match(app, /new ResizeObserver\(syncProfileGateLayout\)/);
   assert.match(styles, /\.profile-gate-backdrop \{[^}]*inset: 0;[^}]*width: 100%; height: 100%;[^}]*object-position: center bottom/);
-  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 39svh/);
-  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: 50svh; max-height: 76svh/);
+  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 34svh/);
+  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: 43svh; max-height: 76svh/);
+  assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 18px 8px/);
+  assert.match(styles, /\.profile-gate \.profile-choice-add \{ flex-basis: calc\(\(100% - 16px\) \/ 3\)/);
+  assert.match(styles, /\.profile-gate-at-cap \.profile-chooser \{ gap: 12px 5px/);
+  assert.match(styles, /\.profile-gate-at-cap \.profile-choice \{ flex-basis: calc\(\(100% - 10px\) \/ 3\)/);
+  assert.match(styles, /\.profile-gate\.profile-gate-add-below \.profile-choice-add \{ flex-basis: 100%; width: 100%; \}/);
+  assert.match(styles, /@media \(max-width: 650px\) and \(max-height: 690px\)[\s\S]*?\.profile-gate-backdrop \{ object-fit: contain; \}/);
   assert.match(styles, /backdrop-filter: blur\(16px\)/);
-  assert.match(styles, /\.profile-gate-showcase \{ height: calc\(100% - 50svh\); \}/);
+  assert.match(styles, /\.profile-gate-showcase \{ height: calc\(100% - 43svh\); \}/);
 });
 
 test("mobile profile selection checks PIN first, then centers the selected avatar and waits for profile data", () => {
@@ -116,10 +124,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=264/);
-  assert.match(index, /app\.js\?v=335/);
-  assert.match(serviceWorker, /seven-v335/);
-  assert.match(serviceWorker, /auth\.css\?v=264/);
-  assert.match(serviceWorker, /app\.js\?v=335/);
+  assert.match(index, /auth\.css\?v=266/);
+  assert.match(index, /app\.js\?v=337/);
+  assert.match(serviceWorker, /seven-v337/);
+  assert.match(serviceWorker, /auth\.css\?v=266/);
+  assert.match(serviceWorker, /app\.js\?v=337/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
