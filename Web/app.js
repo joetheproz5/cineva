@@ -661,7 +661,7 @@ async function activateProfile(id, { mobileHandoff = false } = {}) {
   hydrateWatchlist();
   void loadAccountWatchlist();
   void saveAccount();
-  const enterHome = () => { state.route = "home"; scrollToTop(); render(); tickScreenTime(); };
+  const enterHome = () => { state.route = "home"; if (mobileHandoff) state.profileGateHomeEntry = true; scrollToTop(); render(); tickScreenTime(); };
   if (!mobileHandoff) exitProfileGate(enterHome);
   if (catalogStale) state.catalogRequest = null;
   try { await loadMyList(); await refreshCatalogForLanguage(); } catch {}
@@ -780,10 +780,12 @@ function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-o
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function renderHome() {
   clearInterval(state.heroTimer);
+  const animateProfileEntry = Boolean(state.profileGateHomeEntry);
+  state.profileGateHomeEntry = false;
   const f = state.featured, loadingCatalog = Boolean(state.catalogRequest) && !Object.keys(state.catalog || {}).length;
   const continuing = continueWatching();
   const newEpisodes = state.newEpisodes || [];
-  app.innerHTML = `${header()}<main class="home-page"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><small>${t("Not sure what to watch?").toUpperCase()}</small><b>${t("Play something")}</b><span>${t("We’ll pick a trailer for you")}</span></span><em>Start shuffling <b>›</b></em></button></section></main>${footer()}`;
+  app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><small>${t("Not sure what to watch?").toUpperCase()}</small><b>${t("Play something")}</b><span>${t("We’ll pick a trailer for you")}</span></span><em>Start shuffling <b>›</b></em></button></section></main>${footer()}`;
   bindCommon(); bindHeroControls(); scheduleHero(); syncHeaderScroll();
   document.querySelectorAll("[data-trailers]").forEach(button => button.onclick = openTrailers);
   if (continuing.length) void repairContinuePosters(continuing);
@@ -2307,7 +2309,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=331", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=332", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

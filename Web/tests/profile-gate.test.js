@@ -6,6 +6,7 @@ const test = require("node:test");
 const web = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(web, "app.js"), "utf8");
 const styles = fs.readFileSync(path.join(web, "auth.css"), "utf8");
+const uiStyles = fs.readFileSync(path.join(web, "ui.css"), "utf8");
 const index = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(web, "service-worker.js"), "utf8");
 const defaultProfileIcon = fs.readFileSync(path.join(web, "assets/profile-person.svg"), "utf8");
@@ -95,6 +96,13 @@ test("mobile profile selection checks PIN first, then centers the selected avata
   assert.match(styles, /profile-gate-selecting \.profile-gate-backdrop \{ opacity: 0; filter: brightness\(\.12\)/);
   assert.match(styles, /@keyframes profile-gate-loading-arrive/);
   assert.match(styles, /@keyframes profile-gate-exit-scene/);
+  assert.match(activation, /if \(mobileHandoff\) state\.profileGateHomeEntry = true/);
+  const home = app.slice(app.indexOf("function renderHome()"), app.indexOf("function heroNavigation()"));
+  assert.match(home, /Boolean\(state\.profileGateHomeEntry\)/);
+  assert.match(home, /state\.profileGateHomeEntry = false/);
+  assert.match(home, /home-page \$\{animateProfileEntry \? "home-page-profile-entry"/);
+  assert.match(uiStyles, /\.home-page-profile-entry \.hero \{ animation: home-profile-hero-enter/);
+  assert.match(uiStyles, /\.home-page-profile-entry \.home-library \.rail \{ animation: home-profile-rail-enter/);
 });
 
 test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved lower sheet", () => {
@@ -106,9 +114,9 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=261/);
-  assert.match(index, /app\.js\?v=331/);
-  assert.match(serviceWorker, /seven-v331/);
+  assert.match(index, /app\.js\?v=332/);
+  assert.match(serviceWorker, /seven-v332/);
   assert.match(serviceWorker, /auth\.css\?v=261/);
-  assert.match(serviceWorker, /app\.js\?v=331/);
+  assert.match(serviceWorker, /app\.js\?v=332/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
