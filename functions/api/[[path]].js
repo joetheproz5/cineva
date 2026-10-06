@@ -166,6 +166,39 @@ async function myList(request, requestURL, env) {
   } catch (error) { return json({ error:error.message || "My List could not be synced." }, 400); }
 }
 
+async function accountWatchlist(request, requestURL, env) {
+  const settings = supabase(env), token = authorization(request);
+  if (!settings) return json({ error:"Supabase is not configured." }, 503);
+  if (!token) return json({ error:"Sign in required." }, 401);
+  if (!["GET", "POST", "DELETE"].includes(request.method)) return json({ error:"Method not allowed." }, 405);
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
+  const table = `${settings.url}/rest/v1/account_watchlist`;
+  try {
+    if (request.method === "GET") {
+      const result = await upstream(`${table}?select=*&order=added_at.desc`, { headers });
+      return json(result.data, result.status);
+    }
+    if (request.method === "DELETE") {
+      const type = requestURL.searchParams.get("type"), id = Number(requestURL.searchParams.get("id"));
+      if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return json({ error:"A valid watchlist item is required." }, 400);
+      const result = await upstream(`${table}?content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
+      return json(result.data, result.status);
+    }
+    const body = await readJSON(request);
+    const type = body.content_type || body.type, id = Number(body.tmdb_id ?? body.id);
+    const title = String(body.title || "Untitled").trim().slice(0, 500) || "Untitled";
+    const releaseDate = body.release_date || body.releaseDate || null;
+    const rating = body.vote_average == null || body.vote_average === "" ? null : Number(body.vote_average);
+    if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return json({ error:"A valid movie or series is required." }, 400);
+    if (releaseDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(releaseDate))) return json({ error:"The release date is invalid." }, 400);
+    if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) return json({ error:"The rating is invalid." }, 400);
+    const optionalPath = value => typeof value === "string" && value.trim() ? value.trim().slice(0, 300) : null;
+    const payload = { content_type:type, tmdb_id:id, title, poster_path:optionalPath(body.poster_path || body.posterPath), backdrop_path:optionalPath(body.backdrop_path || body.backdropPath), release_date:releaseDate, vote_average:rating };
+    const result = await upstream(`${table}?on_conflict=user_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
+    return json(result.data, result.status);
+  } catch (error) { return json({ error:error.message || "Watchlist could not be synced." }, 400); }
+}
+
 async function accountSettings(request, env) {
   const settings = supabase(env);
   const token = authorization(request);
@@ -252,6 +285,7 @@ export async function onRequest(context) {
   if (path === "auth/user" && request.method === "GET") return auth("user", request, env);
   if (path === "account/progress") return progress(request, requestURL, env);
   if (path === "account/list") return myList(request, requestURL, env);
+  if (path === "account/watchlist") return accountWatchlist(request, requestURL, env);
   if (path === "account/settings" && request.method === "PUT") return accountSettings(request, env);
   if (path === "account/parent-access") return parentAccess(request, env);
   if (path === "party") return party(request, requestURL, env);

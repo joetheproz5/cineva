@@ -49,7 +49,9 @@ test("the mobile bottom navigation stays viewport-fixed while the header is scro
   const activeNavRules = [...css.matchAll(/#app\s*>\s*\.app-mobile-nav\s+\.nav-link\.active\s*\{([^}]*)\}/g)];
   const activeNav = activeNavRules.at(-1)?.[1] || "";
 
-  assert.match(app, /const mobileNavigation = navigation\.replace\(/);
+  assert.match(app, /const mobileNavigation = `<nav class="app-mobile-nav" aria-label="Mobile main navigation">/);
+  assert.match(app, /data-mobile-browse/);
+  assert.match(app, /if \(!navigation\.querySelector\("\[data-watchlist\]"\)\)/);
   assert.match(app, /<\/header>\$\{mobileNavigation\}/);
   assert.match(app, /app\.querySelectorAll\("header nav, \.app-mobile-nav"\)/);
   assert.match(mobileScrolledHeader, /backdrop-filter:\s*blur\(18px\) saturate\(135%\);/);

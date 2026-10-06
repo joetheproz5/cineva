@@ -106,6 +106,32 @@ async function myList(request, response, sourceURL) {
     const result = await upstream(`${settings.url}/rest/v1/my_list?on_conflict=user_id,profile_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) }); sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "My List could not be synced." }); }
 }
+async function accountWatchlist(request, response, sourceURL) {
+  const settings = supabase(), token = authToken(request);
+  if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." });
+  if (!token) return sendJSON(response, 401, { error:"Sign in required." });
+  if (!["GET", "POST", "DELETE"].includes(request.method)) return sendJSON(response, 405, { error:"Method not allowed." });
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, table = `${settings.url}/rest/v1/account_watchlist`;
+  try {
+    if (request.method === "GET") {
+      const result = await upstream(`${table}?select=*&order=added_at.desc`, { headers });
+      return sendJSON(response, result.status, result.data);
+    }
+    if (request.method === "DELETE") {
+      const type = sourceURL.searchParams.get("type"), id = Number(sourceURL.searchParams.get("id"));
+      if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return sendJSON(response, 400, { error:"A valid watchlist item is required." });
+      const result = await upstream(`${table}?content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
+      return sendJSON(response, result.status, result.data);
+    }
+    const body = await readBody(request), type = body.content_type || body.type, id = Number(body.tmdb_id ?? body.id), title = String(body.title || "Untitled").trim().slice(0, 500) || "Untitled", releaseDate = body.release_date || body.releaseDate || null, rating = body.vote_average == null || body.vote_average === "" ? null : Number(body.vote_average);
+    if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return sendJSON(response, 400, { error:"A valid movie or series is required." });
+    if (releaseDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(releaseDate))) return sendJSON(response, 400, { error:"The release date is invalid." });
+    if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) return sendJSON(response, 400, { error:"The rating is invalid." });
+    const optionalPath = value => typeof value === "string" && value.trim() ? value.trim().slice(0, 300) : null, payload = { content_type:type, tmdb_id:id, title, poster_path:optionalPath(body.poster_path || body.posterPath), backdrop_path:optionalPath(body.backdrop_path || body.backdropPath), release_date:releaseDate, vote_average:rating };
+    const result = await upstream(`${table}?on_conflict=user_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
+    return sendJSON(response, result.status, result.data);
+  } catch (error) { return sendJSON(response, 400, { error:error.message || "Watchlist could not be synced." }); }
+}
 async function accountSettings(request, response) {
   const settings = supabase(), token = authToken(request); if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." }); if (!token) return sendJSON(response, 401, { error:"Sign in required." });
   try {
@@ -146,6 +172,7 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/account/progress") return progress(request, response);
   if (sourceURL.pathname === "/api/account/watch-time") return watchTime(request, response);
   if (sourceURL.pathname === "/api/account/list") return myList(request, response, sourceURL);
+  if (sourceURL.pathname === "/api/account/watchlist") return accountWatchlist(request, response, sourceURL);
   if (sourceURL.pathname === "/api/account/settings" && request.method === "PUT") return accountSettings(request, response);
   if (sourceURL.pathname === "/api/account/parent-access") return parentAccess(request, response);
   let requested = decodeURIComponent(sourceURL.pathname).replace(/^[\\/]+/, ""); if (["dashboard", "dashboard/", "dashboard/accounts", "dashboard/accounts/"].includes(requested)) requested = "dashboard.html"; const safePath = path.normalize(requested).replace(/^([.][.][\\/])+/, ""); const file = path.join(root, safePath === "." ? "index.html" : safePath);
