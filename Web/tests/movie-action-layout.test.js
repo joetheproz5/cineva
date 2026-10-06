@@ -16,9 +16,15 @@ test("movie and series detail pages keep the main action row compact", () => {
   assert.match(app, /data-trailer/);
   assert.match(app, /data-share-title/);
   assert.match(app, /ratingAction\(item\)/);
+  assert.match(app, /data-play-movie><svg class="title-menu-icon"[\s\S]*?<span>Start over<\/span>/);
+  assert.match(app, /data-toggle-my-list><svg class="title-menu-icon"[\s\S]*?<span>\$\{isInMyList\(item\)/);
+  assert.match(app, /function keepFavouritesUI\(\)[\s\S]*?button\.querySelector\("span"\)[\s\S]*?button\.textContent/);
   assert.match(app, /closeTitleMenus\(true\)/);
   assert.match(css, /\.title-actions \{ position: relative; z-index: 12; display: flex !important;/);
   assert.match(css, /\.title-more-menu\[hidden\] \{ display: none !important; \}/);
+  assert.match(css, /\.title-more-menu::after/);
+  assert.match(css, /\.title-menu-icon \{ display: block; width: 18px; height: 18px; flex: 0 0 20px;/);
+  assert.match(css, /\.title-more-menu-actions > button \{ display: flex; width: 100%; min-height: 42px;/);
   assert.match(css, /\.movie-actions\.title-actions \.primary/);
   assert.match(css, /\.series-hero-copy \.actions\.title-actions/);
 });

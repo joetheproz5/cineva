@@ -1020,15 +1020,20 @@ html.seven-installed-pwa body { overscroll-behavior-y: none; }
 .title-more { position: relative; z-index: 14; }
 .title-more-trigger svg { width: 20px; height: 20px; fill: currentColor; }
 .title-more-trigger[aria-expanded="true"] { border-color: #777; background: #292929; }
-.title-more-menu { position: absolute; z-index: 30; right: 0; bottom: calc(100% + 10px); display: grid; width: min(270px,calc(100vw - 36px)); max-height: min(68vh,500px); gap: 4px; overflow: auto; padding: 8px; border: 1px solid #373737; border-radius: 11px; background: rgba(20,20,20,.98); box-shadow: 0 18px 52px #000b; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.title-more-menu { position: absolute; z-index: 30; right: 0; bottom: calc(100% + 6px); display: grid; width: min(252px,calc(100vw - 36px)); gap: 4px; overflow: visible; padding: 7px; border: 1px solid #383838; border-radius: 9px; background: #171717; box-shadow: 0 12px 34px #0009; animation: title-menu-in .14s ease-out both; }
 .title-more-menu[hidden] { display: none !important; }
-.title-more-menu > button { display: flex; min-height: 43px; align-items: center; justify-content: flex-start; gap: 9px; padding: 0 12px; border: 0; border-radius: 6px; color: #eee; text-align: left; background: transparent; font-size: 14px; }
-.title-more-menu > button:hover,.title-more-menu > button:focus-visible { background: #303030; outline: 0; }
-.title-more-menu .share-action svg { width: 16px; height: 16px; }
+.title-more-menu::after { position: absolute; right: 17px; bottom: -6px; width: 10px; height: 10px; border-right: 1px solid #383838; border-bottom: 1px solid #383838; background: #171717; content: ""; transform: rotate(45deg); }
+.title-more-menu-actions { display: grid; gap: 2px; }
+.title-more-menu-actions > button { display: flex; width: 100%; min-height: 42px; align-items: center; justify-content: flex-start; gap: 11px; margin: 0; padding: 0 11px; border: 0; border-radius: 6px; color: #eee; text-align: left; background: transparent; font-size: 14px; font-weight: 620; line-height: 1.2; }
+.title-more-menu-actions > button:hover,.title-more-menu-actions > button:focus-visible { color: #fff; background: #303030; outline: 0; }
+.title-menu-icon { display: block; width: 18px; height: 18px; flex: 0 0 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.title-more-menu-actions [data-toggle-my-list] .title-menu-icon { stroke-width: 1.7; }
+.title-more-menu-actions [data-toggle-my-list].saved .title-menu-icon { fill: #e50914; stroke: #e50914; }
 .title-more-menu .title-feedback { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin: 5px 2px 0; padding: 10px 4px 3px; border-top: 1px solid #383838; }
 .title-more-menu .title-feedback > span { color: #aaa; font-size: 12px; }
 .title-more-menu .rate-buttons { display: flex; gap: 7px; }
 .title-more-menu .rate-btn { width: 35px; height: 35px; }
+@keyframes title-menu-in { from { opacity: 0; transform: translateY(4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .watchlist-heading { padding-bottom: 20px; }
 .watchlist-heading h1 { margin: 8px 0 0; }
 .watchlist-heading .watchlist-count { bottom: 25px; }
@@ -1040,7 +1045,7 @@ html.seven-installed-pwa body { overscroll-behavior-y: none; }
   .movie-actions.title-actions .primary,.series-hero-copy .actions.title-actions .primary { grid-column: auto !important; width: auto !important; min-width: 0; min-height: 45px; flex: 1 1 auto; overflow: hidden; padding: 0 13px; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
   .title-actions .watchlist-action,.title-actions .title-more-trigger { width: 45px; min-width: 45px; height: 45px; min-height: 45px; flex: 0 0 45px; padding: 0; }
   .movie-actions.title-actions > .title-more,.series-hero-copy .actions.title-actions > .title-more { flex: 0 0 45px; }
-  .title-more-menu { bottom: calc(100% + 8px); max-height: min(58vh,420px); }
+  .title-more-menu { bottom: calc(100% + 5px); }
   .watchlist-heading .watchlist-count { bottom: 22px; }
   .watchlist-empty-start { align-items: flex-start; flex-direction: column; gap: 12px; }
 }
