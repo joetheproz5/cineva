@@ -28,7 +28,7 @@ const PROFILE_WATCHLIST_STORAGE_PREFIX = "seven.profile.watchlist.";
 const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const UI_STRINGS = {
   Arabic: {
-    "Releases":"يُعرض", "Releases today":"يُعرض اليوم",
+    "Coming":"قريباً", "Out today":"متاح اليوم",
     "Home":"الرئيسية", "For You":"مخصص لك", "Movies":"أفلام", "Series":"مسلسلات", "Favourites":"المفضلة", "Favs":"المفضلة",
     "Titles, movies, series":"عناوين، أفلام، مسلسلات", "Account":"الحساب", "Search":"بحث",
     "Play something":"شغّل شيئاً", "We’ll pick a trailer for you":"سنختار لك إعلاناً تشويقياً",
@@ -58,7 +58,7 @@ const UI_STRINGS = {
     "Password updated.":"تم تحديث كلمة المرور.", "Done":"تم"
   },
   French: {
-    "Releases":"Sort le", "Releases today":"Sort aujourd’hui",
+    "Coming":"À venir", "Out today":"Disponible aujourd’hui",
     "Home":"Accueil", "For You":"Pour vous", "Movies":"Films", "Series":"Séries", "Favourites":"Favoris", "Favs":"Favoris",
     "Titles, movies, series":"Titres, films, séries", "Account":"Compte", "Search":"Rechercher",
     "Play something":"Lancer quelque chose", "We’ll pick a trailer for you":"On choisit une bande-annonce pour vous",
@@ -699,10 +699,11 @@ function profileGateReleaseDate(item) {
 function profileGateReleaseLabel(item) {
   const releaseDate = profileGateReleaseDate(item);
   if (!releaseDate) return "";
-  if (releaseDate === profileGateDateKey()) return t("Releases today");
+  if (releaseDate === profileGateDateKey()) return t("Out today");
   const [year, month, day] = releaseDate.split("-").map(Number);
   const locale = DISPLAY_LANGUAGES[currentPreferences().language] || DISPLAY_LANGUAGES.English;
-  return `${t("Releases")} ${new Intl.DateTimeFormat(locale, { month:"long", day:"numeric" }).format(new Date(year, month - 1, day, 12))}`;
+  const dateOptions = { month:"short", day:"numeric", ...(year !== new Date().getFullYear() ? { year:"numeric" } : {}) };
+  return `${t("Coming")} ${new Intl.DateTimeFormat(locale, dateOptions).format(new Date(year, month - 1, day, 12))}`;
 }
 function profileGateItems() {
   const today = profileGateDateKey();
@@ -712,7 +713,7 @@ function profileGateItems() {
   }).slice(0, 8);
 }
 function profileGateReleaseMarkup(item) {
-  return `<div class="profile-gate-release"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M7.5 3v4M16.5 3v4M4 9.5h16M8 13h2M14 13h2M8 17h2"/></svg><span data-profile-release>${escapeHTML(profileGateReleaseLabel(item))}</span></div>`;
+  return `<div class="profile-gate-release"><i aria-hidden="true"></i><span data-profile-release>${escapeHTML(profileGateReleaseLabel(item))}</span></div>`;
 }
 function profileGateShowcaseMarkup(items) {
   const first = items[0];
@@ -733,36 +734,42 @@ function paintProfileGateShowcase(items, animate = true) {
   const gate = document.querySelector(".profile-gate"), item = items[state.profileGateIndex % items.length];
   if (!gate || !item) return;
   const title = gate.querySelector("[data-profile-title]"), kind = gate.querySelector("[data-profile-kind]"), count = gate.querySelector("[data-profile-count]"), track = gate.querySelector("[data-profile-track]"), cards = gate.querySelectorAll("[data-profile-card]");
+  const sequence = Number(gate.dataset.profileShowcaseSequence || 0) + 1;
+  gate.dataset.profileShowcaseSequence = String(sequence);
   let release = gate.querySelector("[data-profile-release]");
   if (!release) {
     gate.querySelector(".profile-gate-art-shade")?.insertAdjacentHTML("afterend", profileGateReleaseMarkup(item));
     release = gate.querySelector("[data-profile-release]");
   }
-  const update = () => {
-    void transitionProfileGateArtwork(gate, item);
+  const update = async () => {
+    const artworkReady = await transitionProfileGateArtwork(gate, item);
+    if (!gate.isConnected || Number(gate.dataset.profileShowcaseSequence) !== sequence) return;
+    if (!artworkReady) { gate.classList.remove("profile-gate-changing"); return; }
     if (title) title.textContent = titleOf(item);
     if (kind) kind.textContent = contentType(item) === "movie" ? "FEATURED FILM" : "FEATURED SERIES";
     if (count) count.innerHTML = `${String(state.profileGateIndex % items.length + 1).padStart(2, "0")} <i>/ ${String(items.length).padStart(2, "0")}</i>`;
     if (release) release.textContent = profileGateReleaseLabel(item);
     cards.forEach(card => card.classList.toggle("is-active", Number(card.dataset.profileCard) === state.profileGateIndex));
     positionProfileGateCarousel();
+    gate.classList.remove("profile-gate-changing");
   };
-  if (!animate) { update(); return; }
+  if (!animate) { void update(); return; }
   gate.classList.add("profile-gate-changing");
-  setTimeout(() => { if (document.querySelector(".profile-gate") === gate) { update(); gate.classList.remove("profile-gate-changing"); } }, 180);
+  setTimeout(() => { if (document.querySelector(".profile-gate") === gate && Number(gate.dataset.profileShowcaseSequence) === sequence) void update(); }, 180);
 }
 async function transitionProfileGateArtwork(gate, item) {
   const active = gate.querySelector(".profile-gate-backdrop.is-active"), next = gate.querySelector(".profile-gate-backdrop:not(.is-active)");
-  if (!active || !next || !item?.poster_path) return;
+  if (!active || !next || !item?.poster_path) return false;
   const src = `${TMDB_IMAGE.replace("/w500/", "/original/")}${item.poster_path}`;
-  if (active.src === src) return;
+  if (active.src === src) return true;
   const sequence = Number(gate.dataset.profileArtSequence || 0) + 1;
   gate.dataset.profileArtSequence = String(sequence);
   next.src = src;
-  try { await next.decode(); } catch { if (!next.complete || !next.naturalWidth) return; }
-  if (!gate.isConnected || gate.classList.contains("profile-gate-selecting") || Number(gate.dataset.profileArtSequence) !== sequence) return;
+  try { await next.decode(); } catch { if (!next.complete || !next.naturalWidth) return false; }
+  if (!gate.isConnected || gate.classList.contains("profile-gate-selecting") || Number(gate.dataset.profileArtSequence) !== sequence) return false;
   next.classList.add("is-active");
   active.classList.remove("is-active");
+  return true;
 }
 function positionProfileGateCarousel() {
   const carousel = document.querySelector(".profile-gate-carousel"), track = document.querySelector("[data-profile-track]"), active = track?.querySelector(`[data-profile-card="${state.profileGateIndex}"]`);
@@ -2359,7 +2366,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=342", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=343", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
