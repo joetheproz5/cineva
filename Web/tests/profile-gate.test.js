@@ -53,10 +53,34 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
   assert.match(gate, /setInterval\(\(\) =>/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
   assert.match(gate, /data-profile-backdrop/);
-  assert.match(gate, /data-profile-backdrop src=/);
-  assert.match(gate, /\$\{item\.backdrop_path\}/);
+  assert.match(gate, /data-profile-backdrop \$\{first \?/);
+  assert.match(gate, /\$\{item\.poster_path\}/);
   assert.match(gate, /data-profile-kind/);
   assert.match(gate, /data-profile-title/);
+});
+
+test("mobile picker is a poster-only full-screen backdrop with no SEVEN branding or poster captions", () => {
+  assert.match(gate, /first\.poster_path/);
+  assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
+  assert.match(styles, /\.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
+  assert.match(styles, /\.profile-gate-showcase \{[^}]*inset: 0;[^}]*height: 100%/);
+  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 43svh/);
+  assert.match(styles, /backdrop-filter: blur\(16px\)/);
+});
+
+test("mobile profile selection checks PIN first, then centers the selected avatar and waits for profile data", () => {
+  assert.match(app, /function beginProfileGateSelection\(id\)/);
+  assert.match(gate, /beginProfileGateSelection\(profile\.id\)/);
+  assert.match(app, /mobileHandoff:true/);
+  assert.match(app, /profile-gate-handoff-avatar/);
+  assert.match(app, /profile-gate-handoff-loading/);
+  assert.match(app, /profileSecret\(pin\) !== profile\.pinHash[\s\S]*?beginProfileGateSelection\(profile\.id\)/);
+  const activation = app.slice(app.indexOf("async function activateProfile("), app.indexOf("function beginProfileGateSelection("));
+  assert.ok(activation.indexOf("await loadMyList(); await refreshCatalogForLanguage()") < activation.indexOf("enterHome();"));
+  assert.match(styles, /\.profile-gate-selecting \.profile-gate-sheet \{ animation: profile-gate-sheet-lower-away/);
+  assert.match(styles, /@keyframes profile-gate-avatar-to-center/);
+  assert.match(styles, /@keyframes profile-gate-loading-arrive/);
+  assert.match(styles, /@keyframes profile-gate-exit-scene/);
 });
 
 test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved lower sheet", () => {
@@ -67,10 +91,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=255/);
-  assert.match(index, /app\.js\?v=325/);
-  assert.match(serviceWorker, /seven-v325/);
-  assert.match(serviceWorker, /auth\.css\?v=255/);
-  assert.match(serviceWorker, /app\.js\?v=325/);
+  assert.match(index, /auth\.css\?v=256/);
+  assert.match(index, /app\.js\?v=326/);
+  assert.match(serviceWorker, /seven-v326/);
+  assert.match(serviceWorker, /auth\.css\?v=256/);
+  assert.match(serviceWorker, /app\.js\?v=326/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

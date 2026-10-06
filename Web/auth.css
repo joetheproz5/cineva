@@ -1171,13 +1171,13 @@
 }
 @media (max-width: 650px) {
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }
-  .profile-gate-logo { top: max(16px, env(safe-area-inset-top)); left: max(18px, env(safe-area-inset-left)); }
-  .profile-gate-logo img { width: 78px; }
-  .profile-gate-showcase { position: absolute; inset: 0 0 auto; display: block; height: 65svh; overflow: hidden; background: #0b0b0d; }
-  .profile-gate-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 28%; opacity: .87; transition: opacity .24s ease, transform 7s ease; transform: scale(1.02); }
-  .profile-gate-ready .profile-gate-backdrop { transform: scale(1.08); }
-  .profile-gate-art-shade { position: absolute; inset: 0; background: linear-gradient(180deg, #05050666 0%, #05050610 30%, #0505063b 62%, #050506 100%), linear-gradient(90deg, #05050655, transparent 80%); }
-  .profile-gate-feature { display: block; position: absolute; top: max(15svh, calc(env(safe-area-inset-top) + 86px)); left: 24px; width: min(72%, 330px); text-align: left; transition: opacity .2s ease, transform .2s ease; }
+  .profile-gate-logo { display: none; }
+  .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; height: 100%; overflow: hidden; background: #0b0b0d; }
+  .profile-gate-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .94; transition: opacity .35s ease, transform 7s ease; transform: scale(1.015); }
+  .profile-gate-ready .profile-gate-backdrop { transform: scale(1.045); }
+  .profile-gate-art-shade { position: absolute; inset: 0; background: linear-gradient(180deg, #05050612 0%, #05050605 35%, #05050645 62%, #050506cc 78%, #050506f2 100%), linear-gradient(90deg, #05050622, transparent 45%, #05050622); }
+  .profile-gate-feature, .profile-gate-carousel { display: none; }
+  .profile-gate-changing .profile-gate-backdrop { opacity: .7; }
   .profile-gate-kicker { display: block; margin-bottom: 7px; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 2.1px; text-shadow: 0 1px 14px #000; }
   .profile-gate-feature h2 { margin: 0; color: #fff; font-size: clamp(24px, 7vw, 34px); font-weight: 780; line-height: 1.04; letter-spacing: -1px; text-shadow: 0 2px 18px #000a; }
   .profile-gate-count { display: inline-block; margin-top: 10px; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
@@ -1189,8 +1189,8 @@
   .profile-gate-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .profile-gate-poster.is-active { z-index: 1; border-color: #ffffffa6; opacity: 1; transform: perspective(600px) rotateY(0) scale(1); }
   .profile-gate-changing .profile-gate-feature { opacity: .2; transform: translateY(5px); }
-  .profile-gate .profile-gate-sheet { position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; width: 100%; max-width: none; min-height: 48svh; margin: 0; padding: 39px 18px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid #ffffff20; border-radius: 48% 48% 0 0 / 30px 30px 0 0; background: linear-gradient(180deg, #111214f7 0%, #09090bf9 100%); box-shadow: 0 -20px 60px #0008; text-align: center; }
-  .profile-gate .profile-gate-sheet h1 { margin: 0 0 20px; font-size: clamp(22px, 6vw, 27px); font-weight: 620; letter-spacing: -.8px; }
+  .profile-gate .profile-gate-sheet { position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; width: 100%; max-width: none; min-height: 43svh; margin: 0; padding: 35px 18px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid #ffffff20; border-radius: 48% 48% 0 0 / 30px 30px 0 0; background: linear-gradient(180deg, #111214d9 0%, #09090bef 100%); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 -20px 60px #0008; text-align: center; }
+  .profile-gate .profile-gate-sheet h1 { margin: 0 0 16px; font-size: clamp(22px, 6vw, 27px); font-weight: 620; letter-spacing: -.8px; }
   .profile-gate .profile-chooser { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 8px; width: min(100%, 390px); margin: 0 auto; }
   .profile-gate .profile-choice { gap: 7px; padding: 0 2px; }
   .profile-gate .profile-choice .profile-avatar { width: clamp(57px, 17vw, 72px); height: clamp(57px, 17vw, 72px); border-radius: 10px; font-size: 25px; }
@@ -1202,12 +1202,26 @@
   .profile-gate-ready .profile-gate-sheet { animation: profile-gate-sheet-rise .82s cubic-bezier(.18,.76,.22,1) both; }
   .profile-gate-ready .profile-choice { animation: profile-choice-arrive .58s cubic-bezier(.2,.75,.25,1) both; animation-delay: calc(260ms + var(--profile-index, 0) * 100ms); }
   @keyframes profile-gate-sheet-rise { from { opacity: .65; transform: translateY(105%); } to { opacity: 1; transform: translateY(0); } }
+  .profile-gate-selecting .profile-gate-sheet { animation: profile-gate-sheet-lower-away .72s cubic-bezier(.62,.02,.88,.34) both; }
+  @keyframes profile-gate-sheet-lower-away { to { opacity: .35; transform: translateY(110%); } }
+  .profile-gate-handoff { position: absolute; z-index: 7; inset: 0; pointer-events: none; }
+  .profile-gate-handoff-exit { animation: profile-gate-exit-scene .34s ease both; }
+  .profile-gate-handoff-avatar { position: absolute; top: 50%; left: 50%; width: 86px; height: 86px; animation: profile-gate-avatar-to-center .72s cubic-bezier(.18,.76,.22,1) both; }
+  .profile-gate-handoff-avatar > .profile-avatar { display: grid; width: 86px; height: 86px; place-items: center; overflow: hidden; border: 2px solid #ed1b27; border-radius: 13px; background: #111214; box-shadow: 0 14px 40px #000b, 0 0 38px #ed1b2730; }
+  .profile-gate-handoff-avatar .profile-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+  .profile-gate-handoff-avatar .profile-avatar-guest img { width: 58%; height: 58%; }
+  .profile-gate-handoff-loading { position: absolute; top: calc(50% + 62px); left: 50%; display: flex; align-items: center; gap: 9px; color: #eeeeef; font-size: 12px; font-weight: 600; white-space: nowrap; animation: profile-gate-loading-arrive .36s ease .48s both; }
+  .profile-gate-spinner { width: 15px; height: 15px; border: 2px solid #ffffff35; border-top-color: #ed1b27; border-radius: 50%; animation: profile-gate-spin .75s linear infinite; }
+  @keyframes profile-gate-avatar-to-center { from { opacity: .6; transform: translate(calc(-50% + var(--handoff-x)), calc(-50% + var(--handoff-y))) scale(.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+  @keyframes profile-gate-loading-arrive { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes profile-gate-spin { to { transform: rotate(360deg); } }
+  @keyframes profile-gate-exit-scene { to { opacity: 0; transform: scale(1.025); } }
 }
 @media (max-width: 650px) and (max-height: 690px) {
-  .profile-gate-showcase { height: 58svh; }
+  .profile-gate-showcase { height: 100%; }
   .profile-gate-carousel { display: none; }
   .profile-gate-feature { top: max(13svh, calc(env(safe-area-inset-top) + 78px)); }
-  .profile-gate .profile-gate-sheet { min-height: 54svh; max-height: 76svh; overflow-y: auto; border-radius: 28px 28px 0 0; }
+  .profile-gate .profile-gate-sheet { min-height: 54svh; max-height: 76svh; overflow-y: auto; }
   .profile-gate .profile-gate-sheet h1 { margin-bottom: 14px; }
   .profile-gate .profile-chooser { gap: 13px 6px; }
 }
