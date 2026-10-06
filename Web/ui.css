@@ -1072,3 +1072,9 @@ html.seven-installed-pwa body { overscroll-behavior-y: none; }
   .watchlist-heading .watchlist-count { bottom: 22px; }
   .watchlist-empty-start { align-items: flex-start; flex-direction: column; gap: 12px; }
 }
+/* Keep touch navigation and scrolling, but suppress browser pinch/double-tap page zoom. */
+html,body { touch-action: pan-x pan-y; }
+/* iOS Safari zooms small form controls on focus; keep editable controls at its 16px threshold. */
+@media (pointer: coarse), (max-width: 650px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="hidden"]),textarea,select { font-size: 16px !important; }
+}

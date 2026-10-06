@@ -25,6 +25,8 @@ private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelega
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
+        webView.allowsMagnification = false
+        webView.pageZoom = 1.0
         webView.underPageBackgroundColor = NSColor(calibratedRed: 8.0 / 255.0, green: 9.0 / 255.0, blue: 11.0 / 255.0, alpha: 1)
         webView.load(URLRequest(url: sevenHomeURL))
     }

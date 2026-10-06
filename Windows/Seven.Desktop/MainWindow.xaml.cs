@@ -183,7 +183,7 @@ public partial class MainWindow : Window
             }
             UpdateAdBlockingMenu();
             core.Settings.AreDevToolsEnabled = false;
-            core.Settings.IsZoomControlEnabled = true;
+            core.Settings.IsZoomControlEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
             core.NavigationStarting += Browser_NavigationStarting;
             core.NewWindowRequested += Browser_NewWindowRequested;

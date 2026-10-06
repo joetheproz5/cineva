@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#08090b">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <title>SEVEN · Studio</title>
@@ -137,6 +137,10 @@
     @media(max-width:520px){.topbar{height:auto;min-height:0;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:8px 10px;padding:11px 0}.brand-link{grid-column:1;grid-row:1}.top-actions{grid-column:2;grid-row:1}.dashboard-nav{grid-column:1/-1;grid-row:2;justify-self:start}}
     @media(max-width:380px){.brand-divider,.brand-subtitle{display:none}.brand-link img{width:61px}.dashboard-nav a{padding-inline:8px;font-size:8px}.top-actions{gap:5px}.icon-button{width:31px;height:31px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+  </style>
+  <style>
+    html,body{touch-action:pan-x pan-y}
+    @media (pointer:coarse),(max-width:650px){input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="hidden"]),textarea,select{font-size:16px!important}}
   </style>
 </head>
 <body>
