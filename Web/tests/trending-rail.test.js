@@ -14,3 +14,12 @@ test("the trending rail preserves TMDB order and presents exactly four ranked ti
   assert.match(app, /class="card-copy \$\{rank \? "ranked-copy" : ""\}"/);
   assert.match(css, /\.ranked-copy \.card-rank \{[\s\S]*?color: #e50914;[\s\S]*?font-size: 42px;/);
 });
+
+test("the Trending collection numbers from one instead of using the zero-based grid index", () => {
+  assert.match(app, /const ranked = view\.name === "Trending now"[\s\S]*?view\.items\.map\(\(item, index\) => card\(item, ranked \? index \+ 1 : 0\)\)/);
+  assert.doesNotMatch(app, /view\.items\.map\(card\)/);
+  assert.match(css, /\.explore-grid \{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(230px, 1fr\)\)/);
+  assert.match(css, /\.card-play \{[\s\S]*?top: 50%;[\s\S]*?left: 50%;/);
+  assert.match(css, /\.result-grid \.card-play \{ display: none; \}/);
+  assert.match(css, /\.explore-grid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 20px 14px; \}/);
+});
