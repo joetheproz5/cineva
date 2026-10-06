@@ -3,6 +3,7 @@ package com.example.cineva
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -27,6 +28,7 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var fullscreenPreviousOrientation: Int? = null
     private var fullScreenContainer: FrameLayout? = null
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
 
@@ -80,6 +82,10 @@ class MainActivity : Activity() {
                     if (customView != null) { callback.onCustomViewHidden(); return }
                     customView = view
                     customViewCallback = callback
+                    fullscreenPreviousOrientation = requestedOrientation
+                    // Video fullscreen should rotate even when Android's system auto-rotate
+                    // switch is off. Restore the app's prior orientation when fullscreen ends.
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                     fullScreenContainer?.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                     // The browser view is normally the top-most child in the root. Bring the
                     // server-provided full-screen view above it before showing it; otherwise
@@ -108,9 +114,12 @@ class MainActivity : Activity() {
         fullScreenContainer?.visibility = View.GONE
         web.visibility = View.VISIBLE
         customView = null
-        customViewCallback?.onCustomViewHidden()
+        val callback = customViewCallback
         customViewCallback = null
+        fullscreenPreviousOrientation?.let { requestedOrientation = it }
+        fullscreenPreviousOrientation = null
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        callback?.onCustomViewHidden()
     }
 
     override fun onBackPressed() {
@@ -130,6 +139,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (customView != null) exitFullscreen()
         web.destroy()
         super.onDestroy()
     }

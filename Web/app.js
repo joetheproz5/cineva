@@ -2143,6 +2143,27 @@ function recordPlaybackEvent(data) {
 }
 function bindPlayerControlLift() { const frame = document.querySelector(".player-frame"); if (!frame) return; let idleTimer; const show = () => { clearTimeout(idleTimer); frame.classList.add("player-controls-active"); }; const deferHide = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => frame.classList.remove("player-controls-active"), 1800); }; frame.addEventListener("pointerenter", show); frame.addEventListener("pointermove", show); frame.addEventListener("pointerleave", deferHide); frame.addEventListener("focusin", show); frame.addEventListener("focusout", deferHide); }
 function markEpisodeWatched(item) { const saved = savedProgress(item), duration = Math.max(1, Number(saved.duration) || 0), record = { ...saved, currentTime:duration, duration, progress:100, watched:true, type:item.type, id:item.id, season:item.season || null, episode:item.episode || null, title:saved.title || item.title || "Untitled", posterPath:saved.posterPath || item.posterPath || null, genreIds:saved.genreIds || item.genreIds || [], lastWatchedAt:new Date().toISOString() }; localStorage.setItem(watchKey(item), JSON.stringify(record)); state.seriesNext = null; queueProgressSync(item, duration, duration, 100, true); }
+let fullscreenOrientationLockActive = false;
+let fullscreenOrientationLockPending = false;
+function syncFullscreenOrientation() {
+  const orientation = window.screen?.orientation;
+  if (!orientation || !window.matchMedia?.("(pointer: coarse)").matches) return;
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+  if (!fullscreenElement) {
+    if (fullscreenOrientationLockActive) orientation.unlock?.();
+    fullscreenOrientationLockActive = false;
+    return;
+  }
+  if (fullscreenOrientationLockActive || fullscreenOrientationLockPending || typeof orientation.lock !== "function") return;
+  fullscreenOrientationLockPending = true;
+  Promise.resolve(orientation.lock("landscape")).then(() => {
+    if (document.fullscreenElement || document.webkitFullscreenElement) fullscreenOrientationLockActive = true;
+    else orientation.unlock?.();
+  }).catch(() => { /* Browsers without fullscreen orientation-lock support keep their native behavior. */ })
+    .finally(() => { fullscreenOrientationLockPending = false; });
+}
+document.addEventListener("fullscreenchange", syncFullscreenOrientation);
+document.addEventListener("webkitfullscreenchange", syncFullscreenOrientation);
 window.addEventListener("message", async event => {
   let payload;
   try { payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; }
@@ -2164,7 +2185,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=311", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=312", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
