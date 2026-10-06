@@ -26,8 +26,9 @@ test("movie and series detail pages keep the main action row compact", () => {
   assert.match(css, /\.title-more-menu::after/);
   assert.match(css, /\.title-menu-icon \{ display: block; width: 18px; height: 18px; flex: 0 0 20px;/);
   assert.match(css, /\.title-more-menu-actions > button \{ display: flex; width: 100%; min-height: 42px;/);
-  assert.match(css, /\.detail \.actions\.title-actions \.title-more-menu-actions > button,\.series-hero-copy \.actions\.title-actions \.title-more-menu-actions > button \{ display: flex !important;[\s\S]*?background: #202020 !important;/);
+  assert.match(css, /\.detail \.actions\.title-actions \.title-more-menu-actions > button,\.series-hero-copy \.actions\.title-actions \.title-more-menu-actions > button \{ display: flex !important;[\s\S]*?background: transparent !important;/);
   assert.match(css, /\.detail \.actions\.title-actions \.title-more \.rate-btn,\.series-hero-copy \.actions\.title-actions \.title-more \.rate-btn \{ display: grid !important; width: 36px !important; min-width: 36px !important;[\s\S]*?border-radius: 50% !important;/);
+  assert.match(css, /\.ranked-card \.poster-wrap > i \{ right: auto; left: 10px; \}/);
   assert.match(css, /\.movie-actions\.title-actions \.primary/);
   assert.match(css, /\.series-hero-copy \.actions\.title-actions/);
 });
