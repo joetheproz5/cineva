@@ -14,7 +14,7 @@ let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -24,6 +24,7 @@ const ACCOUNT_KEY = "seven.account.settings";
 const ACCOUNT_OWNER_KEY = "seven.account.owner";
 const MY_LIST_KEY = "seven.my-list";
 const WATCHLIST_STORAGE_PREFIX = "seven.account.watchlist.";
+const PROFILE_WATCHLIST_STORAGE_PREFIX = "seven.profile.watchlist.";
 const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const UI_STRINGS = {
   Arabic: {
@@ -278,11 +279,12 @@ function persistSession(session, startedAt = sessionStartedAt(session)) {
     clearTimeout(state.watchStatsSyncTimer); state.watchStatsSyncTimer = null; state.watchStatsSyncPending = false;
     Object.keys(localStorage).filter(key => key.startsWith("seven-progress-") || key.startsWith("cineva-progress-")).forEach(key => localStorage.removeItem(key));
     localStorage.removeItem(MY_LIST_KEY);
-    localStorage.removeItem(`${WATCHLIST_STORAGE_PREFIX}${owner}`);
+    clearWatchlistCache(owner);
     state.accountProgress = [];
     state.myList = [];
     state.watchlist = [];
     state.watchlistOwnerId = null;
+    state.watchlistProfileId = null;
     state.watchlistLoaded = false;
     state.watchlistLoadSequence++;
     state.watchlistLoading = false;
@@ -302,9 +304,10 @@ function clearSession() {
   state.pendingProgress = null;
   state.accountProgress = [];
   state.myList = [];
-  if (state.watchlistOwnerId) localStorage.removeItem(`${WATCHLIST_STORAGE_PREFIX}${state.watchlistOwnerId}`);
+  if (state.watchlistOwnerId) clearWatchlistCache(state.watchlistOwnerId);
   state.watchlist = [];
   state.watchlistOwnerId = null;
+  state.watchlistProfileId = null;
   state.watchlistLoaded = false;
   state.watchlistLoading = false;
   state.watchlistLoadSequence++;
@@ -368,40 +371,42 @@ function listItems() { return state.myList.filter(item => item.profileId === act
 function isInMyList(item) { return state.myList.some(entry => entry.profileId === activeProfileId() && entry.type === item.type && Number(entry.id) === Number(item.id)); }
 async function loadMyList() { if (!state.session) return; const rows = await localAPI("/api/account/list", { headers:authorizedHeaders() }); const merged = new Map(state.myList.map(item => [listKey(item), item])); rows.map(listRecord).forEach(item => merged.set(listKey(item), item)); state.myList = [...merged.values()]; persistMyList(); }
 function accountWatchlistUserId() { if (!state.session?.access_token || state.user?.is_anonymous || state.session?.user?.is_anonymous) return null; return state.session?.user?.id || state.user?.id || null; }
-function watchlistStorageKey(userId = accountWatchlistUserId()) { return userId ? `${WATCHLIST_STORAGE_PREFIX}${userId}` : null; }
+function watchlistStorageKey(userId = accountWatchlistUserId(), profileId = activeProfileId()) { return userId ? `${PROFILE_WATCHLIST_STORAGE_PREFIX}${userId}.${profileId}` : null; }
+function clearWatchlistCache(userId, profileId = null) { if (!userId) return; const profilePrefix = `${PROFILE_WATCHLIST_STORAGE_PREFIX}${userId}.`; Object.keys(localStorage).filter(key => key === `${WATCHLIST_STORAGE_PREFIX}${userId}` || key.startsWith(profilePrefix) && (!profileId || key === watchlistStorageKey(userId, profileId))).forEach(key => localStorage.removeItem(key)); }
 function watchlistKey(item) { return `${item.type}:${Number(item.id)}`; }
 function watchlistRecord(row) { return { type:row.type || row.content_type, id:Number(row.id ?? row.tmdb_id), title:String(row.title || "Untitled"), poster_path:row.poster_path || row.posterPath || null, backdrop_path:row.backdrop_path || row.backdropPath || null, release_date:row.release_date || row.releaseDate || null, vote_average:Number(row.vote_average ?? row.voteAverage) || 0, addedAt:row.addedAt || row.added_at || new Date().toISOString() }; }
-function hydrateWatchlist() { const ownerId = accountWatchlistUserId(); state.watchlistOwnerId = ownerId; state.watchlistLoaded = false; state.watchlistError = null; if (!ownerId) { state.watchlist = []; return; } try { const cached = JSON.parse(localStorage.getItem(watchlistStorageKey(ownerId)) || "[]"); state.watchlist = Array.isArray(cached) ? cached.map(watchlistRecord).filter(item => ["movie", "tv"].includes(item.type) && Number.isSafeInteger(item.id) && item.id > 0) : []; } catch { state.watchlist = []; } }
-function persistWatchlist() { const ownerId = accountWatchlistUserId(); if (!ownerId || state.watchlistOwnerId !== ownerId) return; localStorage.setItem(watchlistStorageKey(ownerId), JSON.stringify(state.watchlist)); }
-function isInWatchlist(item) { return state.watchlistOwnerId === accountWatchlistUserId() && state.watchlist.some(entry => entry.type === item.type && Number(entry.id) === Number(item.id)); }
-function watchlistAction(item, variant = "detail") { const type = item.type || contentType(item), id = Number(item.id), key = watchlistKey({ type, id }), saved = isInWatchlist({ type, id }), pending = state.watchlistPending.has(`${accountWatchlistUserId()}:${key}`); state.watchlistTargets.set(key, item); return variant === "card" ? `<button type="button" class="card-watchlist ${saved ? "saved" : ""}" data-toggle-watchlist="${escapeHTML(key)}" aria-label="${saved ? "Remove" : "Add"} ${escapeHTML(titleOf(item))} ${saved ? "from" : "to"} Watchlist" aria-pressed="${saved}" title="${saved ? "Remove from" : "Add to"} Watchlist" ${pending ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-3.8-6 3.8z"/></svg></button>` : `<button type="button" class="secondary watchlist-action ${saved ? "saved" : ""}" data-toggle-watchlist="${escapeHTML(key)}" aria-pressed="${saved}" ${pending ? "disabled" : ""}>${pending ? "Saving…" : saved ? "✓ In Watchlist" : "+ Add to Watchlist"}</button>`; }
+function hydrateWatchlist() { const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); state.watchlistOwnerId = ownerId; state.watchlistProfileId = ownerId ? profileId : null; state.watchlistLoaded = false; state.watchlistError = null; state.watchlistLoadSequence++; if (!ownerId) { state.watchlist = []; return; } try { const cached = JSON.parse(localStorage.getItem(watchlistStorageKey(ownerId, profileId)) || "[]"); state.watchlist = Array.isArray(cached) ? cached.map(watchlistRecord).filter(item => ["movie", "tv"].includes(item.type) && Number.isSafeInteger(item.id) && item.id > 0) : []; } catch { state.watchlist = []; } }
+function persistWatchlist() { const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); if (!ownerId || state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== profileId) return; localStorage.setItem(watchlistStorageKey(ownerId, profileId), JSON.stringify(state.watchlist)); }
+function isInWatchlist(item) { return state.watchlistOwnerId === accountWatchlistUserId() && state.watchlistProfileId === activeProfileId() && state.watchlist.some(entry => entry.type === item.type && Number(entry.id) === Number(item.id)); }
+function watchlistAction(item, variant = "detail") { const type = item.type || contentType(item), id = Number(item.id), key = watchlistKey({ type, id }), saved = isInWatchlist({ type, id }), pending = state.watchlistPending.has(`${accountWatchlistUserId()}:${activeProfileId()}:${key}`); state.watchlistTargets.set(key, item); return variant === "card" ? `<button type="button" class="card-watchlist ${saved ? "saved" : ""}" data-toggle-watchlist="${escapeHTML(key)}" aria-label="${saved ? "Remove" : "Add"} ${escapeHTML(titleOf(item))} ${saved ? "from" : "to"} Watchlist" aria-pressed="${saved}" title="${saved ? "Remove from" : "Add to"} Watchlist" ${pending ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-3.8-6 3.8z"/></svg></button>` : `<button type="button" class="secondary watchlist-action ${saved ? "saved" : ""}" data-toggle-watchlist="${escapeHTML(key)}" aria-label="${saved ? "Remove from" : "Add to"} Watchlist" title="${saved ? "Remove from" : "Add to"} Watchlist" aria-pressed="${saved}" ${pending ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-3.8-6 3.8z"/></svg><span>${pending ? "Saving" : saved ? "Saved" : "Watchlist"}</span></button>`; }
 async function loadAccountWatchlist(refreshView = false) {
-  const ownerId = accountWatchlistUserId(); if (!ownerId) { state.watchlist = []; state.watchlistOwnerId = null; state.watchlistLoaded = true; return; }
-  if (state.watchlistOwnerId !== ownerId) hydrateWatchlist();
+  const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); if (!ownerId) { state.watchlist = []; state.watchlistOwnerId = null; state.watchlistProfileId = null; state.watchlistLoaded = true; return; }
+  if (state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== profileId) hydrateWatchlist();
   const sequence = ++state.watchlistLoadSequence, mutationVersion = state.watchlistMutationVersion;
   state.watchlistLoading = true; state.watchlistError = null;
   if (refreshView && state.route === "watchlist") render();
   try {
-    const rows = await localAPI("/api/account/watchlist", { headers:authorizedHeaders() });
-    if (accountWatchlistUserId() !== ownerId || sequence !== state.watchlistLoadSequence) return;
+    const rows = await localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profileId)}`, { headers:authorizedHeaders() });
+    if (accountWatchlistUserId() !== ownerId || activeProfileId() !== profileId || sequence !== state.watchlistLoadSequence) return;
     if (!Array.isArray(rows)) throw new Error("The Watchlist response was invalid.");
     if (mutationVersion !== state.watchlistMutationVersion) { state.watchlistLoaded = true; return; }
     state.watchlist = rows.map(watchlistRecord).filter(item => ["movie", "tv"].includes(item.type) && Number.isSafeInteger(item.id) && item.id > 0);
-    state.watchlistLoaded = true; persistWatchlist();
+    state.watchlistLoaded = true; persistWatchlist(); localStorage.removeItem(`${WATCHLIST_STORAGE_PREFIX}${ownerId}`);
   } catch (error) {
-    if (accountWatchlistUserId() !== ownerId || sequence !== state.watchlistLoadSequence) return;
+    if (accountWatchlistUserId() !== ownerId || activeProfileId() !== profileId || sequence !== state.watchlistLoadSequence) return;
     state.watchlistLoaded = true; state.watchlistError = error.message || "Watchlist could not be synced.";
   } finally {
-    if (accountWatchlistUserId() === ownerId && sequence === state.watchlistLoadSequence) { state.watchlistLoading = false; if (refreshView && state.route === "watchlist") render(); }
+    if (accountWatchlistUserId() === ownerId && activeProfileId() === profileId && sequence === state.watchlistLoadSequence) { state.watchlistLoading = false; if (refreshView && state.route === "watchlist") render(); }
   }
 }
 function watchlistToast(message) { document.querySelector(".watchlist-toast")?.remove(); app.insertAdjacentHTML("beforeend", `<div class="watchlist-toast" role="status" aria-live="polite">${escapeHTML(message)}</div>`); setTimeout(() => document.querySelector(".watchlist-toast")?.remove(), 3600); }
 async function toggleWatchlist(item) {
   const ownerId = accountWatchlistUserId();
-  if (!ownerId) { showAuth("login", "Sign in to save titles to a Watchlist that follows your account."); return; }
-  if (state.watchlistOwnerId !== ownerId) hydrateWatchlist();
+  if (!ownerId) { showAuth("login", "Sign in to save titles to your profile’s Watchlist."); return; }
+  const profileId = activeProfileId();
+  if (state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== profileId) hydrateWatchlist();
   const type = item.type || contentType(item), id = Number(item.id), key = watchlistKey({ type, id });
-  const pendingKey = `${ownerId}:${key}`;
+  const pendingKey = `${ownerId}:${profileId}:${key}`;
   if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1 || state.watchlistPending.has(pendingKey)) return;
   const before = state.watchlist.map(watchlistRecord), existing = state.watchlist.some(entry => watchlistKey(entry) === key), reconcileAfter = state.watchlistLoading;
   let failureMessage = "";
@@ -412,18 +417,18 @@ async function toggleWatchlist(item) {
   persistWatchlist(); render();
   try {
     const request = existing
-      ? localAPI(`/api/account/watchlist?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`, { method:"DELETE", headers:authorizedHeaders() })
-      : localAPI("/api/account/watchlist", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ content_type:type, tmdb_id:id, title:titleOf(item), poster_path:item.poster_path || item.posterPath || null, backdrop_path:item.backdrop_path || item.backdropPath || null, release_date:item.release_date || item.first_air_date || item.releaseDate || null, vote_average:item.vote_average ?? null }) });
+      ? localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profileId)}&type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`, { method:"DELETE", headers:authorizedHeaders() })
+      : localAPI("/api/account/watchlist", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ profile_id:profileId, content_type:type, tmdb_id:id, title:titleOf(item), poster_path:item.poster_path || item.posterPath || null, backdrop_path:item.backdrop_path || item.backdropPath || null, release_date:item.release_date || item.first_air_date || item.releaseDate || null, vote_average:item.vote_average ?? null }) });
     await request;
-    if (accountWatchlistUserId() === ownerId) state.watchlistError = null;
+    if (accountWatchlistUserId() === ownerId && activeProfileId() === profileId) state.watchlistError = null;
   } catch (error) {
-    if (accountWatchlistUserId() === ownerId) { state.watchlist = before; persistWatchlist(); failureMessage = error.message || "Could not update your Watchlist. Try again."; }
+    if (accountWatchlistUserId() === ownerId && activeProfileId() === profileId) { state.watchlist = before; persistWatchlist(); failureMessage = error.message || "Could not update your Watchlist. Try again."; }
   } finally {
     state.watchlistPending.delete(pendingKey);
     if (state.route === "watchlist") state.watchlistLoaded = true;
     render();
     if (failureMessage) watchlistToast(failureMessage);
-    if (reconcileAfter && accountWatchlistUserId() === ownerId) void loadAccountWatchlist(true);
+    if (reconcileAfter && accountWatchlistUserId() === ownerId && activeProfileId() === profileId) void loadAccountWatchlist(true);
   }
 }
 function episodeAlertKey(item) { return `${item.id}:${item.episode?.season_number || 0}:${item.episode?.episode_number || 0}`; }
@@ -651,6 +656,8 @@ function exitProfileGate(then) {
 async function activateProfile(id) {
   const catalogStale = state.catalogKey !== id;
   state.account.activeProfileId = id;
+  hydrateWatchlist();
+  void loadAccountWatchlist();
   void saveAccount();
   exitProfileGate(() => { state.route = "home"; scrollToTop(); render(); tickScreenTime(); });
   if (catalogStale) state.catalogRequest = null;
@@ -775,6 +782,7 @@ function trailerFrom(videos) { return (videos?.results || []).find(video => vide
 async function loadTrailer(type, id) { try { return trailerFrom(await api(`${type}/${id}/videos`)); } catch { return null; } }
 function trailerAction() { return state.trailer ? `<button class="secondary" data-trailer><b>▷</b> Trailer</button>` : ""; }
 function shareAction() { return `<button type="button" class="secondary share-action" data-share-title><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4"/></svg>Share</button>`; }
+function titleMoreAction(item, extraActions = "") { return `<div class="title-more"><button type="button" class="secondary title-more-trigger" data-title-more aria-haspopup="true" aria-expanded="false" aria-label="More title actions" title="More"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button><div class="title-more-menu" hidden>${extraActions}<button type="button" class="secondary list-action ${isInMyList(item) ? "saved" : ""}" data-toggle-my-list>${isInMyList(item) ? "✓ In My List" : "+ My List"}</button>${trailerAction()}${shareAction()}${ratingAction(item)}</div></div>`; }
 function sharedTitleURL(item) { const url = new URL("./", window.location.href); url.searchParams.set("title", `${item.type}:${item.id}`); return url.href; }
 function showToast(message) { document.querySelector(".seven-toast")?.remove(); app.insertAdjacentHTML("beforeend", `<div class="seven-toast" role="status">${escapeHTML(message)}</div>`); setTimeout(() => document.querySelector(".seven-toast")?.remove(), 2600); }
 async function shareTitle(item) { const url = sharedTitleURL(item), payload = { title:`${titleOf(item)} · SEVEN`, text:`Check out ${titleOf(item)} on SEVEN.`, url }; try { if (navigator.share) { await navigator.share(payload); return; } } catch (error) { if (error?.name === "AbortError") return; } try { await navigator.clipboard.writeText(url); showToast("Link copied — send it to someone."); } catch { window.prompt("Copy this SEVEN link", url); } }
@@ -820,10 +828,9 @@ function renderPerson() {
   document.querySelector("[data-person-back]").onclick = () => { state.route = state.personBackRoute || "home"; render(); };
 }
 function renderMovie() {
-  const movie = state.movie, resumeAt = savedStart({ type:"movie", id:movie.id }), playbackAction = resumeAt ? `<button class="primary" data-resume-movie><b>▶</b> Resume from ${timeLabel(resumeAt)}</button><button class="secondary" data-play-movie>Start over</button>` : `<button class="primary" data-play-movie><b>▶</b> Play movie</button>`;
-  app.innerHTML = `${header()}<button class="back" data-home>‹ Browse</button><section class="detail"><img src="${posterOf(movie)}" alt="${escapeHTML(titleOf(movie))}"><div class="movie-detail-copy"><span class="brand">MOVIE</span><h1>${escapeHTML(titleOf(movie))}</h1><div class="meta"><span>${yearOf(movie)}</span><i></i><span>${movie.runtime ? `${movie.runtime} min` : "Movie"}</span><i></i><span>${movie.vote_average ? `★ ${movie.vote_average.toFixed(1)}` : "TV-14"}</span></div><p>${escapeHTML(movie.overview || "")}</p></div><div class="actions movie-actions">${playbackAction}<button class="secondary list-action ${isInMyList(movie) ? "saved" : ""}" data-toggle-my-list>${isInMyList(movie) ? "✓ In My List" : "+ My List"}</button>${trailerAction()}${shareAction()}${hideAction(movie)}</div></section>${mediaInfo(movie, "movie")}${footer()}`;
-  document.querySelector(".movie-actions")?.insertAdjacentHTML("beforeend", watchlistAction(movie));
-  bindCommon(); document.querySelector(".movie-detail-copy")?.insertAdjacentHTML("beforeend", ratingAction(movie)); document.querySelector("[data-play-movie]")?.addEventListener("click", () => playMovieNow(movie)); document.querySelector("[data-resume-movie]")?.addEventListener("click", () => playMovieNow(movie, true)); document.querySelector("[data-toggle-my-list]")?.addEventListener("click", () => toggleMyList(movie)); document.querySelector("[data-trailer]")?.addEventListener("click", showTrailer); document.querySelector("[data-hide-title]")?.addEventListener("click", () => hideTitle(movie)); document.querySelector("[data-like-title]")?.addEventListener("click", () => likeTitle(movie)); document.querySelector("[data-share-title]")?.addEventListener("click", () => shareTitle(movie));
+  const movie = state.movie, resumeAt = savedStart({ type:"movie", id:movie.id }), playbackAction = resumeAt ? `<button class="primary" data-resume-movie><b>▶</b> Resume from ${timeLabel(resumeAt)}</button>` : `<button class="primary" data-play-movie><b>▶</b> Play movie</button>`, extraActions = `${resumeAt ? `<button type="button" class="secondary" data-play-movie>Start over</button>` : ""}`;
+  app.innerHTML = `${header()}<button class="back" data-home>‹ Browse</button><section class="detail"><img src="${posterOf(movie)}" alt="${escapeHTML(titleOf(movie))}"><div class="movie-detail-copy"><span class="brand">MOVIE</span><h1>${escapeHTML(titleOf(movie))}</h1><div class="meta"><span>${yearOf(movie)}</span><i></i><span>${movie.runtime ? `${movie.runtime} min` : "Movie"}</span><i></i><span>${movie.vote_average ? `★ ${movie.vote_average.toFixed(1)}` : "TV-14"}</span></div><p>${escapeHTML(movie.overview || "")}</p></div><div class="actions movie-actions title-actions">${playbackAction}${watchlistAction(movie)}${titleMoreAction(movie, extraActions)}</div></section>${mediaInfo(movie, "movie")}${footer()}`;
+  bindCommon(); document.querySelector("[data-play-movie]")?.addEventListener("click", () => playMovieNow(movie)); document.querySelector("[data-resume-movie]")?.addEventListener("click", () => playMovieNow(movie, true)); document.querySelector("[data-toggle-my-list]")?.addEventListener("click", () => toggleMyList(movie)); document.querySelector("[data-trailer]")?.addEventListener("click", showTrailer); document.querySelector("[data-hide-title]")?.addEventListener("click", () => hideTitle(movie)); document.querySelector("[data-like-title]")?.addEventListener("click", () => likeTitle(movie)); document.querySelector("[data-share-title]")?.addEventListener("click", () => shareTitle(movie));
 }
 function renderSeries() {
   const s = state.series, seasons = (s.seasons || []).filter(x => x.season_number > 0), tracking = seriesTracking(s), upNext = state.seriesNext, next = upNext?.episode || nextEpisodeInSeason(s), nextSeason = upNext?.season || state.selectedSeason, episodeTotal = tracking.total || "—", progress = tracking.total ? Math.min(100, Math.round(tracking.watched / tracking.total * 100)) : 0;
@@ -832,13 +839,12 @@ function renderSeries() {
     const status = watched ? "Watched" : resume ? `Resume from ${timeLabel(resume)}` : runtime;
     return `<article class="episode series-episode ${watched ? "is-watched" : ""}"><button class="episode-main" data-play-episode="${episode.episode_number}"><span class="episode-art"><img src="${episode.still_path ? TMDB_IMAGE + episode.still_path : "icon.svg"}" alt="" loading="lazy"><i aria-hidden="true">▶</i></span><span class="episode-copy"><small class="episode-kicker">S${state.selectedSeason} · E${episode.episode_number} <em>${escapeHTML(status)}</em></small><b>${escapeHTML(episode.name || `Episode ${episode.episode_number}`)}</b><span>${escapeHTML(episode.overview || "No description is available for this episode yet.")}</span></span></button><button class="episode-toggle ${watched ? "done" : ""}" data-toggle-episode="${episode.episode_number}" aria-label="${watched ? "Mark unwatched" : "Mark watched"}">${watched ? "✓" : "+"}</button></article>`;
   }).join("");
-  const action = tracking.resume ? `<button class="primary" data-resume-series><b>▶</b> Continue S${tracking.resume.season} · E${tracking.resume.episode}</button><button class="secondary" data-play-series>Start season</button>` : `<button class="primary" data-play-series><b>▶</b> ${next ? `Play episode ${next.episode_number}` : "Play episode 1"}</button>`;
+  const action = tracking.resume ? `<button class="primary" data-resume-series><b>▶</b> Continue S${tracking.resume.season} · E${tracking.resume.episode}</button>` : `<button class="primary" data-play-series><b>▶</b> ${next ? `Play episode ${next.episode_number}` : "Play episode 1"}</button>`, extraActions = `${tracking.resume ? `<button type="button" class="secondary" data-play-series>Start season</button>` : ""}`;
   const upNextCard = next ? `<button class="series-next" data-play-up-next><span class="series-next-art"><img src="${next.still_path ? TMDB_IMAGE + next.still_path : posterOf(s)}" alt=""><i aria-hidden="true">▶</i></span><span class="series-next-copy"><small>UP NEXT · S${nextSeason} E${next.episode_number}</small><strong>${escapeHTML(next.name || `Episode ${next.episode_number}`)}</strong><em>${upNext?.resume ? `Resume from ${timeLabel(savedStart({ type:"tv", id:s.id, season:nextSeason, episode:next.episode_number }))}` : "Ready when you are"}</em></span><span class="series-next-arrow" aria-hidden="true">→</span></button>` : "";
   const backdrop = s.backdrop_path ? `${TMDB_BACKDROP}${s.backdrop_path}` : posterOf(s);
   const seasonRail = `<nav class="series-season-rail" aria-label="Choose season">${seasons.map(x => `<button type="button" data-series-season="${x.season_number}" aria-current="${x.season_number === state.selectedSeason ? "true" : "false"}"><span>Season</span><b>${x.season_number}</b></button>`).join("")}</nav>`;
-  app.innerHTML = `${header()}<main class="series-page"><section class="series-hero"><div class="series-hero-backdrop" style="background-image:url('${backdrop}')"></div><div class="series-hero-fade" style="background-image:url('${backdrop}')"></div><div class="series-hero-shade"></div><button class="series-back" data-home>‹ <span>Back to browse</span></button><div class="series-hero-content"><img class="series-poster" src="${posterOf(s)}" alt="${escapeHTML(titleOf(s))}"><div class="series-hero-copy"><span class="series-eyebrow">SEVEN ORIGINAL SERIES</span><h1>${escapeHTML(titleOf(s))}</h1><div class="series-meta"><span>${yearOf(s)}</span><span>${s.number_of_seasons || seasons.length} seasons</span><span class="series-score">★ ${s.vote_average ? s.vote_average.toFixed(1) : "New"}</span></div><p>${escapeHTML(s.overview || "Discover the story, meet the characters, and start watching on SEVEN.")}</p><div class="actions">${action}<button class="secondary list-action ${isInMyList(s) ? "saved" : ""}" data-toggle-my-list>${isInMyList(s) ? "✓ In My List" : "+ My List"}</button>${trailerAction()}${shareAction()}${hideAction(s)}</div></div></div></section><div class="series-shell"><section class="series-dashboard"><div class="series-progress-card"><div><span class="series-section-label">YOUR PROGRESS</span><strong>${tracking.watched} <small>of ${episodeTotal} episodes</small></strong><p>${progress ? "Keep going — your next episode is ready." : "Start the series and your progress will appear here."}</p></div><span class="series-progress-percent">${progress}%</span><i><em style="width:${progress}%"></em></i></div>${upNextCard}</section><section class="episode-section series-episodes"><div class="series-section-head"><div><span class="series-section-label">EPISODE GUIDE</span><h2>Season ${state.selectedSeason}</h2></div></div>${seasonRail}<div id="episodes-list" class="series-episode-grid">${episodeRows || '<p class="episode-empty">No episodes are available for this season.</p>'}</div></section><section class="series-more"><div class="series-section-head"><div><span class="series-section-label">BEHIND THE STORY</span><h2>More about ${escapeHTML(titleOf(s))}</h2></div></div>${mediaInfo(s, "tv")}</section></div></main>${footer()}`;
-  document.querySelector(".series-hero-copy .actions")?.insertAdjacentHTML("beforeend", watchlistAction(s));
-  bindCommon(); document.querySelector(".series-hero-copy")?.insertAdjacentHTML("beforeend", `<div class="series-social-actions">${ratingAction(s)}</div>`); document.querySelectorAll("[data-series-season]").forEach(button => button.onclick = async () => { state.selectedSeason = Number(button.dataset.seriesSeason); await loadEpisodes(); render(); });
+  app.innerHTML = `${header()}<main class="series-page"><section class="series-hero"><div class="series-hero-backdrop" style="background-image:url('${backdrop}')"></div><div class="series-hero-fade" style="background-image:url('${backdrop}')"></div><div class="series-hero-shade"></div><button class="series-back" data-home>‹ <span>Back to browse</span></button><div class="series-hero-content"><img class="series-poster" src="${posterOf(s)}" alt="${escapeHTML(titleOf(s))}"><div class="series-hero-copy"><span class="series-eyebrow">SEVEN ORIGINAL SERIES</span><h1>${escapeHTML(titleOf(s))}</h1><div class="series-meta"><span>${yearOf(s)}</span><span>${s.number_of_seasons || seasons.length} seasons</span><span class="series-score">★ ${s.vote_average ? s.vote_average.toFixed(1) : "New"}</span></div><p>${escapeHTML(s.overview || "Discover the story, meet the characters, and start watching on SEVEN.")}</p><div class="actions title-actions">${action}${watchlistAction(s)}${titleMoreAction(s, extraActions)}</div></div></div></section><div class="series-shell"><section class="series-dashboard"><div class="series-progress-card"><div><span class="series-section-label">YOUR PROGRESS</span><strong>${tracking.watched} <small>of ${episodeTotal} episodes</small></strong><p>${progress ? "Keep going — your next episode is ready." : "Start the series and your progress will appear here."}</p></div><span class="series-progress-percent">${progress}%</span><i><em style="width:${progress}%"></em></i></div>${upNextCard}</section><section class="episode-section series-episodes"><div class="series-section-head"><div><span class="series-section-label">EPISODE GUIDE</span><h2>Season ${state.selectedSeason}</h2></div></div>${seasonRail}<div id="episodes-list" class="series-episode-grid">${episodeRows || '<p class="episode-empty">No episodes are available for this season.</p>'}</div></section><section class="series-more"><div class="series-section-head"><div><span class="series-section-label">BEHIND THE STORY</span><h2>More about ${escapeHTML(titleOf(s))}</h2></div></div>${mediaInfo(s, "tv")}</section></div></main>${footer()}`;
+  bindCommon(); document.querySelectorAll("[data-series-season]").forEach(button => button.onclick = async () => { state.selectedSeason = Number(button.dataset.seriesSeason); await loadEpisodes(); render(); });
   document.querySelector("[data-play-series]")?.addEventListener("click", () => playSeriesEpisode(nextSeason, next?.episode_number || 1, false)); document.querySelector("[data-play-up-next]")?.addEventListener("click", () => playSeriesEpisode(nextSeason, next?.episode_number || 1, Boolean(upNext?.resume))); document.querySelector("[data-resume-series]")?.addEventListener("click", () => resumeSeries(tracking.resume)); document.querySelector("[data-toggle-my-list]")?.addEventListener("click", () => toggleMyList(s)); document.querySelector("[data-trailer]")?.addEventListener("click", showTrailer); document.querySelector("[data-hide-title]")?.addEventListener("click", () => hideTitle(s)); document.querySelector("[data-like-title]")?.addEventListener("click", () => likeTitle(s)); document.querySelector("[data-share-title]")?.addEventListener("click", () => shareTitle(s));
   document.querySelectorAll("[data-play-episode]").forEach(button => button.onclick = () => playEpisode(Number(button.dataset.playEpisode), false)); document.querySelectorAll("[data-toggle-episode]").forEach(button => button.onclick = () => { const episode = (state.episodes?.episodes || []).find(item => Number(item.episode_number) === Number(button.dataset.toggleEpisode)); if (episode) setEpisodeStatus(episode, !isWatched({ type:"tv", id:s.id, season:state.selectedSeason, episode:episode.episode_number })); });
 }
@@ -1479,14 +1485,14 @@ function renderWatchlist() {
   const ownerId = accountWatchlistUserId();
   if (!ownerId) {
     state.watchlist = []; state.watchlistOwnerId = null;
-    app.innerHTML = `${header()}<main class="watchlist-page watchlist-locked"><span class="brand">YOUR ACCOUNT</span><h1>A list that goes with you.</h1><p>Your Watchlist is private to your SEVEN account and stays in sync across every profile and device.</p><button class="primary" data-watchlist-auth>Sign in to your account</button><button class="watchlist-create-account" data-watchlist-create>Create an account</button></main>${footer()}`;
-    bindCommon(); document.querySelector("[data-watchlist-auth]").onclick = () => showAuth("login", "Sign in to save titles across your devices."); document.querySelector("[data-watchlist-create]").onclick = () => showAuth("signup"); return;
+    app.innerHTML = `${header()}<main class="watchlist-page watchlist-locked"><span class="brand">WATCHLIST</span><h1>Sign in to continue</h1><p>Your Watchlist is saved to your profile.</p><button class="primary" data-watchlist-auth>Sign in</button><button class="watchlist-create-account" data-watchlist-create>Create account</button></main>${footer()}`;
+    bindCommon(); document.querySelector("[data-watchlist-auth]").onclick = () => showAuth("login", "Sign in to open your profile Watchlist."); document.querySelector("[data-watchlist-create]").onclick = () => showAuth("signup"); return;
   }
-  if (state.watchlistOwnerId !== ownerId) hydrateWatchlist();
+  if (state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== activeProfileId()) hydrateWatchlist();
   const filter = state.watchlistFilter || "all", sort = state.watchlistSort || "recent", allItems = state.watchlist, items = allItems.filter(item => filter === "all" || item.type === filter).slice().sort((a, b) => sort === "title" ? titleOf(a).localeCompare(titleOf(b)) : sort === "rating" ? b.vote_average - a.vote_average : new Date(b.addedAt) - new Date(a.addedAt));
-  const syncStatus = state.watchlistError ? `<div class="watchlist-sync-error" role="status"><span>${allItems.length ? "Showing saved titles from this device. " : "Couldn’t load your Watchlist. "}${escapeHTML(state.watchlistError)}</span><button type="button" data-watchlist-retry>Try again</button></div>` : state.watchlistLoading ? `<p class="watchlist-sync-note" role="status">Syncing your Watchlist…</p>` : "";
-  const itemsMarkup = state.watchlistLoading && !state.watchlistLoaded && !allItems.length ? `<div class="watchlist-loading" aria-label="Loading Watchlist">${Array.from({ length:8 }, () => `<div class="watchlist-skeleton skeleton"></div>`).join("")}</div>` : items.length ? `<div class="watchlist-grid">${items.map(item => { const added = new Date(item.addedAt), addedText = Number.isNaN(added.getTime()) ? "Saved recently" : `Added ${added.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" })}`; return `<article class="watchlist-card"><button class="watchlist-open" data-open="${item.type}:${item.id}" aria-label="Open ${escapeHTML(titleOf(item))}"><img src="${posterOf(item)}" alt="" loading="lazy"><span><b>${escapeHTML(titleOf(item))}</b><small>${item.type === "tv" ? "Series" : "Movie"}${item.release_date ? ` · ${String(item.release_date).slice(0, 4)}` : ""}</small><small>${escapeHTML(addedText)}</small></span><i aria-hidden="true">›</i></button><button class="watchlist-remove" type="button" data-watchlist-remove="${item.type}:${item.id}" aria-label="Remove ${escapeHTML(titleOf(item))} from Watchlist">Remove</button></article>`; }).join("")}</div>` : allItems.length ? `<div class="watchlist-empty"><b>No ${filter === "tv" ? "series" : "movies"} in this view.</b><p>Choose another filter or keep discovering titles.</p></div>` : `<div class="watchlist-empty watchlist-empty-start"><span class="watchlist-empty-icon" aria-hidden="true">▤</span><b>Your next favourite starts here.</b><p>Add movies or series with the bookmark on a title card. Your list stays with your account, not a single profile.</p><div><button class="secondary" type="button" data-watchlist-browse="movie">Explore movies</button><button class="secondary" type="button" data-watchlist-browse="tv">Explore series</button></div></div>`;
-  app.innerHTML = `${header()}<main class="watchlist-page"><button class="account-back" data-watchlist-back>‹ Browse</button><div class="watchlist-heading"><span class="brand">YOUR ACCOUNT · PRIVATE</span><h1>Watchlist</h1><p>Saved for later. Shared across every profile on your account.</p><span class="watchlist-count">${allItems.length} ${allItems.length === 1 ? "title" : "titles"}</span></div>${syncStatus}${allItems.length ? `<div class="watchlist-toolbar"><div class="watchlist-filters" role="group" aria-label="Filter your Watchlist">${[["all","All"],["movie","Movies"],["tv","Series"]].map(([value, label]) => `<button type="button" class="${filter === value ? "active" : ""}" data-watchlist-filter="${value}" aria-pressed="${filter === value}">${label}</button>`).join("")}</div><label>Sort <select data-watchlist-sort><option value="recent" ${sort === "recent" ? "selected" : ""}>Recently added</option><option value="title" ${sort === "title" ? "selected" : ""}>Title A–Z</option><option value="rating" ${sort === "rating" ? "selected" : ""}>Highest rated</option></select></label></div>` : ""}${itemsMarkup}</main>${footer()}`;
+  const syncStatus = state.watchlistError ? `<div class="watchlist-sync-error" role="status"><span>Couldn’t sync your Watchlist.</span><button type="button" data-watchlist-retry>Try again</button></div>` : state.watchlistLoading ? `<p class="watchlist-sync-note" role="status">Loading…</p>` : "";
+  const itemsMarkup = state.watchlistLoading && !state.watchlistLoaded && !allItems.length ? `<div class="watchlist-loading" aria-label="Loading Watchlist">${Array.from({ length:8 }, () => `<div class="watchlist-skeleton skeleton"></div>`).join("")}</div>` : items.length ? `<div class="watchlist-grid">${items.map(item => { const added = new Date(item.addedAt), addedText = Number.isNaN(added.getTime()) ? "Saved recently" : `Added ${added.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" })}`; return `<article class="watchlist-card"><button class="watchlist-open" data-open="${item.type}:${item.id}" aria-label="Open ${escapeHTML(titleOf(item))}"><img src="${posterOf(item)}" alt="" loading="lazy"><span><b>${escapeHTML(titleOf(item))}</b><small>${item.type === "tv" ? "Series" : "Movie"}${item.release_date ? ` · ${String(item.release_date).slice(0, 4)}` : ""}</small><small>${escapeHTML(addedText)}</small></span><i aria-hidden="true">›</i></button><button class="watchlist-remove" type="button" data-watchlist-remove="${item.type}:${item.id}" aria-label="Remove ${escapeHTML(titleOf(item))} from Watchlist">Remove</button></article>`; }).join("")}</div>` : allItems.length ? `<div class="watchlist-empty"><b>No titles.</b></div>` : `<div class="watchlist-empty watchlist-empty-start"><b>Your Watchlist is empty.</b><button class="secondary" type="button" data-watchlist-browse="movie">Browse titles</button></div>`;
+  app.innerHTML = `${header()}<main class="watchlist-page"><button class="account-back" data-watchlist-back>‹ Browse</button><div class="watchlist-heading"><span class="brand">${escapeHTML(currentProfile()?.name || "PROFILE")} · WATCHLIST</span><h1>Watchlist</h1><span class="watchlist-count">${allItems.length} ${allItems.length === 1 ? "title" : "titles"}</span></div>${syncStatus}${allItems.length ? `<div class="watchlist-toolbar"><div class="watchlist-filters" role="group" aria-label="Filter your Watchlist">${[["all","All"],["movie","Movies"],["tv","Series"]].map(([value, label]) => `<button type="button" class="${filter === value ? "active" : ""}" data-watchlist-filter="${value}" aria-pressed="${filter === value}">${label}</button>`).join("")}</div><label>Sort <select data-watchlist-sort><option value="recent" ${sort === "recent" ? "selected" : ""}>Recently added</option><option value="title" ${sort === "title" ? "selected" : ""}>Title A–Z</option><option value="rating" ${sort === "rating" ? "selected" : ""}>Highest rated</option></select></label></div>` : ""}${itemsMarkup}</main>${footer()}`;
   bindCommon();
   if (!state.watchlistLoaded && !state.watchlistLoading) void loadAccountWatchlist(true);
   document.querySelector("[data-watchlist-back]").onclick = () => { state.route = state.watchlistReturn || "home"; state.watchlistReturn = null; render(); };
@@ -2025,14 +2031,14 @@ function renderProfileSettings() {
   }
   document.querySelector("[data-change-password]")?.addEventListener("click", showChangePassword);
   document.querySelector("[data-signout]")?.addEventListener("click", signOut);
-  document.querySelector("[data-remove-profile]")?.addEventListener("click", async () => { if (!confirm(`Delete ${profile.name || "this"} profile?`)) return; state.account.profiles = state.account.profiles.filter(item => item.id !== profile.id); if (state.account.activeProfileId === profile.id) state.account.activeProfileId = state.account.profiles[0].id; await saveAccount(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; render(); });
+  document.querySelector("[data-remove-profile]")?.addEventListener("click", async () => { if (!confirm(`Delete ${profile.name || "this"} profile?`)) return; const ownerId = accountWatchlistUserId(), wasActive = state.account.activeProfileId === profile.id; state.account.profiles = state.account.profiles.filter(item => item.id !== profile.id); if (wasActive) state.account.activeProfileId = state.account.profiles[0].id; clearWatchlistCache(ownerId, profile.id); if (state.session && ownerId) void localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profile.id)}&all=true`, { method:"DELETE", headers:authorizedHeaders() }).catch(() => {}); if (wasActive) { hydrateWatchlist(); void loadAccountWatchlist(); } await saveAccount(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; render(); });
 }
 function renderAccount() {
   app.innerHTML = accountHub(); bindCommon();
   document.querySelector("[data-account-back]").onclick = () => { state.route = state.accountReturn || "home"; state.accountReturn = null; render(); };
   document.querySelector("[data-toggle-account-nav]").onclick = () => { state.accountSidebarOpen = state.accountSidebarOpen === false; render(); };
   document.querySelectorAll("[data-account-tab]").forEach(button => button.onclick = () => { state.accountTab = button.dataset.accountTab; render(); });
-  document.querySelectorAll("[data-select-profile]").forEach(button => button.onclick = async () => { state.account.activeProfileId = button.dataset.selectProfile; await saveAccount(); try { await loadMyList(); await refreshCatalogForLanguage(); } catch {} render(); });
+  document.querySelectorAll("[data-select-profile]").forEach(button => button.onclick = async () => { state.account.activeProfileId = button.dataset.selectProfile; hydrateWatchlist(); void loadAccountWatchlist(); await saveAccount(); try { await loadMyList(); await refreshCatalogForLanguage(); } catch {} render(); });
   document.querySelectorAll("[data-edit-profile]").forEach(button => button.onclick = () => showProfileEditor(button.dataset.editProfile));
   document.querySelector("[data-add-profile]")?.addEventListener("click", () => showProfileEditor());
   document.querySelector("[data-view-history]")?.addEventListener("click", () => { state.historyReturn = "account"; state.route = "history"; render(); });
@@ -2158,7 +2164,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=306", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=307", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
@@ -2194,8 +2200,8 @@ function keepFavouritesUI() {
   app.querySelector(".new-episode-rail .rail-title span")?.replaceChildren("From Favourites");
   const favouriteRow = app.querySelector("[data-my-list]");
   if (favouriteRow) { favouriteRow.querySelector("b").textContent = "Favourites"; favouriteRow.querySelector("small").textContent = `Browse the titles saved by ${currentProfile()?.name || "this profile"}`; }
-  const accountActivity = app.querySelector(".account-content-panel .account-action-grid"), profileActivity = app.querySelector(".profile-detail-card .profile-category-actions");
-  for (const slot of [accountActivity, profileActivity]) if (slot && !slot.querySelector("[data-watchlist]")) slot.insertAdjacentHTML("beforeend", accountAction("▤", "Watchlist", "Saved across this account and every profile", "data-watchlist"));
+  const profileActivity = app.querySelector(".profile-detail-card .profile-category-actions");
+  if (profileActivity && !profileActivity.querySelector("[data-watchlist]")) profileActivity.insertAdjacentHTML("beforeend", accountAction("▤", "Watchlist", `Saved for ${currentProfile()?.name || "this profile"}`, "data-watchlist"));
 }
 const favouritesObserver = new MutationObserver(keepFavouritesUI);
 favouritesObserver.observe(app, { childList:true });
@@ -2205,6 +2211,14 @@ document.addEventListener("click", event => {
   event.preventDefault();
   animateScrollToTop();
 }, true);
+function closeTitleMenus(restoreFocus = false) { document.querySelectorAll("[data-title-more][aria-expanded='true']").forEach(trigger => { trigger.setAttribute("aria-expanded", "false"); const menu = trigger.parentElement?.querySelector(".title-more-menu"); if (menu) menu.hidden = true; if (restoreFocus) trigger.focus(); }); }
+document.addEventListener("click", event => {
+  const trigger = event.target?.closest?.("[data-title-more]");
+  if (trigger) { const menu = trigger.parentElement.querySelector(".title-more-menu"), open = trigger.getAttribute("aria-expanded") !== "true"; closeTitleMenus(); trigger.setAttribute("aria-expanded", String(open)); if (menu) menu.hidden = !open; return; }
+  if (event.target?.closest?.(".title-more-menu button")) { closeTitleMenus(); return; }
+  if (!event.target?.closest?.(".title-more")) closeTitleMenus();
+});
+document.addEventListener("keydown", event => { if (event.key === "Escape" && document.querySelector("[data-title-more][aria-expanded='true']")) closeTitleMenus(true); });
 app.addEventListener("click", event => {
   const watchlistButton = event.target.closest("[data-watchlist]");
   if (watchlistButton) { event.preventDefault(); openWatchlist(); return; }

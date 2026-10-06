@@ -25,6 +25,10 @@ function authorization(request) {
   return value.startsWith("Bearer ") ? value.slice(7) : "";
 }
 
+function validProfileId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(value);
+}
+
 function normalizeAuthResponse(action, data) {
   if (!data || !["signup", "login", "refresh"].includes(action)) return data;
   const session = data.session || (data.access_token ? data : null);
@@ -172,29 +176,38 @@ async function accountWatchlist(request, requestURL, env) {
   if (!token) return json({ error:"Sign in required." }, 401);
   if (!["GET", "POST", "DELETE"].includes(request.method)) return json({ error:"Method not allowed." }, 405);
   const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" };
-  const table = `${settings.url}/rest/v1/account_watchlist`;
+  const table = `${settings.url}/rest/v1/profile_watchlist`;
   try {
     if (request.method === "GET") {
-      const result = await upstream(`${table}?select=*&order=added_at.desc`, { headers });
+      const profile = requestURL.searchParams.get("profile");
+      if (!validProfileId(profile)) return json({ error:"A valid profile is required." }, 400);
+      const result = await upstream(`${table}?select=*&profile_id=eq.${encodeURIComponent(profile)}&order=added_at.desc`, { headers });
       return json(result.data, result.status);
     }
     if (request.method === "DELETE") {
-      const type = requestURL.searchParams.get("type"), id = Number(requestURL.searchParams.get("id"));
+      const profile = requestURL.searchParams.get("profile"), type = requestURL.searchParams.get("type"), id = Number(requestURL.searchParams.get("id"));
+      if (!validProfileId(profile)) return json({ error:"A valid profile is required." }, 400);
+      if (requestURL.searchParams.get("all") === "true") {
+        const result = await upstream(`${table}?profile_id=eq.${encodeURIComponent(profile)}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
+        return json(result.data, result.status);
+      }
       if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return json({ error:"A valid watchlist item is required." }, 400);
-      const result = await upstream(`${table}?content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
+      const result = await upstream(`${table}?profile_id=eq.${encodeURIComponent(profile)}&content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
       return json(result.data, result.status);
     }
     const body = await readJSON(request);
+    const profile = body.profile_id;
     const type = body.content_type || body.type, id = Number(body.tmdb_id ?? body.id);
     const title = String(body.title || "Untitled").trim().slice(0, 500) || "Untitled";
     const releaseDate = body.release_date || body.releaseDate || null;
     const rating = body.vote_average == null || body.vote_average === "" ? null : Number(body.vote_average);
+    if (!validProfileId(profile)) return json({ error:"A valid profile is required." }, 400);
     if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return json({ error:"A valid movie or series is required." }, 400);
     if (releaseDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(releaseDate))) return json({ error:"The release date is invalid." }, 400);
     if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) return json({ error:"The rating is invalid." }, 400);
     const optionalPath = value => typeof value === "string" && value.trim() ? value.trim().slice(0, 300) : null;
-    const payload = { content_type:type, tmdb_id:id, title, poster_path:optionalPath(body.poster_path || body.posterPath), backdrop_path:optionalPath(body.backdrop_path || body.backdropPath), release_date:releaseDate, vote_average:rating };
-    const result = await upstream(`${table}?on_conflict=user_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
+    const payload = { profile_id:profile, content_type:type, tmdb_id:id, title, poster_path:optionalPath(body.poster_path || body.posterPath), backdrop_path:optionalPath(body.backdrop_path || body.backdropPath), release_date:releaseDate, vote_average:rating };
+    const result = await upstream(`${table}?on_conflict=user_id,profile_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
     return json(result.data, result.status);
   } catch (error) { return json({ error:error.message || "Watchlist could not be synced." }, 400); }
 }

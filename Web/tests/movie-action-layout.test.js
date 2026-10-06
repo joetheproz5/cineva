@@ -7,10 +7,18 @@ const web = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(web, "app.js"), "utf8");
 const css = fs.readFileSync(path.join(web, "ui.css"), "utf8");
 
-test("movie actions use the same full-width mobile action pattern as series", () => {
-  assert.match(app, /class="movie-detail-copy"/);
-  assert.match(app, /class="actions movie-actions"/);
-  assert.match(app, /querySelector\("\.movie-detail-copy"\)/);
-  assert.match(css, /\.movie-actions \{ grid-column: 1 \/ -1; display: grid !important; grid-template-columns: repeat\(3,minmax\(0,1fr\)\) !important;/);
-  assert.match(css, /\.movie-actions \.primary \{ grid-column: 1 \/ -1; \}/);
+test("movie and series detail pages keep the main action row compact", () => {
+  assert.match(app, /class="actions movie-actions title-actions"/);
+  assert.match(app, /class="actions title-actions"/);
+  assert.match(app, /function titleMoreAction\(item, extraActions = ""\)/);
+  assert.match(app, /data-title-more aria-haspopup="true"/);
+  assert.match(app, /data-toggle-my-list/);
+  assert.match(app, /data-trailer/);
+  assert.match(app, /data-share-title/);
+  assert.match(app, /ratingAction\(item\)/);
+  assert.match(app, /closeTitleMenus\(true\)/);
+  assert.match(css, /\.title-actions \{ position: relative; z-index: 12; display: flex !important;/);
+  assert.match(css, /\.title-more-menu\[hidden\] \{ display: none !important; \}/);
+  assert.match(css, /\.movie-actions\.title-actions \.primary/);
+  assert.match(css, /\.series-hero-copy \.actions\.title-actions/);
 });

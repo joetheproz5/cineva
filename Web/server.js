@@ -111,24 +111,29 @@ async function accountWatchlist(request, response, sourceURL) {
   if (!settings) return sendJSON(response, 503, { error:"Supabase is not configured." });
   if (!token) return sendJSON(response, 401, { error:"Sign in required." });
   if (!["GET", "POST", "DELETE"].includes(request.method)) return sendJSON(response, 405, { error:"Method not allowed." });
-  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, table = `${settings.url}/rest/v1/account_watchlist`;
+  const headers = { apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, table = `${settings.url}/rest/v1/profile_watchlist`;
   try {
     if (request.method === "GET") {
-      const result = await upstream(`${table}?select=*&order=added_at.desc`, { headers });
+      const profile = sourceURL.searchParams.get("profile");
+      if (!profile || !/^[A-Za-z0-9_-]{1,80}$/.test(profile)) return sendJSON(response, 400, { error:"A valid profile is required." });
+      const result = await upstream(`${table}?select=*&profile_id=eq.${encodeURIComponent(profile)}&order=added_at.desc`, { headers });
       return sendJSON(response, result.status, result.data);
     }
     if (request.method === "DELETE") {
-      const type = sourceURL.searchParams.get("type"), id = Number(sourceURL.searchParams.get("id"));
+      const profile = sourceURL.searchParams.get("profile"), type = sourceURL.searchParams.get("type"), id = Number(sourceURL.searchParams.get("id"));
+      if (!profile || !/^[A-Za-z0-9_-]{1,80}$/.test(profile)) return sendJSON(response, 400, { error:"A valid profile is required." });
+      if (sourceURL.searchParams.get("all") === "true") { const result = await upstream(`${table}?profile_id=eq.${encodeURIComponent(profile)}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } }); return sendJSON(response, result.status, result.data); }
       if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return sendJSON(response, 400, { error:"A valid watchlist item is required." });
-      const result = await upstream(`${table}?content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
+      const result = await upstream(`${table}?profile_id=eq.${encodeURIComponent(profile)}&content_type=eq.${type}&tmdb_id=eq.${id}`, { method:"DELETE", headers:{ ...headers, Prefer:"return=minimal" } });
       return sendJSON(response, result.status, result.data);
     }
-    const body = await readBody(request), type = body.content_type || body.type, id = Number(body.tmdb_id ?? body.id), title = String(body.title || "Untitled").trim().slice(0, 500) || "Untitled", releaseDate = body.release_date || body.releaseDate || null, rating = body.vote_average == null || body.vote_average === "" ? null : Number(body.vote_average);
+    const body = await readBody(request), profile = String(body.profile_id || ""), type = body.content_type || body.type, id = Number(body.tmdb_id ?? body.id), title = String(body.title || "Untitled").trim().slice(0, 500) || "Untitled", releaseDate = body.release_date || body.releaseDate || null, rating = body.vote_average == null || body.vote_average === "" ? null : Number(body.vote_average);
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(profile)) return sendJSON(response, 400, { error:"A valid profile is required." });
     if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1) return sendJSON(response, 400, { error:"A valid movie or series is required." });
     if (releaseDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(releaseDate))) return sendJSON(response, 400, { error:"The release date is invalid." });
     if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) return sendJSON(response, 400, { error:"The rating is invalid." });
-    const optionalPath = value => typeof value === "string" && value.trim() ? value.trim().slice(0, 300) : null, payload = { content_type:type, tmdb_id:id, title, poster_path:optionalPath(body.poster_path || body.posterPath), backdrop_path:optionalPath(body.backdrop_path || body.backdropPath), release_date:releaseDate, vote_average:rating };
-    const result = await upstream(`${table}?on_conflict=user_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
+    const optionalPath = value => typeof value === "string" && value.trim() ? value.trim().slice(0, 300) : null, payload = { profile_id:profile, content_type:type, tmdb_id:id, title, poster_path:optionalPath(body.poster_path || body.posterPath), backdrop_path:optionalPath(body.backdrop_path || body.backdropPath), release_date:releaseDate, vote_average:rating };
+    const result = await upstream(`${table}?on_conflict=user_id,profile_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
     return sendJSON(response, result.status, result.data);
   } catch (error) { return sendJSON(response, 400, { error:error.message || "Watchlist could not be synced." }); }
 }

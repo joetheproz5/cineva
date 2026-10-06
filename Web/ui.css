@@ -1009,3 +1009,38 @@ header.main-header.app-header .account.account-guest b { display: none; }
 
 html.seven-installed-pwa,
 html.seven-installed-pwa body { overscroll-behavior-y: none; }
+
+/* Keep title pages focused: play, save, then tuck the rest behind More. */
+.title-actions { position: relative; z-index: 12; display: flex !important; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 0; }
+.title-actions > .primary { min-height: 50px; padding: 0 22px; border-radius: 7px; }
+.title-actions .watchlist-action,.title-more-trigger { display: inline-flex; width: 50px; min-width: 50px; height: 50px; min-height: 50px; align-items: center; justify-content: center; padding: 0; border: 1px solid #454545; border-radius: 7px; color: #eee; background: #191919; }
+.title-actions .watchlist-action:hover,.title-actions .watchlist-action.saved { border-color: #777; color: #fff; background: #292929; }
+.title-actions .watchlist-action svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.title-actions .watchlist-action span { display: none; }
+.title-more { position: relative; z-index: 14; }
+.title-more-trigger svg { width: 20px; height: 20px; fill: currentColor; }
+.title-more-trigger[aria-expanded="true"] { border-color: #777; background: #292929; }
+.title-more-menu { position: absolute; z-index: 30; right: 0; bottom: calc(100% + 10px); display: grid; width: min(270px,calc(100vw - 36px)); max-height: min(68vh,500px); gap: 4px; overflow: auto; padding: 8px; border: 1px solid #373737; border-radius: 11px; background: rgba(20,20,20,.98); box-shadow: 0 18px 52px #000b; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.title-more-menu[hidden] { display: none !important; }
+.title-more-menu > button { display: flex; min-height: 43px; align-items: center; justify-content: flex-start; gap: 9px; padding: 0 12px; border: 0; border-radius: 6px; color: #eee; text-align: left; background: transparent; font-size: 14px; }
+.title-more-menu > button:hover,.title-more-menu > button:focus-visible { background: #303030; outline: 0; }
+.title-more-menu .share-action svg { width: 16px; height: 16px; }
+.title-more-menu .title-feedback { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin: 5px 2px 0; padding: 10px 4px 3px; border-top: 1px solid #383838; }
+.title-more-menu .title-feedback > span { color: #aaa; font-size: 12px; }
+.title-more-menu .rate-buttons { display: flex; gap: 7px; }
+.title-more-menu .rate-btn { width: 35px; height: 35px; }
+.watchlist-heading { padding-bottom: 20px; }
+.watchlist-heading h1 { margin: 8px 0 0; }
+.watchlist-heading .watchlist-count { bottom: 25px; }
+.watchlist-empty-start { display: flex; align-items: center; gap: 16px; margin-top: 20px; padding: 14px 0; border: 0; border-radius: 0; background: transparent; }
+.watchlist-empty-start b { font-size: 15px; }
+.watchlist-empty-start .secondary { padding: 10px 14px; border: 1px solid #373737; border-radius: 6px; background: #1a1a1a; }
+@media (max-width: 650px) {
+  .movie-actions.title-actions,.series-hero-copy .actions.title-actions { display: flex !important; grid-template-columns: none !important; align-items: center; gap: 8px; flex-wrap: nowrap; }
+  .movie-actions.title-actions .primary,.series-hero-copy .actions.title-actions .primary { grid-column: auto !important; width: auto !important; min-width: 0; min-height: 45px; flex: 1 1 auto; overflow: hidden; padding: 0 13px; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  .title-actions .watchlist-action,.title-actions .title-more-trigger { width: 45px; min-width: 45px; height: 45px; min-height: 45px; flex: 0 0 45px; padding: 0; }
+  .movie-actions.title-actions > .title-more,.series-hero-copy .actions.title-actions > .title-more { flex: 0 0 45px; }
+  .title-more-menu { bottom: calc(100% + 8px); max-height: min(58vh,420px); }
+  .watchlist-heading .watchlist-count { bottom: 22px; }
+  .watchlist-empty-start { align-items: flex-start; flex-direction: column; gap: 12px; }
+}
