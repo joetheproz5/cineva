@@ -1132,9 +1132,9 @@
 .profile-gate .profile-choice .profile-avatar { border-color: #b9141d; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
 .profile-gate .profile-choice:hover .profile-avatar { border-color: #ed2631; box-shadow: 0 0 0 2px #d3131c, 0 16px 32px #0008, inset 0 -18px 25px #0003; }
 .profile-gate .profile-choice:focus-visible .profile-avatar { border-color: #fff; box-shadow: 0 0 0 2px #d3131c, 0 0 0 5px #d3131c66, inset 0 -18px 25px #0003; }
-.profile-gate .profile-choice .profile-avatar-guest { position: relative; overflow: hidden; border-color: #9c8153; color: #ead3a3; background: radial-gradient(circle at 50% 35%, #705c38 0%, #483b29 42%, #252117 100%); box-shadow: inset 0 0 0 5px #f1d9a30c, inset 0 -18px 25px #0004, 0 12px 32px #0008; }
-.profile-gate .profile-avatar-guest svg { width: 64%; height: 64%; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 4px #0006); }
-.profile-gate .profile-choice:hover .profile-avatar-guest, .profile-gate .profile-choice:focus-visible .profile-avatar-guest { border-color: #e7cc91; box-shadow: 0 0 0 2px #c3a87488, 0 16px 34px #000a, inset 0 0 0 5px #f1d9a311, inset 0 -18px 25px #0004; }
+.profile-gate .profile-choice .profile-avatar-guest { position: relative; overflow: hidden; border-color: #a90e18; color: #ed1b27; background: radial-gradient(circle at 50% 35%, #16090b 0%, #0b090a 56%, #060607 100%); box-shadow: inset 0 0 0 5px #ed1b2708, inset 0 -18px 25px #0004, 0 12px 32px #0008; }
+.profile-gate .profile-avatar-guest img { width: 58%; height: 58%; border-radius: 0; object-fit: contain; }
+.profile-gate .profile-choice:hover .profile-avatar-guest, .profile-gate .profile-choice:focus-visible .profile-avatar-guest { border-color: #ed1b27; box-shadow: 0 0 0 2px #d3131c88, 0 16px 34px #000a, inset 0 0 0 5px #ed1b2711, inset 0 -18px 25px #0004; }
 .profile-gate .profile-choice-add { cursor: pointer; }
 .profile-gate .profile-add-avatar { display: grid; width: clamp(100px, 10vw, 132px); height: clamp(100px, 10vw, 132px); place-items: center; border: 1px solid #666a70; border-radius: 12px; color: #c5c7cb; background: linear-gradient(145deg, #17181b, #0e0f11); box-shadow: inset 0 1px #ffffff0b, 0 10px 28px #0006; transition: border-color .2s ease, color .2s ease, background .2s ease, transform .2s ease; }
 .profile-gate .profile-add-avatar svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
@@ -1164,7 +1164,7 @@
 @media (min-width: 651px) {
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; pointer-events: none; }
   .profile-gate-showcase > img, .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
-  .profile-gate-showcase::before { position: absolute; top: 52%; left: 50%; width: min(112vw, 1800px); height: min(76vh, 740px); border-radius: 50%; background: radial-gradient(ellipse at 50% 50%, #9b785037 0%, #58706a1c 31%, #47565e0b 54%, transparent 73%); content: ""; filter: blur(35px); transform: translate(-50%, -50%); animation: profile-stage-drift 15s ease-in-out infinite alternate; }
+  .profile-gate-showcase::before { position: absolute; top: 52%; left: 50%; width: min(112vw, 1800px); height: min(76vh, 740px); border-radius: 50%; background: radial-gradient(ellipse at 50% 50%, #76151d2b 0%, #3b101515 31%, #2220220a 54%, transparent 73%); content: ""; filter: blur(35px); transform: translate(-50%, -50%); animation: profile-stage-drift 15s ease-in-out infinite alternate; }
   .profile-gate-showcase::after { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 54%, transparent 0%, #08090a1c 47%, #050607a8 100%), linear-gradient(180deg, #05060777 0%, transparent 28%, transparent 76%, #05060782 100%); content: ""; }
   @keyframes profile-stage-drift { from { opacity: .72; transform: translate(-52%, -49%) scale(.94); } to { opacity: 1; transform: translate(-48%, -53%) scale(1.07); } }
 }

@@ -1994,7 +1994,7 @@ function updateCurrentPreferences(values) { const profile = currentProfile(); if
 function profileAvatar(profile) { const hasAvatar = isProfileAvatar(profile?.avatar), avatar = hasAvatar ? `<img src="${escapeHTML(profile.avatar)}" alt="">` : escapeHTML(profile?.name?.slice(0, 1).toUpperCase() || "?"); return `<span class="profile-avatar ${hasAvatar ? "profile-avatar-image" : "profile-avatar-initial"}" style="--profile-color:${escapeHTML(profile?.color || "#d41520")}">${avatar}</span>`; }
 function profileGateAvatar(profile) {
   if (isProfileAvatar(profile?.avatar)) return profileAvatar(profile);
-  return `<span class="profile-avatar profile-avatar-guest" aria-hidden="true"><svg viewBox="0 0 72 72"><circle cx="36" cy="28" r="9.5"/><path d="M17 57c1.8-11.6 8.2-17.5 19-17.5S53.2 45.4 55 57"/><path d="M13 36a23 23 0 0 1 46 0" opacity=".24"/></svg></span>`;
+  return `<span class="profile-avatar profile-avatar-guest" aria-hidden="true"><img src="assets/profile-person.svg" alt=""></span>`;
 }
 function accountNavItem(tab, icon, label, active) { return `<button class="account-nav-item ${tab === active ? "active" : ""}" data-account-tab="${tab}" aria-current="${tab === active ? "page" : "false"}"><i aria-hidden="true">${icon}</i><span>${label}</span></button>`; }
 function accountAction(icon, title, detail, action, value = "Open") { return `<button class="account-action-card" ${action}><i aria-hidden="true">${icon}</i><span><b>${t(title)}</b><small>${t(detail)}</small></span><em>${t(String(value))} ›</em></button>`; }
@@ -2268,7 +2268,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=317", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=319", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
