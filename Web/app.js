@@ -783,7 +783,7 @@ function renderProfileGate() {
   stopProfileGateShowcase();
   const profiles = account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileGateAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("");
   const addProfile = account.profiles.length < 5 ? `<button class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:${account.profiles.length}" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>` : "";
-  app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"} ${account.profiles.length >= 3 && account.profiles.length < 5 ? "profile-gate-add-below" : ""} ${account.profiles.length >= 5 ? "profile-gate-at-cap" : ""}"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${profileGateShowcaseMarkup(items)}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
+  app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"} ${account.profiles.length >= 3 ? "profile-gate-multirow" : ""} ${account.profiles.length >= 5 ? "profile-gate-at-cap" : ""}"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${profileGateShowcaseMarkup(items)}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
   const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet");
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) gate?.classList.add("profile-gate-art-ready");
   else sheet?.addEventListener("animationend", event => {
@@ -2327,7 +2327,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=338", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=339", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

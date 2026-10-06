@@ -31,7 +31,7 @@ test("profile picker uses the animated, cinematic selector and keeps each profil
 
 test("profile picker has a working add-profile tile and does not exceed five profiles", () => {
   assert.match(gate, /account\.profiles\.length < 5[\s\S]*?data-add-profile-gate/);
-  assert.match(gate, /account\.profiles\.length >= 3 && account\.profiles\.length < 5 \? "profile-gate-add-below"/);
+  assert.match(gate, /account\.profiles\.length >= 3 \? "profile-gate-multirow"/);
   assert.match(gate, /account\.profiles\.length >= 5 \? "profile-gate-at-cap"/);
   assert.match(gate, /data-add-profile-gate[\s\S]*?showProfileEditor\("", "profiles", "profile"\)/);
   assert.match(app, /function showProfileEditor\(id = "", returnRoute = "account", initialCategory = "home"\)/);
@@ -79,13 +79,14 @@ test("mobile picker fills the space above the curved sheet with portrait artwork
   assert.match(app, /function syncProfileGateLayout\(\)[\s\S]*?gate\.clientHeight - sheet\.offsetHeight/);
   assert.match(app, /new ResizeObserver\(syncProfileGateLayout\)/);
   assert.match(styles, /\.profile-gate-backdrop \{[^}]*inset: 0;[^}]*width: 100%; height: 100%;[^}]*object-position: center bottom/);
-  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 34svh/);
-  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: 43svh; max-height: 76svh/);
+  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: max\(34svh, 300px\)/);
+  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: max\(43svh, 290px\); max-height: 76svh/);
   assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 18px 4px; width: min\(100%, 350px\)/);
   assert.match(styles, /\.profile-gate \.profile-choice-add \{ flex-basis: calc\(\(100% - 8px\) \/ 3\)/);
-  assert.match(styles, /\.profile-gate-at-cap \.profile-chooser \{ gap: 12px 4px; width: min\(100%, 330px\)/);
+  assert.match(styles, /\.profile-gate-at-cap \.profile-chooser \{ gap: 18px 4px; width: min\(100%, 330px\)/);
   assert.match(styles, /\.profile-gate-at-cap \.profile-choice \{ flex-basis: calc\(\(100% - 8px\) \/ 3\)/);
-  assert.match(styles, /\.profile-gate\.profile-gate-add-below \.profile-choice-add \{ flex-basis: 100%; width: 100%; \}/);
+  assert.match(styles, /\.profile-gate\.profile-gate-multirow \.profile-chooser \{ width: min\(100%, 440px\); row-gap: 28px/);
+  assert.match(styles, /\.profile-gate-multirow \.profile-chooser \{ row-gap: 24px; \}/);
   assert.match(styles, /@media \(max-width: 650px\) and \(max-height: 690px\)[\s\S]*?\.profile-gate-backdrop \{ object-fit: contain; \}/);
   assert.match(styles, /backdrop-filter: blur\(16px\)/);
   assert.match(styles, /\.profile-gate-showcase \{ height: calc\(100% - 43svh\); \}/);
@@ -124,10 +125,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=267/);
-  assert.match(index, /app\.js\?v=338/);
-  assert.match(serviceWorker, /seven-v338/);
-  assert.match(serviceWorker, /auth\.css\?v=267/);
-  assert.match(serviceWorker, /app\.js\?v=338/);
+  assert.match(index, /auth\.css\?v=268/);
+  assert.match(index, /app\.js\?v=339/);
+  assert.match(serviceWorker, /seven-v339/);
+  assert.match(serviceWorker, /auth\.css\?v=268/);
+  assert.match(serviceWorker, /app\.js\?v=339/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
