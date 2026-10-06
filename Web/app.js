@@ -14,7 +14,7 @@ let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateTimer: null, profileGateSnapTimer: null, profileGateIndex: 0, profileGateResize: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -525,6 +525,7 @@ async function loadStartupData() {
     state.catalog = {};
     state.error = error.message;
   }
+  if (state.user && state.route === "profiles") startProfileGateShowcase();
   if (!state.user || state.route !== "profiles") render();
 }
 function renderOfflineScreen() {
@@ -560,7 +561,7 @@ function header() {
   return `<header class="main-header app-header"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>${mobileNavigation}`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-shell"><div class="footer-main"><div class="footer-brand"><button class="footer-wordmark" data-home aria-label="SEVEN home">SEVEN</button><span>${t("Stories worth finding.")}</span></div><nav class="footer-links" aria-label="Footer navigation"><button data-home>${t("Home")}</button><button data-for-you>${t("For You")}</button><button data-movies>${t("Movies")}</button><button data-shows>${t("Series")}</button><button data-favourites>${t("Favourites")}</button><button data-watchlist>${t("Watchlist")}</button></nav><a class="footer-top" href="#app" aria-label="${t("Back to top")}"><span aria-hidden="true">↑</span></a></div><div class="footer-bottom"><small class="footer-disclaimer">Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></div></footer>`; }
-function render() { state.watchlistTargets = new Map(); if (state.route !== "player") stopPlayerProgressPolling(); if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = ""; if (state.route === "onboarding" && state.user) return renderOnboarding(); if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "watchlist") return renderWatchlist(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
+function render() { if (state.route !== "profiles") stopProfileGateShowcase(); state.watchlistTargets = new Map(); if (state.route !== "player") stopPlayerProgressPolling(); if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = ""; if (state.route === "onboarding" && state.user) return renderOnboarding(); if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "watchlist") return renderWatchlist(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
 async function profileSecret(value) { if (!globalThis.crypto?.subtle) throw new Error("Profile locks need a modern browser."); const bytes = new TextEncoder().encode(value), hash = await globalThis.crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join(""); }
 const PARENT_ACCESS_KEY = "seven.parent-access";
 function hasParentAccess() { return !parentAccessConfigured(); }
@@ -654,6 +655,7 @@ function exitProfileGate(then) {
   setTimeout(then, 430);
 }
 async function activateProfile(id) {
+  stopProfileGateShowcase();
   const catalogStale = state.catalogKey !== id;
   state.account.activeProfileId = id;
   hydrateWatchlist();
@@ -665,7 +667,71 @@ async function activateProfile(id) {
   if (state.route === "home") render();
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); activateProfile(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
-function renderProfileGate() { const account = state.account || defaultAccount(); app.innerHTML = `<main class="profile-gate"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button><section><span class="brand">${t("WHO’S WATCHING?")}</span><h1>${t("Choose a profile")}</h1><p>Your progress, Continue Watching row, and playback settings stay with this profile.</p><div class="profile-chooser">${account.profiles.map(profile => `<button class="profile-choice" data-watch-profile="${profile.id}">${profileAvatar(profile)}<b>${escapeHTML(profile.name)}</b><small>${t(profile.kids ? "Kids profile" : profile.pinHash ? "Locked" : "Standard profile")}</small></button>`).join("")}</div><button class="manage-profiles" data-manage-profiles>${t("Manage profiles")}</button></section></main>`; document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (profile?.pinHash && !profile.kids) showProfileUnlock(profile); else activateProfile(profile.id); }); document.querySelector("[data-manage-profiles]").onclick = showAccount; }
+function profileGateItems() { return (state.featuredPool || []).filter(item => item?.backdrop_path && item?.poster_path).slice(0, 8); }
+function profileGateShowcaseMarkup(items) {
+  const first = items[0];
+  const carousel = items.length ? [0, 1, 2].map(copy => items.map((item, index) => `<span class="profile-gate-poster ${copy === 1 && index === 0 ? "is-active" : ""}" data-profile-card="${copy * items.length + index}"><img src="${escapeHTML(posterOf(item))}" alt="" loading="lazy" decoding="async"></span>`).join("")).join("") : "";
+  return `<div class="profile-gate-showcase" aria-hidden="true"><img class="profile-gate-backdrop" data-profile-backdrop src="${first ? escapeHTML(`${TMDB_IMAGE.replace("/w500/", "/w780/")}${first.backdrop_path}`) : "assets/seven-wordmark-v2.png"}" alt=""><div class="profile-gate-art-shade"></div><div class="profile-gate-feature"><span class="profile-gate-kicker" data-profile-kind>${first ? (contentType(first) === "movie" ? "FEATURED FILM" : "FEATURED SERIES") : "TONIGHT ON SEVEN"}</span><h2 data-profile-title>${first ? escapeHTML(titleOf(first)) : "Find your next story"}</h2><span class="profile-gate-count" data-profile-count>${first ? `01 <i>/ ${String(items.length).padStart(2, "0")}</i>` : ""}</span></div><div class="profile-gate-carousel"><div class="profile-gate-carousel-track" data-profile-track>${carousel}</div></div></div>`;
+}
+function stopProfileGateShowcase() {
+  clearInterval(state.profileGateTimer);
+  clearTimeout(state.profileGateSnapTimer);
+  state.profileGateTimer = null;
+  state.profileGateSnapTimer = null;
+  if (state.profileGateResize) window.removeEventListener("resize", state.profileGateResize);
+  state.profileGateResize = null;
+}
+function paintProfileGateShowcase(items, animate = true) {
+  const gate = document.querySelector(".profile-gate"), item = items[state.profileGateIndex % items.length];
+  if (!gate || !item) return;
+  const image = gate.querySelector("[data-profile-backdrop]"), title = gate.querySelector("[data-profile-title]"), kind = gate.querySelector("[data-profile-kind]"), count = gate.querySelector("[data-profile-count]"), track = gate.querySelector("[data-profile-track]"), cards = gate.querySelectorAll("[data-profile-card]");
+  const update = () => {
+    image.src = `${TMDB_IMAGE.replace("/w500/", "/w780/")}${item.backdrop_path}`;
+    title.textContent = titleOf(item);
+    kind.textContent = contentType(item) === "movie" ? "FEATURED FILM" : "FEATURED SERIES";
+    count.innerHTML = `${String(state.profileGateIndex % items.length + 1).padStart(2, "0")} <i>/ ${String(items.length).padStart(2, "0")}</i>`;
+    cards.forEach(card => card.classList.toggle("is-active", Number(card.dataset.profileCard) === state.profileGateIndex));
+    if (track) track.style.transform = `translate3d(${window.innerWidth / 2 - 30 - state.profileGateIndex * 72}px, 0, 0)`;
+  };
+  if (!animate) { update(); return; }
+  gate.classList.add("profile-gate-changing");
+  setTimeout(() => { if (document.querySelector(".profile-gate") === gate) { update(); gate.classList.remove("profile-gate-changing"); } }, 180);
+}
+function startProfileGateShowcase() {
+  stopProfileGateShowcase();
+  const items = profileGateItems();
+  if (!items.length) return;
+  const track = document.querySelector("[data-profile-track]");
+  if (track && !track.children.length) track.innerHTML = [0, 1, 2].map(copy => items.map((item, index) => `<span class="profile-gate-poster ${copy === 1 && index === 0 ? "is-active" : ""}" data-profile-card="${copy * items.length + index}"><img src="${escapeHTML(posterOf(item))}" alt="" loading="lazy" decoding="async"></span>`).join("")).join("");
+  state.profileGateIndex = items.length;
+  const position = () => {
+    const track = document.querySelector("[data-profile-track]");
+    if (track) track.style.transform = `translate3d(${window.innerWidth / 2 - 30 - state.profileGateIndex * 72}px, 0, 0)`;
+  };
+  state.profileGateResize = position;
+  window.addEventListener('resize', position, { passive:true });
+  paintProfileGateShowcase(items, false);
+  if (items.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  state.profileGateTimer = setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    state.profileGateIndex += 1;
+    paintProfileGateShowcase(items);
+    if (state.profileGateIndex >= items.length * 2) state.profileGateSnapTimer = setTimeout(() => {
+      if (state.route !== "profiles") return;
+      state.profileGateIndex = items.length;
+      const track = document.querySelector("[data-profile-track]");
+      if (track) { track.style.transition = "none"; paintProfileGateShowcase(items, false); requestAnimationFrame(() => { track.style.transition = ""; }); }
+      state.profileGateSnapTimer = null;
+    }, 900);
+  }, 5600);
+}
+function renderProfileGate() {
+  const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro")), items = profileGateItems();
+  stopProfileGateShowcase();
+  app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"}"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${profileGateShowcaseMarkup(items)}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("")}</div></section></main>`;
+  document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (profile?.pinHash && !profile.kids) showProfileUnlock(profile); else activateProfile(profile.id); });
+  startProfileGateShowcase();
+}
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function renderHome() {
@@ -1093,6 +1159,7 @@ function dismissIntro() {
   state.introSafetyTimer = null;
   document.documentElement.style.overflow = "";
   document.querySelector(".seven-intro")?.remove();
+  document.querySelector(".profile-gate")?.classList.replace("profile-gate-pending", "profile-gate-ready");
 }
 function maybeFinishIntro() {
   if (!state.startupReady || !state.introAnimationComplete || state.introExitStarted) return;
@@ -2185,7 +2252,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=314", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=315", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

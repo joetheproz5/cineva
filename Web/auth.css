@@ -1132,6 +1132,67 @@
 .profile-gate .profile-choice .profile-avatar { border-color: #b9141d; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
 .profile-gate .profile-choice:hover .profile-avatar { border-color: #ed2631; box-shadow: 0 0 0 2px #d3131c, 0 16px 32px #0008, inset 0 -18px 25px #0003; }
 .profile-gate .profile-choice:focus-visible .profile-avatar { border-color: #fff; box-shadow: 0 0 0 2px #d3131c, 0 0 0 5px #d3131c66, inset 0 -18px 25px #0003; }
+
+/* Cinematic profile handoff after the SEVEN ident. */
+.profile-gate { position: fixed; z-index: 0; inset: 0; isolation: isolate; display: grid; width: 100vw; height: 100vh; height: 100dvh; min-height: 100vh; min-height: 100dvh; margin: 0; padding: 88px 28px 64px; overflow: hidden; place-items: center; color: #f5f5f5; background: #050506; }
+.profile-gate-logo { z-index: 5; top: max(22px, env(safe-area-inset-top)); left: max(26px, env(safe-area-inset-left)); }
+.profile-gate-logo img { width: 94px; }
+.profile-gate-showcase { display: none; }
+.profile-gate .profile-gate-sheet { position: relative; z-index: 2; width: min(100%, 1000px); max-width: 1000px; margin: 0; text-align: center; }
+.profile-gate .profile-gate-sheet h1 { margin: 0 0 38px; font-size: clamp(34px, 4.5vw, 48px); font-weight: 600; letter-spacing: -1.7px; }
+.profile-gate .profile-chooser { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); justify-content: center; gap: 24px; width: min(100%, 900px); margin: 0 auto; }
+.profile-gate .profile-choice { display: grid; justify-items: center; align-content: start; gap: 12px; width: 100%; min-width: 0; padding: 0 4px; color: #bcbcbc; background: transparent; text-align: center; }
+.profile-gate .profile-choice .profile-avatar { width: clamp(100px, 10vw, 132px); height: clamp(100px, 10vw, 132px); border-radius: 12px; font-size: 38px; }
+.profile-gate .profile-choice b { max-width: 100%; color: #bcbcbc; font-size: 15px; font-weight: 500; transition: color .2s ease; }
+.profile-gate .profile-choice:hover .profile-avatar { transform: scale(1.07); }
+.profile-gate .profile-choice:hover b, .profile-gate .profile-choice:focus-visible b { color: #fff; }
+.profile-gate-pending .profile-gate-sheet { visibility: hidden; }
+.profile-gate-ready .profile-gate-sheet { animation: profile-gate-desktop-rise .7s cubic-bezier(.2,.75,.25,1) both; }
+.profile-gate-ready .profile-choice { animation: profile-choice-arrive .55s cubic-bezier(.2,.75,.25,1) both; animation-delay: calc(120ms + var(--profile-index, 0) * 90ms); }
+@keyframes profile-gate-desktop-rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes profile-choice-arrive { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-width: 650px) {
+  .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }
+  .profile-gate-logo { top: max(16px, env(safe-area-inset-top)); left: max(18px, env(safe-area-inset-left)); }
+  .profile-gate-logo img { width: 78px; }
+  .profile-gate-showcase { position: absolute; inset: 0 0 auto; display: block; height: 65svh; overflow: hidden; background: #0b0b0d; }
+  .profile-gate-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 28%; opacity: .87; transition: opacity .24s ease, transform 7s ease; transform: scale(1.02); }
+  .profile-gate-ready .profile-gate-backdrop { transform: scale(1.08); }
+  .profile-gate-art-shade { position: absolute; inset: 0; background: linear-gradient(180deg, #05050666 0%, #05050610 30%, #0505063b 62%, #050506 100%), linear-gradient(90deg, #05050655, transparent 80%); }
+  .profile-gate-feature { position: absolute; top: max(15svh, calc(env(safe-area-inset-top) + 86px)); left: 24px; width: min(72%, 330px); text-align: left; transition: opacity .2s ease, transform .2s ease; }
+  .profile-gate-kicker { display: block; margin-bottom: 7px; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 2.1px; text-shadow: 0 1px 14px #000; }
+  .profile-gate-feature h2 { margin: 0; color: #fff; font-size: clamp(24px, 7vw, 34px); font-weight: 780; line-height: 1.04; letter-spacing: -1px; text-shadow: 0 2px 18px #000a; }
+  .profile-gate-count { display: inline-block; margin-top: 10px; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+  .profile-gate-count i { color: #ffffffa6; font-size: 9px; font-style: normal; }
+  .profile-gate-carousel { position: absolute; top: 31svh; right: 0; left: 0; height: 106px; overflow: hidden; perspective: 700px; mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent); }
+  .profile-gate-carousel-track { display: flex; width: max-content; height: 100%; align-items: center; gap: 12px; will-change: transform; transition: transform .82s cubic-bezier(.2,.75,.25,1); }
+  .profile-gate-poster { display: block; width: 60px; height: 90px; flex: 0 0 60px; overflow: hidden; border: 1px solid #ffffff40; border-radius: 8px; background: #111; box-shadow: 0 10px 26px #0009; opacity: .68; transform: perspective(600px) rotateY(11deg) scale(.86); transition: opacity .55s ease, transform .7s cubic-bezier(.2,.75,.25,1), border-color .3s ease; }
+  .profile-gate-poster:nth-child(3n) { transform: perspective(600px) rotateY(-11deg) scale(.86); }
+  .profile-gate-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .profile-gate-poster.is-active { z-index: 1; border-color: #ffffffa6; opacity: 1; transform: perspective(600px) rotateY(0) scale(1); }
+  .profile-gate-changing .profile-gate-feature { opacity: .2; transform: translateY(5px); }
+  .profile-gate .profile-gate-sheet { position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; width: 100%; max-width: none; min-height: 48svh; margin: 0; padding: 39px 18px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid #ffffff20; border-radius: 48% 48% 0 0 / 30px 30px 0 0; background: linear-gradient(180deg, #111214f7 0%, #09090bf9 100%); box-shadow: 0 -20px 60px #0008; text-align: center; }
+  .profile-gate .profile-gate-sheet h1 { margin: 0 0 20px; font-size: clamp(22px, 6vw, 27px); font-weight: 620; letter-spacing: -.8px; }
+  .profile-gate .profile-chooser { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 8px; width: min(100%, 390px); margin: 0 auto; }
+  .profile-gate .profile-choice { gap: 7px; padding: 0 2px; }
+  .profile-gate .profile-choice .profile-avatar { width: clamp(57px, 17vw, 72px); height: clamp(57px, 17vw, 72px); border-radius: 10px; font-size: 25px; }
+  .profile-gate .profile-choice b { overflow: hidden; width: 100%; color: #e8e8e8; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-gate-pending .profile-gate-sheet { visibility: visible; transform: translateY(105%); }
+  .profile-gate-ready .profile-gate-sheet { animation: profile-gate-sheet-rise .82s cubic-bezier(.18,.76,.22,1) both; }
+  .profile-gate-ready .profile-choice { animation: profile-choice-arrive .58s cubic-bezier(.2,.75,.25,1) both; animation-delay: calc(260ms + var(--profile-index, 0) * 100ms); }
+  @keyframes profile-gate-sheet-rise { from { opacity: .65; transform: translateY(105%); } to { opacity: 1; transform: translateY(0); } }
+}
+@media (max-width: 650px) and (max-height: 690px) {
+  .profile-gate-showcase { height: 58svh; }
+  .profile-gate-carousel { display: none; }
+  .profile-gate-feature { top: max(13svh, calc(env(safe-area-inset-top) + 78px)); }
+  .profile-gate .profile-gate-sheet { min-height: 54svh; max-height: 76svh; overflow-y: auto; border-radius: 28px 28px 0 0; }
+  .profile-gate .profile-gate-sheet h1 { margin-bottom: 14px; }
+  .profile-gate .profile-chooser { gap: 13px 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-gate-ready .profile-gate-sheet, .profile-gate-ready .profile-choice, .profile-gate-ready .profile-gate-backdrop { animation: none; transition-duration: .01ms; }
+}
 .onboarding-page { min-height: 100svh; padding: 22px clamp(20px,5vw,76px) 50px; color: #f5f5f5; background: radial-gradient(ellipse at 50% 0%, #211113 0%, #0a0a0b 42%, #050505 100%); }
 .onboarding-top { display: flex; width: min(1120px,100%); min-height: 50px; align-items: center; justify-content: space-between; margin: 0 auto; border-bottom: 1px solid #262626; color: #767676; font-size: 10px; font-weight: 800; letter-spacing: 2px; }
 .onboarding-top .brand { margin: 0; color: #ed1b27; font-size: 20px; letter-spacing: -1.2px; }
