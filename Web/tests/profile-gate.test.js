@@ -63,11 +63,12 @@ test("mobile picker fits a high-resolution portrait poster without cropping or b
   assert.match(gate, /first\.poster_path/);
   assert.match(gate, /filter\(item => item\?\.poster_path\)/);
   assert.match(gate, /original/);
-  assert.match(styles, /max-height: 78svh; object-fit: contain/);
+  assert.match(styles, /max-height: 92svh; object-fit: contain/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
   assert.match(styles, /\.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
   assert.match(styles, /\.profile-gate-showcase \{[^}]*inset: 0;[^}]*height: 100%/);
-  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 43svh/);
+  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 39svh/);
+  assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: 50svh; max-height: 76svh/);
   assert.match(styles, /backdrop-filter: blur\(16px\)/);
   assert.match(styles, /object-position: top center/);
 });
@@ -98,10 +99,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=258/);
-  assert.match(index, /app\.js\?v=328/);
-  assert.match(serviceWorker, /seven-v328/);
-  assert.match(serviceWorker, /auth\.css\?v=258/);
-  assert.match(serviceWorker, /app\.js\?v=328/);
+  assert.match(index, /auth\.css\?v=259/);
+  assert.match(index, /app\.js\?v=329/);
+  assert.match(serviceWorker, /seven-v329/);
+  assert.match(serviceWorker, /auth\.css\?v=259/);
+  assert.match(serviceWorker, /app\.js\?v=329/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
