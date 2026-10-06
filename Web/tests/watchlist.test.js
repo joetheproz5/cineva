@@ -23,7 +23,7 @@ test("Watchlist is one row per signed-in account and has owner-only RLS", () => 
   assert.match(watchlistSql, /primary key \(user_id, content_type, tmdb_id\)/);
   assert.match(watchlistSql, /alter table public\.account_watchlist enable row level security/);
   assert.match(watchlistSql, /to authenticated[\s\S]*?\(select auth\.uid\(\)\) is not null and \(select auth\.uid\(\)\) = user_id[\s\S]*?with check \(\(select auth\.uid\(\)\) is not null and \(select auth\.uid\(\)\) = user_id\)/);
-  assert.match(watchlistSql, /as restrictive for all to authenticated[\s\S]*?\(select \(auth\.jwt\(\)->>'is_anonymous'\)::boolean\) is false[\s\S]*?with check \(\(select \(auth\.jwt\(\)->>'is_anonymous'\)::boolean\) is false\)/);
+  assert.match(watchlistSql, /as restrictive for all to authenticated[\s\S]*?\(\(select auth\.jwt\(\)\) ->> 'is_anonymous'\)::boolean is false[\s\S]*?with check \(\(\(select auth\.jwt\(\)\) ->> 'is_anonymous'\)::boolean is false\)/);
   assert.doesNotMatch(watchlistSql, /profile_id/);
 });
 

@@ -27,8 +27,8 @@ with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 drop policy if exists "Only permanent accounts use account Watchlist" on public.account_watchlist;
 create policy "Only permanent accounts use account Watchlist"
 on public.account_watchlist as restrictive for all to authenticated
-using ((select (auth.jwt()->>'is_anonymous')::boolean) is false)
-with check ((select (auth.jwt()->>'is_anonymous')::boolean) is false);
+using (((select auth.jwt()) ->> 'is_anonymous')::boolean is false)
+with check (((select auth.jwt()) ->> 'is_anonymous')::boolean is false);
 
 revoke all on public.account_watchlist from public, anon;
 grant select, insert, update, delete on public.account_watchlist to authenticated;
