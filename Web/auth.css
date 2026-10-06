@@ -1173,9 +1173,9 @@
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }
   .profile-gate-logo { display: none; }
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0 0 auto; display: block; height: calc(100% - 39svh); overflow: hidden; background: #0b0b0d; }
-  .profile-gate-backdrop { position: absolute; top: 50%; left: 50%; width: auto; max-width: 100%; height: auto; max-height: 100%; object-fit: contain; object-position: center; opacity: 0; transition: opacity .9s cubic-bezier(.22,1,.36,1), filter .85s ease, transform .9s cubic-bezier(.22,1,.36,1); transform: translate(-50%, calc(-50% + 14px)) scale(.985); }
-  .profile-gate-art-ready .profile-gate-backdrop.is-active { opacity: .98; transform: translate(-50%, -50%) scale(1); }
-  .profile-gate-art-ready .profile-gate-backdrop:not(.is-active) { transform: translate(-50%, calc(-50% - 8px)) scale(1.01); }
+  .profile-gate-backdrop { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; opacity: 0; transition: opacity .9s cubic-bezier(.22,1,.36,1), filter .85s ease, transform .9s cubic-bezier(.22,1,.36,1); transform: scale(.985); }
+  .profile-gate-art-ready .profile-gate-backdrop.is-active { opacity: .98; transform: scale(1); }
+  .profile-gate-art-ready .profile-gate-backdrop:not(.is-active) { transform: scale(.985); }
   .profile-gate-art-shade { position: absolute; inset: 0; background: linear-gradient(180deg, #05050612 0%, #05050605 35%, #05050645 62%, #050506cc 78%, #050506f2 100%), linear-gradient(90deg, #05050622, transparent 45%, #05050622); }
   .profile-gate-feature, .profile-gate-carousel { display: none; }
   .profile-gate-selecting .profile-gate-backdrop { opacity: 0; filter: brightness(.12); }

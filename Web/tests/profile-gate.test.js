@@ -70,11 +70,13 @@ test("mobile picker fits a high-resolution portrait poster without cropping or b
   assert.match(gate, /first\.poster_path/);
   assert.match(gate, /filter\(item => item\?\.poster_path\)/);
   assert.match(gate, /original/);
-  assert.match(styles, /max-height: 100%; object-fit: contain/);
+  assert.match(styles, /width: 100%; height: 100%; object-fit: contain; object-position: center bottom/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
   assert.match(styles, /\.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
   assert.match(styles, /\.profile-gate-showcase \{[^}]*inset: 0 0 auto;[^}]*height: calc\(100% - 39svh\)/);
-  assert.match(styles, /\.profile-gate-backdrop \{[^}]*top: 50%; left: 50%;[^}]*object-position: center/);
+  assert.match(app, /function syncProfileGateLayout\(\)[\s\S]*?gate\.clientHeight - sheet\.offsetHeight/);
+  assert.match(app, /new ResizeObserver\(syncProfileGateLayout\)/);
+  assert.match(styles, /\.profile-gate-backdrop \{[^}]*inset: 0;[^}]*width: 100%; height: 100%;[^}]*object-position: center bottom/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: 39svh/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: 50svh; max-height: 76svh/);
   assert.match(styles, /backdrop-filter: blur\(16px\)/);
@@ -114,10 +116,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=262/);
-  assert.match(index, /app\.js\?v=333/);
-  assert.match(serviceWorker, /seven-v333/);
-  assert.match(serviceWorker, /auth\.css\?v=262/);
-  assert.match(serviceWorker, /app\.js\?v=333/);
+  assert.match(index, /auth\.css\?v=264/);
+  assert.match(index, /app\.js\?v=335/);
+  assert.match(serviceWorker, /seven-v335/);
+  assert.match(serviceWorker, /auth\.css\?v=264/);
+  assert.match(serviceWorker, /app\.js\?v=335/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

@@ -14,7 +14,7 @@ let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateTimer: null, profileGateSnapTimer: null, profileGateIndex: 0, profileGateResize: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateTimer: null, profileGateSnapTimer: null, profileGateIndex: 0, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -699,6 +699,8 @@ function stopProfileGateShowcase() {
   state.profileGateTimer = null;
   state.profileGateSnapTimer = null;
   if (state.profileGateResize) window.removeEventListener("resize", state.profileGateResize);
+  state.profileGateResizeObserver?.disconnect();
+  state.profileGateResizeObserver = null;
   state.profileGateResize = null;
 }
 function paintProfileGateShowcase(items, animate = true) {
@@ -736,15 +738,31 @@ function positionProfileGateCarousel() {
   const center = active.offsetLeft + active.offsetWidth / 2;
   track.style.transform = `translate3d(${Math.round(carousel.clientWidth / 2 - center)}px, 0, 0)`;
 }
+function syncProfileGateLayout() {
+  positionProfileGateCarousel();
+  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet"), showcase = gate?.querySelector(".profile-gate-showcase");
+  if (!gate || !sheet || !showcase) return;
+  if (window.matchMedia("(max-width: 650px)").matches) {
+    const availableHeight = Math.max(0, gate.clientHeight - sheet.offsetHeight);
+    showcase.style.height = `${availableHeight}px`;
+  } else showcase.style.removeProperty("height");
+}
 function startProfileGateShowcase() {
   stopProfileGateShowcase();
+  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet");
+  state.profileGateResize = syncProfileGateLayout;
+  window.addEventListener('resize', state.profileGateResize, { passive:true });
+  if (typeof ResizeObserver === "function" && gate && sheet) {
+    state.profileGateResizeObserver = new ResizeObserver(syncProfileGateLayout);
+    state.profileGateResizeObserver.observe(gate);
+    state.profileGateResizeObserver.observe(sheet);
+  }
+  syncProfileGateLayout();
   const items = profileGateItems();
   if (!items.length) return;
   const track = document.querySelector("[data-profile-track]");
   if (track && !track.children.length) track.innerHTML = [0, 1, 2].map(copy => items.map((item, index) => `<span class="profile-gate-poster ${copy === 1 && index === 0 ? "is-active" : ""}" data-profile-card="${copy * items.length + index}"><img src="${escapeHTML(posterOf(item))}" alt="" loading="lazy" decoding="async"></span>`).join("")).join("");
   state.profileGateIndex = items.length;
-  state.profileGateResize = positionProfileGateCarousel;
-  window.addEventListener('resize', state.profileGateResize, { passive:true });
   paintProfileGateShowcase(items, false);
   if (items.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   state.profileGateTimer = setInterval(() => {
@@ -2309,7 +2327,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=333", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=335", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
