@@ -41,6 +41,11 @@ test("CineSrc embeds use TMDB routes, autonext, resume, and brand color", () => 
   assert.equal(`${show.origin}${show.pathname}`, "https://cinesrc.st/embed/tv/71712");
   assert.equal(show.searchParams.get("s"), "4");
   assert.equal(show.searchParams.get("e"), "2");
+  assert.equal(show.searchParams.get("autoskip"), "false", "CineSrc should show its native manual Skip Intro control when timing data exists");
+});
+
+test("the player does not add a page-level skip overlay over CineSrc's native controls", () => {
+  assert.doesNotMatch(source, /data-skip-intro|skip-intro-button|api\.theintrodb\.org/);
 });
 
 test("VidFast embeds enable autoPlay, autoNext, theme, and startAt resume", () => {
@@ -86,7 +91,7 @@ test("CineSrc progress is polled via getCurrentTime and getDuration commands", (
   assert.match(source, /function startPlayerProgressPolling/);
   assert.match(source, /sendPlayerCommand\(provider, "getCurrentTime"\)/);
   assert.match(source, /sendPlayerCommand\(provider, "getDuration"\)/);
-  assert.match(source, /type:"cinesrc:command", command, args\s*\}/);
+  assert.match(source, /type:"cinesrc:command", command, args:\[\]/);
   assert.match(source, /bindPlayerControlLift\(\); ensurePlayerContext\(p\); startPlayerProgressPolling\(\);/);
   assert.match(source, /if \(state\.route !== "player"\) stopPlayerProgressPolling\(\);/);
   assert.match(source, /function handlePlayerResponse/);

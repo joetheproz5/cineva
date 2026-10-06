@@ -1,6 +1,6 @@
-const VERSION = "seven-v313";const DATA_CACHE = "seven-data-v1";
+const VERSION = "seven-v314";const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v1";
-const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=245", "ui.css?v=294", "player-security.js?v=245", "intro-skip.js?v=1", "profile-stats.js?v=1", "app.js?v=313", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-wordmark-v2.png", "assets/avatars/red-panda.png", "assets/avatars/robot.png"];
+const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=245", "ui.css?v=293", "player-security.js?v=245", "profile-stats.js?v=1", "app.js?v=314", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-wordmark-v2.png", "assets/avatars/red-panda.png", "assets/avatars/robot.png"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("message", event => { if (event.data?.type === "SEVEN_SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => ![VERSION, DATA_CACHE, IMAGE_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
@@ -29,7 +29,7 @@ self.addEventListener("fetch", event => {
   if (url.origin !== location.origin) return;
   const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, "");
   const appPath = url.pathname.slice(scopePath.length) || "/";
-  const appShell = event.request.mode === "navigate" || ["/index.html", "/styles.css", "/auth.css", "/ui.css", "/intro-skip.js", "/app.js"].includes(appPath);
+  const appShell = event.request.mode === "navigate" || ["/index.html", "/styles.css", "/auth.css", "/ui.css", "/app.js"].includes(appPath);
   if (appShell) event.respondWith(fetch(event.request, { cache:"reload" }).then(response => { const copy = response.clone(); caches.open(VERSION).then(cache => cache.put(event.request, copy)); return response; }).catch(() => caches.match(event.request, { ignoreSearch:true })));
   else event.respondWith(caches.match(event.request, { ignoreSearch:true }).then(cached => cached || fetch(event.request)));
 });

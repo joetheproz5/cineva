@@ -94,8 +94,6 @@ function applyLocale() {
 }
 const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeAlerts:false, maturity:"18+", language:"English", familySafe:false, favoriteGenres:[], contentMix:"both", blockScary:false, searchEnabled:true, moviesEnabled:true, seriesEnabled:true, introEnabled:true, playerProvider:"cinesrc" };
 const PLAYER_PROVIDERS = Object.freeze(["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"]);
-const INTRO_SEGMENT_CACHE_TTL = 12 * 60 * 60 * 1000;
-const introSkip = { request:0, key:null, segment:null, currentTime:0, duration:0 };
 const PREVIOUS_EPISODE_WATCHED_PERCENT = 50;
 const NEXT_EPISODE_CONFIRMATION_PERCENT = 25;
 function selectedPlayerProvider() { const provider = currentPreferences().playerProvider; return PLAYER_PROVIDERS.includes(provider) ? provider : "cinesrc"; }
@@ -864,7 +862,7 @@ function playerURL(item, progress = 0) {
     return `https://vidfast.vc/${base}?autoPlay=true&autoNext=true&nextButton=true&theme=b20710&hideServerControls=false${start ? `&startAt=${start}` : ""}`;
   }
   if (provider === "cinesrc") {
-    const params = new URLSearchParams({ autoplay:"true", autonext:"true", autoskip:"true", color:"#b20710" });
+    const params = new URLSearchParams({ autoplay:"true", autonext:"true", autoskip:"false", color:"#b20710" });
     if (item.type === "tv") { params.set("s", String(season)); params.set("e", String(episode)); }
     if (start) { params.set("t", String(start)); params.set("continueprompt", "false"); }
     return `https://cinesrc.st/embed/${item.type === "movie" ? `movie/${item.id}` : `tv/${item.id}`}?${params}`;
@@ -878,59 +876,10 @@ function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series
 const cineSrcPoll = { timer:null, currentTime:null, duration:null };
 let playerEpisodeContextRequest = 0;
 function stopPlayerProgressPolling() { clearInterval(cineSrcPoll.timer); cineSrcPoll.timer = null; cineSrcPoll.currentTime = null; cineSrcPoll.duration = null; }
-function sendPlayerCommand(provider, command, args = []) {
+function sendPlayerCommand(provider, command) {
   const frame = document.querySelector("iframe.player"), target = window.SEVENPlayerSecurity?.playerCommandFrame(provider);
   if (!frame?.contentWindow || !target) return;
-  frame.contentWindow.postMessage({ type:"cinesrc:command", command, args }, target);
-}
-function cachedIntroSegment(key) {
-  try {
-    const cached = JSON.parse(sessionStorage.getItem(`seven-introdb-${key}`) || "null");
-    if (!cached || Number(cached.expiresAt) <= Date.now()) return { found:false, segment:null };
-    const segment = cached.segment ? window.SEVENIntroSkip?.normalizeIntro({ intro:[{ start_ms:cached.segment.startMs, end_ms:cached.segment.endMs }] }) : null;
-    return { found:true, segment };
-  } catch { return { found:false, segment:null }; }
-}
-function saveIntroSegment(key, segment) {
-  try { sessionStorage.setItem(`seven-introdb-${key}`, JSON.stringify({ expiresAt:Date.now() + INTRO_SEGMENT_CACHE_TTL, segment })); }
-  catch { /* Intro timestamps are optional; playback must work when storage is unavailable. */ }
-}
-function updateIntroSkipControl(currentTime = introSkip.currentTime, duration = introSkip.duration) {
-  const button = document.querySelector("[data-skip-intro]");
-  if (!button) return;
-  button.hidden = selectedPlayerProvider() !== "cinesrc" || Boolean(party.code) || !window.SEVENIntroSkip?.shouldShow(introSkip.segment, currentTime, duration);
-}
-async function loadIntroSegment(player) {
-  const helper = window.SEVENIntroSkip, key = helper?.mediaKey(player), request = ++introSkip.request;
-  introSkip.key = key; introSkip.segment = null; introSkip.currentTime = Math.max(0, Number(player?.startAt) || 0, savedStart(player)); introSkip.duration = 0;
-  updateIntroSkipControl(introSkip.currentTime, 0);
-  if (!key || selectedPlayerProvider() !== "cinesrc" || party.code) return;
-  const cached = cachedIntroSegment(key);
-  if (cached.found) {
-    introSkip.segment = cached.segment;
-    updateIntroSkipControl();
-    return;
-  }
-  try {
-    const response = await fetch(helper.requestURL(player), { headers:{ accept:"application/json" }, credentials:"omit" });
-    if (!response.ok) throw new Error(`TheIntroDB returned ${response.status}`);
-    const segment = helper.normalizeIntro(await response.json());
-    saveIntroSegment(key, segment);
-    if (request !== introSkip.request || state.route !== "player" || helper.mediaKey(state.player) !== key || selectedPlayerProvider() !== "cinesrc") return;
-    introSkip.segment = segment;
-    updateIntroSkipControl();
-  } catch {
-    // This is an optional convenience; a database/network failure never blocks playback.
-  }
-}
-function skipIntro() {
-  const helper = window.SEVENIntroSkip, player = state.player;
-  if (state.route !== "player" || selectedPlayerProvider() !== "cinesrc" || party.code || helper?.mediaKey(player) !== introSkip.key) return;
-  const target = helper?.seekTarget(introSkip.segment);
-  if (target == null || !helper.shouldShow(introSkip.segment, introSkip.currentTime, introSkip.duration)) return;
-  sendPlayerCommand("cinesrc", "seek", [target]);
-  introSkip.currentTime = target;
-  updateIntroSkipControl(target, introSkip.duration);
+  frame.contentWindow.postMessage({ type:"cinesrc:command", command, args:[] }, target);
 }
 function startPlayerProgressPolling() {
   stopPlayerProgressPolling();
@@ -1128,7 +1077,6 @@ async function syncNativePlayerEpisode(change) {
   const oldEpisode = { ...previous };
   state.pendingEpisodeCompletion = isDirectNextEpisode(oldEpisode, { ...previous, season, episode }) && playbackProgressPercent(savedProgress(oldEpisode)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? oldEpisode : null;
   state.player = { ...previous, season, episode, title:`Episode ${episode}`, startAt:0 };
-  void loadIntroSegment(state.player);
   state.selectedSeason = season;
   syncPlayerEpisodeDisplay();
   if (Number(state.episodesSeriesId) === Number(previous.id) && Number(state.episodesSeason) === season && Number(state.series?.id) === Number(previous.id)) return;
@@ -1423,12 +1371,11 @@ function renderPlayer() {
   const p = state.player, saved = JSON.parse(localStorage.getItem(watchKey(p)) || "{}"), label = p.type === "tv" ? `Season ${p.season} · Episode ${p.episode}` : "Movie", startAt = party.code ? Math.max(0, Number(party.syncPosition) || 0) : Math.max(0, Number(p.startAt) || 0), playbackNote = startAt ? (party.code ? `Playing with your party from ${timeLabel(startAt)}` : `Resuming from ${timeLabel(startAt)}`) : savedStart(p) ? `Resume is available from ${timeLabel(savedStart(p))}` : escapeHTML(p.overview || "Playback progress is saved on this device.");
   const media = `<iframe class="player" src="${playerURL(p, startAt)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>`;
   const partyControl = party.code ? "" : `<button class="party-quick" data-party-modal aria-label="Watch together" title="Watch together"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8.1" r="2.25"/><path d="M3.9 17.9c.45-3.03 1.92-4.62 4.1-4.62s3.65 1.59 4.1 4.62"/><circle cx="15.9" cy="9.3" r="1.7"/><path d="M14.2 14.3c.6-.58 1.18-.87 1.78-.87 1.6 0 2.72 1.22 3.08 3.46"/><path class="party-play" d="m16.8 5.2 3.35 1.95-3.35 1.95z"/></svg></button>`;
-  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="player-stage-context" data-player-episode-label>${label}</span><div class="player-stage-actions">${providerMenuHTML()}</div></div><div class="player-frame">${media}<button class="skip-intro-button" type="button" data-skip-intro hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l10-7zM19 5v14"/></svg><span>Skip intro</span></button></div></section><section class="now"><div class="now-heading"><div><span class="brand">NOW PLAYING</span><h2 data-now-playing-title>${escapeHTML(p.title)}</h2></div>${partyControl}</div><div class="progress player-saved-progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time" class="player-saved-time">${playbackNote}</p></section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
+  app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="player-stage-context" data-player-episode-label>${label}</span><div class="player-stage-actions">${providerMenuHTML()}</div></div><div class="player-frame">${media}</div></section><section class="now"><div class="now-heading"><div><span class="brand">NOW PLAYING</span><h2 data-now-playing-title>${escapeHTML(p.title)}</h2></div>${partyControl}</div><div class="progress player-saved-progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time" class="player-saved-time">${playbackNote}</p></section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
   party.syncPosition = 0;
-  bindCommon(); bindPlayerEpisodes(p); bindPlayerControlLift(); ensurePlayerContext(p); startPlayerProgressPolling(); void loadIntroSegment(p);
+  bindCommon(); bindPlayerEpisodes(p); bindPlayerControlLift(); ensurePlayerContext(p); startPlayerProgressPolling();
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
   document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
-  document.querySelector("[data-skip-intro]")?.addEventListener("click", skipIntro);
   document.querySelector("[data-provider-menu]")?.addEventListener("click", event => { event.stopPropagation(); const list = document.querySelector("[data-provider-list]"); if (list) list.hidden = !list.hidden; });
   document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
   renderPartyPanel();
@@ -2182,7 +2129,6 @@ window.addEventListener("click", () => { const providerList = document.querySele
 function recordPlaybackEvent(data) {
   const duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0;
   if (!duration) return;
-  introSkip.currentTime = currentTime; introSkip.duration = duration; updateIntroSkipControl(currentTime, duration);
   samplePlaybackWatchTime(currentTime);
   if (party.code) { if (party.role === "host") { party.lastHostTime = currentTime; party.hostEvent = String(data.event || ""); } else { party.guestTime = currentTime; } }
   const progress = Math.min(100, currentTime / duration * 100);
@@ -2239,7 +2185,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=313", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=314", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
