@@ -1163,14 +1163,15 @@
 @keyframes profile-choice-arrive { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (min-width: 651px) {
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; pointer-events: none; }
-  .profile-gate-showcase > img:not(.profile-gate-poster-backdrop), .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
-  .profile-gate-poster-backdrop { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; opacity: .78; filter: saturate(.82) brightness(.72); transform: scale(1.025); transition: opacity .55s ease, filter .55s ease, transform 7s ease; }
-  .profile-gate-ready .profile-gate-poster-backdrop { transform: scale(1.07); }
-  .profile-gate-changing .profile-gate-poster-backdrop { opacity: .28; filter: saturate(.65) brightness(.55) blur(3px); }
-  .profile-gate-showcase::after { position: absolute; z-index: 1; inset: 0; background: radial-gradient(ellipse 46% 42% at 50% 52%, #08090a75 0%, #08090a48 62%, #08090a12 100%), radial-gradient(ellipse at 50% 50%, transparent 5%, #05060748 100%), linear-gradient(180deg, #0506073d 0%, transparent 32%, transparent 76%, #05060762 100%); content: ""; pointer-events: none; }
+  .profile-gate-showcase > img:not(.profile-gate-art-backdrop), .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
+  .profile-gate-art-backdrop { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .82; filter: blur(15px) saturate(.78) brightness(.54); transform: scale(1.1); transition: opacity .6s ease, filter .6s ease, transform 7s ease; }
+  .profile-gate-ready .profile-gate-art-backdrop { transform: scale(1.12); }
+  .profile-gate-changing .profile-gate-art-backdrop { opacity: .62; filter: blur(17px) saturate(.65) brightness(.46); }
+  .profile-gate-showcase::after { position: absolute; z-index: 1; inset: 0; background: radial-gradient(ellipse 48% 44% at 50% 52%, #050607d9 0%, #050607b8 52%, #0506074a 100%), radial-gradient(ellipse at 50% 50%, transparent 4%, #05060740 100%), linear-gradient(180deg, #05060762 0%, transparent 29%, transparent 72%, #05060791 100%); content: ""; pointer-events: none; }
 }
 @media (max-width: 650px) {
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }
+  .profile-gate-art-backdrop { display: none; }
   .profile-gate-logo { top: max(16px, env(safe-area-inset-top)); left: max(18px, env(safe-area-inset-left)); }
   .profile-gate-logo img { width: 78px; }
   .profile-gate-showcase { position: absolute; inset: 0 0 auto; display: block; height: 65svh; overflow: hidden; background: #0b0b0d; }
