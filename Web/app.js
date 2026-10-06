@@ -691,11 +691,17 @@ function paintProfileGateShowcase(items, animate = true) {
     kind.textContent = contentType(item) === "movie" ? "FEATURED FILM" : "FEATURED SERIES";
     count.innerHTML = `${String(state.profileGateIndex % items.length + 1).padStart(2, "0")} <i>/ ${String(items.length).padStart(2, "0")}</i>`;
     cards.forEach(card => card.classList.toggle("is-active", Number(card.dataset.profileCard) === state.profileGateIndex));
-    if (track) track.style.transform = `translate3d(${window.innerWidth / 2 - 30 - state.profileGateIndex * 72}px, 0, 0)`;
+    positionProfileGateCarousel();
   };
   if (!animate) { update(); return; }
   gate.classList.add("profile-gate-changing");
   setTimeout(() => { if (document.querySelector(".profile-gate") === gate) { update(); gate.classList.remove("profile-gate-changing"); } }, 180);
+}
+function positionProfileGateCarousel() {
+  const carousel = document.querySelector(".profile-gate-carousel"), track = document.querySelector("[data-profile-track]"), active = track?.querySelector(`[data-profile-card="${state.profileGateIndex}"]`);
+  if (!carousel || !track || !active) return;
+  const center = active.offsetLeft + active.offsetWidth / 2;
+  track.style.transform = `translate3d(${Math.round(carousel.clientWidth / 2 - center)}px, 0, 0)`;
 }
 function startProfileGateShowcase() {
   stopProfileGateShowcase();
@@ -704,12 +710,8 @@ function startProfileGateShowcase() {
   const track = document.querySelector("[data-profile-track]");
   if (track && !track.children.length) track.innerHTML = [0, 1, 2].map(copy => items.map((item, index) => `<span class="profile-gate-poster ${copy === 1 && index === 0 ? "is-active" : ""}" data-profile-card="${copy * items.length + index}"><img src="${escapeHTML(posterOf(item))}" alt="" loading="lazy" decoding="async"></span>`).join("")).join("");
   state.profileGateIndex = items.length;
-  const position = () => {
-    const track = document.querySelector("[data-profile-track]");
-    if (track) track.style.transform = `translate3d(${window.innerWidth / 2 - 30 - state.profileGateIndex * 72}px, 0, 0)`;
-  };
-  state.profileGateResize = position;
-  window.addEventListener('resize', position, { passive:true });
+  state.profileGateResize = positionProfileGateCarousel;
+  window.addEventListener('resize', state.profileGateResize, { passive:true });
   paintProfileGateShowcase(items, false);
   if (items.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   state.profileGateTimer = setInterval(() => {
@@ -728,8 +730,11 @@ function startProfileGateShowcase() {
 function renderProfileGate() {
   const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro")), items = profileGateItems();
   stopProfileGateShowcase();
-  app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"}"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${profileGateShowcaseMarkup(items)}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("")}</div></section></main>`;
+  const profiles = account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("");
+  const addProfile = account.profiles.length < 5 ? `<button class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:${account.profiles.length}" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>` : "";
+  app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"}"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${profileGateShowcaseMarkup(items)}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (profile?.pinHash && !profile.kids) showProfileUnlock(profile); else activateProfile(profile.id); });
+  document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
   startProfileGateShowcase();
 }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
@@ -1986,7 +1991,7 @@ async function restoreHiddenTitle(key) {
 }
 function currentPreferences() { return { ...DEFAULT_PREFERENCES, ...(state.account?.preferences || {}), ...(currentProfile()?.preferences || {}) }; }
 function updateCurrentPreferences(values) { const profile = currentProfile(); if (profile) profile.preferences = { ...currentPreferences(), ...values }; }
-function profileAvatar(profile) { const avatar = isProfileAvatar(profile?.avatar) ? `<img src="${escapeHTML(profile.avatar)}" alt="">` : escapeHTML(profile?.name?.slice(0, 1).toUpperCase() || "?"); return `<span class="profile-avatar" style="--profile-color:${escapeHTML(profile?.color || "#d41520")}">${avatar}</span>`; }
+function profileAvatar(profile) { const hasAvatar = isProfileAvatar(profile?.avatar), avatar = hasAvatar ? `<img src="${escapeHTML(profile.avatar)}" alt="">` : escapeHTML(profile?.name?.slice(0, 1).toUpperCase() || "?"); return `<span class="profile-avatar ${hasAvatar ? "profile-avatar-image" : "profile-avatar-initial"}" style="--profile-color:${escapeHTML(profile?.color || "#d41520")}">${avatar}</span>`; }
 function accountNavItem(tab, icon, label, active) { return `<button class="account-nav-item ${tab === active ? "active" : ""}" data-account-tab="${tab}" aria-current="${tab === active ? "page" : "false"}"><i aria-hidden="true">${icon}</i><span>${label}</span></button>`; }
 function accountAction(icon, title, detail, action, value = "Open") { return `<button class="account-action-card" ${action}><i aria-hidden="true">${icon}</i><span><b>${t(title)}</b><small>${t(detail)}</small></span><em>${t(String(value))} ›</em></button>`; }
 function parentAccessCodeAction() { const hasCode = parentAccessConfigured(); return `<button type="button" class="account-action-card profile-parent-code-action" data-change-parent-code><i aria-hidden="true">⌘</i><span><b>${t(hasCode ? "Change parent access code" : "Set parent access code")}</b><small>${t(hasCode ? "Confirm your current code before changing or turning it off." : "Protect profile and account settings without locking the profile picker.")}</small></span><em>${hasCode ? "Change" : "Set"} ›</em></button>`; }
@@ -2003,11 +2008,13 @@ function accountHub() {
   const account = { ...(state.account || defaultAccount()), preferences:currentPreferences() }, profile = currentProfile(), tab = state.accountTab || "profiles", navOpen = state.accountSidebarOpen !== false;
   return `${header()}<main class="account-page account-workspace-page"><div class="account-page-top"><button class="account-back" data-account-back>‹ ${t("Browse")}</button><div class="account-heading"><span class="brand">SEVEN ACCOUNT</span><h1>${t("Account")}</h1><p>${escapeHTML(state.user?.email || "Signed in")}</p></div><div class="account-active-profile">${profileAvatar(profile)}<span><b>${escapeHTML(profile?.name || "Profile")}</b><small>${t("Watching now")}</small></span></div></div><div class="account-workspace ${navOpen ? "nav-open" : "nav-closed"}"><aside class="account-sidebar" aria-label="Account categories"><button class="account-nav-toggle" data-toggle-account-nav aria-label="${navOpen ? "Collapse" : "Expand"} account categories">☰ <span>${t("Categories")}</span></button><nav>${accountNavItem("profiles", "◉", t("Profiles"), tab)}${accountNavItem("activity", "▦", t("Your SEVEN"), tab)}${accountNavItem("playback", "▷", t("Playback"), tab)}${accountNavItem("security", "⌾", t("Security"), tab)}</nav></aside><div class="account-workspace-content">${accountPanel(account, profile, tab)}</div></div></main>`;
 }
-function showProfileEditor(id = "") {
+function showProfileEditor(id = "", returnRoute = "account", initialCategory = "home") {
   const existing = state.account.profiles.find(profile => profile.id === id);
+  if (!existing && state.account.profiles.length >= 5) return;
   state.profileDraft = existing ? { ...existing } : { id:`profile-${Date.now()}`, name:"", color:PROFILE_COLORS[state.account.profiles.length % PROFILE_COLORS.length], kids:false };
   state.profileEditorIsNew = !existing;
-  state.profileSettingsReturn = "account";
+  state.profileSettingsReturn = returnRoute;
+  state.profileSettingsCategory = initialCategory;
   state.route = "profile-settings"; scrollToTop(); render();
 }
 function profileCategoryRow(id, title, detail) {
@@ -2074,12 +2081,17 @@ function renderProfileSettings() {
       if (form.elements.episodeAlerts?.checked && !await requestEpisodeAlerts()) { form.elements.episodeAlerts.checked = false; throw new Error("Allow browser notifications to enable episode alerts."); }
       const refreshFamilyCatalog = next.id === activeProfileId() && ["kids", "maturity", "familySafe", "blockScary", "language"].some(name => form.elements[name]);
       if (next.kids) { if (!parentAccessConfigured()) throw new Error("Set a parent access code before enabling Kids profile."); next.preferences.maturity = "Kids"; delete next.pinHash; if (form.elements.screenTimeEnabled) next.screenTime = { ...(next.screenTime || {}), enabled: form.elements.screenTimeEnabled.checked, minutes: Number(values.get("screenTimeMinutes")) || 60 }; } else { delete next.screenTime; if (pin) next.pinHash = await profileSecret(pin); else if (form.elements.removePin?.checked) delete next.pinHash; }
-      if (isNew) { state.account.profiles.push(next); state.profileEditorIsNew = false; } else state.account.profiles = state.account.profiles.map(item => item.id === profile.id ? next : item);
+      if (isNew) state.account.profiles.push(next); else state.account.profiles = state.account.profiles.map(item => item.id === profile.id ? next : item);
       state.profileDraft = next;
-      await saveAccount();
+      try { await saveAccount(); }
+      catch (failure) { if (isNew) state.account.profiles = state.account.profiles.filter(item => item.id !== next.id); throw failure; }
+      if (isNew) state.profileEditorIsNew = false;
       if (form.elements.language) applyLocale();
       if (category === "playback" && form.elements.episodeAlerts?.checked) notifyNewEpisodes();
       if (refreshFamilyCatalog) try { await refreshCatalogForLanguage(); } catch { /* Existing filtered catalog remains available offline. */ }
+      if (isNew && state.profileSettingsReturn === "profiles") {
+        state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsNotice = ""; state.profileSettingsReturn = null; state.route = "profiles"; render(); return;
+      }
       state.profileSettingsCategory = "home";
       state.profileSettingsNotice = "Settings saved.";
       renderProfileSettings();
@@ -2252,7 +2264,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=315", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=316", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

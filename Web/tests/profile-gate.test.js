@@ -21,6 +21,22 @@ test("profile picker uses the animated, cinematic selector and keeps each profil
   assert.doesNotMatch(gate, /data-manage-profiles|class="manage-profiles"/);
 });
 
+test("profile picker has a working add-profile tile and does not exceed five profiles", () => {
+  assert.match(gate, /account\.profiles\.length < 5[\s\S]*?data-add-profile-gate/);
+  assert.match(gate, /data-add-profile-gate[\s\S]*?showProfileEditor\("", "profiles", "profile"\)/);
+  assert.match(app, /function showProfileEditor\(id = "", returnRoute = "account", initialCategory = "home"\)/);
+  assert.match(app, /if \(!existing && state\.account\.profiles\.length >= 5\) return/);
+  assert.match(app, /isNew && state\.profileSettingsReturn === "profiles"[\s\S]*?state\.route = "profiles"/);
+});
+
+test("desktop profile picker uses a tight centered row, soft film backdrop, and neutral initial avatars", () => {
+  assert.match(styles, /@media \(min-width: 651px\)[\s\S]*?\.profile-gate-showcase \{[\s\S]*?display: block/);
+  assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap;[\s\S]*?gap: 30px/);
+  assert.match(styles, /\.profile-gate \.profile-choice \.profile-avatar-initial \{[^}]*background: linear-gradient\(145deg, #686b72/);
+  assert.match(styles, /\.profile-gate \.profile-add-avatar \{[^}]*border: 1px solid #666a70/);
+  assert.match(gate, /positionProfileGateCarousel\(\)/);
+});
+
 test("profile showcase artwork rotates from the loaded catalogue and respects reduced motion", () => {
   assert.match(gate, /state\.featuredPool/);
   assert.match(gate, /setInterval\(\(\) =>/);
@@ -37,9 +53,9 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=246/);
-  assert.match(index, /app\.js\?v=315/);
-  assert.match(serviceWorker, /seven-v315/);
-  assert.match(serviceWorker, /auth\.css\?v=246/);
-  assert.match(serviceWorker, /app\.js\?v=315/);
+  assert.match(index, /auth\.css\?v=247/);
+  assert.match(index, /app\.js\?v=316/);
+  assert.match(serviceWorker, /seven-v316/);
+  assert.match(serviceWorker, /auth\.css\?v=247/);
+  assert.match(serviceWorker, /app\.js\?v=316/);
 });
