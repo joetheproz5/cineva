@@ -730,7 +730,7 @@ function startProfileGateShowcase() {
 function renderProfileGate() {
   const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro")), items = profileGateItems();
   stopProfileGateShowcase();
-  const profiles = account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("");
+  const profiles = account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileGateAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("");
   const addProfile = account.profiles.length < 5 ? `<button class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:${account.profiles.length}" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>` : "";
   app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"}"><button class="profile-gate-logo" data-home aria-label="SEVEN"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${profileGateShowcaseMarkup(items)}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (profile?.pinHash && !profile.kids) showProfileUnlock(profile); else activateProfile(profile.id); });
@@ -1992,6 +1992,10 @@ async function restoreHiddenTitle(key) {
 function currentPreferences() { return { ...DEFAULT_PREFERENCES, ...(state.account?.preferences || {}), ...(currentProfile()?.preferences || {}) }; }
 function updateCurrentPreferences(values) { const profile = currentProfile(); if (profile) profile.preferences = { ...currentPreferences(), ...values }; }
 function profileAvatar(profile) { const hasAvatar = isProfileAvatar(profile?.avatar), avatar = hasAvatar ? `<img src="${escapeHTML(profile.avatar)}" alt="">` : escapeHTML(profile?.name?.slice(0, 1).toUpperCase() || "?"); return `<span class="profile-avatar ${hasAvatar ? "profile-avatar-image" : "profile-avatar-initial"}" style="--profile-color:${escapeHTML(profile?.color || "#d41520")}">${avatar}</span>`; }
+function profileGateAvatar(profile) {
+  if (isProfileAvatar(profile?.avatar)) return profileAvatar(profile);
+  return `<span class="profile-avatar profile-avatar-guest" aria-hidden="true"><svg viewBox="0 0 72 72"><circle cx="36" cy="28" r="9.5"/><path d="M17 57c1.8-11.6 8.2-17.5 19-17.5S53.2 45.4 55 57"/><path d="M13 36a23 23 0 0 1 46 0" opacity=".24"/></svg></span>`;
+}
 function accountNavItem(tab, icon, label, active) { return `<button class="account-nav-item ${tab === active ? "active" : ""}" data-account-tab="${tab}" aria-current="${tab === active ? "page" : "false"}"><i aria-hidden="true">${icon}</i><span>${label}</span></button>`; }
 function accountAction(icon, title, detail, action, value = "Open") { return `<button class="account-action-card" ${action}><i aria-hidden="true">${icon}</i><span><b>${t(title)}</b><small>${t(detail)}</small></span><em>${t(String(value))} ›</em></button>`; }
 function parentAccessCodeAction() { const hasCode = parentAccessConfigured(); return `<button type="button" class="account-action-card profile-parent-code-action" data-change-parent-code><i aria-hidden="true">⌘</i><span><b>${t(hasCode ? "Change parent access code" : "Set parent access code")}</b><small>${t(hasCode ? "Confirm your current code before changing or turning it off." : "Protect profile and account settings without locking the profile picker.")}</small></span><em>${hasCode ? "Change" : "Set"} ›</em></button>`; }
@@ -2264,7 +2268,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=316", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=317", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

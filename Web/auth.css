@@ -1132,8 +1132,9 @@
 .profile-gate .profile-choice .profile-avatar { border-color: #b9141d; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
 .profile-gate .profile-choice:hover .profile-avatar { border-color: #ed2631; box-shadow: 0 0 0 2px #d3131c, 0 16px 32px #0008, inset 0 -18px 25px #0003; }
 .profile-gate .profile-choice:focus-visible .profile-avatar { border-color: #fff; box-shadow: 0 0 0 2px #d3131c, 0 0 0 5px #d3131c66, inset 0 -18px 25px #0003; }
-.profile-gate .profile-choice .profile-avatar-initial { border-color: #64676e; background: linear-gradient(145deg, #686b72, #383a40 68%, #292b30); color: #f4f4f5; box-shadow: inset 0 -18px 25px #0003, 0 10px 28px #0006; }
-.profile-gate .profile-choice:hover .profile-avatar-initial, .profile-gate .profile-choice:focus-visible .profile-avatar-initial { border-color: #d5d7db; box-shadow: 0 0 0 2px #bfc2c8, 0 16px 32px #0008, inset 0 -18px 25px #0003; }
+.profile-gate .profile-choice .profile-avatar-guest { position: relative; overflow: hidden; border-color: #9c8153; color: #ead3a3; background: radial-gradient(circle at 50% 35%, #705c38 0%, #483b29 42%, #252117 100%); box-shadow: inset 0 0 0 5px #f1d9a30c, inset 0 -18px 25px #0004, 0 12px 32px #0008; }
+.profile-gate .profile-avatar-guest svg { width: 64%; height: 64%; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 4px #0006); }
+.profile-gate .profile-choice:hover .profile-avatar-guest, .profile-gate .profile-choice:focus-visible .profile-avatar-guest { border-color: #e7cc91; box-shadow: 0 0 0 2px #c3a87488, 0 16px 34px #000a, inset 0 0 0 5px #f1d9a311, inset 0 -18px 25px #0004; }
 .profile-gate .profile-choice-add { cursor: pointer; }
 .profile-gate .profile-add-avatar { display: grid; width: clamp(100px, 10vw, 132px); height: clamp(100px, 10vw, 132px); place-items: center; border: 1px solid #666a70; border-radius: 12px; color: #c5c7cb; background: linear-gradient(145deg, #17181b, #0e0f11); box-shadow: inset 0 1px #ffffff0b, 0 10px 28px #0006; transition: border-color .2s ease, color .2s ease, background .2s ease, transform .2s ease; }
 .profile-gate .profile-add-avatar svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
@@ -1142,7 +1143,7 @@
 .profile-gate .profile-choice-add:hover b, .profile-gate .profile-choice-add:focus-visible b { color: #fff; }
 
 /* Cinematic profile handoff after the SEVEN ident. */
-.profile-gate { position: fixed; z-index: 0; inset: 0; isolation: isolate; display: grid; width: 100vw; height: 100vh; height: 100dvh; min-height: 100vh; min-height: 100dvh; margin: 0; padding: 88px 28px 64px; overflow: hidden; place-items: center; color: #f5f5f5; background: radial-gradient(ellipse at 50% 54%, #101114 0%, #080809 43%, #050506 78%); }
+.profile-gate { position: fixed; z-index: 0; inset: 0; isolation: isolate; display: grid; width: 100vw; height: 100vh; height: 100dvh; min-height: 100vh; min-height: 100dvh; margin: 0; padding: 88px 28px 64px; overflow: hidden; place-items: center; color: #f5f5f5; background: radial-gradient(ellipse at 50% 54%, #121313 0%, #0a0b0d 42%, #060708 82%); }
 .profile-gate-logo { z-index: 5; top: max(22px, env(safe-area-inset-top)); left: max(26px, env(safe-area-inset-left)); }
 .profile-gate-logo img { width: 94px; }
 .profile-gate-showcase { display: none; }
@@ -1162,17 +1163,10 @@
 @keyframes profile-choice-arrive { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (min-width: 651px) {
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; pointer-events: none; }
-  .profile-gate-backdrop { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; opacity: .12; filter: blur(5px) saturate(.62); transform: scale(1.02); transition: opacity .5s ease, transform 7s ease; }
-  .profile-gate-ready .profile-gate-backdrop { transform: scale(1.075); }
-  .profile-gate-art-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 53%, #05050625 0%, #05050662 43%, #050506e8 100%), linear-gradient(180deg, #05050688 0%, transparent 35%, #0505067a 100%); }
-  .profile-gate-feature { display: none; }
-  .profile-gate-carousel { position: absolute; top: 54%; left: 50%; width: min(100vw, 1640px); height: 230px; overflow: hidden; transform: translate(-50%, -50%); perspective: 1100px; opacity: .68; mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%); }
-  .profile-gate-carousel-track { position: absolute; top: 0; left: 0; display: flex; width: max-content; height: 100%; align-items: center; gap: 20px; will-change: transform; transition: transform .9s cubic-bezier(.2,.75,.25,1); }
-  .profile-gate-poster { display: block; width: 126px; height: 184px; flex: 0 0 126px; overflow: hidden; border: 1px solid #ffffff25; border-radius: 10px; background: #111; box-shadow: 0 14px 38px #0009; opacity: .19; filter: saturate(.72); transform: perspective(1100px) rotateY(9deg) scale(.9); transition: opacity .65s ease, transform .8s cubic-bezier(.2,.75,.25,1), border-color .3s ease, filter .65s ease; }
-  .profile-gate-poster:nth-child(3n) { transform: perspective(1100px) rotateY(-9deg) scale(.9); }
-  .profile-gate-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
-  .profile-gate-poster.is-active { z-index: 1; border-color: #ffffff50; opacity: .43; filter: saturate(.92); transform: perspective(1100px) rotateY(0) scale(1.02); }
-  .profile-gate-changing .profile-gate-backdrop { opacity: .065; }
+  .profile-gate-showcase > img, .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
+  .profile-gate-showcase::before { position: absolute; top: 52%; left: 50%; width: min(112vw, 1800px); height: min(76vh, 740px); border-radius: 50%; background: radial-gradient(ellipse at 50% 50%, #9b785037 0%, #58706a1c 31%, #47565e0b 54%, transparent 73%); content: ""; filter: blur(35px); transform: translate(-50%, -50%); animation: profile-stage-drift 15s ease-in-out infinite alternate; }
+  .profile-gate-showcase::after { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 54%, transparent 0%, #08090a1c 47%, #050607a8 100%), linear-gradient(180deg, #05060777 0%, transparent 28%, transparent 76%, #05060782 100%); content: ""; }
+  @keyframes profile-stage-drift { from { opacity: .72; transform: translate(-52%, -49%) scale(.94); } to { opacity: 1; transform: translate(-48%, -53%) scale(1.07); } }
 }
 @media (max-width: 650px) {
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: #050506; }
@@ -1218,6 +1212,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .profile-gate-ready .profile-gate-sheet, .profile-gate-ready .profile-choice, .profile-gate-ready .profile-gate-backdrop { animation: none; transition-duration: .01ms; }
+  .profile-gate-showcase::before { animation: none; }
 }
 .onboarding-page { min-height: 100svh; padding: 22px clamp(20px,5vw,76px) 50px; color: #f5f5f5; background: radial-gradient(ellipse at 50% 0%, #211113 0%, #0a0a0b 42%, #050505 100%); }
 .onboarding-top { display: flex; width: min(1120px,100%); min-height: 50px; align-items: center; justify-content: space-between; margin: 0 auto; border-bottom: 1px solid #262626; color: #767676; font-size: 10px; font-weight: 800; letter-spacing: 2px; }
