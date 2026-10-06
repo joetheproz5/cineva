@@ -7,6 +7,9 @@ const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || navigator.standalone === true;
 if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
+const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft"];
+const appRouteSnapshots = new Map();
+let appNavigationIndex = 0, appNavigationReady = false, appNavigationRestoring = false, appNavigationIdentity = "";
 let searchRequest = 0;
 let coverflowResizeTimer;
 let coverflowViewportWidth = window.innerWidth;
@@ -323,7 +326,7 @@ function clearSession() {
   state.user = null;
   state.account = defaultAccount();
 }
-function signOut() { clearSession(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
+function signOut() { clearSession(); resetAppNavigation(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
 function accessTokenExpiresSoon(session = state.session) { return !session?.access_token || !session.expires_at || Number(session.expires_at) * 1000 - Date.now() < 90 * 1000; }
 function scheduleSessionRefresh() { clearTimeout(sessionRefreshTimer); if (!state.session?.refresh_token) return; const delay = Math.max(30_000, Math.min(45 * 60 * 1000, Number(state.session.expires_at || 0) * 1000 - Date.now() - 90_000)); sessionRefreshTimer = setTimeout(async () => { try { await refreshSession(); } catch (error) { if ([400, 401, 403].includes(error.status)) clearSession(); } scheduleSessionRefresh(); }, delay); }
 async function withSessionRefreshLock(callback) {
@@ -563,7 +566,128 @@ function header() {
   return `<header class="main-header app-header"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>${mobileNavigation}`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-shell"><div class="footer-main"><div class="footer-brand"><button class="footer-wordmark" data-home aria-label="SEVEN home">SEVEN</button><span>${t("Stories worth finding.")}</span></div><nav class="footer-links" aria-label="Footer navigation"><button data-home>${t("Home")}</button><button data-for-you>${t("For You")}</button><button data-movies>${t("Movies")}</button><button data-shows>${t("Series")}</button><button data-favourites>${t("Favourites")}</button><button data-watchlist>${t("Watchlist")}</button></nav><a class="footer-top" href="#app" aria-label="${t("Back to top")}"><span aria-hidden="true">↑</span></a></div><div class="footer-bottom"><small class="footer-disclaimer">Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></div></footer>`; }
-function render() { if (state.route !== "profiles") stopProfileGateShowcase(); state.watchlistTargets = new Map(); if (state.route !== "player") stopPlayerProgressPolling(); if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave(); if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = ""; if (state.route === "onboarding" && state.user) return renderOnboarding(); if (state.route === "profiles" && state.user) return renderProfileGate(); if (state.route === "account" && state.user && currentProfile()) { state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings"; return renderProfileSettings(); } if (state.route === "account" && state.user) return renderAccount(); if (state.route === "profile-settings" && state.user) return renderProfileSettings(); if (state.route === "my-list") return renderMyList(); if (state.route === "watchlist") return renderWatchlist(); if (state.route === "hidden" && state.user) return renderHiddenTitles(); if (state.route === "liked" && state.user) return renderLikedTitles(); if (state.route === "stats" && state.user) return renderProfileStats(); if (state.route === "player") return renderPlayer(); if (state.route === "movie") return renderMovie(); if (state.route === "series") return renderSeries(); if (state.route === "person") return renderPerson(); if (state.route === "search") return renderSearch(); if (state.route === "for-you") return renderForYou(); if (state.route === "catalog") return renderCatalog(); if (state.route === "all-catalog") return renderAllCatalog(); if (state.route === "explore") return renderExplore(); if (state.route === "history") return renderHistory(); if (state.route === "trailers") return renderTrailers(); if (state.route === "msearch") return renderMSearch(); renderHome(); }
+function appRouteIdentity() {
+  const route = state.route;
+  if (route === "movie") return `${route}:${state.movie?.id || ""}`;
+  if (route === "series") return `${route}:${state.series?.id || ""}`;
+  if (route === "person") return `${route}:${state.person?.id || ""}`;
+  if (route === "player") return `${route}:${state.player?.type || ""}:${state.player?.id || ""}:${state.player?.season || 0}:${state.player?.episode || 0}`;
+  if (route === "catalog") return `${route}:${state.browse?.type || ""}:${state.browse?.genre || "all"}`;
+  if (route === "all-catalog") return `${route}:${state.allCatalog?.type || ""}:${state.allCatalog?.genre || "all"}`;
+  if (route === "search") return `${route}:${String(state.search || "").trim().toLowerCase()}`;
+  if (route === "explore") return `${route}:${state.exploreView?.name || ""}`;
+  if (route === "onboarding") return `${route}:${state.onboardingStep || 1}`;
+  if (route === "profile-settings") return `${route}:${state.profileSettingsCategory || "home"}:${state.profileDraft?.id || ""}`;
+  return route;
+}
+function appRouteSnapshot() {
+  return { route:state.route, identity:appRouteIdentity(), scrollX:window.scrollX || 0, scrollY:window.scrollY || 0, values:Object.fromEntries(APP_ROUTE_STATE_KEYS.map(key => [key, state[key]])) };
+}
+function appNavigationEntry(index) {
+  const current = history.state && typeof history.state === "object" ? history.state : {};
+  return { ...current, sevenNavigation:{ index } };
+}
+function syncAppRouteHistory() {
+  if (appNavigationRestoring) return;
+  const snapshot = appRouteSnapshot();
+  if (!appNavigationReady) {
+    appNavigationReady = true;
+    appNavigationIndex = 0;
+    appNavigationIdentity = snapshot.identity;
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    history.replaceState(appNavigationEntry(0), "", location.href);
+    appRouteSnapshots.clear();
+    appRouteSnapshots.set(0, snapshot);
+    return;
+  }
+  if (snapshot.identity === appNavigationIdentity) {
+    appRouteSnapshots.set(appNavigationIndex, snapshot);
+    return;
+  }
+  const previous = appRouteSnapshots.get(appNavigationIndex);
+  if (previous) { previous.scrollX = window.scrollX || 0; previous.scrollY = window.scrollY || 0; }
+  for (const index of appRouteSnapshots.keys()) if (index > appNavigationIndex) appRouteSnapshots.delete(index);
+  appNavigationIndex += 1;
+  history.pushState(appNavigationEntry(appNavigationIndex), "", location.href);
+  appNavigationIdentity = snapshot.identity;
+  appRouteSnapshots.set(appNavigationIndex, { ...snapshot, scrollX:0, scrollY:0 });
+}
+function navigateBackInApp(fallback) {
+  if (history.state?.sevenNavigation?.index === appNavigationIndex && appNavigationIndex > 0 && appRouteSnapshots.has(appNavigationIndex - 1)) {
+    history.back();
+    return true;
+  }
+  fallback?.();
+  return false;
+}
+function resetAppNavigation() { appRouteSnapshots.clear(); appNavigationIndex = 0; appNavigationReady = false; appNavigationIdentity = ""; }
+document.addEventListener("click", event => {
+  const control = event.target.closest?.("button, a");
+  if (!control || ![...control.attributes].some(attribute => /^data-(?:back(?:-|$)|.+-back$)/.test(attribute.name))) return;
+  if (history.state?.sevenNavigation?.index !== appNavigationIndex || appNavigationIndex < 1 || !appRouteSnapshots.has(appNavigationIndex - 1)) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  history.back();
+}, true);
+function restoreAppNavigation(event) {
+  const index = event.state?.sevenNavigation?.index;
+  if (!Number.isInteger(index) || index === appNavigationIndex) return;
+  const snapshot = appRouteSnapshots.get(index);
+  if (!snapshot) {
+    appNavigationIndex = 0;
+    state.route = state.user ? "profiles" : "home";
+    appNavigationRestoring = true;
+    render();
+    appNavigationRestoring = false;
+    appNavigationIdentity = appRouteIdentity();
+    appRouteSnapshots.clear();
+    appRouteSnapshots.set(0, appRouteSnapshot());
+    history.replaceState(appNavigationEntry(0), "", location.href);
+    window.scrollTo(0, 0);
+    return;
+  }
+  appNavigationIndex = index;
+  appNavigationIdentity = snapshot.identity;
+  appNavigationRestoring = true;
+  Object.assign(state, snapshot.values, { route:snapshot.route });
+  render();
+  appNavigationRestoring = false;
+  requestAnimationFrame(() => { window.scrollTo(snapshot.scrollX, snapshot.scrollY); syncHeaderScroll(); });
+}
+window.addEventListener("popstate", restoreAppNavigation);
+function render() {
+  if (state.route === "account" && state.user && currentProfile()) {
+    state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings";
+  }
+  syncAppRouteHistory();
+  if (state.route !== "profiles") stopProfileGateShowcase();
+  state.watchlistTargets = new Map();
+  if (state.route !== "player") stopPlayerProgressPolling();
+  if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave();
+  if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = "";
+  if (state.route === "onboarding" && state.user) return renderOnboarding();
+  if (state.route === "profiles" && state.user) return renderProfileGate();
+  if (state.route === "account" && state.user) return renderAccount();
+  if (state.route === "profile-settings" && state.user) return renderProfileSettings();
+  if (state.route === "my-list") return renderMyList();
+  if (state.route === "watchlist") return renderWatchlist();
+  if (state.route === "hidden" && state.user) return renderHiddenTitles();
+  if (state.route === "liked" && state.user) return renderLikedTitles();
+  if (state.route === "stats" && state.user) return renderProfileStats();
+  if (state.route === "player") return renderPlayer();
+  if (state.route === "movie") return renderMovie();
+  if (state.route === "series") return renderSeries();
+  if (state.route === "person") return renderPerson();
+  if (state.route === "search") return renderSearch();
+  if (state.route === "for-you") return renderForYou();
+  if (state.route === "catalog") return renderCatalog();
+  if (state.route === "all-catalog") return renderAllCatalog();
+  if (state.route === "explore") return renderExplore();
+  if (state.route === "history") return renderHistory();
+  if (state.route === "trailers") return renderTrailers();
+  if (state.route === "msearch") return renderMSearch();
+  renderHome();
+}
 async function profileSecret(value) { if (!globalThis.crypto?.subtle) throw new Error("Profile locks need a modern browser."); const bytes = new TextEncoder().encode(value), hash = await globalThis.crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join(""); }
 const PARENT_ACCESS_KEY = "seven.parent-access";
 function hasParentAccess() { return !parentAccessConfigured(); }
@@ -978,7 +1102,7 @@ function renderPerson() {
   if (!person) {
     app.innerHTML = `${header()}<button class="back" data-person-back>‹ Back</button><section class="person-hero person-loading"><div class="person-photo skeleton"></div><div><span class="brand">CAST & CREW</span><div class="skeleton-line wide"></div><p>${escapeHTML(state.personError || "Loading person details from TMDB…")}</p></div></section>${footer()}`;
     bindCommon();
-    document.querySelector("[data-person-back]").onclick = () => { state.route = state.personBackRoute || "home"; render(); };
+    document.querySelector("[data-person-back]").onclick = () => navigateBackInApp(() => { state.route = state.personBackRoute || "home"; render(); });
     return;
   }
 
@@ -994,7 +1118,7 @@ function renderPerson() {
   const biography = person.biography ? escapeHTML(person.biography).replace(/\n/g, "<br>") : "TMDB does not have a biography for this person yet.";
   app.innerHTML = `${header()}<button class="back" data-person-back>‹ Back</button><section class="person-hero"><img class="person-photo" src="${person.profile_path ? TMDB_IMAGE + person.profile_path : "icon.svg"}" alt="${escapeHTML(person.name)}"><div class="person-main"><span class="brand">CAST & CREW</span><h1>${escapeHTML(person.name)}</h1><div class="person-links">${links}</div><p class="person-biography">${biography}</p><div class="person-facts">${personFacts(person).map(([label, value]) => `<div><small>${escapeHTML(label)}</small><b>${escapeHTML(value)}</b></div>`).join("")}</div></div></section><section class="person-filmography"><div class="rail-title"><div><span class="brand">FILMOGRAPHY</span><h2>On SEVEN</h2></div><span>${acting.length + crew.length} TMDB credits</span></div>${personRail("Movies", movieCredits)}${personRail("Series", seriesCredits)}${personRail("Behind the scenes", crew)}</section>${footer()}`;
   bindCommon();
-  document.querySelector("[data-person-back]").onclick = () => { state.route = state.personBackRoute || "home"; render(); };
+  document.querySelector("[data-person-back]").onclick = () => navigateBackInApp(() => { state.route = state.personBackRoute || "home"; render(); });
 }
 function renderMovie() {
   const movie = state.movie, resumeAt = savedStart({ type:"movie", id:movie.id }), playbackAction = resumeAt ? `<button class="primary" data-resume-movie><b>▶</b> Resume from ${timeLabel(resumeAt)}</button>` : `<button class="primary" data-play-movie><b>▶</b> Play movie</button>`, extraActions = `${resumeAt ? `<button type="button" class="secondary" data-play-movie><svg class="title-menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7v5h5M5.2 12a7 7 0 1 0 2-4.95L4 12"/></svg><span>Start over</span></button>` : ""}`;
@@ -1134,7 +1258,7 @@ function renderMSearch() {
   };
   if ((view.query || "").trim().length >= 2) renderResults(view.results, false, view.query); else renderIdle();
   clearButton.onclick = () => { input.value = ""; view.query = ""; view.results = []; clearButton.hidden = true; renderIdle(); input.focus(); };
-  document.querySelector("[data-msearch-back]").onclick = () => { state.route = state.mSearchReturn || "home"; state.mSearchReturn = null; render(); };
+  document.querySelector("[data-msearch-back]").onclick = () => navigateBackInApp(() => { state.route = state.mSearchReturn || "home"; state.mSearchReturn = null; render(); });
   let timer;
   input.oninput = () => {
     view.query = input.value;
@@ -1177,7 +1301,7 @@ function renderTrailers() {
     </div>`).join("");
   app.innerHTML = `<div class="trailer-feed"><button class="trailer-close" data-trailer-close aria-label="Close trailers">×</button>${slides}</div>`;
   bindCommon();
-  document.querySelector("[data-trailer-close]").onclick = () => { state.route = "home"; scrollToTop(); render(); };
+  document.querySelector("[data-trailer-close]").onclick = () => navigateBackInApp(() => { state.route = "home"; scrollToTop(); render(); });
   document.querySelectorAll("[data-trailer-next]").forEach(button => button.onclick = () => { const next = button.closest(".trailer-slide")?.nextElementSibling; next?.scrollIntoView({ behavior: "smooth" }); });
 }
 async function ensurePlayerContext(player) {
@@ -1441,7 +1565,7 @@ async function partyStart() {
     url.search = "";
     url.searchParams.set("watch", code);
     if (state.player) url.searchParams.set("title", state.player.type === "tv" ? `tv:${state.player.id}:${state.player.season}:${state.player.episode}` : `movie:${state.player.id}`);
-    history.replaceState(null, "", url);
+    history.replaceState(history.state, "", url);
     renderPartyPanel();
   } catch (error) { party.error = error.message; renderPartyPanel(); }
 }
@@ -1460,7 +1584,7 @@ function partyLeave() {
   party.code = null; party.role = null; party.socket = null; party.members = {}; party.chat = []; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.hostKey = ""; party.hostPosition = 0; party.guestTime = 0; party.lastHostTime = 0; party.cursor = null;
   const url = new URL(location.href);
   url.searchParams.delete("watch");
-  history.replaceState(null, "", url);
+  history.replaceState(history.state, "", url);
 }
 function partyFollowHost() {
   const [type, id, season, episode] = (party.hostKey || "").split(":");
@@ -1549,7 +1673,7 @@ function renderPlayer() {
   document.querySelector("[data-provider-menu]")?.addEventListener("click", event => { event.stopPropagation(); const list = document.querySelector("[data-provider-list]"); if (list) list.hidden = !list.hidden; });
   document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
   renderPartyPanel();
-  document.querySelector("[data-back]").onclick = () => { state.route = p.type === "tv" ? "series" : "home"; render(); };
+  document.querySelector("[data-back]").onclick = () => navigateBackInApp(() => { state.route = p.type === "tv" ? "series" : "home"; render(); });
 }
 function simplifiedTitleQuery(query) {
   const simplified = query.trim().replace(/\b(new|latest|series|tv\s+show|show|movie|film|gameplay|trailer|official)\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -1641,9 +1765,9 @@ function renderAllCatalog() {
   const loading = view.loading ? `<div class="catalog-loading skeleton"></div>` : view.page < (view.totalPages || 1) ? `<button class="load-more" data-load-more>Load more ${view.type === "movie" ? "movies" : "series"}</button>` : "";
   const body = view.error ? `<p class="setup">${escapeHTML(view.error)}</p>` : `<div class="result-grid explore-grid">${view.items.map(card).join("")}</div>${loading}`;
   app.innerHTML = `${header()}<button class="back" data-back-all>‹ ${view.type === "movie" ? "Movies" : "Series"}</button><section class="browse-page"><span class="brand">COMPLETE CATALOG</span><h2>${label}</h2><p>Browse the full TMDB catalog, filtered the way you want.</p><div class="catalog-actions">${filterTrigger()}</div><div class="filter-row" aria-label="Filter ${label}">${filters.map(([name, id]) => `<button class="filter ${view.genre === id ? "active" : ""}" data-all-filter="${id ?? "all"}">${name}</button>`).join("")}</div></section>${body}${footer()}`;
-  bindCommon(); document.querySelector("[data-back-all]").onclick = () => { state.route = "catalog"; render(); }; document.querySelector("[data-open-filters]").onclick = () => showCatalogFilters(view.type); document.querySelectorAll("[data-all-filter]").forEach(button => button.onclick = () => openAllCatalog(view.type, button.dataset.allFilter === "all" ? null : Number(button.dataset.allFilter))); document.querySelector("[data-load-more]")?.addEventListener("click", () => openAllCatalog(view.type, view.genre, view.page + 1, true));
+  bindCommon(); document.querySelector("[data-back-all]").onclick = () => navigateBackInApp(() => { state.route = "catalog"; render(); }); document.querySelector("[data-open-filters]").onclick = () => showCatalogFilters(view.type); document.querySelectorAll("[data-all-filter]").forEach(button => button.onclick = () => openAllCatalog(view.type, button.dataset.allFilter === "all" ? null : Number(button.dataset.allFilter))); document.querySelector("[data-load-more]")?.addEventListener("click", () => openAllCatalog(view.type, view.genre, view.page + 1, true));
 }
-function renderExplore() { const view = state.exploreView; if (!view) { state.route = "home"; return renderHome(); } app.innerHTML = `${header()}<button class="back" data-back-explore>‹ Back</button><section class="search-page"><span class="brand">SEVEN COLLECTION</span><h2>${escapeHTML(view.name)}</h2><p>Browse all ${view.items.length} titles in this collection.</p><div class="result-grid explore-grid">${view.items.map(card).join("")}</div></section>${footer()}`; bindCommon(); document.querySelector("[data-back-explore]").onclick = () => { state.route = view.fromRoute; state.exploreView = null; render(); }; }
+function renderExplore() { const view = state.exploreView; if (!view) { state.route = "home"; return renderHome(); } app.innerHTML = `${header()}<button class="back" data-back-explore>‹ Back</button><section class="search-page"><span class="brand">SEVEN COLLECTION</span><h2>${escapeHTML(view.name)}</h2><p>Browse all ${view.items.length} titles in this collection.</p><div class="result-grid explore-grid">${view.items.map(card).join("")}</div></section>${footer()}`; bindCommon(); document.querySelector("[data-back-explore]").onclick = () => navigateBackInApp(() => { state.route = view.fromRoute; state.exploreView = null; render(); }); }
 function renderHistory() { const filter = state.historyFilter || "all", allEntries = historyEntries(), entries = allEntries.filter(entry => filter === "all" || filter === "progress" && !entry.watched || filter === "watched" && entry.watched); app.innerHTML = `${header()}<button class="back" data-history-back>‹ Browse</button><section class="history-page"><span class="brand">VIEWING ACTIVITY</span><h2>${escapeHTML(currentProfile()?.name || "Your")} history</h2><p>Everything watched with this profile. You can replay, resume, or hide an item from this device and your synced history.</p>${allEntries.length ? `<div class="history-toolbar"><div class="history-filters" role="group" aria-label="Filter viewing activity">${[["all","All"],["progress","In progress"],["watched","Watched"]].map(([value, label]) => `<button class="${filter === value ? "active" : ""}" data-history-filter="${value}">${label}</button>`).join("")}</div><span>${entries.length} ${entries.length === 1 ? "title" : "titles"}</span></div>${entries.length ? `<div class="history-list">${entries.map(entry => `<article class="history-item"><button class="history-main" data-history="${encodeURIComponent(entry.key)}"><img src="${entry.posterPath ? TMDB_IMAGE + entry.posterPath : "icon.svg"}" alt=""><span><b>${escapeHTML(entry.title)}</b><small>${entry.type === "tv" ? `Series · S${entry.season} E${entry.episode}` : "Movie"} · ${historyDate(entry.lastWatchedAt)}</small><em>${entry.watched ? "Watched" : `Resume from ${timeLabel(Math.floor(entry.currentTime || 0))}`}</em></span><i>›</i></button><button class="history-remove" data-remove-history="${encodeURIComponent(entry.key)}" aria-label="Hide ${escapeHTML(entry.title)}">×</button></article>`).join("")}</div>` : `<p class="history-empty">No ${filter === "progress" ? "unfinished titles" : "completed titles"} in this profile’s activity yet.</p>`}` : `<p class="history-empty">No viewing activity for this profile yet.</p>`}</section>${footer()}`; bindCommon(); document.querySelector("[data-history-back]").onclick = () => { state.route = state.historyReturn || "home"; state.historyReturn = null; render(); }; document.querySelectorAll("[data-history-filter]").forEach(button => button.onclick = () => { state.historyFilter = button.dataset.historyFilter; render(); }); document.querySelectorAll("[data-history]").forEach(button => button.onclick = () => openHistoryItem(decodeURIComponent(button.dataset.history))); document.querySelectorAll("[data-remove-history]").forEach(button => button.onclick = () => removeHistoryItem(decodeURIComponent(button.dataset.removeHistory))); }
 function renderMyList() {
   if (!state.user) { app.innerHTML = `${header()}<main class="favourites-locked"><button class="primary" data-favourites-auth>Sign in</button></main>`; bindCommon(); document.querySelector("[data-favourites-auth]").onclick = () => showAuth(); return; }
@@ -1867,6 +1991,7 @@ function beginOnboarding() {
 }
 function renderOnboarding() {
   if (!state.onboardingDraft) beginOnboarding();
+  syncAppRouteHistory();
   const draft = state.onboardingDraft, step = state.onboardingStep || 1, profile = { name:draft.name, avatar:draft.avatar, color:"#d3131c" };
   const avatarChoices = AVATAR_OPTIONS.map(([name, path]) => `<button type="button" class="onboarding-avatar ${draft.avatar === path ? "selected" : ""}" data-onboarding-avatar="${path}" aria-label="Choose ${name}" aria-pressed="${draft.avatar === path}"><img src="${path}" alt=""><span>${name}</span></button>`).join("");
   const genreChoices = ONBOARDING_GENRES.filter(([id]) => !draft.familySafe || FAMILY_FRIENDLY_GENRES.has(id)).map(([id, name]) => `<button type="button" class="onboarding-chip ${draft.favoriteGenres.includes(id) ? "selected" : ""}" data-onboarding-genre="${id}" aria-pressed="${draft.favoriteGenres.includes(id)}" ${draft.favoriteGenres.length >= 3 && !draft.favoriteGenres.includes(id) ? "disabled" : ""}>${name}</button>`).join("");
@@ -2017,6 +2142,7 @@ async function finishOnboarding(submitButton = null) {
   try {
     await persistOnboardingAccount();
     state.catalogKey = null; state.catalogRequest = null; state.onboardingDraft = null;
+    resetAppNavigation();
     state.route = "profiles"; render();
   } catch (failure) {
     state.account.onboardingComplete = false;
@@ -2151,6 +2277,7 @@ function profileSettingsDetail(profile, category, preferences, isNew) {
   return `<section class="profile-detail-card"><span class="brand">PRIVACY & SECURITY</span><form id="profile-settings-form"><section class="profile-pin-card"><h2>${t("Profile PIN")}</h2><p>Keep this profile private on shared devices.</p><label class="profile-pin-field">${t(profile.pinHash ? "Change profile PIN" : "Set a profile PIN")}<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="${profile.pinHash ? "Leave blank to keep current PIN" : "Optional: 4–8 digits"}"></label>${profile.pinHash ? `<label class="profile-remove-pin"><input type="checkbox" name="removePin"> Remove PIN protection</label>` : ""}</section><section class="profile-pin-card parent-access-card"><h2>${t("Parent access code")}</h2><p>${state.account?.parentPinHash ? "This code protects profile and account settings for 15 minutes after it is entered." : "Set one code to protect profile and account settings on shared devices."}</p><label class="profile-pin-field">${t(state.account?.parentPinHash ? "Change parent access code" : "Set parent access code")}<input name="parentPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="${state.account?.parentPinHash ? "Leave blank to keep current code" : "Optional: 4–8 digits"}"></label>${state.account?.parentPinHash ? `<label class="profile-remove-pin"><input type="checkbox" name="removeParentPin"> Turn off parent access code</label>` : ""}</section><p class="form-error profile-settings-error" id="profile-error"></p>${save}</form><div class="profile-category-actions">${accountAction("⌂", "Install SEVEN", "Add SEVEN to this device’s Home Screen", "data-install-seven", "Install")}${accountAction("⌫", "Clear viewing history", "Remove activity for this profile", "data-clear-history", "Clear")}</div></section>`;
 }
 function renderProfileSettings() {
+  syncAppRouteHistory();
   const profile = state.profileDraft;
   if (!profile) { state.route = "account"; return render(); }
   const isNew = state.profileEditorIsNew, preferences = { ...currentPreferences(), ...(profile.preferences || {}) }, category = state.profileSettingsCategory || "home", titles = { profiles:"Manage profiles", profile:"Edit this profile", family:"Family controls", playback:"Playback", language:"Language & display", activity:"Your SEVEN activity", security:"Privacy & security" }, descriptions = { profiles:"Manage each profile's details and viewing limits.", profile:"Choose a profile name and avatar.", family:"Choose what this profile can discover and watch.", playback:"Make playback fit your preferences.", language:"Choose the language and content you want to see.", activity:"Review saved titles, ratings, and watch history.", security:"Protect the profile and manage account access." };
@@ -2366,7 +2493,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=343", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=344", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
