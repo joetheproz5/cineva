@@ -35,7 +35,10 @@ test("desktop profile picker uses a tight centered row and a softly animated abs
   assert.match(styles, /\.profile-gate-showcase::before \{[^}]*top: 51%; left: 50%;[^}]*#8c202d55/);
   assert.match(styles, /\.profile-gate \{[^}]*background: radial-gradient\(ellipse 48% 66% at 50% 53%, #241519/);
   assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*?\.profile-gate-showcase::before \{ animation: none/);
-  assert.match(styles, /\.profile-gate-showcase > img, \.profile-gate-art-shade, \.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
+  assert.match(styles, /\.profile-gate-showcase > img, \.profile-gate-art-shade, \.profile-gate-feature \{ display: none/);
+  assert.match(styles, /\.profile-gate-carousel \{ position: absolute; z-index: 0; top: 52%; left: 50%/);
+  assert.match(styles, /\.profile-gate-poster \{[^}]*border: 0; border-radius: 0; background: transparent; box-shadow: none/);
+  assert.match(styles, /radial-gradient\(ellipse 38% 42% at 50% 52%, #08090a82/);
   assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap;[\s\S]*?gap: 30px/);
   assert.match(styles, /\.profile-gate \.profile-choice \.profile-avatar-guest \{[^}]*background: radial-gradient\(circle at 50% 35%, #16090b/);
   assert.match(styles, /\.profile-gate \.profile-avatar-guest img \{[^}]*width: 58%/);
@@ -63,10 +66,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=251/);
-  assert.match(index, /app\.js\?v=320/);
-  assert.match(serviceWorker, /seven-v320/);
-  assert.match(serviceWorker, /auth\.css\?v=251/);
-  assert.match(serviceWorker, /app\.js\?v=320/);
+  assert.match(index, /auth\.css\?v=252/);
+  assert.match(index, /app\.js\?v=321/);
+  assert.match(serviceWorker, /seven-v321/);
+  assert.match(serviceWorker, /auth\.css\?v=252/);
+  assert.match(serviceWorker, /app\.js\?v=321/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

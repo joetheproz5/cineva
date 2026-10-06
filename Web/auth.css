@@ -1163,9 +1163,15 @@
 @keyframes profile-choice-arrive { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (min-width: 651px) {
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; pointer-events: none; }
-  .profile-gate-showcase > img, .profile-gate-art-shade, .profile-gate-feature, .profile-gate-carousel { display: none; }
+  .profile-gate-showcase > img, .profile-gate-art-shade, .profile-gate-feature { display: none; }
   .profile-gate-showcase::before { position: absolute; top: 51%; left: 50%; width: min(100vw, 1580px); height: min(88vh, 820px); border-radius: 50%; background: radial-gradient(ellipse at 50% 50%, #8c202d55 0%, #591d2745 31%, #30202a24 57%, transparent 78%); content: ""; filter: blur(24px); transform: translate(-50%, -50%); animation: profile-stage-drift 15s ease-in-out infinite alternate; }
-  .profile-gate-showcase::after { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 52%, transparent 0%, #08090a10 43%, #05060776 100%), linear-gradient(180deg, #05060744 0%, transparent 34%, transparent 72%, #05060767 100%); content: ""; }
+  .profile-gate-showcase::after { position: absolute; z-index: 1; inset: 0; background: radial-gradient(ellipse 38% 42% at 50% 52%, #08090a82 0%, #08090a62 49%, #08090a00 100%), radial-gradient(ellipse at 50% 52%, transparent 0%, #08090a12 55%, #0506077a 100%), linear-gradient(180deg, #0506073d 0%, transparent 32%, transparent 76%, #05060762 100%); content: ""; pointer-events: none; }
+  .profile-gate-carousel { position: absolute; z-index: 0; top: 52%; left: 50%; width: 100vw; height: clamp(188px, 25vh, 260px); overflow: hidden; transform: translate(-50%, -50%); opacity: .82; mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%); }
+  .profile-gate-carousel-track { position: absolute; top: 0; left: 0; display: flex; width: max-content; height: 100%; align-items: center; gap: clamp(12px, 1.4vw, 24px); will-change: transform; transition: transform .9s cubic-bezier(.2,.75,.25,1); }
+  .profile-gate-poster { display: block; width: clamp(96px, 8vw, 144px); height: clamp(144px, 20vh, 216px); flex: 0 0 clamp(96px, 8vw, 144px); overflow: hidden; border: 0; border-radius: 0; background: transparent; box-shadow: none; opacity: .48; filter: saturate(.78) brightness(.78); transform: none; transition: opacity .65s ease, filter .65s ease; }
+  .profile-gate-poster img { display: block; width: 100%; height: 100%; border-radius: 0; object-fit: cover; }
+  .profile-gate-poster.is-active { z-index: 0; border: 0; opacity: .65; filter: saturate(.9) brightness(.9); transform: none; }
+  @keyframes profile-stage-drift { from { opacity: .84; transform: translate(-52%, -49%) scale(.96); } to { opacity: 1; transform: translate(-48%, -53%) scale(1.04); } }
   @keyframes profile-stage-drift { from { opacity: .84; transform: translate(-52%, -49%) scale(.96); } to { opacity: 1; transform: translate(-48%, -53%) scale(1.04); } }
 }
 @media (max-width: 650px) {
