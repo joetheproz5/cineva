@@ -457,7 +457,7 @@ async function refreshCatalogNow() {
       api("discover/movie", movieParams), api("discover/tv", showParams),
       api("discover/movie", { ...movieParams, "primary_release_date.gte":`${year - 1}-01-01`, sort_by:"primary_release_date.desc" }),
       api("discover/tv", { ...showParams, "first_air_date.gte":`${year - 1}-01-01`, sort_by:"first_air_date.desc" }),
-      api("discover/movie", { ...movieParams, "primary_release_date.gte":new Date().toISOString().slice(0, 10), sort_by:"primary_release_date.asc" }),
+      api("discover/movie", { ...movieParams, "primary_release_date.gte":profileGateDateKey(), sort_by:"popularity.desc" }),
       api("discover/movie", { ...movieParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
       api("discover/tv", { ...showParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
       api("discover/movie", { certification_country:"US", "certification.lte":certification, with_genres:"12", sort_by:"popularity.desc" }),
@@ -474,7 +474,7 @@ async function refreshCatalogNow() {
   }
   const [featured, trending, movies, shows, recent, airing, upcoming, topMovies, topShows, actionMovies, actionShows] = await Promise.all([
     api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air"),
-    api("movie/upcoming"), api("movie/top_rated"), api("tv/top_rated"),
+    api("discover/movie", { "primary_release_date.gte":profileGateDateKey(), sort_by:"popularity.desc" }), api("movie/top_rated"), api("tv/top_rated"),
     api("discover/movie", { with_genres:"28", sort_by:"popularity.desc" }), api("discover/tv", { with_genres:"10759", sort_by:"popularity.desc" })
   ]);
   const month = new Date().getMonth(), year = new Date().getFullYear();
@@ -2359,7 +2359,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=341", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=342", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

@@ -72,6 +72,13 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
   assert.match(gate, /data-profile-title/);
 });
 
+test("startup fetches popular movies with a release date of today or later", () => {
+  const catalogLoad = app.slice(app.indexOf("async function refreshCatalogNow()"), app.indexOf("function playMovieNow"));
+  assert.match(catalogLoad, /api\("discover\/movie", \{ \.\.\.movieParams, "primary_release_date\.gte":profileGateDateKey\(\), sort_by:"popularity\.desc" \}\)/);
+  assert.match(catalogLoad, /api\("discover\/movie", \{ "primary_release_date\.gte":profileGateDateKey\(\), sort_by:"popularity\.desc" \}\)/);
+  assert.doesNotMatch(catalogLoad, /api\("movie\/upcoming"\)/);
+});
+
 test("mobile picker fills the space above the curved sheet with portrait artwork", () => {
   assert.match(gate, /first\.poster_path/);
   assert.match(gate, /filter\(item => \{[\s\S]*?const releaseDate = profileGateReleaseDate\(item\);[\s\S]*?releaseDate >= today/);
@@ -131,9 +138,9 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=269/);
-  assert.match(index, /app\.js\?v=341/);
-  assert.match(serviceWorker, /seven-v341/);
+  assert.match(index, /app\.js\?v=342/);
+  assert.match(serviceWorker, /seven-v342/);
   assert.match(serviceWorker, /auth\.css\?v=269/);
-  assert.match(serviceWorker, /app\.js\?v=341/);
+  assert.match(serviceWorker, /app\.js\?v=342/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
