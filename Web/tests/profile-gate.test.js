@@ -58,7 +58,8 @@ test("desktop profile picker has no poster backdrop and softly spotlights the ce
 });
 
 test("profile showcase artwork rotates from the loaded catalogue and respects reduced motion", () => {
-  assert.match(gate, /state\.featuredPool/);
+  assert.match(gate, /state\.catalog\?\.\["Coming soon"\]/);
+  assert.match(gate, /contentType\(item\) === "movie"/);
   assert.match(gate, /setInterval\(\(\) =>/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
   assert.match(gate, /data-profile-backdrop/);
@@ -70,7 +71,7 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
 
 test("mobile picker fills the space above the curved sheet with portrait artwork", () => {
   assert.match(gate, /first\.poster_path/);
-  assert.match(gate, /filter\(item => item\?\.poster_path\)/);
+  assert.match(gate, /filter\(item => item\?\.poster_path && contentType\(item\) === "movie"\)/);
   assert.match(gate, /original/);
   assert.match(styles, /width: 100%; height: 100%; object-fit: cover; object-position: center bottom/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
@@ -126,9 +127,9 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=268/);
-  assert.match(index, /app\.js\?v=339/);
-  assert.match(serviceWorker, /seven-v339/);
+  assert.match(index, /app\.js\?v=340/);
+  assert.match(serviceWorker, /seven-v340/);
   assert.match(serviceWorker, /auth\.css\?v=268/);
-  assert.match(serviceWorker, /app\.js\?v=339/);
+  assert.match(serviceWorker, /app\.js\?v=340/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
