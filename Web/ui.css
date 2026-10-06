@@ -225,6 +225,11 @@
 .player-stage-context { color: #e5e5e5; font-size: 12px; font-weight: 820; letter-spacing: .01em; white-space: nowrap; }
 .player-stage-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; }
 .player-frame { position: relative; overflow: hidden; border: 1px solid #242424; border-radius: 9px; background: #000; box-shadow: 0 12px 34px #000b; }
+.skip-intro-button { position: absolute; z-index: 3; right: 22px; bottom: 72px; display: inline-flex; align-items: center; gap: 9px; min-height: 42px; padding: 0 17px; border: 1px solid rgba(255,255,255,.62); border-radius: 5px; color: #111; background: rgba(255,255,255,.94); box-shadow: 0 8px 26px #0008; font-size: 13px; font-weight: 800; letter-spacing: -.01em; transition: background .16s ease, transform .16s ease, box-shadow .16s ease; }
+.skip-intro-button:hover { background: #fff; box-shadow: 0 10px 30px #000a; transform: translateY(-1px); }
+.skip-intro-button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.skip-intro-button svg { width: 17px; height: 17px; fill: currentColor; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.skip-intro-button[hidden] { display: none; }
 .player-stage .player { border: 0; border-radius: 0; }
 .player-frame:fullscreen,.player-frame:-webkit-full-screen { width: 100%; height: 100%; border: 0; border-radius: 0; }
 .player-frame:fullscreen .player,.player-frame:-webkit-full-screen .player { width: 100%; height: 100%; aspect-ratio: auto; }
@@ -443,6 +448,7 @@ html, body { overflow-x: hidden; }
   .player-episodes .episode { min-height: 0; }
   .player-episodes .episode-main { min-height: 65px; }
   .player-frame { border-radius: 7px; }
+  .skip-intro-button { right: 12px; bottom: calc(58px + env(safe-area-inset-bottom)); min-height: 40px; padding: 0 13px; font-size: 12px; }
   .now { margin-top: 17px; padding: 0 2px; }
   .site-footer { margin-top: 52px; }
   .media-info + .site-footer { margin-top: 76px; }

@@ -86,7 +86,7 @@ test("CineSrc progress is polled via getCurrentTime and getDuration commands", (
   assert.match(source, /function startPlayerProgressPolling/);
   assert.match(source, /sendPlayerCommand\(provider, "getCurrentTime"\)/);
   assert.match(source, /sendPlayerCommand\(provider, "getDuration"\)/);
-  assert.match(source, /type:"cinesrc:command", command, args:\[\]/);
+  assert.match(source, /type:"cinesrc:command", command, args\s*\}/);
   assert.match(source, /bindPlayerControlLift\(\); ensurePlayerContext\(p\); startPlayerProgressPolling\(\);/);
   assert.match(source, /if \(state\.route !== "player"\) stopPlayerProgressPolling\(\);/);
   assert.match(source, /function handlePlayerResponse/);
