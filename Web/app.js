@@ -671,7 +671,7 @@ function profileGateItems() { return (state.featuredPool || []).filter(item => i
 function profileGateShowcaseMarkup(items) {
   const first = items[0];
   const carousel = items.length ? [0, 1, 2].map(copy => items.map((item, index) => `<span class="profile-gate-poster ${copy === 1 && index === 0 ? "is-active" : ""}" data-profile-card="${copy * items.length + index}"><img src="${escapeHTML(posterOf(item))}" alt="" loading="lazy" decoding="async"></span>`).join("")).join("") : "";
-  return `<div class="profile-gate-showcase" aria-hidden="true"><img class="profile-gate-backdrop" data-profile-backdrop src="${first ? escapeHTML(`${TMDB_IMAGE.replace("/w500/", "/w780/")}${first.backdrop_path}`) : "assets/seven-wordmark-v2.png"}" alt=""><div class="profile-gate-art-shade"></div><div class="profile-gate-feature"><span class="profile-gate-kicker" data-profile-kind>${first ? (contentType(first) === "movie" ? "FEATURED FILM" : "FEATURED SERIES") : "TONIGHT ON SEVEN"}</span><h2 data-profile-title>${first ? escapeHTML(titleOf(first)) : "Find your next story"}</h2><span class="profile-gate-count" data-profile-count>${first ? `01 <i>/ ${String(items.length).padStart(2, "0")}</i>` : ""}</span></div><div class="profile-gate-carousel"><div class="profile-gate-carousel-track" data-profile-track>${carousel}</div></div></div>`;
+  return `<div class="profile-gate-showcase" aria-hidden="true">${first ? `<img class="profile-gate-poster-backdrop" data-profile-poster src="${escapeHTML(`${TMDB_IMAGE.replace("/w500/", "/w780/")}${first.poster_path}`)}" alt="" fetchpriority="high" decoding="async">` : ""}<img class="profile-gate-backdrop" data-profile-backdrop src="${first ? escapeHTML(`${TMDB_IMAGE.replace("/w500/", "/w780/")}${first.backdrop_path}`) : "assets/seven-wordmark-v2.png"}" alt=""><div class="profile-gate-art-shade"></div><div class="profile-gate-feature"><span class="profile-gate-kicker" data-profile-kind>${first ? (contentType(first) === "movie" ? "FEATURED FILM" : "FEATURED SERIES") : "TONIGHT ON SEVEN"}</span><h2 data-profile-title>${first ? escapeHTML(titleOf(first)) : "Find your next story"}</h2><span class="profile-gate-count" data-profile-count>${first ? `01 <i>/ ${String(items.length).padStart(2, "0")}</i>` : ""}</span></div><div class="profile-gate-carousel"><div class="profile-gate-carousel-track" data-profile-track>${carousel}</div></div></div>`;
 }
 function stopProfileGateShowcase() {
   clearInterval(state.profileGateTimer);
@@ -684,12 +684,13 @@ function stopProfileGateShowcase() {
 function paintProfileGateShowcase(items, animate = true) {
   const gate = document.querySelector(".profile-gate"), item = items[state.profileGateIndex % items.length];
   if (!gate || !item) return;
-  const image = gate.querySelector("[data-profile-backdrop]"), title = gate.querySelector("[data-profile-title]"), kind = gate.querySelector("[data-profile-kind]"), count = gate.querySelector("[data-profile-count]"), track = gate.querySelector("[data-profile-track]"), cards = gate.querySelectorAll("[data-profile-card]");
+  const image = gate.querySelector("[data-profile-backdrop]"), poster = gate.querySelector("[data-profile-poster]"), title = gate.querySelector("[data-profile-title]"), kind = gate.querySelector("[data-profile-kind]"), count = gate.querySelector("[data-profile-count]"), track = gate.querySelector("[data-profile-track]"), cards = gate.querySelectorAll("[data-profile-card]");
   const update = () => {
-    image.src = `${TMDB_IMAGE.replace("/w500/", "/w780/")}${item.backdrop_path}`;
-    title.textContent = titleOf(item);
-    kind.textContent = contentType(item) === "movie" ? "FEATURED FILM" : "FEATURED SERIES";
-    count.innerHTML = `${String(state.profileGateIndex % items.length + 1).padStart(2, "0")} <i>/ ${String(items.length).padStart(2, "0")}</i>`;
+    if (image) image.src = `${TMDB_IMAGE.replace("/w500/", "/w780/")}${item.backdrop_path}`;
+    if (poster) poster.src = `${TMDB_IMAGE.replace("/w500/", "/w780/")}${item.poster_path}`;
+    if (title) title.textContent = titleOf(item);
+    if (kind) kind.textContent = contentType(item) === "movie" ? "FEATURED FILM" : "FEATURED SERIES";
+    if (count) count.innerHTML = `${String(state.profileGateIndex % items.length + 1).padStart(2, "0")} <i>/ ${String(items.length).padStart(2, "0")}</i>`;
     cards.forEach(card => card.classList.toggle("is-active", Number(card.dataset.profileCard) === state.profileGateIndex));
     positionProfileGateCarousel();
   };
@@ -2268,7 +2269,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=321", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=322", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

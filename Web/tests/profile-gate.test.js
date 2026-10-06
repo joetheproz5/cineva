@@ -30,15 +30,13 @@ test("profile picker has a working add-profile tile and does not exceed five pro
   assert.match(app, /isNew && state\.profileSettingsReturn === "profiles"[\s\S]*?state\.route = "profiles"/);
 });
 
-test("desktop profile picker uses a tight centered row and a softly animated abstract cinema glow", () => {
+test("desktop profile picker rotates one full-screen movie poster behind the centered profiles", () => {
   assert.match(styles, /@media \(min-width: 651px\)[\s\S]*?\.profile-gate-showcase \{[\s\S]*?display: block/);
-  assert.match(styles, /\.profile-gate-showcase::before \{[^}]*top: 51%; left: 50%;[^}]*#8c202d55/);
+  assert.match(styles, /\.profile-gate-poster-backdrop \{[^}]*position: absolute; inset: 0;[^}]*object-fit: cover/);
   assert.match(styles, /\.profile-gate \{[^}]*background: radial-gradient\(ellipse 48% 66% at 50% 53%, #241519/);
-  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*?\.profile-gate-showcase::before \{ animation: none/);
-  assert.match(styles, /\.profile-gate-showcase > img, \.profile-gate-art-shade, \.profile-gate-feature \{ display: none/);
-  assert.match(styles, /\.profile-gate-carousel \{ position: absolute; z-index: 0; top: 52%; left: 50%/);
-  assert.match(styles, /\.profile-gate-poster \{[^}]*border: 0; border-radius: 0; background: transparent; box-shadow: none/);
-  assert.match(styles, /radial-gradient\(ellipse 38% 42% at 50% 52%, #08090a82/);
+  assert.match(styles, /\.profile-gate-showcase > img:not\(\.profile-gate-poster-backdrop\), \.profile-gate-art-shade, \.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
+  assert.match(styles, /\.profile-gate-changing \.profile-gate-poster-backdrop \{ opacity: \.28/);
+  assert.match(styles, /radial-gradient\(ellipse 46% 42% at 50% 52%, #08090a75/);
   assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap;[\s\S]*?gap: 30px/);
   assert.match(styles, /\.profile-gate \.profile-choice \.profile-avatar-guest \{[^}]*background: radial-gradient\(circle at 50% 35%, #16090b/);
   assert.match(styles, /\.profile-gate \.profile-avatar-guest img \{[^}]*width: 58%/);
@@ -54,6 +52,8 @@ test("profile showcase artwork rotates from the loaded catalogue and respects re
   assert.match(gate, /state\.featuredPool/);
   assert.match(gate, /setInterval\(\(\) =>/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
+  assert.match(gate, /data-profile-poster/);
+  assert.match(gate, /\$\{item\.poster_path\}/);
   assert.match(gate, /data-profile-kind/);
   assert.match(gate, /data-profile-title/);
 });
@@ -66,10 +66,10 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=252/);
-  assert.match(index, /app\.js\?v=321/);
-  assert.match(serviceWorker, /seven-v321/);
-  assert.match(serviceWorker, /auth\.css\?v=252/);
-  assert.match(serviceWorker, /app\.js\?v=321/);
+  assert.match(index, /auth\.css\?v=253/);
+  assert.match(index, /app\.js\?v=322/);
+  assert.match(serviceWorker, /seven-v322/);
+  assert.match(serviceWorker, /auth\.css\?v=253/);
+  assert.match(serviceWorker, /app\.js\?v=322/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
