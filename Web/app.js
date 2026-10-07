@@ -1,6 +1,7 @@
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP = "https://image.tmdb.org/t/p/original";
 const TMDB_STILL = "https://image.tmdb.org/t/p/w780";
+const TMDB_PROFILE_POSTER = "https://image.tmdb.org/t/p/w780";
 const FEATURED_ID = 71712;
 const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || window.matchMedia?.("(display-mode: fullscreen)").matches
@@ -16,6 +17,7 @@ let coverflowViewportWidth = window.innerWidth;
 let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
+let profileGatePosterTimer = null, profileGatePosterGeneration = 0;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
@@ -530,7 +532,7 @@ async function loadStartupData() {
     state.catalog = {};
     state.error = error.message;
   }
-  if (state.user && state.route === "profiles") startProfileGateLayout();
+  if (state.user && state.route === "profiles") { startProfileGateLayout(); startProfileGatePosterRotation(); }
   if (!state.user || state.route !== "profiles") render();
 }
 function renderOfflineScreen() {
@@ -660,7 +662,7 @@ function render() {
     state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings";
   }
   syncAppRouteHistory();
-  if (state.route !== "profiles") stopProfileGateLayout();
+  if (state.route !== "profiles") { stopProfileGateLayout(); stopProfileGatePosterRotation(); }
   state.watchlistTargets = new Map();
   if (state.route !== "player") stopPlayerProgressPolling();
   if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave();
@@ -808,6 +810,7 @@ function beginProfileGateSelection(id) {
   const button = [...gate.querySelectorAll("[data-watch-profile]")].find(item => item.dataset.watchProfile === id), avatar = button?.querySelector(".profile-avatar"), rect = avatar?.getBoundingClientRect();
   const startX = rect ? Math.round(rect.left + rect.width / 2 - window.innerWidth / 2) : 0;
   const startY = rect ? Math.round(rect.top + rect.height / 2 - window.innerHeight * .46) : 0;
+  stopProfileGatePosterRotation();
   gate.classList.add("profile-gate-selecting");
   gate.insertAdjacentHTML("beforeend", `<div class="profile-gate-handoff" role="status" aria-live="polite"><div class="profile-gate-handoff-avatar" style="--handoff-x:${startX}px;--handoff-y:${startY}px">${profileGateAvatar(profile)}</div><div class="profile-gate-handoff-loading"><span class="profile-gate-spinner" aria-hidden="true"></span><span>${t("Loading your profile…")}</span></div></div>`);
   void activateProfile(id, { mobileHandoff:true });
@@ -815,7 +818,67 @@ function beginProfileGateSelection(id) {
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function profileGateDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function profileGateShowcaseMarkup() {
-  return `<div class="profile-gate-showcase" aria-hidden="true"><span class="profile-gate-brand-orbit"></span><img class="profile-gate-brand-mark" src="assets/seven-logo-red-download.webp" alt="" decoding="async" fetchpriority="high"></div>`;
+  return `<div class="profile-gate-showcase" aria-hidden="true"><img class="profile-gate-poster" alt="" decoding="async" fetchpriority="high"><img class="profile-gate-poster" alt="" decoding="async"></div>`;
+}
+function profileGatePosterCandidates() {
+  const today = profileGateDateKey(), upcoming = state.catalog["Coming soon"] || [];
+  const eligible = upcoming.filter(item => item.poster_path && String(item.release_date || "") >= today);
+  const fallback = eligible.length ? eligible : [...state.featuredPool, state.featured].filter(Boolean);
+  const seen = new Set();
+  return fallback.filter(item => {
+    if (!item.poster_path || !String(item.poster_path).startsWith("/") || seen.has(item.poster_path)) return false;
+    seen.add(item.poster_path);
+    return true;
+  }).slice(0, 6);
+}
+function stopProfileGatePosterRotation() {
+  profileGatePosterGeneration += 1;
+  clearTimeout(profileGatePosterTimer);
+  profileGatePosterTimer = null;
+}
+function loadProfileGatePoster(image, item) {
+  return new Promise(resolve => {
+    const src = `${TMDB_PROFILE_POSTER}${item.poster_path}`;
+    if (image.dataset.posterSrc === src && image.complete) { resolve(image.naturalWidth > 0); return; }
+    image.onload = () => { image.onload = image.onerror = null; resolve(true); };
+    image.onerror = () => { image.onload = image.onerror = null; resolve(false); };
+    image.dataset.posterSrc = src;
+    image.src = src;
+  });
+}
+function startProfileGatePosterRotation() {
+  stopProfileGatePosterRotation();
+  const gate = document.querySelector(".profile-gate"), images = [...(gate?.querySelectorAll(".profile-gate-poster") || [])];
+  if (!gate || images.length < 2 || !window.matchMedia("(max-width: 650px)").matches) return;
+  const items = profileGatePosterCandidates();
+  if (!items.length) return;
+  const generation = profileGatePosterGeneration;
+  let activeImage = 0, activeItem = 0;
+  const setNext = async () => {
+    if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
+    for (let offset = 1; offset < items.length; offset += 1) {
+      const nextItem = (activeItem + offset) % items.length, nextImage = 1 - activeImage;
+      if (!await loadProfileGatePoster(images[nextImage], items[nextItem])) continue;
+      if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
+      images[nextImage].classList.add("is-visible");
+      images[activeImage].classList.remove("is-visible");
+      activeImage = nextImage;
+      activeItem = nextItem;
+      break;
+    }
+    if (generation === profileGatePosterGeneration && items.length > 1) profileGatePosterTimer = setTimeout(setNext, 7600);
+  };
+  const showFirstAvailable = async () => {
+    for (let index = 0; index < items.length; index += 1) {
+      if (!await loadProfileGatePoster(images[activeImage], items[index])) continue;
+      if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
+      activeItem = index;
+      images[activeImage].classList.add("is-visible");
+      if (items.length > 1) profileGatePosterTimer = setTimeout(setNext, 7600);
+      return;
+    }
+  };
+  void showFirstAvailable();
 }
 function stopProfileGateLayout() {
   if (state.profileGateResize) window.removeEventListener("resize", state.profileGateResize);
@@ -827,8 +890,7 @@ function syncProfileGateLayout() {
   const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet"), showcase = gate?.querySelector(".profile-gate-showcase");
   if (!gate || !sheet || !showcase) return;
   if (window.matchMedia("(max-width: 650px)").matches) {
-    const availableHeight = Math.max(0, gate.clientHeight - sheet.offsetHeight);
-    showcase.style.height = `${availableHeight}px`;
+    showcase.style.height = `${gate.clientHeight}px`;
   } else showcase.style.removeProperty("height");
 }
 function startProfileGateLayout() {
@@ -858,6 +920,7 @@ function renderProfileGate() {
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
   document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
   startProfileGateLayout();
+  startProfileGatePosterRotation();
 }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
@@ -2395,7 +2458,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=346", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=347", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
