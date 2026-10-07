@@ -38,7 +38,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
   assert.match(index, /ui\.css\?v=295/);
-  assert.match(index, /auth\.css\?v=270/);
+  assert.match(index, /auth\.css\?v=271/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
   const workerCacheVersion = serviceWorker.match(/seven-v(\d+)/)?.[1];
@@ -47,7 +47,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.equal(workerShellAppVersion, appVersion);
   assert.equal(workerCacheVersion, appVersion);
   assert.equal(workerRegistrationVersion, appVersion);
-  assert.match(serviceWorker, /auth\.css\?v=270/);
+  assert.match(serviceWorker, /auth\.css\?v=271/);
   assert.match(serviceWorker, /ui\.css\?v=295/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });

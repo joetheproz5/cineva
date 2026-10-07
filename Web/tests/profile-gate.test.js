@@ -10,20 +10,19 @@ const uiStyles = fs.readFileSync(path.join(web, "ui.css"), "utf8");
 const index = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(web, "service-worker.js"), "utf8");
 const defaultProfileIcon = fs.readFileSync(path.join(web, "assets/profile-person.svg"), "utf8");
-const gateStart = app.indexOf("function profileGateItems()");
+const gateStart = app.indexOf("function profileGateShowcaseMarkup()");
 const gateEnd = app.indexOf("function renderLoading()", gateStart);
 const gate = app.slice(gateStart, gateEnd);
 
 test("profile picker uses the animated, cinematic selector and keeps each profile selectable", () => {
-  assert.match(gate, /profileGateShowcaseMarkup\(items\)/);
-  assert.match(gate, /data-profile-backdrop/);
-  assert.match(gate, /data-profile-backdrop-next/);
-  assert.match(gate, /\.profile-gate-backdrop:not\(\.is-active\)/);
-  assert.match(gate, /function transitionProfileGateArtwork\(gate, item\)[\s\S]*?await next\.decode\(\)[\s\S]*?next\.classList\.add\("is-active"\)/);
-  assert.match(styles, /\.profile-gate-art-ready \.profile-gate-backdrop\.is-active \{ opacity: \.98;/);
-  assert.match(styles, /transition: opacity \.9s cubic-bezier\(\.22,1,\.36,1\)/);
+  assert.match(gate, /profileGateShowcaseMarkup\(\)/);
+  assert.match(gate, /class="profile-gate-brand-mark" src="assets\/seven-logo-red-download\.webp"/);
+  assert.match(gate, /class="profile-gate-brand-orbit"/);
+  assert.doesNotMatch(gate, /profile-gate-backdrop|data-profile-backdrop|profile-gate-poster|profile-gate-release/);
+  assert.match(styles, /\.profile-gate-art-ready \.profile-gate-brand-mark \{ opacity: \.28;/);
+  assert.match(styles, /transition: opacity 1\.1s ease, transform 1\.5s cubic-bezier\(\.2,\.75,\.25,1\)/);
   assert.match(app, /animationend", event => \{[\s\S]*?profile-gate-sheet-rise[\s\S]*?profile-gate-art-ready/);
-  assert.match(gate, /data-profile-track/);
+  assert.match(gate, /profile-gate-brand-orbit/);
   assert.match(gate, /data-watch-profile=/);
   assert.match(gate, /showProfileUnlock\(profile\)/);
   assert.doesNotMatch(gate, /data-manage-profiles|class="manage-profiles"/);
@@ -42,7 +41,7 @@ test("profile picker has a working add-profile tile and does not exceed five pro
 test("desktop profile picker has no poster backdrop and softly spotlights the center", () => {
   assert.match(styles, /@media \(min-width: 651px\)[\s\S]*?\.profile-gate-showcase \{[\s\S]*?display: block/);
   assert.match(styles, /\.profile-gate \{ background: radial-gradient\(ellipse 48% 58% at 50% 52%, #211518/);
-  assert.match(styles, /\.profile-gate-showcase > img, \.profile-gate-art-shade, \.profile-gate-feature, \.profile-gate-carousel, \.profile-gate-release \{ display: none/);
+  assert.match(styles, /\.profile-gate-showcase > img:not\(\.profile-gate-brand-mark\) \{ display: none/);
   assert.match(styles, /\.profile-gate-showcase::before \{[^}]*background: radial-gradient\(ellipse at center, #6a202944/);
   assert.match(styles, /@keyframes profile-stage-glow/);
   assert.doesNotMatch(gate, /data-profile-art/);
@@ -53,23 +52,17 @@ test("desktop profile picker has no poster backdrop and softly spotlights the ce
   assert.match(defaultProfileIcon, /class="bi bi-person-circle"/);
   assert.match(defaultProfileIcon, /fill="#ed1b27"/);
   assert.match(styles, /\.profile-gate \.profile-add-avatar \{[^}]*border: 1px solid #666a70/);
-  assert.match(gate, /positionProfileGateCarousel\(\)/);
+  assert.match(gate, /syncProfileGateLayout\(\)/);
   assert.match(app, /function profileGateAvatar\(profile\)[\s\S]*?profile-avatar-guest[\s\S]*?assets\/profile-person\.svg/);
 });
 
-test("profile showcase artwork rotates from the loaded catalogue and respects reduced motion", () => {
-  assert.match(gate, /state\.catalog\?\.\["Coming soon"\]/);
-  assert.match(gate, /contentType\(item\) === "movie" && releaseDate && releaseDate >= today/);
-  assert.match(app, /function profileGateReleaseLabel\(item\)[\s\S]*?Out today[\s\S]*?Intl\.DateTimeFormat/);
-  assert.match(gate, /data-profile-release/);
-  assert.match(gate, /const artworkReady = await transitionProfileGateArtwork\(gate, item\)[\s\S]*?release\.textContent = profileGateReleaseLabel\(item\)/);
-  assert.match(gate, /setInterval\(\(\) =>/);
-  assert.match(gate, /prefers-reduced-motion: reduce/);
-  assert.match(gate, /data-profile-backdrop/);
-  assert.match(gate, /data-profile-backdrop \$\{first \?/);
-  assert.match(gate, /\$\{item\.poster_path\}/);
-  assert.match(gate, /data-profile-kind/);
-  assert.match(gate, /data-profile-title/);
+test("profile selector uses SEVEN artwork instead of unrelated movie posters", () => {
+  assert.match(gate, /assets\/seven-logo-red-download\.webp/);
+  assert.match(gate, /profile-gate-brand-orbit/);
+  assert.doesNotMatch(app, /function profileGateItems|profileGateReleaseLabel|data-profile-backdrop|profile-gate-carousel/);
+  assert.match(styles, /\.profile-gate-art-ready \.profile-gate-brand-mark/);
+  assert.match(styles, /animation: profile-stage-orbit 34s linear infinite/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.profile-gate-brand-orbit \{ animation: none; \}/);
 });
 
 test("startup fetches popular movies with a release date of today or later", () => {
@@ -79,19 +72,16 @@ test("startup fetches popular movies with a release date of today or later", () 
   assert.doesNotMatch(catalogLoad, /api\("movie\/upcoming"\)/);
 });
 
-test("mobile picker fills the space above the curved sheet with portrait artwork", () => {
-  assert.match(gate, /first\.poster_path/);
-  assert.match(gate, /filter\(item => \{[\s\S]*?const releaseDate = profileGateReleaseDate\(item\);[\s\S]*?releaseDate >= today/);
-  assert.match(gate, /original/);
-  assert.match(styles, /width: 100%; height: 100%; object-fit: cover; object-position: center bottom/);
+test("mobile selector presents the SEVEN mark above the curved profile sheet", () => {
+  assert.match(gate, /assets\/seven-logo-red-download\.webp/);
+  assert.match(styles, /\.profile-gate-brand-mark \{ top: 40%; width: min\(76vw, 370px\); opacity: 0;/);
+  assert.match(styles, /\.profile-gate-art-ready \.profile-gate-brand-mark \{ opacity: \.86;/);
+  assert.match(styles, /\.profile-gate-selecting \.profile-gate-brand-mark \{ opacity: 0; filter: brightness\(\.12\)/);
+  assert.doesNotMatch(styles, /profile-gate-release|profile-gate-backdrop|profile-gate-carousel/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-logo \{ display: none/);
-  assert.match(styles, /\.profile-gate-feature, \.profile-gate-carousel \{ display: none/);
   assert.match(styles, /\.profile-gate-showcase \{[^}]*inset: 0 0 auto;[^}]*height: calc\(100% - 34svh\)/);
   assert.match(app, /function syncProfileGateLayout\(\)[\s\S]*?gate\.clientHeight - sheet\.offsetHeight/);
   assert.match(app, /new ResizeObserver\(syncProfileGateLayout\)/);
-  assert.match(styles, /\.profile-gate-backdrop \{[^}]*inset: 0;[^}]*width: 100%; height: 100%;[^}]*object-position: center bottom/);
-  assert.match(styles, /\.profile-gate-release \{[^}]*text-shadow: 0 1px 8px #000c[^}]*transition: opacity \.9s/);
-  assert.match(styles, /\.profile-gate-release i \{[^}]*background: #ed1b27/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: max\(34svh, 300px\)/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{ min-height: max\(43svh, 290px\); max-height: 76svh/);
   assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 18px 4px; width: min\(100%, 350px\)/);
@@ -100,7 +90,7 @@ test("mobile picker fills the space above the curved sheet with portrait artwork
   assert.match(styles, /\.profile-gate-at-cap \.profile-choice \{ flex-basis: calc\(\(100% - 8px\) \/ 3\)/);
   assert.match(styles, /\.profile-gate\.profile-gate-multirow \.profile-chooser \{ width: min\(100%, 440px\); row-gap: 28px/);
   assert.match(styles, /\.profile-gate-multirow \.profile-chooser \{ row-gap: 24px; \}/);
-  assert.match(styles, /@media \(max-width: 650px\) and \(max-height: 690px\)[\s\S]*?\.profile-gate-backdrop \{ object-fit: contain; \}/);
+  assert.match(styles, /@media \(max-width: 650px\) and \(max-height: 690px\)[\s\S]*?\.profile-gate-brand-mark \{ width: min\(68vw, 330px\); \}/);
   assert.match(styles, /backdrop-filter: blur\(16px\)/);
   assert.match(styles, /\.profile-gate-showcase \{ height: calc\(100% - 43svh\); \}/);
 });
@@ -118,7 +108,7 @@ test("mobile profile selection checks PIN first, then centers the selected avata
   assert.match(styles, /\.profile-gate-selecting \.profile-gate-sheet \{ animation: profile-gate-sheet-lower-away/);
   assert.match(styles, /@keyframes profile-gate-avatar-to-center/);
   assert.match(styles, /top: 46%; left: 50%; width: 86px; height: 86px; animation: profile-gate-avatar-to-center/);
-  assert.match(styles, /profile-gate-selecting \.profile-gate-backdrop \{ opacity: 0; filter: brightness\(\.12\)/);
+  assert.match(styles, /profile-gate-selecting \.profile-gate-brand-mark \{ opacity: 0; filter: brightness\(\.12\)/);
   assert.match(styles, /@keyframes profile-gate-loading-arrive/);
   assert.match(styles, /@keyframes profile-gate-exit-scene/);
   assert.match(activation, /if \(mobileHandoff\) state\.profileGateHomeEntry = true/);
@@ -138,10 +128,11 @@ test("profile panel waits for the SEVEN ident, then rises; mobile uses a curved 
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=270/);
-  assert.match(index, /app\.js\?v=345/);
-  assert.match(serviceWorker, /seven-v345/);
-  assert.match(serviceWorker, /auth\.css\?v=270/);
-  assert.match(serviceWorker, /app\.js\?v=345/);
+  assert.match(index, /auth\.css\?v=271/);
+  assert.match(index, /app\.js\?v=346/);
+  assert.match(serviceWorker, /seven-v346/);
+  assert.match(serviceWorker, /auth\.css\?v=271/);
+  assert.match(serviceWorker, /app\.js\?v=346/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
+  assert.match(serviceWorker, /assets\/seven-logo-red-download\.webp/);
 });
