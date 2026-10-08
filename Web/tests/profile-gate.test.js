@@ -11,7 +11,7 @@ const index = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(web, "service-worker.js"), "utf8");
 const defaultProfileIcon = fs.readFileSync(path.join(web, "assets/profile-person.svg"), "utf8");
 const gateStart = app.indexOf("function profileGateShowcaseMarkup()");
-const gateEnd = app.indexOf("function renderLoading()", gateStart);
+const gateEnd = app.indexOf("function renderLoading(", gateStart);
 const gate = app.slice(gateStart, gateEnd);
 
 test("profile picker keeps a clean spotlight and contains no replacement artwork", () => {
@@ -159,11 +159,11 @@ test("profile picker appears beneath a stationary ident that fades out once star
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=284/);
-  assert.match(index, /ui\.css\?v=320/);
-  assert.match(index, /app\.js\?v=377/);
-  assert.match(serviceWorker, /seven-v380/);
+  assert.match(index, /ui\.css\?v=321/);
+  assert.match(index, /app\.js\?v=378/);
+  assert.match(serviceWorker, /seven-v381/);
   assert.match(serviceWorker, /auth\.css\?v=284/);
-  assert.match(serviceWorker, /ui\.css\?v=320/);
-  assert.match(serviceWorker, /app\.js\?v=377/);
+  assert.match(serviceWorker, /ui\.css\?v=321/);
+  assert.match(serviceWorker, /app\.js\?v=378/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

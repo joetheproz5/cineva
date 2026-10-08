@@ -345,9 +345,6 @@ html:not(.seven-launching) .seven-intro:not(.exiting) { display: none; }
 .seven-intro:not(.logo-show) .startup-intro-mark { opacity: 0; visibility: hidden; }
 .seven-intro.logo-show .startup-intro-mark { transition: opacity .14s ease; }
 .seven-intro.logo-unavailable .startup-intro-mark { visibility: hidden; }
-/* TEMPORARY launch-handoff diagnostic — remove together with the .intro-debug
-   markup and the app.js debug updater once the ghost is verified on device. */
-.intro-debug { position: absolute; z-index: 9; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; color: #7fe08f; font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-shadow: 0 1px 2px #000; pointer-events: none; white-space: nowrap; }
 @keyframes intro-out { to { opacity: 0; visibility: hidden; } }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }
 .offline-logo { width: min(52vw, 260px); height: auto; opacity: .92; margin-bottom: 18px; }

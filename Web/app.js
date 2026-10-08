@@ -17,7 +17,7 @@ let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introStarted: false, introAnimationComplete: false, introExitStarted: false, introDismissed: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false, profileCreationReturn:null };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, startupBootComplete: false, startupWatchdogTimer: null, introStarted: false, introAnimationComplete: false, introExitStarted: false, introDismissed: false, introTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false, profileCreationReturn:null };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -511,7 +511,10 @@ async function refreshCatalogNow() {
 }
 function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
 async function boot() {
-  renderLoading();
+  // Give the splash a real page to reveal immediately. Remote catalog/auth
+  // calls can be slow, so they must not keep the branded launch screen up.
+  renderLoading({ showBrand:false });
+  revealStartupUi();
   const verifiedEmail = await consumeEmailVerificationRedirect();
   await restoreSession();
   applyLocale();
@@ -526,7 +529,7 @@ async function boot() {
   }
   if (deep) { await openItem(deep[1], Number(deep[2])); return; }
   if (!navigator.onLine) return renderOfflineScreen();
-  if (state.user) { state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles"; if (state.route === "onboarding") beginOnboarding(); render(); } else renderLoading();
+  if (state.user) { state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles"; if (state.route === "onboarding") beginOnboarding(); render(); } else renderLoading({ showBrand:false });
   await loadStartupData();
   if (verifiedEmail) await finishEmailVerification(verifiedEmail);
   else {
@@ -843,7 +846,7 @@ function renderProfileGate() {
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
   document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
 }
-function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
+function renderLoading({ showBrand = true } = {}) { const header = showBrand ? `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header>` : ""; app.innerHTML = `${header}<section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function renderHome() {
   clearInterval(state.heroTimer);
@@ -1269,9 +1272,7 @@ function dismissIntro() {
   state.introDismissed = true;
   const overlay = document.querySelector(".seven-intro");
   clearTimeout(state.introTimer);
-  clearTimeout(state.introSafetyTimer);
   state.introTimer = null;
-  state.introSafetyTimer = null;
   document.documentElement.classList.remove("seven-launching");
   document.documentElement.style.overflow = "";
   if (!overlay) return;
@@ -1288,7 +1289,6 @@ function maybeFinishIntro() {
   const profileGate = document.querySelector(".profile-gate");
   if (profileGate?.classList.contains("profile-gate-pending")) profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
   overlay.classList.add("exiting");
-  clearTimeout(state.introSafetyTimer);
   overlay.addEventListener("animationend", event => {
     if (event.target === overlay && event.animationName === "intro-out") dismissIntro();
   }, { once:true });
@@ -1328,16 +1328,6 @@ function renderLaunchIntro() {
   document.documentElement.classList.add("seven-launching");
   document.documentElement.style.overflow = "hidden";
   if (!overlay.isConnected) document.body.appendChild(overlay);
-  state.introSafetyTimer = setTimeout(() => {
-    // Never dismiss the splash onto an unrendered page when boot is stalled.
-    // Put a real retry state underneath first, then let the normal fade reveal it.
-    if (!state.startupReady) {
-      renderStartupFallback();
-      state.startupReady = true;
-    }
-    if (!overlay.classList.contains("live")) startIntro(false);
-    maybeFinishIntro();
-  }, 12000);
   const imageReady = typeof logo.decode === "function"
     ? logo.decode().then(() => true, () => false)
     : new Promise(resolve => { logo.onload = () => resolve(true); logo.onerror = () => resolve(false); });
@@ -1364,21 +1354,6 @@ function renderLaunchIntro() {
     requestAnimationFrame(check);
   });
   Promise.all([imageReady, layoutSettled]).then(([loaded]) => startIntro(loaded));
-  // TEMPORARY DIAGNOSTIC — remove together with the .intro-debug markup and
-  // styles once the launch handoff is verified on device. Live viewport
-  // metrics over the intro: a cold-launch screen recording will show whether
-  // the standalone layout viewport settles late (the handoff-ghost cause).
-  const debug = overlay.querySelector(".intro-debug");
-  if (debug) {
-    const renderDebug = () => {
-      const vv = window.visualViewport;
-      debug.textContent = `inner ${window.innerHeight} | doc ${document.documentElement.clientHeight} | vv ${vv ? `${Math.round(vv.height)}@${Math.round(vv.offsetTop)}` : "n/a"} | screen ${window.screen.height}`;
-    };
-    renderDebug();
-    window.visualViewport?.addEventListener("resize", renderDebug);
-    const pollDebug = () => { if (overlay.isConnected) { renderDebug(); requestAnimationFrame(pollDebug); } };
-    requestAnimationFrame(pollDebug);
-  }
 }
 function screenTimeState(profile = currentProfile()) {
   if (!profile?.kids || !profile.screenTime?.enabled) return null;
@@ -2479,7 +2454,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=380", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=381", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
@@ -2551,7 +2526,23 @@ window.addEventListener("visibilitychange", () => { if (!document.hidden) { tick
 window.addEventListener("pagehide", () => { void flushWatchTime(); });
 setInterval(tickScreenTime, 60000);
 renderLaunchIntro();
-const markStartupReady = () => { state.startupReady = true; maybeFinishIntro(); };
+function revealStartupUi() { state.startupReady = true; maybeFinishIntro(); }
+const markStartupReady = () => { state.startupReady = true; state.startupBootComplete = true; clearTimeout(state.startupWatchdogTimer); state.startupWatchdogTimer = null; maybeFinishIntro(); };
+state.startupWatchdogTimer = setTimeout(() => {
+  if (state.startupBootComplete) return;
+  // If boot stalls, expose a recovery screen instead of leaving a splash or
+  // skeleton on screen forever. The normal intro fade remains the handoff.
+  renderStartupFallback();
+  state.startupReady = true;
+  state.startupBootComplete = true;
+  state.startupWatchdogTimer = null;
+  const overlay = document.querySelector(".seven-intro");
+  if (overlay && !state.introAnimationComplete) {
+    overlay.classList.add("logo-unavailable", "logo-show", "live");
+    state.introAnimationComplete = true;
+  }
+  maybeFinishIntro();
+}, 12000);
 void boot().then(markStartupReady, error => {
   state.error = error?.message || "Startup failed";
   renderOfflineScreen();

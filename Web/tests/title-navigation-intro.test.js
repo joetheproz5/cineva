@@ -34,7 +34,6 @@ test("the launch intro is static on entry, starts once, and fades out once after
   assert.match(intro, /const cap = setTimeout\(finish, 800\)/);
   assert.match(intro, /if \(state\.introDismissed\) return;\s*state\.introDismissed = true;/);
   assert.match(intro, /!state\.startupReady \|\| !state\.introAnimationComplete/);
-  assert.match(intro, /state\.introSafetyTimer = setTimeout\(/);
   assert.match(intro, /document\.documentElement\.classList\.add\("seven-launching"\)/);
   assert.match(intro, /document\.documentElement\.classList\.remove\("seven-launching"\)/);
   const finishIntroStart = app.indexOf("function maybeFinishIntro()");
@@ -76,9 +75,10 @@ test("the launch intro is static on entry, starts once, and fades out once after
   assert.match(index, /apple-mobile-web-app-capable" content="yes"/);
   assert.match(index, /apple-mobile-web-app-status-bar-style" content="black-translucent"/);
   assert.doesNotMatch(index + app, /startup-intro-sweep/);
+  assert.doesNotMatch(index + app + styles, /intro-debug|renderDebug/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.doesNotMatch(styles, /\.seven-intro:not\(\.live\)[^}]*animation-play-state:\s*paused/);
-  assert.match(index, /ui\.css\?v=320/);
+  assert.match(index, /ui\.css\?v=321/);
   assert.match(index, /startup-theme\.css\?v=4/);
   assert.match(index, /auth\.css\?v=284/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
@@ -87,30 +87,34 @@ test("the launch intro is static on entry, starts once, and fades out once after
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "380");
+  assert.equal(workerCacheVersion, "381");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
   assert.match(serviceWorker, /auth\.css\?v=284/);
-  assert.match(serviceWorker, /ui\.css\?v=320/);
+  assert.match(serviceWorker, /ui\.css\?v=321/);
   assert.match(serviceWorker, /startup-theme\.css\?v=4/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
   assert.doesNotMatch(serviceWorker, /controllerchange|location\.reload\(|clients\.navigate\(/);
 });
 
-test("a stalled startup reveals a retry screen instead of dismissing to a blank page", () => {
+test("startup reveals a skeleton before remote work and a retry screen if boot stalls", () => {
   const fallbackStart = app.indexOf("function renderStartupFallback()");
   const fallbackEnd = app.indexOf("async function retryConnection()", fallbackStart);
   const fallback = app.slice(fallbackStart, fallbackEnd);
-  const introStart = app.indexOf("function renderLaunchIntro()");
-  const introEnd = app.indexOf("function screenTimeState(", introStart);
-  const intro = app.slice(introStart, introEnd);
-  const watchdogStart = intro.indexOf("state.introSafetyTimer = setTimeout(");
-  const watchdog = intro.slice(watchdogStart, intro.indexOf("const imageReady", watchdogStart));
+  const bootStart = app.indexOf("async function boot()");
+  const bootEnd = app.indexOf("async function retryConnection()", bootStart);
+  const boot = app.slice(bootStart, bootEnd);
+  const watchdogStart = app.indexOf("state.startupWatchdogTimer = setTimeout(");
+  const watchdog = app.slice(watchdogStart, app.indexOf("void boot().then", watchdogStart));
 
   assert.ok(fallbackStart >= 0 && fallbackEnd > fallbackStart, "startup fallback should exist");
   assert.match(fallback, /Still getting things ready/);
   assert.match(fallback, /data-startup-retry/);
   assert.match(fallback, /window\.location\.reload\(\)/);
-  assert.match(watchdog, /if \(!state\.startupReady\)\s*\{\s*renderStartupFallback\(\);\s*state\.startupReady = true;/);
+  assert.match(boot, /renderLoading\(\{ showBrand:false \}\);\s*revealStartupUi\(\);\s*const verifiedEmail = await consumeEmailVerificationRedirect\(\)/);
+  assert.match(watchdog, /if \(state\.startupBootComplete\) return;[\s\S]*?renderStartupFallback\(\);[\s\S]*?state\.startupBootComplete = true;/);
+  assert.match(app, /function revealStartupUi\(\) \{ state\.startupReady = true; maybeFinishIntro\(\); \}/);
+  assert.match(app, /state\.startupBootComplete = true; clearTimeout\(state\.startupWatchdogTimer\)/);
+  assert.match(app, /function renderLoading\(\{ showBrand = true \} = \{\}\)/);
 });
 
 test("the footer back-to-top link animates even when reduced motion is requested", () => {
