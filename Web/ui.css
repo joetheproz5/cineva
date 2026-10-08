@@ -485,16 +485,13 @@ body:has(.home-page) {
 .app-header .account-caret { display: none; }
 
 .home-page { display: block; }
-.home-page-profile-entry .hero { animation: home-profile-hero-enter .82s cubic-bezier(.2,.75,.25,1) both; }
-.home-page-profile-entry .home-library { animation: home-profile-library-enter .78s .12s cubic-bezier(.2,.75,.25,1) both; }
-.home-page-profile-entry .home-library .rail { animation: home-profile-rail-enter .62s cubic-bezier(.2,.75,.25,1) both; }
-.home-page-profile-entry .home-library .rail:nth-child(1) { animation-delay: .25s; }
-.home-page-profile-entry .home-library .rail:nth-child(2) { animation-delay: .34s; }
-.home-page-profile-entry .home-library .rail:nth-child(3) { animation-delay: .43s; }
-.home-page-profile-entry .home-library .rail:nth-child(n+4) { animation-delay: .52s; }
-@keyframes home-profile-hero-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes home-profile-library-enter { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes home-profile-rail-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.home-page-profile-entry .hero { animation: profile-home-fade-in .48s ease both; }
+.home-page-profile-entry .home-library { animation: profile-home-fade-in .48s .1s ease both; }
+.home-page-profile-entry .home-library .rail { animation: none; }
+.home-page-profile-entry .home-hero-backdrop { animation: profile-home-fade-in .48s ease both; }
+.home-page-profile-entry .home-hero-content { animation: profile-home-fade-in .42s .08s ease both; }
+.home-page-profile-entry .home-hero-grade { animation: profile-home-fade-in .42s ease both; }
+@keyframes profile-home-fade-in { from { opacity: 0; } to { opacity: 1; } }
 body:has(.home-page) .app-header { margin-bottom: 0; }
 .home-page .hero {
   position: relative; isolation: isolate; display: block; width: 100vw; min-height: clamp(590px, 76svh, 820px); margin-left: calc(50% - 50vw); overflow: hidden; padding: 0;
@@ -675,7 +672,7 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .home-page-profile-entry .hero,.home-page-profile-entry .home-library,.home-page-profile-entry .home-library .rail { animation-duration: .01ms; animation-delay: 0s; }
   .home-hero-backdrop,.home-hero-content,.home-hero-grade::after,.hero-refresh .home-hero-backdrop,.hero-refresh .home-hero-content { animation: none; }
   .home-library .card,.home-library .card img,.hero-arrow,.hero-actions button,.hero-actions svg { transition: none; }
-  .home-hero-backdrop { animation: home-hero-image .75s cubic-bezier(.2,.7,.2,1) both !important; }
+  .home-hero-backdrop { opacity: 1; transform: none; animation: none !important; }
   .hero-word { animation-duration: .01s !important; animation-delay: 0s !important; }
 }
 @keyframes seven-wordmark-center-mobile { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }

@@ -104,8 +104,12 @@ test("profile selection checks PIN first, centers the selected avatar, and waits
   assert.match(home, /Boolean\(state\.profileGateHomeEntry\)/);
   assert.match(home, /state\.profileGateHomeEntry = false/);
   assert.match(home, /home-page \$\{animateProfileEntry \? "home-page-profile-entry"/);
-  assert.match(uiStyles, /\.home-page-profile-entry \.hero \{ animation: home-profile-hero-enter/);
-  assert.match(uiStyles, /\.home-page-profile-entry \.home-library \.rail \{ animation: home-profile-rail-enter/);
+  assert.match(uiStyles, /\.home-page-profile-entry \.hero \{ animation: profile-home-fade-in \.48s ease both; \}/);
+  assert.match(uiStyles, /\.home-page-profile-entry \.home-library \{ animation: profile-home-fade-in \.48s \.1s ease both; \}/);
+  assert.match(uiStyles, /\.home-page-profile-entry \.home-library \.rail \{ animation: none; \}/);
+  assert.match(uiStyles, /\.home-page-profile-entry \.home-hero-backdrop \{ animation: profile-home-fade-in \.48s ease both; \}/);
+  assert.match(uiStyles, /@keyframes profile-home-fade-in \{ from \{ opacity: 0; \} to \{ opacity: 1; \} \}/);
+  assert.doesNotMatch(uiStyles.slice(uiStyles.indexOf(".home-page-profile-entry .hero"), uiStyles.indexOf(".home-page .hero")), /translateY|scale\(/);
 });
 
 test("desktop profile selection uses the centered loading handoff and fades the chooser away", () => {
@@ -128,6 +132,9 @@ test("reduced-motion users get a settled profile handoff instead of a half-anima
   assert.match(reducedMotion, /\.profile-gate-handoff-loading \{ animation: none !important; opacity: 1; transform: translateX\(-50%\); \}/);
   assert.match(reducedMotion, /\.profile-gate-handoff-loading \.profile-gate-spinner \{ border-color: #ed1b27; animation: none !important; \}/);
   assert.match(reducedMotion, /\.profile-gate-handoff-exit \{ animation: none !important; opacity: 0; \}/);
+  const uiReducedMotion = uiStyles.slice(uiStyles.indexOf("@media (prefers-reduced-motion: reduce)"));
+  assert.match(uiReducedMotion, /\.home-hero-backdrop \{ opacity: 1; transform: none; animation: none !important; \}/);
+  assert.doesNotMatch(uiReducedMotion, /home-hero-image \.75s/);
 });
 
 test("profile panel waits for the SEVEN ident, then rises into a curved lower sheet", () => {
@@ -139,9 +146,9 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=275/);
-  assert.match(index, /app\.js\?v=354/);
-  assert.match(serviceWorker, /seven-v355/);
+  assert.match(index, /app\.js\?v=355/);
+  assert.match(serviceWorker, /seven-v356/);
   assert.match(serviceWorker, /auth\.css\?v=275/);
-  assert.match(serviceWorker, /app\.js\?v=354/);
+  assert.match(serviceWorker, /app\.js\?v=355/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
