@@ -43,12 +43,12 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   const introStyles = styles.slice(styles.indexOf(".seven-intro {"), styles.indexOf(".offline-screen"));
   assert.match(styles, /html\.seven-launching,html\.seven-launching body \{ background: radial-gradient/);
   assert.match(styles, /html\.seven-launching #app \{ visibility: hidden; \}/);
-  assert.match(introStyles, /\.seven-intro \{[^}]*height: 100vh; height: 100svh/);
+  assert.match(introStyles, /\.seven-intro \{[^}]*position: fixed; z-index: 400; inset: 0;/);
   assert.doesNotMatch(introStyles, /\.seven-intro \{[^}]*bottom: -96px/);
   assert.match(introStyles, /\.startup-intro-scene \{[^}]*position: absolute; z-index: 1; inset: 0;/);
   assert.match(introStyles, /@keyframes intro-out \{ to \{ opacity: 0; visibility: hidden; \} \}/);
   assert.doesNotMatch(introStyles, /@keyframes intro-out \{[^}]*transform:/);
-  assert.match(introStyles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: drop-shadow/);
+  assert.match(introStyles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: none/);
   assert.doesNotMatch(introStyles, /\.startup-intro-mark \{[^}]*transform:/);
   assert.doesNotMatch(introStyles, /intro-mark-focus|intro-sweep|startup-intro-sweep/);
   assert.match(styles, /\.startup-intro-rays \{[^}]*animation: intro-rays/);
@@ -56,7 +56,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.doesNotMatch(index + app, /startup-intro-sweep/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=314/);
+  assert.match(index, /ui\.css\?v=315/);
   assert.match(index, /auth\.css\?v=283/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
@@ -64,10 +64,10 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "372");
+  assert.equal(workerCacheVersion, "373");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
   assert.match(serviceWorker, /auth\.css\?v=283/);
-  assert.match(serviceWorker, /ui\.css\?v=314/);
+  assert.match(serviceWorker, /ui\.css\?v=315/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
