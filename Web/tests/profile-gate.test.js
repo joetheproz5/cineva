@@ -39,7 +39,7 @@ test("profile picker has a working add-profile tile and does not exceed five pro
   assert.match(gate, /data-add-profile-gate[\s\S]*?showProfileEditor\("", "profiles", "profile"\)/);
   assert.match(app, /function showProfileEditor\(id = "", returnRoute = "account", initialCategory = "home"\)/);
   assert.match(app, /if \(!existing && state\.account\.profiles\.length >= 5\) return/);
-  assert.match(app, /isNew && state\.profileSettingsReturn === "profiles"[\s\S]*?state\.route = "profiles"/);
+  assert.match(app, /if \(category === "taste" && state\.profileCreationReturn\) \{[\s\S]*?const returnRoute = state\.profileCreationReturn;[\s\S]*?state\.route = returnRoute/);
 });
 
 test("desktop profile picker keeps a restrained center spotlight and no mobile poster", () => {
@@ -139,9 +139,9 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=275/);
-  assert.match(index, /app\.js\?v=353/);
-  assert.match(serviceWorker, /seven-v354/);
+  assert.match(index, /app\.js\?v=354/);
+  assert.match(serviceWorker, /seven-v355/);
   assert.match(serviceWorker, /auth\.css\?v=275/);
-  assert.match(serviceWorker, /app\.js\?v=353/);
+  assert.match(serviceWorker, /app\.js\?v=354/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

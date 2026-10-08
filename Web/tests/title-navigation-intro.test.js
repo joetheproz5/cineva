@@ -56,7 +56,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "354");
+  assert.equal(workerCacheVersion, "355");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
   assert.match(serviceWorker, /auth\.css\?v=275/);
   assert.match(serviceWorker, /ui\.css\?v=299/);
