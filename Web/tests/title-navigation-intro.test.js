@@ -35,6 +35,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.seven-intro\.exiting/);
   const introStyles = styles.slice(styles.indexOf(".seven-intro {"), styles.indexOf(".offline-screen"));
   assert.match(introStyles, /\.seven-intro \{[^}]*height: 100vh; height: 100svh/);
+  assert.match(introStyles, /\.seven-intro \{[^}]*box-sizing: content-box;[^}]*padding-bottom: env\(safe-area-inset-bottom\)/);
   assert.match(introStyles, /\.startup-intro-scene \{[^}]*position: absolute; z-index: 1; inset: 0/);
   assert.match(introStyles, /@keyframes intro-out \{ to \{ opacity: 0; visibility: hidden; \} \}/);
   assert.doesNotMatch(introStyles, /@keyframes intro-out \{[^}]*transform:/);
@@ -45,7 +46,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=296/);
+  assert.match(index, /ui\.css\?v=297/);
   assert.match(index, /auth\.css\?v=273/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
@@ -56,7 +57,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.equal(workerCacheVersion, appVersion);
   assert.equal(workerRegistrationVersion, appVersion);
   assert.match(serviceWorker, /auth\.css\?v=273/);
-  assert.match(serviceWorker, /ui\.css\?v=296/);
+  assert.match(serviceWorker, /ui\.css\?v=297/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
