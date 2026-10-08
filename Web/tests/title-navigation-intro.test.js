@@ -37,7 +37,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=295/);
+  assert.match(index, /ui\.css\?v=296/);
   assert.match(index, /auth\.css\?v=273/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
@@ -48,8 +48,15 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.equal(workerCacheVersion, appVersion);
   assert.equal(workerRegistrationVersion, appVersion);
   assert.match(serviceWorker, /auth\.css\?v=273/);
-  assert.match(serviceWorker, /ui\.css\?v=295/);
+  assert.match(serviceWorker, /ui\.css\?v=296/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
+  const logoAnimationStart = styles.indexOf("@keyframes intro-mark-focus");
+  const logoAnimationEnd = styles.indexOf("@keyframes intro-sweep", logoAnimationStart);
+  const logoAnimation = styles.slice(logoAnimationStart, logoAnimationEnd);
+  assert.match(styles, /\.seven-intro\s*\{[^}]*height:\s*100svh/);
+  assert.match(styles, /\.startup-intro-scene\s*\{[^}]*inset:\s*0/);
+  assert.doesNotMatch(logoAnimation, /transform\s*:/);
+  assert.doesNotMatch(styles.match(/@keyframes intro-out\s*\{([^}]+)\}/)?.[1] || "", /transform\s*:/);
 });
 
 test("the footer back-to-top link animates even when reduced motion is requested", () => {
