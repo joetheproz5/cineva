@@ -1,7 +1,6 @@
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP = "https://image.tmdb.org/t/p/original";
 const TMDB_STILL = "https://image.tmdb.org/t/p/w780";
-const TMDB_PROFILE_POSTER = "https://image.tmdb.org/t/p/w1280";
 const FEATURED_ID = 71712;
 const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || window.matchMedia?.("(display-mode: fullscreen)").matches
@@ -17,9 +16,8 @@ let coverflowViewportWidth = window.innerWidth;
 let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
-let profileGatePosterTimer = null, profileGatePosterGeneration = 0;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false, profileCreationReturn:null };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false, profileCreationReturn:null };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -33,7 +31,7 @@ const PROFILE_WATCHLIST_STORAGE_PREFIX = "seven.profile.watchlist.";
 const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const UI_STRINGS = {
   Arabic: {
-    "Coming":"قريباً", "Out today":"متاح اليوم", "Arrives today":"يصل اليوم",
+    "Coming":"قريباً", "Out today":"متاح اليوم",
     "Home":"الرئيسية", "For You":"مخصص لك", "Movies":"أفلام", "Series":"مسلسلات", "Favourites":"المفضلة", "Favs":"المفضلة",
     "Titles, movies, series":"عناوين، أفلام، مسلسلات", "Account":"الحساب", "Search":"بحث",
     "Play something":"شغّل شيئاً", "We’ll pick a trailer for you":"سنختار لك إعلاناً تشويقياً",
@@ -63,7 +61,7 @@ const UI_STRINGS = {
     "Password updated.":"تم تحديث كلمة المرور.", "Done":"تم"
   },
   French: {
-    "Coming":"À venir", "Out today":"Disponible aujourd’hui", "Arrives today":"Arrive aujourd’hui",
+    "Coming":"À venir", "Out today":"Disponible aujourd’hui",
     "Home":"Accueil", "For You":"Pour vous", "Movies":"Films", "Series":"Séries", "Favourites":"Favoris", "Favs":"Favoris",
     "Titles, movies, series":"Titres, films, séries", "Account":"Compte", "Search":"Rechercher",
     "Play something":"Lancer quelque chose", "We’ll pick a trailer for you":"On choisit une bande-annonce pour vous",
@@ -478,7 +476,7 @@ async function refreshCatalogNow() {
       api("discover/movie", movieParams), api("discover/tv", showParams),
       api("discover/movie", { ...movieParams, "primary_release_date.gte":`${year - 1}-01-01`, sort_by:"primary_release_date.desc" }),
       api("discover/tv", { ...showParams, "first_air_date.gte":`${year - 1}-01-01`, sort_by:"first_air_date.desc" }),
-      api("discover/movie", { ...movieParams, "primary_release_date.gte":profileGateDateKey(), sort_by:"popularity.desc" }),
+      api("discover/movie", { ...movieParams, "primary_release_date.gte":localDateKey(), sort_by:"popularity.desc" }),
       api("discover/movie", { ...movieParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
       api("discover/tv", { ...showParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
       api("discover/movie", { certification_country:"US", "certification.lte":certification, with_genres:"12", sort_by:"popularity.desc" }),
@@ -495,7 +493,7 @@ async function refreshCatalogNow() {
   }
   const [featured, trending, movies, shows, recent, airing, upcoming, topMovies, topShows, actionMovies, actionShows] = await Promise.all([
     api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air"),
-    api("discover/movie", { "primary_release_date.gte":profileGateDateKey(), sort_by:"popularity.desc" }), api("movie/top_rated"), api("tv/top_rated"),
+    api("discover/movie", { "primary_release_date.gte":localDateKey(), sort_by:"popularity.desc" }), api("movie/top_rated"), api("tv/top_rated"),
     api("discover/movie", { with_genres:"28", sort_by:"popularity.desc" }), api("discover/tv", { with_genres:"10759", sort_by:"popularity.desc" })
   ]);
   const month = new Date().getMonth(), year = new Date().getFullYear();
@@ -548,7 +546,6 @@ async function loadStartupData() {
     state.catalog = {};
     state.error = error.message;
   }
-  if (state.user && state.route === "profiles") { startProfileGateLayout(); startProfileGatePosterRotation(); }
   if (!state.user || state.route !== "profiles") render();
 }
 function renderOfflineScreen() {
@@ -678,7 +675,6 @@ function render() {
     state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings";
   }
   syncAppRouteHistory();
-  if (state.route !== "profiles") { stopProfileGateLayout(); stopProfileGatePosterRotation(); }
   state.watchlistTargets = new Map();
   if (state.route !== "player") stopPlayerProgressPolling();
   if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave();
@@ -799,7 +795,6 @@ function exitProfileGate(then) {
   setTimeout(then, 430);
 }
 async function activateProfile(id, { handoff = false } = {}) {
-  stopProfileGateLayout();
   const catalogStale = state.catalogKey !== id;
   state.account.activeProfileId = id;
   hydrateWatchlist();
@@ -827,130 +822,48 @@ function beginProfileGateSelection(id) {
   const centerY = window.matchMedia("(max-width: 650px)").matches ? .46 : .5;
   const startX = rect ? Math.round(rect.left + rect.width / 2 - window.innerWidth / 2) : 0;
   const startY = rect ? Math.round(rect.top + rect.height / 2 - window.innerHeight * centerY) : 0;
-  stopProfileGatePosterRotation();
   gate.classList.add("profile-gate-selecting");
   gate.insertAdjacentHTML("beforeend", `<div class="profile-gate-handoff" role="status" aria-live="polite"><div class="profile-gate-handoff-avatar" style="--handoff-x:${startX}px;--handoff-y:${startY}px">${profileGateAvatar(profile)}</div><div class="profile-gate-handoff-loading"><span class="profile-gate-spinner" aria-hidden="true"></span><span>${t("Loading your profile…")}</span></div></div>`);
   void activateProfile(id, { handoff:true });
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
-function profileGateDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+function localDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function profileGateShowcaseMarkup() {
-  const slides = Array.from({ length:2 }, (_, index) => `<div class="profile-gate-slide"><img class="profile-gate-poster" alt="" decoding="async" ${index ? "" : "fetchpriority=\"high\""}><p class="profile-gate-release" hidden><i aria-hidden="true"></i><span></span></p></div>`).join("");
-  return `<div class="profile-gate-showcase" aria-hidden="true">${slides}</div>`;
-}
-function profileGatePosterCandidates() {
-  const today = profileGateDateKey(), upcoming = state.catalog["Coming soon"] || [];
-  const eligible = upcoming.filter(item => item.poster_path && String(item.release_date || "") >= today);
-  const fallback = eligible.length ? eligible : [...state.featuredPool, state.featured].filter(Boolean);
-  const seen = new Set();
-  return fallback.filter(item => {
-    if (!item.poster_path || !/^\/[a-z0-9._/-]+$/i.test(String(item.poster_path)) || seen.has(item.poster_path)) return false;
-    seen.add(item.poster_path);
-    return true;
-  }).slice(0, 6);
-}
-function setProfileGateSlide(slide, image, item) {
-  const src = image.dataset.posterSrc || image.src;
-  slide.style.setProperty("--profile-gate-art", `url("${src}")`);
-  const release = slide.querySelector(".profile-gate-release"), copy = release?.querySelector("span");
-  const dateKey = String(item.release_date || item.first_air_date || "").slice(0, 10);
-  if (!release || !copy || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || dateKey < profileGateDateKey()) {
-    if (release) release.hidden = true;
-    return;
-  }
-  const date = new Date(`${dateKey}T12:00:00`);
-  const dateLabel = dateKey === profileGateDateKey()
-    ? t("Arrives today")
-    : `${t("Coming")} ${new Intl.DateTimeFormat(document.documentElement.lang || navigator.language || "en", { month:"short", day:"numeric" }).format(date)}`;
-  copy.textContent = dateLabel;
-  release.hidden = false;
-}
-function stopProfileGatePosterRotation() {
-  profileGatePosterGeneration += 1;
-  clearTimeout(profileGatePosterTimer);
-  profileGatePosterTimer = null;
-}
-function loadProfileGatePoster(image, item) {
-  return new Promise(resolve => {
-    const src = `${TMDB_PROFILE_POSTER}${item.poster_path}`;
-    if (image.dataset.posterSrc === src && image.complete) { resolve(image.naturalWidth > 0); return; }
-    image.onload = () => { image.onload = image.onerror = null; resolve(true); };
-    image.onerror = () => { image.onload = image.onerror = null; resolve(false); };
-    image.dataset.posterSrc = src;
-    image.src = src;
-  });
-}
-function startProfileGatePosterRotation() {
-  stopProfileGatePosterRotation();
-  const gate = document.querySelector(".profile-gate"), slides = [...(gate?.querySelectorAll(".profile-gate-slide") || [])], images = slides.map(slide => slide.querySelector(".profile-gate-poster"));
-  if (!gate || slides.length < 2 || images.some(image => !image) || !window.matchMedia("(max-width: 650px)").matches) return;
-  const items = profileGatePosterCandidates();
-  if (!items.length) return;
-  const generation = profileGatePosterGeneration;
-  let activeImage = 0, activeItem = 0;
-  const setNext = async () => {
-    if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
-    for (let offset = 1; offset < items.length; offset += 1) {
-      const nextItem = (activeItem + offset) % items.length, nextImage = 1 - activeImage;
-      if (!await loadProfileGatePoster(images[nextImage], items[nextItem])) continue;
-      if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
-      setProfileGateSlide(slides[nextImage], images[nextImage], items[nextItem]);
-      slides[nextImage].classList.add("is-visible");
-      images[nextImage].classList.add("is-visible");
-      slides[activeImage].classList.remove("is-visible");
-      images[activeImage].classList.remove("is-visible");
-      activeImage = nextImage;
-      activeItem = nextItem;
-      break;
-    }
-    if (generation === profileGatePosterGeneration && items.length > 1) profileGatePosterTimer = setTimeout(setNext, 7600);
-  };
-  const showFirstAvailable = async () => {
-    for (let index = 0; index < items.length; index += 1) {
-      if (!await loadProfileGatePoster(images[activeImage], items[index])) continue;
-      if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
-      setProfileGateSlide(slides[activeImage], images[activeImage], items[index]);
-      slides[activeImage].classList.add("is-visible");
-      activeItem = index;
-      images[activeImage].classList.add("is-visible");
-      if (items.length > 1) profileGatePosterTimer = setTimeout(setNext, 7600);
-      return;
-    }
-  };
-  void showFirstAvailable();
-}
-function stopProfileGateLayout() {
-  if (state.profileGateResize) window.removeEventListener("resize", state.profileGateResize);
-  state.profileGateResizeObserver?.disconnect();
-  state.profileGateResizeObserver = null;
-  state.profileGateResize = null;
-}
-function syncProfileGateLayout() {
-  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet"), showcase = gate?.querySelector(".profile-gate-showcase");
-  if (!gate || !sheet || !showcase) return;
-  if (window.matchMedia("(max-width: 650px)").matches) {
-    showcase.style.height = `${gate.clientHeight}px`;
-    gate.style.setProperty("--profile-gate-sheet-height", `${sheet.offsetHeight}px`);
-  } else {
-    showcase.style.removeProperty("height");
-    gate.style.removeProperty("--profile-gate-sheet-height");
-  }
-}
-function startProfileGateLayout() {
-  stopProfileGateLayout();
-  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet");
-  state.profileGateResize = syncProfileGateLayout;
-  window.addEventListener('resize', state.profileGateResize, { passive:true });
-  if (typeof ResizeObserver === "function" && gate && sheet) {
-    state.profileGateResizeObserver = new ResizeObserver(syncProfileGateLayout);
-    state.profileGateResizeObserver.observe(gate);
-    state.profileGateResizeObserver.observe(sheet);
-  }
-  syncProfileGateLayout();
+  return `<div class="profile-gate-showcase" aria-hidden="true"><svg class="profile-gate-art" viewBox="0 0 420 660" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="gate-aura"><stop stop-color="#f24455" stop-opacity=".27"/><stop offset=".42" stop-color="#922334" stop-opacity=".13"/><stop offset="1" stop-color="#42131f" stop-opacity="0"/></radialGradient>
+      <radialGradient id="gate-core" cx="36%" cy="28%" r="78%"><stop stop-color="#f7c2bd"/><stop offset=".12" stop-color="#d75e68"/><stop offset=".3" stop-color="#70202e"/><stop offset=".62" stop-color="#25131b"/><stop offset=".86" stop-color="#111116"/><stop offset="1" stop-color="#07080b"/></radialGradient>
+      <linearGradient id="gate-glass" x1=".08" y1=".1" x2=".92" y2=".9"><stop stop-color="#fff" stop-opacity=".08"/><stop offset=".2" stop-color="#ffb7b2" stop-opacity=".88"/><stop offset=".42" stop-color="#e33e50"/><stop offset=".66" stop-color="#751326"/><stop offset=".84" stop-color="#f17a7f"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient>
+      <linearGradient id="gate-glint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".8"/><stop offset=".42" stop-color="#f7a5a7" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <filter id="gate-blur"><feGaussianBlur stdDeviation="22"/></filter>
+      <filter id="gate-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="gate-shadow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur in="SourceAlpha" stdDeviation="13" result="blur"/><feOffset dy="18"/><feComponentTransfer><feFuncA type="linear" slope=".42"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <ellipse cx="210" cy="278" rx="190" ry="205" fill="url(#gate-aura)" filter="url(#gate-blur)"/>
+    <g class="profile-gate-art-orbit" fill="none" stroke-linecap="round">
+      <ellipse cx="210" cy="276" rx="151" ry="62" transform="rotate(-34 210 276)" stroke="#f2a2a7" stroke-opacity=".22" stroke-width="1.2"/>
+      <ellipse cx="210" cy="276" rx="151" ry="62" transform="rotate(-34 210 276)" stroke="url(#gate-glass)" stroke-width="13" stroke-dasharray="350 620" filter="url(#gate-glow)"/>
+      <ellipse cx="210" cy="276" rx="174" ry="82" transform="rotate(39 210 276)" stroke="#f6c7c7" stroke-opacity=".21" stroke-width="1"/>
+      <ellipse cx="210" cy="276" rx="174" ry="82" transform="rotate(39 210 276)" stroke="url(#gate-glass)" stroke-width="8" stroke-dasharray="250 850" stroke-dashoffset="120"/>
+      <path d="M73 346C111 397 183 419 258 399c63-17 103-62 111-111" stroke="url(#gate-glint)" stroke-width="1.4" opacity=".5"/>
+    </g>
+    <g class="profile-gate-art-core" filter="url(#gate-shadow)">
+      <circle cx="210" cy="276" r="83" fill="#07080b" opacity=".55"/>
+      <circle cx="210" cy="268" r="72" fill="url(#gate-core)" stroke="#f3b2b3" stroke-opacity=".36" stroke-width="1.2"/>
+      <path d="M161 230c13-26 42-40 68-36" fill="none" stroke="url(#gate-glint)" stroke-width="5" stroke-linecap="round" opacity=".62"/>
+      <ellipse cx="183" cy="247" rx="23" ry="10" fill="#fff" opacity=".08" transform="rotate(-35 183 247)"/>
+      <circle cx="210" cy="268" r="48" fill="none" stroke="#ff929c" stroke-opacity=".08"/>
+    </g>
+    <g class="profile-gate-art-spark" filter="url(#gate-glow)">
+      <circle cx="92" cy="182" r="2" fill="#ffd3d0"/><circle cx="323" cy="205" r="1.8" fill="#ff6577"/>
+      <circle cx="298" cy="370" r="2" fill="#ffc2bd"/><circle cx="115" cy="386" r="1.4" fill="#ed394b"/>
+    </g>
+    <path d="M210 96v22M210 436v26M31 276h24M365 276h24" stroke="url(#gate-glint)" stroke-width="1" opacity=".42"/>
+    <circle cx="210" cy="96" r="2" fill="#ffc5c4" opacity=".72"/><circle cx="210" cy="462" r="1.5" fill="#f14b5b" opacity=".68"/>
+  </svg></div>`;
 }
 function renderProfileGate() {
   const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro"));
-  stopProfileGateLayout();
   const profiles = account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileGateAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("");
   const addProfile = account.profiles.length < 5 ? `<button class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:${account.profiles.length}" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>` : "";
   app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"} ${account.profiles.length >= 3 ? "profile-gate-multirow" : ""} ${account.profiles.length >= 5 ? "profile-gate-at-cap" : ""}">${profileGateShowcaseMarkup()}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
@@ -962,8 +875,6 @@ function renderProfileGate() {
   });
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
   document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
-  startProfileGateLayout();
-  startProfileGatePosterRotation();
 }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
@@ -2552,7 +2463,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=357", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=358", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
