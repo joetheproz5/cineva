@@ -37,7 +37,7 @@ test("phone and desktop back controls pop app history instead of leaving the sit
 
 test("the installed PWA receives the navigation-history fix from the versioned shell", () => {
   assert.match(index, /app\.js\?v=367/);
-  assert.match(worker, /seven-v368/);
+  assert.match(worker, /seven-v369/);
   assert.match(worker, /app\.js\?v=367/);
-  assert.match(app, /service-worker\.js\?v=368/);
+  assert.match(app, /service-worker\.js\?v=369/);
 });
