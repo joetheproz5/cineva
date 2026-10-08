@@ -334,10 +334,9 @@ html.seven-launching,html.seven-launching body { background: var(--seven-startup
 html.seven-launching #app { visibility: hidden; }
 .seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: var(--seven-startup-background); cursor: default; isolation: isolate; }
 html:not(.seven-launching) .seven-intro:not(.exiting) { display: none; }
-.seven-intro.exiting { animation: intro-out .44s ease forwards; pointer-events: none; }
+.seven-intro.exiting { animation: intro-out .25s ease forwards; pointer-events: none; }
 .startup-intro-scene { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; pointer-events: none; }
-.startup-intro-logo { position: relative; z-index: 3; width: var(--seven-startup-logo-width); aspect-ratio: var(--seven-startup-logo-aspect-ratio); }
-.startup-intro-mark { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 1; filter: none; }
+.startup-intro-mark { position: relative; z-index: 3; display: block; width: var(--seven-startup-logo-width); height: auto; aspect-ratio: var(--seven-startup-logo-aspect-ratio); object-fit: contain; opacity: 1; }
 .seven-intro.logo-unavailable .startup-intro-mark { visibility: hidden; }
 @keyframes intro-out { to { opacity: 0; visibility: hidden; } }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }

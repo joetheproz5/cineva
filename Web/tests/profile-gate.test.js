@@ -65,7 +65,7 @@ test("mobile profile screen keeps the simple middle glow and existing profile sh
   assert.doesNotMatch(uiStyles, /\.seven-intro\.handoff/);
   assert.doesNotMatch(styles, /profile-gate-startup-glow/);
   assert.doesNotMatch(uiStyles, /\.startup-intro-(?:stage|atmosphere|rays|bloom|flare)|@keyframes intro-(?:stage-light|atmosphere|rays|bloom|flare)/);
-  assert.match(uiStyles, /\.startup-intro-mark \{[^}]*filter: none;/);
+  assert.match(uiStyles, /\.startup-intro-mark \{[^}]*opacity: 1;/);
   assert.doesNotMatch(uiStyles, /\.startup-intro-mark \{[^}]*animation:|@keyframes intro-mark-focus/);
   assert.doesNotMatch(uiStyles, /\.seven-intro:not\(\.live\)[^}]*animation-play-state:\s*paused/);
   assert.doesNotMatch(uiStyles, /\.startup-intro-(?:atmosphere|rays|bloom|flare) \{[^}]*will-change:/);
@@ -148,7 +148,8 @@ test("profile picker appears beneath a stationary ident that fades out once star
   const intro = app.slice(introStart, introEnd);
   assert.match(intro, /profileGate\?\.classList\.contains\("profile-gate-pending"\)[\s\S]*?profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\)/);
   assert.match(intro, /overlay\.classList\.add\("exiting"\)/);
-  assert.match(intro, /setTimeout\(dismissIntro, 520\)/);
+  assert.match(intro, /animationend[\s\S]*?event\.animationName === "intro-out"\) dismissIntro\(\)/);
+  assert.match(intro, /setTimeout\(dismissIntro, 400\)/);
   assert.doesNotMatch(intro, /profile-gate-intro-active|\.classList\.add\("handoff"\)/);
   assert.doesNotMatch(uiStyles, /\.seven-intro\.handoff/);
   assert.match(styles, /\.profile-gate-ready \.profile-gate-sheet \{ animation: profile-gate-desktop-rise/);
@@ -158,11 +159,11 @@ test("profile picker appears beneath a stationary ident that fades out once star
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=284/);
-  assert.match(index, /ui\.css\?v=317/);
-  assert.match(index, /app\.js\?v=373/);
-  assert.match(serviceWorker, /seven-v375/);
+  assert.match(index, /ui\.css\?v=318/);
+  assert.match(index, /app\.js\?v=374/);
+  assert.match(serviceWorker, /seven-v376/);
   assert.match(serviceWorker, /auth\.css\?v=284/);
-  assert.match(serviceWorker, /ui\.css\?v=317/);
-  assert.match(serviceWorker, /app\.js\?v=373/);
+  assert.match(serviceWorker, /ui\.css\?v=318/);
+  assert.match(serviceWorker, /app\.js\?v=374/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

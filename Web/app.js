@@ -1285,7 +1285,10 @@ function maybeFinishIntro() {
   if (profileGate?.classList.contains("profile-gate-pending")) profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
   overlay.classList.add("exiting");
   clearTimeout(state.introSafetyTimer);
-  state.introTimer = setTimeout(dismissIntro, 520);
+  overlay.addEventListener("animationend", event => {
+    if (event.target === overlay && event.animationName === "intro-out") dismissIntro();
+  }, { once:true });
+  state.introTimer = setTimeout(dismissIntro, 400);
 }
 function StartupIntro() {
   let overlay = document.querySelector(".seven-intro");
@@ -1293,7 +1296,7 @@ function StartupIntro() {
     overlay = document.createElement("div");
     overlay.className = "seven-intro";
     overlay.setAttribute("aria-hidden", "true");
-    overlay.innerHTML = `<div class="startup-intro-scene"><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"></div></div>`;
+    overlay.innerHTML = `<picture class="startup-intro-scene"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"></picture>`;
     document.body.append(overlay);
   }
   return overlay;
@@ -2429,7 +2432,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=375", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=376", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

@@ -33,21 +33,28 @@ test("iOS launch screens, page chrome, and intro use the same SEVEN dark theme",
   assert.match(styles, /html\.seven-launching,html\.seven-launching body \{ background: var\(--seven-startup-background\); \}/);
   assert.match(index, /viewport-fit=cover/);
   assert.doesNotMatch(index + manifest, /#071018/i);
-  const splashImages = [...index.matchAll(/href="(assets\/splash\/[^\"]+\.png\?v=4)"/g)];
+  const splashImages = [...index.matchAll(/href="(assets\/splash\/[^\"]+\.png\?v=5)"/g)];
   assert.equal(splashImages.length, 28);
   for (const [, image] of splashImages) assert.ok(fs.existsSync(path.join(web, image.split("?")[0])), `${image} should exist`);
-  assert.match(index, /device-width: 440px[^\n]+1320x2868\.png\?v=4/);
-  assert.match(index, /device-width: 420px[^\n]+1260x2736\.png\?v=4/);
+  assert.match(index, /device-width: 440px[^\n]+1320x2868\.png\?v=5/);
+  assert.match(index, /device-width: 420px[^\n]+1260x2736\.png\?v=5/);
+  const startupLinks = [...index.matchAll(/<link rel="apple-touch-startup-image" media="([^"]+)" href="(assets\/splash\/[^\"]+\.png\?v=5)"/g)].map(([, media, url]) => `${media}|${url}`);
+  const inAppSources = [...index.matchAll(/<source media="([^"]+)" srcset="(assets\/splash\/[^\"]+\.png\?v=5)"/g)].map(([, media, url]) => `${media}|${url}`);
+  assert.deepEqual(inAppSources, startupLinks, "the in-app picture must select the exact same PNG for every launch-image media query");
+  assert.equal(inAppSources.length, 28);
+  const layoutMedia = [...startupTheme.matchAll(/@media ([^\n]+) \{\n  \.seven-intro \.startup-intro-mark \{/g)].map(([, media]) => media);
+  assert.deepEqual(layoutMedia, startupLinks.map(entry => entry.split("|")[0]), "CSS must fill the viewport only for the exact matching startup-image sizes");
 });
 
 test("the branded launch frame is painted before the application scripts run", () => {
   const launchFlag = index.indexOf('document.documentElement.classList.add("seven-launching")');
-  const stylesheet = index.indexOf('href="startup-theme.css?v=2"');
+  const stylesheet = index.indexOf('href="startup-theme.css?v=3"');
   const introMarkup = index.indexOf('<div class="seven-intro"');
   const appRoot = index.indexOf('<main id="app">');
   assert.ok(launchFlag >= 0 && launchFlag < stylesheet, "launch state should be set before styles and app scripts load");
   assert.ok(introMarkup >= 0 && introMarkup < appRoot, "the intro should exist before app.js can execute");
   assert.match(styles, /html:not\(\.seven-launching\) \.seven-intro:not\(\.exiting\) \{ display: none; \}/);
   assert.match(styles, /\.seven-intro \{[^}]*background: var\(--seven-startup-background\)/);
-  assert.match(styles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: none/);
+  assert.match(styles, /\.startup-intro-mark \{[^}]*opacity: 1;/);
+  assert.match(serviceWorker, /url\.pathname\.includes\("\/assets\/splash\/"\)/);
 });

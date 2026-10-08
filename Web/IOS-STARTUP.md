@@ -8,7 +8,7 @@ python Web/scripts/generate_ios_splash.py
 python Web/scripts/generate_ios_splash.py --check
 ```
 
-The script reads each device point size, pixel ratio, orientation, and output path from the `apple-touch-startup-image` links in `index.html`; the media queries there are the source of truth. Each portrait and landscape image uses the same viewport-centered logo size (`min(74vw, 570px)`) and the same gradient as the in-app intro, with no safe-area offset.
+The script reads each device point size, pixel ratio, orientation, and output path from the `apple-touch-startup-image` links in `index.html`; the media queries there are the source of truth. The in-app `<picture>` uses the exact same PNG for each matching media query, stretched only to its matching full-screen viewport, so the native launch frame and web handoff share identical logo pixels, center, background, and safe-area treatment. Unsupported sizes fall back to the centered wordmark over the shared CSS background.
 
 For each table row with CSS width `W`, height `H`, and pixel ratio `DPR`, the portrait query is `(device-width: Wpx) and (device-height: Hpx) and (-webkit-device-pixel-ratio: DPR) and (orientation: portrait)`. The landscape query swaps `W` and `H` and uses `orientation: landscape`. For example, the new 440×956 @3x and 420×912 @3x variants map to 1320×2868 and 1260×2736 PNGs. Apple lists 2868×1320 pixels for [iPhone 17 Pro Max](https://support.apple.com/en-us/125091) and 2736×1260 for [iPhone Air](https://support.apple.com/en-us/125092).
 
@@ -29,4 +29,4 @@ For each table row with CSS width `W`, height `H`, and pixel ratio `DPR`, the po
 | 834×1194 | 2 | 1668×2388 | 2388×1668 |
 | 768×1024 | 2 | 1536×2048 | 2048×1536 |
 
-The 440×956 @3x Pro Max-size and 420×912 @3x Air entries cover the current large iPhone point-size classes. iOS can retain the launch image created at install time; after deployment, cold-launch testing should use a freshly installed Home Screen app if the existing icon continues to show the old splash.
+The 440×956 @3x Pro Max-size and 420×912 @3x Air entries cover the current large iPhone point-size classes. iOS can retain the launch image created at install time; after deployment, delete and re-add the Home Screen app from Safari to refresh its cached launch image before cold-launch testing.
