@@ -56,7 +56,8 @@ test("mobile profile screen keeps the simple middle glow and existing profile sh
   assert.match(styles, /\.profile-gate-showcase \{ position: absolute; z-index: 0; inset: 0; display: block; height: 100%;/);
   assert.match(styles, /\.profile-gate-showcase::before \{[^}]*radial-gradient\(ellipse 72% 58% at 50% 27%/);
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: max\(40svh, 326px\)/);
-  assert.match(styles, /backdrop-filter: blur\(24px\) saturate\(1\.18\)/);
+  assert.match(styles, /background: linear-gradient\(180deg, #111215df 0%, #09090aeb 46%, #070708f2 100%\)/);
+  assert.match(styles, /backdrop-filter: blur\(18px\) saturate\(1\.16\)/);
   assert.doesNotMatch(styles, /\.profile-gate-logo/);
   assert.match(styles, /\.profile-gate-at-cap \.profile-chooser \{ gap: 15px 4px; width: min\(100%, 330px\)/);
   assert.match(styles, /\.profile-gate-multirow \.profile-chooser \{ row-gap: 17px; \}/);
@@ -127,16 +128,22 @@ test("reduced-motion users get a settled profile handoff instead of a half-anima
 
 test("profile panel waits for the SEVEN ident, then rises into a curved lower sheet", () => {
   assert.match(app, /querySelector\("\.profile-gate"\)\?\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\)/);
+  assert.match(app, /profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*overlay\.classList\.add\("handoff"\)/);
+  assert.match(app, /prefers-reduced-motion: reduce\)"\)\.matches \? 80 : 900/);
+  assert.match(uiStyles, /\.seven-intro\.handoff \.startup-intro-logo \{ transform: translateY\(-7svh\); transition: transform \.86s cubic-bezier\(\.2,\.75,\.25,1\); \}/);
+  assert.match(uiStyles, /@keyframes intro-handoff-light \{ from \{ opacity: \.62; \} to \{ opacity: 0; \} \}/);
   assert.match(styles, /\.profile-gate-ready \.profile-gate-sheet \{ animation: profile-gate-desktop-rise/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-sheet \{[\s\S]*?border-radius: 44% 44% 0 0/);
   assert.match(styles, /profile-gate-sheet-rise/);
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=279/);
-  assert.match(index, /app\.js\?v=359/);
-  assert.match(serviceWorker, /seven-v360/);
-  assert.match(serviceWorker, /auth\.css\?v=279/);
-  assert.match(serviceWorker, /app\.js\?v=359/);
+  assert.match(index, /auth\.css\?v=280/);
+  assert.match(index, /ui\.css\?v=303/);
+  assert.match(index, /app\.js\?v=360/);
+  assert.match(serviceWorker, /seven-v361/);
+  assert.match(serviceWorker, /auth\.css\?v=280/);
+  assert.match(serviceWorker, /ui\.css\?v=303/);
+  assert.match(serviceWorker, /app\.js\?v=360/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

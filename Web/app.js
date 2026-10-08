@@ -1277,6 +1277,16 @@ function maybeFinishIntro() {
   const overlay = document.querySelector(".seven-intro");
   if (!overlay) return;
   state.introExitStarted = true;
+  const profileGate = document.querySelector(".profile-gate");
+  if (profileGate?.classList.contains("profile-gate-pending") && window.matchMedia("(max-width: 650px)").matches) {
+    document.documentElement.classList.remove("seven-launching");
+    document.documentElement.style.overflow = "";
+    profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
+    overlay.classList.add("handoff");
+    const handoffDuration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : 900;
+    state.introTimer = setTimeout(dismissIntro, handoffDuration);
+    return;
+  }
   overlay.classList.add("exiting");
   clearTimeout(state.introSafetyTimer);
   state.introTimer = setTimeout(dismissIntro, 520);
@@ -2426,7 +2436,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=360", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=361", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
