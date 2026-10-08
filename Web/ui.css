@@ -331,6 +331,7 @@
 .search-recent-remove { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; color: #777; background: transparent; font-size: 14px; line-height: 1; transition: color 0.16s, background 0.16s; }
 .search-recent-remove:hover { color: #fff; background: #333; }
 html.seven-launching,html.seven-launching body { background: radial-gradient(ellipse at 50% 48%,rgba(153,12,25,.24),transparent 48%),linear-gradient(180deg,#020203 0%,#0d080a 52%,#020203 100%); }
+html.seven-launching #app { visibility: hidden; }
 .seven-intro { position: fixed; z-index: 400; top: 0; right: 0; left: 0; display: grid; width: 100vw; height: 100vh; height: 100svh; place-items: center; overflow: hidden; background: #020203; cursor: default; isolation: isolate; }
 .seven-intro::before { position: absolute; z-index: 0; inset: 0; background: radial-gradient(ellipse at 50% 48%, rgba(153,12,25,.24), transparent 48%), linear-gradient(180deg,#020203 0%,#0d080a 52%,#020203 100%); opacity: 0; animation: intro-stage-light 2.3s ease-out both; content: ""; }
 .seven-intro::after { position: absolute; z-index: 0; inset: -20%; background: linear-gradient(108deg,transparent 37%,rgba(255,255,255,.024) 47%,rgba(229,179,154,.065) 50%,transparent 59%),radial-gradient(ellipse at 50% 52%,rgba(150,11,26,.12),transparent 54%); filter: blur(22px); opacity: 0; transform: scale(1.035); animation: intro-atmosphere 2.4s ease-out .1s both; content: ""; will-change: opacity, transform; }

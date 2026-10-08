@@ -829,45 +829,13 @@ function beginProfileGateSelection(id) {
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function localDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function profileGateShowcaseMarkup() {
-  return `<div class="profile-gate-showcase" aria-hidden="true"><svg class="profile-gate-art" viewBox="0 0 420 660" focusable="false" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id="gate-aura"><stop stop-color="#ef384a" stop-opacity=".28"/><stop offset=".48" stop-color="#8c1d2b" stop-opacity=".12"/><stop offset="1" stop-color="#42131f" stop-opacity="0"/></radialGradient>
-      <linearGradient id="gate-ruby" x1=".1" y1=".12" x2=".88" y2=".82"><stop stop-color="#ffb3ae"/><stop offset=".12" stop-color="#ed5360"/><stop offset=".32" stop-color="#b51a2b"/><stop offset=".58" stop-color="#68101d"/><stop offset=".76" stop-color="#d82b3b"/><stop offset=".91" stop-color="#ff777c"/><stop offset="1" stop-color="#71111d"/></linearGradient>
-      <linearGradient id="gate-ruby-side" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#811320"/><stop offset=".5" stop-color="#3a0b13"/><stop offset="1" stop-color="#17080c"/></linearGradient>
-      <linearGradient id="gate-glint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".8"/><stop offset=".42" stop-color="#ffc0bb" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-      <filter id="gate-blur"><feGaussianBlur stdDeviation="24"/></filter>
-      <filter id="gate-glow" x="-80%" y="-60%" width="260%" height="220%"><feGaussianBlur stdDeviation="12" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      <filter id="gate-shadow" x="-60%" y="-40%" width="220%" height="200%"><feGaussianBlur in="SourceAlpha" stdDeviation="15" result="blur"/><feOffset dy="24"/><feComponentTransfer><feFuncA type="linear" slope=".48"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      <path id="gate-seven-shape" d="M75 172C149 143 267 145 346 174L322 221C267 202 202 198 144 215C186 245 221 274 247 301C209 351 180 407 165 477L111 465C127 390 163 325 208 273C177 247 142 225 91 212Z"/>
-    </defs>
-    <ellipse cx="210" cy="296" rx="176" ry="205" fill="url(#gate-aura)" filter="url(#gate-blur)"/>
-    <path d="M210 104v31M210 472v33M45 300h35M340 300h35" stroke="url(#gate-glint)" stroke-width="1" opacity=".32"/>
-    <path d="M104 119c28-21 62-35 99-40M216 79c39 1 73 13 101 34M82 493c30 23 64 38 103 44M235 538c37-3 70-16 99-39" fill="none" stroke="#c33243" stroke-opacity=".16" stroke-width="1"/>
-    <g class="profile-gate-art-ribbon" filter="url(#gate-shadow)">
-      <use href="#gate-seven-shape" transform="translate(11 16)" fill="url(#gate-ruby-side)"/>
-      <use href="#gate-seven-shape" fill="url(#gate-ruby)" stroke="#ff9b9b" stroke-opacity=".38" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M91 178c66-24 161-25 235-5" fill="none" stroke="url(#gate-glint)" stroke-width="3" stroke-linecap="round" opacity=".78"/>
-      <path d="M98 191c41-14 84-19 126-17" fill="none" stroke="#ffe0d5" stroke-opacity=".18" stroke-width="1" stroke-linecap="round"/>
-      <path d="M219 292c-26 39-45 82-56 128" fill="none" stroke="url(#gate-glint)" stroke-width="2.4" stroke-linecap="round" opacity=".7"/>
-      <path d="M117 465c8-40 20-76 37-110" fill="none" stroke="#ffb5ae" stroke-opacity=".2" stroke-width="1.2" stroke-linecap="round"/>
-    </g>
-    <g class="profile-gate-art-spark" filter="url(#gate-glow)">
-      <circle cx="85" cy="171" r="2.2" fill="#ffe1d9"/><circle cx="338" cy="183" r="2" fill="#ff6470"/>
-      <circle cx="167" cy="480" r="1.7" fill="#ffc5bd"/><circle cx="300" cy="410" r="1.5" fill="#ed394b"/>
-    </g>
-  </svg></div>`;
+  return `<div class="profile-gate-showcase" aria-hidden="true"></div>`;
 }
 function renderProfileGate() {
   const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro"));
   const profiles = account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileGateAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("");
   const addProfile = account.profiles.length < 5 ? `<button class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:${account.profiles.length}" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>` : "";
   app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"} ${account.profiles.length >= 3 ? "profile-gate-multirow" : ""} ${account.profiles.length >= 5 ? "profile-gate-at-cap" : ""}">${profileGateShowcaseMarkup()}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
-  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet");
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) gate?.classList.add("profile-gate-art-ready");
-  else sheet?.addEventListener("animationend", event => {
-    if (event.target !== sheet || !["profile-gate-sheet-rise", "profile-gate-desktop-rise"].includes(event.animationName)) return;
-    gate.classList.add("profile-gate-art-ready");
-  });
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
   document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
 }
@@ -2458,7 +2426,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=359", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=360", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
