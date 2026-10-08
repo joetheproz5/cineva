@@ -1344,13 +1344,15 @@ async function syncNativePlayerEpisode(change) {
 }
 function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"), profile = cached?.profiles?.find(item => item.id === cached.activeProfileId), enabled = profile?.preferences?.introEnabled ?? cached?.preferences?.introEnabled; return enabled !== false; } catch { return true; } }
 function dismissIntro() {
-  if (!document.querySelector(".seven-intro")) return;
+  const overlay = document.querySelector(".seven-intro");
   clearTimeout(state.introTimer);
   clearTimeout(state.introSafetyTimer);
   state.introTimer = null;
   state.introSafetyTimer = null;
+  document.documentElement.classList.remove("seven-launching");
   document.documentElement.style.overflow = "";
-  document.querySelector(".seven-intro")?.remove();
+  if (!overlay) return;
+  overlay.remove();
   document.querySelector(".profile-gate")?.classList.replace("profile-gate-pending", "profile-gate-ready");
 }
 function maybeFinishIntro() {
@@ -1394,6 +1396,7 @@ function renderLaunchIntro() {
     }
     overlay.classList.add("live");
   };
+  document.documentElement.classList.add("seven-launching");
   document.documentElement.style.overflow = "hidden";
   document.body.appendChild(overlay);
   state.introSafetyTimer = setTimeout(() => {
@@ -2458,7 +2461,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=350", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=351", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
