@@ -87,13 +87,30 @@ test("the launch intro is static on entry, starts once, and fades out once after
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "379");
+  assert.equal(workerCacheVersion, "380");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
   assert.match(serviceWorker, /auth\.css\?v=284/);
   assert.match(serviceWorker, /ui\.css\?v=320/);
   assert.match(serviceWorker, /startup-theme\.css\?v=4/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
   assert.doesNotMatch(serviceWorker, /controllerchange|location\.reload\(|clients\.navigate\(/);
+});
+
+test("a stalled startup reveals a retry screen instead of dismissing to a blank page", () => {
+  const fallbackStart = app.indexOf("function renderStartupFallback()");
+  const fallbackEnd = app.indexOf("async function retryConnection()", fallbackStart);
+  const fallback = app.slice(fallbackStart, fallbackEnd);
+  const introStart = app.indexOf("function renderLaunchIntro()");
+  const introEnd = app.indexOf("function screenTimeState(", introStart);
+  const intro = app.slice(introStart, introEnd);
+  const watchdogStart = intro.indexOf("state.introSafetyTimer = setTimeout(");
+  const watchdog = intro.slice(watchdogStart, intro.indexOf("const imageReady", watchdogStart));
+
+  assert.ok(fallbackStart >= 0 && fallbackEnd > fallbackStart, "startup fallback should exist");
+  assert.match(fallback, /Still getting things ready/);
+  assert.match(fallback, /data-startup-retry/);
+  assert.match(fallback, /window\.location\.reload\(\)/);
+  assert.match(watchdog, /if \(!state\.startupReady\)\s*\{\s*renderStartupFallback\(\);\s*state\.startupReady = true;/);
 });
 
 test("the footer back-to-top link animates even when reduced motion is requested", () => {

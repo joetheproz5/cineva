@@ -160,10 +160,10 @@ test("profile picker appears beneath a stationary ident that fades out once star
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=284/);
   assert.match(index, /ui\.css\?v=320/);
-  assert.match(index, /app\.js\?v=376/);
-  assert.match(serviceWorker, /seven-v379/);
+  assert.match(index, /app\.js\?v=377/);
+  assert.match(serviceWorker, /seven-v380/);
   assert.match(serviceWorker, /auth\.css\?v=284/);
   assert.match(serviceWorker, /ui\.css\?v=320/);
-  assert.match(serviceWorker, /app\.js\?v=376/);
+  assert.match(serviceWorker, /app\.js\?v=377/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

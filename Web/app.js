@@ -552,6 +552,10 @@ function renderOfflineScreen() {
   app.innerHTML = `<main class="offline-screen"><img class="offline-logo" src="assets/seven-wordmark-v2.png" alt="SEVEN"><span class="brand">${t("NO CONNECTION")}</span><h1>${t("You're offline")}</h1><p>${t("SEVEN needs an internet connection to load titles and your profiles. Check your network and try again.")}</p><button class="offline-retry" data-retry-connection>${t("Try again")}</button></main>`;
   document.querySelector("[data-retry-connection]").onclick = retryConnection;
 }
+function renderStartupFallback() {
+  app.innerHTML = `<main class="offline-screen startup-timeout"><img class="offline-logo" src="assets/seven-wordmark-v2.png" alt="SEVEN"><span class="brand">${t("STARTUP")}</span><h1>${t("Still getting things ready")}</h1><p>${t("SEVEN is taking longer than usual. Check your connection and try again.")}</p><button class="offline-retry" data-startup-retry>${t("Try again")}</button></main>`;
+  app.querySelector("[data-startup-retry]")?.addEventListener("click", () => window.location.reload());
+}
 async function retryConnection() {
   renderLoading();
   if (state.user) { state.route = "profiles"; render(); }
@@ -1325,7 +1329,12 @@ function renderLaunchIntro() {
   document.documentElement.style.overflow = "hidden";
   if (!overlay.isConnected) document.body.appendChild(overlay);
   state.introSafetyTimer = setTimeout(() => {
-    state.startupReady = true;
+    // Never dismiss the splash onto an unrendered page when boot is stalled.
+    // Put a real retry state underneath first, then let the normal fade reveal it.
+    if (!state.startupReady) {
+      renderStartupFallback();
+      state.startupReady = true;
+    }
     if (!overlay.classList.contains("live")) startIntro(false);
     maybeFinishIntro();
   }, 12000);
@@ -2470,7 +2479,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=379", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=380", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
