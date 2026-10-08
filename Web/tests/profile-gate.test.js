@@ -89,10 +89,11 @@ test("profile selection checks PIN first, centers the selected avatar, and waits
   assert.match(gate, /beginProfileGateSelection\(profile\.id\)/);
   assert.match(app, /function releaseProfileGateIntro\(profileSelected = false\)[\s\S]*?overlay\.classList\.add\("profile-picked"\)[\s\S]*?overlay\.remove\(\)/);
   assert.match(app, /function beginProfileGateSelection\(id\)[\s\S]*?releaseProfileGateIntro\(true\)/);
-  assert.match(app, /if \(profileSelected\) overlay\.classList\.add\("profile-pick-recede"\);\s*setTimeout\(\(\) => overlay\.remove\(\), profileSelected \? 900 : 280\)/);
+  assert.match(app, /if \(profileSelected\) overlay\.classList\.add\("profile-pick-recede"\);\s*setTimeout\(\(\) => overlay\.remove\(\), profileSelected \? 1550 : 280\)/);
   assert.doesNotMatch(app + uiStyles, /singularity|blackhole|event-horizon/);
-  assert.match(uiStyles, /\.seven-intro\.handoff\.profile-picked\.profile-pick-recede \.startup-intro-logo \{ opacity: 0; filter: blur\(10px\); transform: translateY\(-5svh\) scale\(\.64\); transition:/);
-  assert.match(uiStyles, /\.seven-intro\.handoff\.profile-picked\.profile-pick-recede \.startup-intro-atmosphere[\s\S]*?filter: blur\(42px\); transform: scale\(1\.32\)/);
+  assert.match(uiStyles, /\.seven-intro\.handoff\.profile-picked\.profile-pick-recede \.startup-intro-scene \{ opacity: 0; transform: translateY\(-10svh\); transition: opacity 1\.4s ease-in-out \.08s; \}/);
+  assert.match(uiStyles, /\.seven-intro\.handoff\.profile-picked\.profile-pick-recede \.startup-intro-logo \{ filter: blur\(10px\); transform: translateY\(-5svh\) scale\(\.64\); transition:/);
+  assert.match(uiStyles, /\.seven-intro\.handoff\.profile-picked\.profile-pick-recede \.startup-intro-atmosphere[\s\S]*?filter: blur\(42px\); transform: scale\(1\.32\); transition: filter \.84s ease, transform \.84s/);
   assert.match(app, /handoff:true/);
   assert.match(app, /profile-gate-handoff-avatar/);
   assert.match(app, /profile-gate-handoff-loading/);
@@ -159,11 +160,11 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=283/);
-  assert.match(index, /ui\.css\?v=309/);
-  assert.match(index, /app\.js\?v=366/);
-  assert.match(serviceWorker, /seven-v367/);
+  assert.match(index, /ui\.css\?v=310/);
+  assert.match(index, /app\.js\?v=367/);
+  assert.match(serviceWorker, /seven-v368/);
   assert.match(serviceWorker, /auth\.css\?v=283/);
-  assert.match(serviceWorker, /ui\.css\?v=309/);
-  assert.match(serviceWorker, /app\.js\?v=366/);
+  assert.match(serviceWorker, /ui\.css\?v=310/);
+  assert.match(serviceWorker, /app\.js\?v=367/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
