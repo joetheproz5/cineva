@@ -1,7 +1,7 @@
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP = "https://image.tmdb.org/t/p/original";
 const TMDB_STILL = "https://image.tmdb.org/t/p/w780";
-const TMDB_PROFILE_POSTER = "https://image.tmdb.org/t/p/w780";
+const TMDB_PROFILE_POSTER = "https://image.tmdb.org/t/p/w1280";
 const FEATURED_ID = 71712;
 const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || window.matchMedia?.("(display-mode: fullscreen)").matches
@@ -33,7 +33,7 @@ const PROFILE_WATCHLIST_STORAGE_PREFIX = "seven.profile.watchlist.";
 const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const UI_STRINGS = {
   Arabic: {
-    "Coming":"قريباً", "Out today":"متاح اليوم",
+    "Coming":"قريباً", "Out today":"متاح اليوم", "Arrives today":"يصل اليوم",
     "Home":"الرئيسية", "For You":"مخصص لك", "Movies":"أفلام", "Series":"مسلسلات", "Favourites":"المفضلة", "Favs":"المفضلة",
     "Titles, movies, series":"عناوين، أفلام، مسلسلات", "Account":"الحساب", "Search":"بحث",
     "Play something":"شغّل شيئاً", "We’ll pick a trailer for you":"سنختار لك إعلاناً تشويقياً",
@@ -63,7 +63,7 @@ const UI_STRINGS = {
     "Password updated.":"تم تحديث كلمة المرور.", "Done":"تم"
   },
   French: {
-    "Coming":"À venir", "Out today":"Disponible aujourd’hui",
+    "Coming":"À venir", "Out today":"Disponible aujourd’hui", "Arrives today":"Arrive aujourd’hui",
     "Home":"Accueil", "For You":"Pour vous", "Movies":"Films", "Series":"Séries", "Favourites":"Favoris", "Favs":"Favoris",
     "Titles, movies, series":"Titres, films, séries", "Account":"Compte", "Search":"Rechercher",
     "Play something":"Lancer quelque chose", "We’ll pick a trailer for you":"On choisit une bande-annonce pour vous",
@@ -835,7 +835,8 @@ function beginProfileGateSelection(id) {
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function profileGateDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function profileGateShowcaseMarkup() {
-  return `<div class="profile-gate-showcase" aria-hidden="true"><img class="profile-gate-poster" alt="" decoding="async" fetchpriority="high"><img class="profile-gate-poster" alt="" decoding="async"></div>`;
+  const slides = Array.from({ length:2 }, (_, index) => `<div class="profile-gate-slide"><img class="profile-gate-poster" alt="" decoding="async" ${index ? "" : "fetchpriority=\"high\""}><p class="profile-gate-release" hidden><i aria-hidden="true"></i><span></span></p></div>`).join("");
+  return `<div class="profile-gate-showcase" aria-hidden="true">${slides}</div>`;
 }
 function profileGatePosterCandidates() {
   const today = profileGateDateKey(), upcoming = state.catalog["Coming soon"] || [];
@@ -843,10 +844,26 @@ function profileGatePosterCandidates() {
   const fallback = eligible.length ? eligible : [...state.featuredPool, state.featured].filter(Boolean);
   const seen = new Set();
   return fallback.filter(item => {
-    if (!item.poster_path || !String(item.poster_path).startsWith("/") || seen.has(item.poster_path)) return false;
+    if (!item.poster_path || !/^\/[a-z0-9._/-]+$/i.test(String(item.poster_path)) || seen.has(item.poster_path)) return false;
     seen.add(item.poster_path);
     return true;
   }).slice(0, 6);
+}
+function setProfileGateSlide(slide, image, item) {
+  const src = image.dataset.posterSrc || image.src;
+  slide.style.setProperty("--profile-gate-art", `url("${src}")`);
+  const release = slide.querySelector(".profile-gate-release"), copy = release?.querySelector("span");
+  const dateKey = String(item.release_date || item.first_air_date || "").slice(0, 10);
+  if (!release || !copy || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || dateKey < profileGateDateKey()) {
+    if (release) release.hidden = true;
+    return;
+  }
+  const date = new Date(`${dateKey}T12:00:00`);
+  const dateLabel = dateKey === profileGateDateKey()
+    ? t("Arrives today")
+    : `${t("Coming")} ${new Intl.DateTimeFormat(document.documentElement.lang || navigator.language || "en", { month:"short", day:"numeric" }).format(date)}`;
+  copy.textContent = dateLabel;
+  release.hidden = false;
 }
 function stopProfileGatePosterRotation() {
   profileGatePosterGeneration += 1;
@@ -865,8 +882,8 @@ function loadProfileGatePoster(image, item) {
 }
 function startProfileGatePosterRotation() {
   stopProfileGatePosterRotation();
-  const gate = document.querySelector(".profile-gate"), images = [...(gate?.querySelectorAll(".profile-gate-poster") || [])];
-  if (!gate || images.length < 2 || !window.matchMedia("(max-width: 650px)").matches) return;
+  const gate = document.querySelector(".profile-gate"), slides = [...(gate?.querySelectorAll(".profile-gate-slide") || [])], images = slides.map(slide => slide.querySelector(".profile-gate-poster"));
+  if (!gate || slides.length < 2 || images.some(image => !image) || !window.matchMedia("(max-width: 650px)").matches) return;
   const items = profileGatePosterCandidates();
   if (!items.length) return;
   const generation = profileGatePosterGeneration;
@@ -877,7 +894,10 @@ function startProfileGatePosterRotation() {
       const nextItem = (activeItem + offset) % items.length, nextImage = 1 - activeImage;
       if (!await loadProfileGatePoster(images[nextImage], items[nextItem])) continue;
       if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
+      setProfileGateSlide(slides[nextImage], images[nextImage], items[nextItem]);
+      slides[nextImage].classList.add("is-visible");
       images[nextImage].classList.add("is-visible");
+      slides[activeImage].classList.remove("is-visible");
       images[activeImage].classList.remove("is-visible");
       activeImage = nextImage;
       activeItem = nextItem;
@@ -889,6 +909,8 @@ function startProfileGatePosterRotation() {
     for (let index = 0; index < items.length; index += 1) {
       if (!await loadProfileGatePoster(images[activeImage], items[index])) continue;
       if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
+      setProfileGateSlide(slides[activeImage], images[activeImage], items[index]);
+      slides[activeImage].classList.add("is-visible");
       activeItem = index;
       images[activeImage].classList.add("is-visible");
       if (items.length > 1) profileGatePosterTimer = setTimeout(setNext, 7600);
@@ -908,7 +930,11 @@ function syncProfileGateLayout() {
   if (!gate || !sheet || !showcase) return;
   if (window.matchMedia("(max-width: 650px)").matches) {
     showcase.style.height = `${gate.clientHeight}px`;
-  } else showcase.style.removeProperty("height");
+    gate.style.setProperty("--profile-gate-sheet-height", `${sheet.offsetHeight}px`);
+  } else {
+    showcase.style.removeProperty("height");
+    gate.style.removeProperty("--profile-gate-sheet-height");
+  }
 }
 function startProfileGateLayout() {
   stopProfileGateLayout();
@@ -2526,7 +2552,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=356", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=357", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
