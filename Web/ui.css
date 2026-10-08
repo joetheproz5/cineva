@@ -336,7 +336,7 @@ html.seven-launching #app { visibility: hidden; }
 .seven-intro.exiting { animation: intro-out .44s ease forwards; pointer-events: none; }
 .seven-intro.handoff { background: transparent; pointer-events: none; transition: background-color .86s ease; }
 .seven-intro.handoff .startup-intro-scene { transform: translateY(-10svh); transition: transform .86s cubic-bezier(.2,.75,.25,1); }
-.seven-intro.handoff.profile-picked:not(.profile-pick-collapse) .startup-intro-scene { opacity: 0; transform: translateY(-13svh) scale(.97); transition: opacity .28s ease, transform .28s cubic-bezier(.2,.75,.25,1); }
+.seven-intro.handoff.profile-picked:not(.profile-pick-recede) .startup-intro-scene { opacity: 0; transform: translateY(-13svh) scale(.97); transition: opacity .28s ease, transform .28s cubic-bezier(.2,.75,.25,1); }
 .seven-intro:not(.live) .startup-intro-stage,.seven-intro:not(.live) .startup-intro-atmosphere,.seven-intro:not(.live) .startup-intro-rays,.seven-intro:not(.live) .startup-intro-bloom,.seven-intro:not(.live) .startup-intro-flare,.seven-intro:not(.live) .startup-intro-mark,.seven-intro:not(.live) .startup-intro-sweep::before { animation-play-state: paused; }
 .startup-intro-scene { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .startup-intro-stage { position: absolute; z-index: 0; inset: 0; background: radial-gradient(ellipse at 50% 48%, rgba(153,12,25,.24), transparent 48%), linear-gradient(180deg,#020203 0%,#0d080a 52%,#020203 100%); opacity: 0; animation: intro-stage-light 2.3s ease-out both; pointer-events: none; }
@@ -344,16 +344,10 @@ html.seven-launching #app { visibility: hidden; }
 .startup-intro-rays { position: absolute; z-index: 0; inset: -72% -22%; background: linear-gradient(116deg,transparent 30%,rgba(186,14,29,.12) 47%,transparent 57%),linear-gradient(67deg,transparent 37%,rgba(255,232,216,.075) 49%,transparent 59%),linear-gradient(139deg,transparent 42%,rgba(160,13,27,.12) 52%,transparent 63%); -webkit-mask-image: radial-gradient(ellipse at center,transparent 2%,#000 29%,transparent 74%); mask-image: radial-gradient(ellipse at center,transparent 2%,#000 29%,transparent 74%); opacity: 0; transform: scale(.88) rotate(-4deg); animation: intro-rays 1.55s cubic-bezier(.22,1,.36,1) .08s both; pointer-events: none; will-change: opacity, transform; }
 .startup-intro-bloom { position: absolute; z-index: 1; inset: -24%; background: radial-gradient(ellipse at 50% 52%,rgba(207,19,35,.3) 0%,rgba(132,9,21,.17) 24%,transparent 64%),radial-gradient(ellipse at 50% 48%,rgba(255,222,205,.13),transparent 39%); filter: blur(26px); opacity: 0; transform: scale(.68); animation: intro-bloom 1.35s cubic-bezier(.22,1,.36,1) .1s both; pointer-events: none; will-change: opacity, transform; }
 .startup-intro-flare { position: absolute; z-index: 2; top: 50%; left: 50%; width: min(78vw,780px); height: 1px; background: linear-gradient(90deg,transparent,rgba(255,242,231,.45) 43%,rgba(255,255,255,.78) 50%,rgba(255,242,231,.45) 57%,transparent); box-shadow: 0 0 20px 2px rgba(200,24,37,.32); opacity: 0; transform: translate(-50%,-50%) scaleX(.48); animation: intro-flare .82s cubic-bezier(.22,1,.36,1) .38s both; pointer-events: none; will-change: opacity, transform; }
-.startup-intro-singularity { position: absolute; z-index: 4; top: 50%; left: 50%; width: min(68vw,380px); aspect-ratio: 1; border-radius: 50%; opacity: 0; pointer-events: none; transform: translate(-50%,-50%) scale(.08); }
-.startup-intro-singularity::before { position: absolute; inset: 20%; border-radius: 50%; background: radial-gradient(circle,#000 0 44%,#020203 57%,#000 64%,transparent 72%); box-shadow: 0 0 34px 12px #000,0 0 68px 16px #ed1b2726; content: ""; }
-.startup-intro-singularity::after { position: absolute; inset: 29% 5%; border: 2px solid transparent; border-top-color: #ff5868; border-bottom-color: #ed1b2780; border-radius: 50%; filter: drop-shadow(0 0 7px #ed1b27) drop-shadow(0 0 18px #ed1b2766); transform: perspective(220px) rotateX(68deg) rotateZ(-18deg); content: ""; }
-.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-singularity { opacity: 1; transform: translate(-50%,-50%) scale(1); transition: opacity .18s ease, transform .82s cubic-bezier(.18,.76,.22,1); }
-.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-singularity::after { animation: startup-event-horizon-spin .9s cubic-bezier(.18,.76,.22,1) both; }
-.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-stage { opacity: 0; transition: opacity .78s ease .08s; }
-.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-atmosphere,.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-rays,.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-bloom { opacity: 0; filter: blur(32px); transform: scale(.025) rotate(-24deg); transition: opacity .72s ease, filter .72s ease, transform .82s cubic-bezier(.18,.76,.22,1); }
-.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-flare { opacity: 0; transform: translate(-50%,-50%) scale(.015); transition: opacity .46s ease, transform .74s cubic-bezier(.18,.76,.22,1); }
-.seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-logo { opacity: 0; filter: blur(18px); transform: scale(.025) rotate(-18deg); transition: opacity .58s ease .1s, filter .7s ease, transform .82s cubic-bezier(.18,.76,.22,1); }
-@keyframes startup-event-horizon-spin { to { transform: perspective(220px) rotateX(68deg) rotateZ(342deg) scale(1.12); } }
+.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-stage { opacity: 0; transition: opacity .84s ease .06s; }
+.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-atmosphere,.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-rays,.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-bloom { opacity: 0; filter: blur(42px); transform: scale(1.32); transition: opacity .76s ease, filter .84s ease, transform .84s cubic-bezier(.2,.75,.25,1); }
+.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-flare { opacity: 0; transform: translate(-50%,-50%) scaleX(1.35); transition: opacity .5s ease, transform .76s cubic-bezier(.2,.75,.25,1); }
+.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-logo { opacity: 0; filter: blur(10px); transform: translateY(-5svh) scale(.64); transition: opacity .68s ease .12s, filter .82s ease, transform .84s cubic-bezier(.2,.75,.25,1); }
 .startup-intro-logo { position: relative; z-index: 3; width: min(74vw, 570px); aspect-ratio: 2172 / 724; }
 .startup-intro-mark { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; filter: blur(8px) brightness(.82); animation: intro-mark-focus .88s cubic-bezier(.22,1,.36,1) .12s both; will-change: opacity, filter; }
 .startup-intro-mark[hidden] { display: none; }
@@ -982,14 +976,12 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .series-next,.series-next-art img,.series-episode,.series-episode .episode-art img { transition: none; }
   .seven-intro.handoff { transition-duration: .01ms; }
   .seven-intro.handoff .startup-intro-scene { transition-duration: .01ms; }
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-singularity,
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-singularity::after,
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-stage,
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-atmosphere,
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-rays,
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-bloom,
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-flare,
-  .seven-intro.handoff.profile-picked.profile-pick-collapse .startup-intro-logo { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-stage,
+  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-atmosphere,
+  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-rays,
+  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-bloom,
+  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-flare,
+  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-logo { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
 /* Account gates must cover the viewport, independent of Home's content width. */
