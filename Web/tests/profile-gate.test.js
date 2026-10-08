@@ -72,6 +72,8 @@ test("mobile profile screen keeps the simple middle glow and existing profile sh
   assert.match(uiStyles, /\.startup-intro-atmosphere \{[^}]*animation: intro-atmosphere 2\.4s ease-out \.1s both/);
   assert.match(uiStyles, /\.startup-intro-mark \{[^}]*filter: none;/);
   assert.doesNotMatch(uiStyles, /\.startup-intro-mark \{[^}]*animation:|@keyframes intro-mark-focus/);
+  assert.doesNotMatch(uiStyles, /\.seven-intro:not\(\.live\)[^}]*animation-play-state:\s*paused/);
+  assert.doesNotMatch(uiStyles, /\.startup-intro-(?:atmosphere|rays|bloom|flare) \{[^}]*will-change:/);
   assert.doesNotMatch(styles, /\.profile-gate-logo/);
   assert.match(styles, /\.profile-gate-at-cap \.profile-chooser \{ gap: 15px 4px; width: min\(100%, 330px\)/);
   assert.match(styles, /\.profile-gate-multirow \.profile-chooser \{ row-gap: 17px; \}/);
@@ -164,11 +166,11 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=283/);
-  assert.match(index, /ui\.css\?v=315/);
-  assert.match(index, /app\.js\?v=371/);
-  assert.match(serviceWorker, /seven-v373/);
+  assert.match(index, /ui\.css\?v=316/);
+  assert.match(index, /app\.js\?v=372/);
+  assert.match(serviceWorker, /seven-v374/);
   assert.match(serviceWorker, /auth\.css\?v=283/);
-  assert.match(serviceWorker, /ui\.css\?v=315/);
-  assert.match(serviceWorker, /app\.js\?v=371/);
+  assert.match(serviceWorker, /ui\.css\?v=316/);
+  assert.match(serviceWorker, /app\.js\?v=372/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

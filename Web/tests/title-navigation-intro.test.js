@@ -55,8 +55,8 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.doesNotMatch(styles, /\.startup-intro-mark \{[^}]*animation:/);
   assert.doesNotMatch(index + app, /startup-intro-sweep/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
-  assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=315/);
+  assert.doesNotMatch(styles, /\.seven-intro:not\(\.live\)[^}]*animation-play-state:\s*paused/);
+  assert.match(index, /ui\.css\?v=316/);
   assert.match(index, /auth\.css\?v=283/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
@@ -64,10 +64,10 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "373");
+  assert.equal(workerCacheVersion, "374");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
   assert.match(serviceWorker, /auth\.css\?v=283/);
-  assert.match(serviceWorker, /ui\.css\?v=315/);
+  assert.match(serviceWorker, /ui\.css\?v=316/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
