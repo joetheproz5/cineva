@@ -37,8 +37,9 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.seven-intro\.exiting/);
   const introStyles = styles.slice(styles.indexOf(".seven-intro {"), styles.indexOf(".offline-screen"));
   assert.match(styles, /html\.seven-launching,html\.seven-launching body \{ background: radial-gradient/);
-  assert.match(introStyles, /\.seven-intro \{[^}]*bottom: -96px/);
-  assert.match(introStyles, /\.startup-intro-scene \{[^}]*position: absolute; z-index: 1; inset: 0 0 96px/);
+  assert.match(introStyles, /\.seven-intro \{[^}]*height: 100vh; height: 100svh/);
+  assert.doesNotMatch(introStyles, /\.seven-intro \{[^}]*bottom: -96px/);
+  assert.match(introStyles, /\.startup-intro-scene \{[^}]*position: absolute; z-index: 1; inset: 0;/);
   assert.match(introStyles, /@keyframes intro-out \{ to \{ opacity: 0; visibility: hidden; \} \}/);
   assert.doesNotMatch(introStyles, /@keyframes intro-out \{[^}]*transform:/);
   assert.match(introStyles, /\.startup-intro-mark \{[^}]*will-change: opacity, filter/);
@@ -48,18 +49,18 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=300/);
-  assert.match(index, /auth\.css\?v=277/);
+  assert.match(index, /ui\.css\?v=301/);
+  assert.match(index, /auth\.css\?v=278/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
   const workerCacheVersion = serviceWorker.match(/seven-v(\d+)/)?.[1];
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "358");
+  assert.equal(workerCacheVersion, "359");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
-  assert.match(serviceWorker, /auth\.css\?v=277/);
-  assert.match(serviceWorker, /ui\.css\?v=300/);
+  assert.match(serviceWorker, /auth\.css\?v=278/);
+  assert.match(serviceWorker, /ui\.css\?v=301/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
