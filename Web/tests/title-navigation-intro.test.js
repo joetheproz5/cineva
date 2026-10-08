@@ -38,6 +38,7 @@ test("the launch intro is static on entry, starts once, and fades out once after
   const finishIntroEnd = app.indexOf("function StartupIntro()", finishIntroStart);
   const finishIntro = app.slice(finishIntroStart, finishIntroEnd);
   assert.match(finishIntro, /profileGate\?\.classList\.contains\("profile-gate-pending"\)[\s\S]*?profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\)/);
+  assert.match(finishIntro, /classList\.remove\("seven-launching"\);\s*document\.documentElement\.style\.overflow = "";/);
   assert.match(finishIntro, /overlay\.classList\.add\("exiting"\)/);
   assert.doesNotMatch(finishIntro, /profile-gate-intro-active|\.classList\.add\("handoff"\)/);
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);

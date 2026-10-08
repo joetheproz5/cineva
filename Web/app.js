@@ -1279,6 +1279,8 @@ function maybeFinishIntro() {
   const overlay = document.querySelector(".seven-intro");
   if (!overlay) return;
   state.introExitStarted = true;
+  document.documentElement.classList.remove("seven-launching");
+  document.documentElement.style.overflow = "";
   const profileGate = document.querySelector(".profile-gate");
   if (profileGate?.classList.contains("profile-gate-pending")) profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
   overlay.classList.add("exiting");
