@@ -827,12 +827,13 @@ function beginProfileGateSelection(id) {
   gate.insertAdjacentHTML("beforeend", `<div class="profile-gate-handoff" role="status" aria-live="polite"><div class="profile-gate-handoff-avatar" style="--handoff-x:${startX}px;--handoff-y:${startY}px">${profileGateAvatar(profile)}</div><div class="profile-gate-handoff-loading"><span class="profile-gate-spinner" aria-hidden="true"></span><span>${t("Loading your profile…")}</span></div></div>`);
   void activateProfile(id, { handoff:true });
 }
-function releaseProfileGateIntro(keepGlowBehindGate = false) {
+function releaseProfileGateIntro(profileSelected = false) {
   const overlay = document.querySelector(".seven-intro.handoff");
-  if (!keepGlowBehindGate) document.querySelector(".profile-gate")?.classList.remove("profile-gate-intro-active");
+  if (!profileSelected) document.querySelector(".profile-gate")?.classList.remove("profile-gate-intro-active");
   if (!overlay) return;
   overlay.classList.add("profile-picked");
-  setTimeout(() => overlay.remove(), 280);
+  if (profileSelected) overlay.classList.add("profile-pick-collapse");
+  setTimeout(() => overlay.remove(), profileSelected ? 900 : 280);
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function localDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -1304,7 +1305,7 @@ function StartupIntro() {
   const overlay = document.createElement("div");
   overlay.className = "seven-intro";
   overlay.setAttribute("aria-hidden", "true");
-  overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-stage"></span><span class="startup-intro-atmosphere"></span><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span><span class="startup-intro-sweep"></span></div></div>`;
+  overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-stage"></span><span class="startup-intro-atmosphere"></span><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><span class="startup-intro-singularity" aria-hidden="true"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span><span class="startup-intro-sweep"></span></div></div>`;
   overlay.addEventListener("animationend", event => {
     if (event.target === overlay.querySelector(".startup-intro-atmosphere") && event.animationName === "intro-atmosphere") {
       state.introAnimationComplete = true;
@@ -2444,7 +2445,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=365", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=366", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
