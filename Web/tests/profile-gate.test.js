@@ -82,11 +82,12 @@ test("startup only uses upcoming releases for the poster rotation when available
   assert.doesNotMatch(catalogLoad, /api\("movie\/upcoming"\)/);
 });
 
-test("mobile profile selection checks PIN first, then centers the selected avatar and waits for profile data", () => {
+test("profile selection checks PIN first, centers the selected avatar, and waits for profile data", () => {
   assert.match(app, /function beginProfileGateSelection\(id\)/);
-  assert.match(app, /rect\.top \+ rect\.height \/ 2 - window\.innerHeight \* \.46/);
+  assert.match(app, /const centerY = window\.matchMedia\("\(max-width: 650px\)"\)\.matches \? \.46 : \.5/);
+  assert.match(app, /rect\.top \+ rect\.height \/ 2 - window\.innerHeight \* centerY/);
   assert.match(gate, /beginProfileGateSelection\(profile\.id\)/);
-  assert.match(app, /mobileHandoff:true/);
+  assert.match(app, /handoff:true/);
   assert.match(app, /profile-gate-handoff-avatar/);
   assert.match(app, /profile-gate-handoff-loading/);
   assert.match(app, /profileSecret\(pin\) !== profile\.pinHash[\s\S]*?beginProfileGateSelection\(profile\.id\)/);
@@ -98,13 +99,25 @@ test("mobile profile selection checks PIN first, then centers the selected avata
   assert.match(styles, /\.profile-gate-selecting \.profile-gate-poster \{ opacity: 0;/);
   assert.match(styles, /@keyframes profile-gate-loading-arrive/);
   assert.match(styles, /@keyframes profile-gate-exit-scene/);
-  assert.match(activation, /if \(mobileHandoff\) state\.profileGateHomeEntry = true/);
+  assert.match(activation, /if \(handoff\) state\.profileGateHomeEntry = true/);
   const home = app.slice(app.indexOf("function renderHome()"), app.indexOf("function heroNavigation()"));
   assert.match(home, /Boolean\(state\.profileGateHomeEntry\)/);
   assert.match(home, /state\.profileGateHomeEntry = false/);
   assert.match(home, /home-page \$\{animateProfileEntry \? "home-page-profile-entry"/);
   assert.match(uiStyles, /\.home-page-profile-entry \.hero \{ animation: home-profile-hero-enter/);
   assert.match(uiStyles, /\.home-page-profile-entry \.home-library \.rail \{ animation: home-profile-rail-enter/);
+});
+
+test("desktop profile selection uses the centered loading handoff and fades the chooser away", () => {
+  const desktopStart = styles.indexOf("@media (min-width: 651px)", styles.indexOf("/* Cinematic profile handoff"));
+  const desktopGate = styles.slice(desktopStart, styles.indexOf("@media (max-width: 650px)", desktopStart));
+  assert.match(desktopGate, /\.profile-gate-selecting \.profile-gate-sheet \{ animation: profile-gate-desktop-sheet-away/);
+  assert.match(desktopGate, /\.profile-gate-selecting \.profile-gate-showcase \{ opacity: \.28/);
+  assert.match(desktopGate, /\.profile-gate-handoff-avatar \{ position: absolute; top: 50%; left: 50%; width: 104px/);
+  assert.match(desktopGate, /\.profile-gate-handoff-loading \{ position: absolute; top: calc\(50% \+ 76px\)/);
+  assert.match(desktopGate, /@keyframes profile-gate-desktop-avatar-to-center/);
+  assert.match(desktopGate, /@keyframes profile-gate-desktop-loading-arrive/);
+  assert.match(desktopGate, /@keyframes profile-gate-desktop-exit-scene/);
 });
 
 test("profile panel waits for the SEVEN ident, then rises into a curved lower sheet", () => {
@@ -115,10 +128,10 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=273/);
-  assert.match(index, /app\.js\?v=352/);
-  assert.match(serviceWorker, /seven-v352/);
-  assert.match(serviceWorker, /auth\.css\?v=273/);
-  assert.match(serviceWorker, /app\.js\?v=352/);
+  assert.match(index, /auth\.css\?v=274/);
+  assert.match(index, /app\.js\?v=353/);
+  assert.match(serviceWorker, /seven-v353/);
+  assert.match(serviceWorker, /auth\.css\?v=274/);
+  assert.match(serviceWorker, /app\.js\?v=353/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

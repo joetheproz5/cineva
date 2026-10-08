@@ -782,18 +782,18 @@ function exitProfileGate(then) {
   gate.classList.add("profile-gate-exit");
   setTimeout(then, 430);
 }
-async function activateProfile(id, { mobileHandoff = false } = {}) {
+async function activateProfile(id, { handoff = false } = {}) {
   stopProfileGateLayout();
   const catalogStale = state.catalogKey !== id;
   state.account.activeProfileId = id;
   hydrateWatchlist();
   void loadAccountWatchlist();
   void saveAccount();
-  const enterHome = () => { state.route = "home"; if (mobileHandoff) state.profileGateHomeEntry = true; scrollToTop(); render(); tickScreenTime(); };
-  if (!mobileHandoff) exitProfileGate(enterHome);
+  const enterHome = () => { state.route = "home"; if (handoff) state.profileGateHomeEntry = true; scrollToTop(); render(); tickScreenTime(); };
+  if (!handoff) exitProfileGate(enterHome);
   if (catalogStale) state.catalogRequest = null;
   try { await loadMyList(); await refreshCatalogForLanguage(); } catch {}
-  if (mobileHandoff) {
+  if (handoff) {
     await new Promise(resolve => setTimeout(resolve, 1200));
     if (state.route === "profiles") {
       document.querySelector(".profile-gate")?.classList.add("profile-gate-handoff-exit");
@@ -805,15 +805,16 @@ async function activateProfile(id, { mobileHandoff = false } = {}) {
 function beginProfileGateSelection(id) {
   const gate = document.querySelector(".profile-gate"), account = state.account || defaultAccount(), profile = account.profiles.find(item => item.id === id);
   if (!profile) return;
-  if (!gate || !window.matchMedia("(max-width: 650px)").matches) { void activateProfile(id); return; }
+  if (!gate) { void activateProfile(id); return; }
   if (gate.classList.contains("profile-gate-selecting")) return;
   const button = [...gate.querySelectorAll("[data-watch-profile]")].find(item => item.dataset.watchProfile === id), avatar = button?.querySelector(".profile-avatar"), rect = avatar?.getBoundingClientRect();
+  const centerY = window.matchMedia("(max-width: 650px)").matches ? .46 : .5;
   const startX = rect ? Math.round(rect.left + rect.width / 2 - window.innerWidth / 2) : 0;
-  const startY = rect ? Math.round(rect.top + rect.height / 2 - window.innerHeight * .46) : 0;
+  const startY = rect ? Math.round(rect.top + rect.height / 2 - window.innerHeight * centerY) : 0;
   stopProfileGatePosterRotation();
   gate.classList.add("profile-gate-selecting");
   gate.insertAdjacentHTML("beforeend", `<div class="profile-gate-handoff" role="status" aria-live="polite"><div class="profile-gate-handoff-avatar" style="--handoff-x:${startX}px;--handoff-y:${startY}px">${profileGateAvatar(profile)}</div><div class="profile-gate-handoff-loading"><span class="profile-gate-spinner" aria-hidden="true"></span><span>${t("Loading your profile…")}</span></div></div>`);
-  void activateProfile(id, { mobileHandoff:true });
+  void activateProfile(id, { handoff:true });
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function profileGateDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -2461,7 +2462,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=352", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=353", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

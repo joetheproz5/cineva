@@ -1161,6 +1161,22 @@
 @media (min-width: 651px) {
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; pointer-events: none; }
   .profile-gate { background: radial-gradient(ellipse 48% 58% at 50% 52%, #211518 0%, #151315 52%, #08090a 100%); }
+  .profile-gate-showcase { transition: opacity .62s ease; }
+  .profile-gate-selecting .profile-gate-showcase { opacity: .28; }
+  .profile-gate-selecting .profile-gate-sheet { animation: profile-gate-desktop-sheet-away .58s cubic-bezier(.3,.7,.25,1) both; }
+  .profile-gate-handoff { position: absolute; z-index: 7; inset: 0; pointer-events: none; }
+  .profile-gate-handoff-exit { animation: profile-gate-desktop-exit-scene .34s ease both; }
+  .profile-gate-handoff-avatar { position: absolute; top: 50%; left: 50%; width: 104px; height: 104px; animation: profile-gate-desktop-avatar-to-center .72s cubic-bezier(.18,.76,.22,1) both; }
+  .profile-gate-handoff-avatar > .profile-avatar { display: grid; width: 104px; height: 104px; place-items: center; overflow: hidden; border: 2px solid #ed1b27; border-radius: 15px; background: #111214; box-shadow: 0 18px 48px #000b, 0 0 42px #ed1b2730; }
+  .profile-gate-handoff-avatar .profile-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+  .profile-gate-handoff-avatar .profile-avatar-guest img { width: 58%; height: 58%; }
+  .profile-gate-handoff-loading { position: absolute; top: calc(50% + 76px); left: 50%; display: flex; align-items: center; gap: 9px; color: #eeeeef; font-size: 13px; font-weight: 600; white-space: nowrap; animation: profile-gate-desktop-loading-arrive .36s ease .48s both; }
+  .profile-gate-handoff-loading .profile-gate-spinner { width: 16px; height: 16px; border: 2px solid #ffffff35; border-top-color: #ed1b27; border-radius: 50%; animation: profile-gate-desktop-spin .75s linear infinite; }
+  @keyframes profile-gate-desktop-sheet-away { to { opacity: 0; transform: translateY(12px) scale(.985); } }
+  @keyframes profile-gate-desktop-avatar-to-center { from { opacity: .6; transform: translate(calc(-50% + var(--handoff-x)), calc(-50% + var(--handoff-y))) scale(.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+  @keyframes profile-gate-desktop-loading-arrive { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes profile-gate-desktop-spin { to { transform: rotate(360deg); } }
+  @keyframes profile-gate-desktop-exit-scene { to { opacity: 0; transform: scale(1.025); } }
   .profile-gate-showcase .profile-gate-poster { display: none; }
   .profile-gate-showcase::before { position: absolute; top: 52%; left: 50%; width: min(82vw, 1080px); height: min(64vh, 620px); border-radius: 50%; background: radial-gradient(ellipse at center, #6a202944 0%, #3820272e 42%, #21191f15 68%, transparent 78%); content: ""; filter: blur(42px); transform: translate(-50%, -50%); animation: profile-stage-glow 16s ease-in-out infinite alternate; }
   .profile-gate-showcase::after { position: absolute; z-index: 1; inset: 0; background: radial-gradient(ellipse 52% 50% at 50% 52%, transparent 0%, #05060718 76%, #05060770 100%); content: ""; pointer-events: none; }
