@@ -341,7 +341,8 @@ html.seven-launching #app { visibility: hidden; }
 .seven-intro.handoff::after { animation: intro-handoff-atmosphere .86s ease forwards; }
 .seven-intro.handoff .startup-intro-rays { animation: intro-handoff-rays .86s ease forwards; }
 .seven-intro.handoff .startup-intro-bloom { animation: intro-handoff-bloom .86s ease forwards; }
-.seven-intro.handoff .startup-intro-logo { transform: translateY(-7svh); transition: transform .86s cubic-bezier(.2,.75,.25,1); }
+.seven-intro.handoff .startup-intro-logo { transform: translateY(-10svh); transition: transform .86s cubic-bezier(.2,.75,.25,1); }
+.seven-intro.handoff.profile-picked .startup-intro-logo { opacity: 0; transform: translateY(-13svh) scale(.97); transition: opacity .28s ease, transform .28s cubic-bezier(.2,.75,.25,1); }
 .seven-intro:not(.live)::before,.seven-intro:not(.live)::after,.seven-intro:not(.live) .startup-intro-rays,.seven-intro:not(.live) .startup-intro-bloom,.seven-intro:not(.live) .startup-intro-flare,.seven-intro:not(.live) .startup-intro-mark,.seven-intro:not(.live) .startup-intro-sweep::before { animation-play-state: paused; }
 .startup-intro-scene { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .startup-intro-rays { position: absolute; z-index: 0; inset: -72% -22%; background: linear-gradient(116deg,transparent 30%,rgba(186,14,29,.12) 47%,transparent 57%),linear-gradient(67deg,transparent 37%,rgba(255,232,216,.075) 49%,transparent 59%),linear-gradient(139deg,transparent 42%,rgba(160,13,27,.12) 52%,transparent 63%); -webkit-mask-image: radial-gradient(ellipse at center,transparent 2%,#000 29%,transparent 74%); mask-image: radial-gradient(ellipse at center,transparent 2%,#000 29%,transparent 74%); opacity: 0; transform: scale(.88) rotate(-4deg); animation: intro-rays 1.55s cubic-bezier(.22,1,.36,1) .08s both; pointer-events: none; will-change: opacity, transform; }
@@ -979,7 +980,7 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .series-next,.series-next-art img,.series-episode,.series-episode .episode-art img { transition: none; }
   .seven-intro.handoff { transition-duration: .01ms; }
   .seven-intro.handoff::before,.seven-intro.handoff::after,.seven-intro.handoff .startup-intro-rays,.seven-intro.handoff .startup-intro-bloom { animation-duration: .01ms; }
-  .seven-intro.handoff .startup-intro-logo { transition-duration: .01ms; }
+  .seven-intro.handoff .startup-intro-logo,.seven-intro.handoff.profile-picked .startup-intro-logo { transition-duration: .01ms; }
 }
 
 /* Account gates must cover the viewport, independent of Home's content width. */

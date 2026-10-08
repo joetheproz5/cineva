@@ -77,6 +77,8 @@ test("profile selection checks PIN first, centers the selected avatar, and waits
   assert.match(app, /const centerY = window\.matchMedia\("\(max-width: 650px\)"\)\.matches \? \.46 : \.5/);
   assert.match(app, /rect\.top \+ rect\.height \/ 2 - window\.innerHeight \* centerY/);
   assert.match(gate, /beginProfileGateSelection\(profile\.id\)/);
+  assert.match(app, /function releaseProfileGateIntro\(\)[\s\S]*?overlay\.classList\.add\("profile-picked"\)[\s\S]*?overlay\.remove\(\)/);
+  assert.match(app, /function beginProfileGateSelection\(id\)[\s\S]*?releaseProfileGateIntro\(\)/);
   assert.match(app, /handoff:true/);
   assert.match(app, /profile-gate-handoff-avatar/);
   assert.match(app, /profile-gate-handoff-loading/);
@@ -129,8 +131,13 @@ test("reduced-motion users get a settled profile handoff instead of a half-anima
 test("profile panel waits for the SEVEN ident, then rises into a curved lower sheet", () => {
   assert.match(app, /querySelector\("\.profile-gate"\)\?\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\)/);
   assert.match(app, /profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*overlay\.classList\.add\("handoff"\)/);
-  assert.match(app, /prefers-reduced-motion: reduce\)"\)\.matches \? 80 : 900/);
-  assert.match(uiStyles, /\.seven-intro\.handoff \.startup-intro-logo \{ transform: translateY\(-7svh\); transition: transform \.86s cubic-bezier\(\.2,\.75,\.25,1\); \}/);
+  assert.match(app, /clearTimeout\(state\.introSafetyTimer\);\s*state\.introSafetyTimer = null;[\s\S]*?overlay\.classList\.add\("handoff"\);\s*return;/);
+  const mobileHandoff = app.slice(app.indexOf('if (profileGate?.classList.contains("profile-gate-pending")'), app.indexOf('overlay.classList.add("exiting")'));
+  assert.doesNotMatch(mobileHandoff, /setTimeout\(dismissIntro/);
+  assert.match(app, /function releaseProfileGateIntro\(\)[\s\S]*?overlay\.classList\.add\("profile-picked"\)[\s\S]*?overlay\.remove\(\)/);
+  assert.match(app, /function beginProfileGateSelection\(id\)[\s\S]*?releaseProfileGateIntro\(\)/);
+  assert.match(uiStyles, /\.seven-intro\.handoff \.startup-intro-logo \{ transform: translateY\(-10svh\); transition: transform \.86s cubic-bezier\(\.2,\.75,\.25,1\); \}/);
+  assert.match(uiStyles, /\.seven-intro\.handoff\.profile-picked \.startup-intro-logo \{ opacity: 0;/);
   assert.match(uiStyles, /@keyframes intro-handoff-light \{ from \{ opacity: \.62; \} to \{ opacity: 0; \} \}/);
   assert.match(styles, /\.profile-gate-ready \.profile-gate-sheet \{ animation: profile-gate-desktop-rise/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-sheet \{[\s\S]*?border-radius: 44% 44% 0 0/);
@@ -139,11 +146,11 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=280/);
-  assert.match(index, /ui\.css\?v=303/);
-  assert.match(index, /app\.js\?v=360/);
-  assert.match(serviceWorker, /seven-v361/);
+  assert.match(index, /ui\.css\?v=304/);
+  assert.match(index, /app\.js\?v=361/);
+  assert.match(serviceWorker, /seven-v362/);
   assert.match(serviceWorker, /auth\.css\?v=280/);
-  assert.match(serviceWorker, /ui\.css\?v=303/);
-  assert.match(serviceWorker, /app\.js\?v=360/);
+  assert.match(serviceWorker, /ui\.css\?v=304/);
+  assert.match(serviceWorker, /app\.js\?v=361/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
