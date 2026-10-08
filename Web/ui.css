@@ -337,7 +337,17 @@ html:not(.seven-launching) .seven-intro:not(.exiting) { display: none; }
 .seven-intro.exiting { animation: intro-out .25s ease forwards; pointer-events: none; }
 .startup-intro-scene { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .startup-intro-mark { position: relative; z-index: 3; display: block; width: var(--seven-startup-logo-width); height: auto; aspect-ratio: var(--seven-startup-logo-aspect-ratio); object-fit: contain; opacity: 1; }
+/* The mark is held out of the native→web launch crossfade: the web view's first
+   painted frames can lay out with a not-yet-settled viewport, which rendered the
+   logo ~20pt above its settled position (the "ghost" double at handoff). app.js
+   reveals it via .logo-show only after the image decoded and the layout height
+   has been stable, so it can only ever appear at its settled, aligned spot. */
+.seven-intro:not(.logo-show) .startup-intro-mark { opacity: 0; visibility: hidden; }
+.seven-intro.logo-show .startup-intro-mark { transition: opacity .14s ease; }
 .seven-intro.logo-unavailable .startup-intro-mark { visibility: hidden; }
+/* TEMPORARY launch-handoff diagnostic — remove together with the .intro-debug
+   markup and the app.js debug updater once the ghost is verified on device. */
+.intro-debug { position: absolute; z-index: 9; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; color: #7fe08f; font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-shadow: 0 1px 2px #000; pointer-events: none; white-space: nowrap; }
 @keyframes intro-out { to { opacity: 0; visibility: hidden; } }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }
 .offline-logo { width: min(52vw, 260px); height: auto; opacity: .92; margin-bottom: 18px; }

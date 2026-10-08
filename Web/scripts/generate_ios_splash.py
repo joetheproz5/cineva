@@ -110,12 +110,23 @@ def generated_css(config: dict, specs: list[dict[str, int | str]]) -> str:
     )
     # On supported Apple devices, reuse the exact same full-screen PNG used by
     # the native launch image. This removes fractional CSS image scaling and
-    # guarantees matching logo pixels and viewport centering during handoff.
+    # guarantees matching logo pixels during handoff.
+    #
+    # The image is anchored to the TOP of the viewport and sized by width only
+    # (each PNG's aspect ratio equals its device screen's aspect ratio, enforced
+    # by read_specs), never stretched to the container height. If the web view's
+    # first painted frames get a transiently short layout viewport, a
+    # height-stretched logo would ride up with it — the "ghost" double above the
+    # sharp mark during the native→web crossfade. With top anchoring, the
+    # wordmark's position derives from screen width (which does not glitch), so
+    # it lands exactly where the native launch image drew it regardless of the
+    # transient container height. The uniform dark background makes the clipped
+    # overflow invisible.
     for spec in specs:
         css += (
             f"@media {spec['media']} {{\n"
             "  .seven-intro .startup-intro-mark {\n"
-            "    position: absolute; inset: 0; width: 100%; height: 100%;\n"
+            "    position: absolute; top: 0; left: 0; width: 100%; height: auto;\n"
             "    max-width: none; aspect-ratio: auto; object-fit: fill;\n"
             "  }\n"
             "}\n"

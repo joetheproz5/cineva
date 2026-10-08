@@ -1316,6 +1316,7 @@ function renderLaunchIntro() {
   const startIntro = loaded => {
     if (!overlay.isConnected || state.introAnimationComplete) return;
     if (!loaded) overlay.classList.add("logo-unavailable");
+    overlay.classList.add("logo-show");
     overlay.classList.add("live");
     state.introAnimationComplete = true;
     maybeFinishIntro();
@@ -1331,7 +1332,44 @@ function renderLaunchIntro() {
   const imageReady = typeof logo.decode === "function"
     ? logo.decode().then(() => true, () => false)
     : new Promise(resolve => { logo.onload = () => resolve(true); logo.onerror = () => resolve(false); });
-  imageReady.then(startIntro);
+  // Hold the mark until the viewport stops changing. During the native→web
+  // launch crossfade the first web frames can lay out with a short viewport,
+  // which painted the logo above its settled position (the handoff ghost).
+  // Waiting for a stable layout window means the mark is only ever revealed at
+  // its settled, aligned position — after the system crossfade has finished.
+  const layoutSettled = new Promise(resolve => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    const cap = setTimeout(finish, 800);
+    const startedAt = performance.now();
+    let height = window.innerHeight;
+    let stableFrames = 0;
+    const check = () => {
+      if (done) return;
+      const current = window.innerHeight;
+      if (current === height) stableFrames += 1;
+      else { height = current; stableFrames = 0; }
+      if (performance.now() - startedAt >= 180 && stableFrames >= 3) { clearTimeout(cap); finish(); return; }
+      requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  });
+  Promise.all([imageReady, layoutSettled]).then(([loaded]) => startIntro(loaded));
+  // TEMPORARY DIAGNOSTIC — remove together with the .intro-debug markup and
+  // styles once the launch handoff is verified on device. Live viewport
+  // metrics over the intro: a cold-launch screen recording will show whether
+  // the standalone layout viewport settles late (the handoff-ghost cause).
+  const debug = overlay.querySelector(".intro-debug");
+  if (debug) {
+    const renderDebug = () => {
+      const vv = window.visualViewport;
+      debug.textContent = `inner ${window.innerHeight} | doc ${document.documentElement.clientHeight} | vv ${vv ? `${Math.round(vv.height)}@${Math.round(vv.offsetTop)}` : "n/a"} | screen ${window.screen.height}`;
+    };
+    renderDebug();
+    window.visualViewport?.addEventListener("resize", renderDebug);
+    const pollDebug = () => { if (overlay.isConnected) { renderDebug(); requestAnimationFrame(pollDebug); } };
+    requestAnimationFrame(pollDebug);
+  }
 }
 function screenTimeState(profile = currentProfile()) {
   if (!profile?.kids || !profile.screenTime?.enabled) return null;
@@ -2432,7 +2470,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=376", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=379", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
