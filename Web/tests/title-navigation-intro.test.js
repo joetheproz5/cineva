@@ -32,9 +32,9 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(intro, /state\.introSafetyTimer = setTimeout\(/);
   assert.match(intro, /document\.documentElement\.classList\.add\("seven-launching"\)/);
   assert.match(intro, /document\.documentElement\.classList\.remove\("seven-launching"\)/);
-  assert.match(intro, /profileGate\?\.classList\.contains\("profile-gate-pending"\)[\s\S]*?profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*overlay\.classList\.add\("handoff"\)/);
+  assert.match(intro, /profileGate\?\.classList\.contains\("profile-gate-pending"\)[\s\S]*?profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*profileGate\.classList\.add\("profile-gate-intro-active"\);\s*overlay\.classList\.add\("handoff"\)/);
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
-  assert.match(intro, /const handoffDuration = window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches \? 80 : 900/);
+  assert.doesNotMatch(intro, /handoffDuration|setTimeout\(dismissIntro, handoffDuration\)/);
   assert.match(styles, /\.seven-intro\.exiting/);
   assert.match(styles, /\.seven-intro\.handoff \{ background: transparent; pointer-events: none; transition: background-color \.86s ease; \}/);
   assert.match(styles, /\.startup-intro-atmosphere \{[^}]*animation: intro-atmosphere 2\.4s ease-out \.1s both/);
@@ -55,18 +55,18 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=306/);
-  assert.match(index, /auth\.css\?v=282/);
+  assert.match(index, /ui\.css\?v=307/);
+  assert.match(index, /auth\.css\?v=283/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
   const workerCacheVersion = serviceWorker.match(/seven-v(\d+)/)?.[1];
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "364");
+  assert.equal(workerCacheVersion, "365");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
-  assert.match(serviceWorker, /auth\.css\?v=282/);
-  assert.match(serviceWorker, /ui\.css\?v=306/);
+  assert.match(serviceWorker, /auth\.css\?v=283/);
+  assert.match(serviceWorker, /ui\.css\?v=307/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 

@@ -818,7 +818,7 @@ function beginProfileGateSelection(id) {
   if (!profile) return;
   if (!gate) { void activateProfile(id); return; }
   if (gate.classList.contains("profile-gate-selecting")) return;
-  releaseProfileGateIntro();
+  releaseProfileGateIntro(true);
   const button = [...gate.querySelectorAll("[data-watch-profile]")].find(item => item.dataset.watchProfile === id), avatar = button?.querySelector(".profile-avatar"), rect = avatar?.getBoundingClientRect();
   const centerY = window.matchMedia("(max-width: 650px)").matches ? .46 : .5;
   const startX = rect ? Math.round(rect.left + rect.width / 2 - window.innerWidth / 2) : 0;
@@ -827,11 +827,12 @@ function beginProfileGateSelection(id) {
   gate.insertAdjacentHTML("beforeend", `<div class="profile-gate-handoff" role="status" aria-live="polite"><div class="profile-gate-handoff-avatar" style="--handoff-x:${startX}px;--handoff-y:${startY}px">${profileGateAvatar(profile)}</div><div class="profile-gate-handoff-loading"><span class="profile-gate-spinner" aria-hidden="true"></span><span>${t("Loading your profile…")}</span></div></div>`);
   void activateProfile(id, { handoff:true });
 }
-function releaseProfileGateIntro() {
-  const scene = document.querySelector(".profile-gate-startup-scene");
-  if (!scene) return;
-  scene.classList.add("profile-picked");
-  setTimeout(() => scene.remove(), 280);
+function releaseProfileGateIntro(keepGlowBehindGate = false) {
+  const overlay = document.querySelector(".seven-intro.handoff");
+  if (!keepGlowBehindGate) document.querySelector(".profile-gate")?.classList.remove("profile-gate-intro-active");
+  if (!overlay) return;
+  overlay.classList.add("profile-picked");
+  setTimeout(() => overlay.remove(), 280);
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function localDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -1286,19 +1287,13 @@ function maybeFinishIntro() {
   state.introExitStarted = true;
   const profileGate = document.querySelector(".profile-gate");
   if (profileGate?.classList.contains("profile-gate-pending") && window.matchMedia("(max-width: 650px)").matches) {
-    const scene = overlay.querySelector(".startup-intro-scene");
-    if (scene) {
-      scene.classList.add("profile-gate-startup-scene");
-      profileGate.appendChild(scene);
-    }
     document.documentElement.classList.remove("seven-launching");
     document.documentElement.style.overflow = "";
     clearTimeout(state.introSafetyTimer);
     state.introSafetyTimer = null;
     profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
+    profileGate.classList.add("profile-gate-intro-active");
     overlay.classList.add("handoff");
-    const handoffDuration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : 900;
-    state.introTimer = setTimeout(dismissIntro, handoffDuration);
     return;
   }
   overlay.classList.add("exiting");
@@ -2449,7 +2444,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=364", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=365", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

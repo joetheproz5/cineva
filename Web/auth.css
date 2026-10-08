@@ -1184,9 +1184,9 @@
   .profile-gate { display: block; height: 100vh; height: 100svh; height: 100dvh; min-height: 100vh; min-height: 100svh; min-height: 100dvh; padding: 0; background: radial-gradient(ellipse 115% 78% at 50% 8%, #241116 0%, #110d11 48%, #08090c 100%); }
   .profile-gate-showcase { position: absolute; z-index: 0; inset: 0; display: block; height: 100%; overflow: hidden; background: radial-gradient(ellipse 80% 56% at 50% 34%, #1b1117 0%, #0c0b0f 68%, #07080a 100%); }
   .profile-gate-showcase::before { position: absolute; z-index: 0; inset: 0; background: radial-gradient(ellipse 72% 58% at 50% 27%, #671e2b30 0%, #32141f20 43%, transparent 76%), radial-gradient(ellipse 90% 70% at 50% 0%, #1a121a 0%, transparent 76%); content: ""; }
-  .profile-gate-startup-scene { position: fixed; z-index: 1; inset: 0; display: grid; width: 100vw; height: 100svh; place-items: center; pointer-events: none; }
-  .profile-gate-startup-scene .startup-intro-logo { transform: translateY(-10svh); transition: transform .86s cubic-bezier(.2,.75,.25,1); }
-  .profile-gate-startup-scene.profile-picked { opacity: 0; transition: opacity .28s ease; }
+  .profile-gate-intro-active { z-index: 401; background: transparent; }
+  .profile-gate-intro-active .profile-gate-showcase { background: transparent; }
+  .profile-gate-intro-active .profile-gate-showcase::before { opacity: 0; }
   .profile-gate .profile-gate-sheet { position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; width: 100%; max-width: none; min-height: max(40svh, 326px); margin: 0; padding: 24px 18px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid #ffffff24; border-radius: 44% 44% 0 0 / 28px 28px 0 0; background: linear-gradient(180deg, #111215df 0%, #09090aeb 46%, #070708f2 100%); -webkit-backdrop-filter: blur(18px) saturate(1.16); backdrop-filter: blur(18px) saturate(1.16); box-shadow: 0 -24px 70px #000a, inset 0 1px #ffffff08; text-align: center; }
   .profile-gate .profile-gate-sheet h1 { margin: 0 0 20px; font-size: clamp(23px, 6vw, 28px); font-weight: 620; letter-spacing: -.9px; }
   .profile-gate .profile-chooser { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 15px 4px; width: min(100%, 350px); margin: 0 auto; }
@@ -1225,8 +1225,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .profile-gate-ready .profile-gate-sheet, .profile-gate-ready .profile-choice { animation: none; transition-duration: .01ms; }
-  .profile-gate-startup-scene,.profile-gate-startup-scene.profile-picked { transition-duration: .01ms; }
-  .profile-gate-startup-scene .startup-intro-logo { transition-duration: .01ms; }
   .profile-gate-selecting .profile-gate-sheet { animation: none !important; visibility: hidden; opacity: 0; }
   .profile-gate-selecting .profile-gate-showcase { transition: none; }
   .profile-gate-handoff-avatar { animation: none !important; opacity: 1; transform: translate(-50%, -50%); }

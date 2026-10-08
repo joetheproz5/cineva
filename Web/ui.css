@@ -335,6 +335,8 @@ html.seven-launching #app { visibility: hidden; }
 .seven-intro { position: fixed; z-index: 400; top: 0; right: 0; left: 0; display: grid; width: 100vw; height: 100vh; height: 100svh; place-items: center; overflow: hidden; background: #020203; cursor: default; isolation: isolate; }
 .seven-intro.exiting { animation: intro-out .44s ease forwards; pointer-events: none; }
 .seven-intro.handoff { background: transparent; pointer-events: none; transition: background-color .86s ease; }
+.seven-intro.handoff .startup-intro-scene { transform: translateY(-10svh); transition: transform .86s cubic-bezier(.2,.75,.25,1); }
+.seven-intro.handoff.profile-picked .startup-intro-scene { opacity: 0; transform: translateY(-13svh) scale(.97); transition: opacity .28s ease, transform .28s cubic-bezier(.2,.75,.25,1); }
 .seven-intro:not(.live) .startup-intro-stage,.seven-intro:not(.live) .startup-intro-atmosphere,.seven-intro:not(.live) .startup-intro-rays,.seven-intro:not(.live) .startup-intro-bloom,.seven-intro:not(.live) .startup-intro-flare,.seven-intro:not(.live) .startup-intro-mark,.seven-intro:not(.live) .startup-intro-sweep::before { animation-play-state: paused; }
 .startup-intro-scene { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .startup-intro-stage { position: absolute; z-index: 0; inset: 0; background: radial-gradient(ellipse at 50% 48%, rgba(153,12,25,.24), transparent 48%), linear-gradient(180deg,#020203 0%,#0d080a 52%,#020203 100%); opacity: 0; animation: intro-stage-light 2.3s ease-out both; pointer-events: none; }
@@ -969,7 +971,7 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .series-hero-backdrop,.series-poster,.series-hero-copy { animation: none; }
   .series-next,.series-next-art img,.series-episode,.series-episode .episode-art img { transition: none; }
   .seven-intro.handoff { transition-duration: .01ms; }
-  .profile-gate-startup-scene .startup-intro-logo { transition-duration: .01ms; }
+  .seven-intro.handoff .startup-intro-scene { transition-duration: .01ms; }
 }
 
 /* Account gates must cover the viewport, independent of Home's content width. */

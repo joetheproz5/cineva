@@ -58,9 +58,13 @@ test("mobile profile screen keeps the simple middle glow and existing profile sh
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: max\(40svh, 326px\)/);
   assert.match(styles, /background: linear-gradient\(180deg, #111215df 0%, #09090aeb 46%, #070708f2 100%\)/);
   assert.match(styles, /backdrop-filter: blur\(18px\) saturate\(1\.16\)/);
-  assert.match(app, /scene\.classList\.add\("profile-gate-startup-scene"\);\s*profileGate\.appendChild\(scene\)/);
-  assert.match(styles, /\.profile-gate-startup-scene \{ position: fixed; z-index: 1; inset: 0; display: grid; width: 100vw; height: 100svh/);
-  assert.match(styles, /\.profile-gate-startup-scene\.profile-picked \{ opacity: 0; transition: opacity \.28s ease; \}/);
+  assert.doesNotMatch(app, /profileGate\.appendChild\(scene\)|profile-gate-startup-scene/);
+  assert.match(app, /profileGate\.classList\.add\("profile-gate-intro-active"\);\s*overlay\.classList\.add\("handoff"\)/);
+  assert.match(styles, /\.profile-gate-intro-active \{ z-index: 401; background: transparent; \}/);
+  assert.match(styles, /\.profile-gate-intro-active \.profile-gate-showcase \{ background: transparent; \}/);
+  assert.match(styles, /\.profile-gate-intro-active \.profile-gate-showcase::before \{ opacity: 0; \}/);
+  assert.match(uiStyles, /\.seven-intro\.handoff \.startup-intro-scene \{ transform: translateY\(-10svh\); transition: transform \.86s cubic-bezier\(\.2,\.75,\.25,1\); \}/);
+  assert.match(uiStyles, /\.seven-intro\.handoff\.profile-picked \.startup-intro-scene \{ opacity: 0; transform: translateY\(-13svh\) scale\(\.97\); transition: opacity \.28s ease, transform \.28s cubic-bezier\(\.2,\.75,\.25,1\); \}/);
   assert.doesNotMatch(styles, /profile-gate-startup-glow/);
   assert.match(uiStyles, /\.startup-intro-stage \{[^}]*animation: intro-stage-light 2\.3s ease-out both/);
   assert.match(uiStyles, /\.startup-intro-atmosphere \{[^}]*animation: intro-atmosphere 2\.4s ease-out \.1s both/);
@@ -83,8 +87,8 @@ test("profile selection checks PIN first, centers the selected avatar, and waits
   assert.match(app, /const centerY = window\.matchMedia\("\(max-width: 650px\)"\)\.matches \? \.46 : \.5/);
   assert.match(app, /rect\.top \+ rect\.height \/ 2 - window\.innerHeight \* centerY/);
   assert.match(gate, /beginProfileGateSelection\(profile\.id\)/);
-  assert.match(app, /function releaseProfileGateIntro\(\)[\s\S]*?scene\.classList\.add\("profile-picked"\)[\s\S]*?scene\.remove\(\)/);
-  assert.match(app, /function beginProfileGateSelection\(id\)[\s\S]*?releaseProfileGateIntro\(\)/);
+  assert.match(app, /function releaseProfileGateIntro\(keepGlowBehindGate = false\)[\s\S]*?overlay\.classList\.add\("profile-picked"\)[\s\S]*?overlay\.remove\(\)/);
+  assert.match(app, /function beginProfileGateSelection\(id\)[\s\S]*?releaseProfileGateIntro\(true\)/);
   assert.match(app, /handoff:true/);
   assert.match(app, /profile-gate-handoff-avatar/);
   assert.match(app, /profile-gate-handoff-loading/);
@@ -136,26 +140,26 @@ test("reduced-motion users get a settled profile handoff instead of a half-anima
 
 test("profile panel waits for the SEVEN ident, then rises into a curved lower sheet", () => {
   assert.match(app, /querySelector\("\.profile-gate"\)\?\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\)/);
-  assert.match(app, /profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*overlay\.classList\.add\("handoff"\)/);
+  assert.match(app, /profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*profileGate\.classList\.add\("profile-gate-intro-active"\);\s*overlay\.classList\.add\("handoff"\)/);
   assert.match(app, /clearTimeout\(state\.introSafetyTimer\);\s*state\.introSafetyTimer = null;/);
-  assert.match(app, /profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*overlay\.classList\.add\("handoff"\);\s*const handoffDuration[\s\S]*?return;/);
+  assert.match(app, /profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*profileGate\.classList\.add\("profile-gate-intro-active"\);\s*overlay\.classList\.add\("handoff"\);\s*return;/);
   const mobileHandoff = app.slice(app.indexOf('if (profileGate?.classList.contains("profile-gate-pending")'), app.indexOf('overlay.classList.add("exiting")'));
-  assert.match(mobileHandoff, /const handoffDuration = window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches \? 80 : 900;\s*state\.introTimer = setTimeout\(dismissIntro, handoffDuration\)/);
-  assert.match(app, /function releaseProfileGateIntro\(\)[\s\S]*?scene\.classList\.add\("profile-picked"\)[\s\S]*?scene\.remove\(\)/);
-  assert.match(app, /function beginProfileGateSelection\(id\)[\s\S]*?releaseProfileGateIntro\(\)/);
-  assert.match(styles, /\.profile-gate-startup-scene \.startup-intro-logo \{ transform: translateY\(-10svh\); transition: transform \.86s cubic-bezier\(\.2,\.75,\.25,1\); \}/);
+  assert.doesNotMatch(mobileHandoff, /dismissIntro|introTimer|appendChild\(scene\)/);
+  assert.match(app, /function releaseProfileGateIntro\(keepGlowBehindGate = false\)[\s\S]*?overlay\.classList\.add\("profile-picked"\)[\s\S]*?overlay\.remove\(\)/);
+  assert.match(app, /function beginProfileGateSelection\(id\)[\s\S]*?releaseProfileGateIntro\(true\)/);
+  assert.match(uiStyles, /\.seven-intro\.handoff \.startup-intro-scene \{ transform: translateY\(-10svh\); transition: transform \.86s cubic-bezier\(\.2,\.75,\.25,1\); \}/);
   assert.match(styles, /\.profile-gate-ready \.profile-gate-sheet \{ animation: profile-gate-desktop-rise/);
   assert.match(styles, /@media \(max-width: 650px\)[\s\S]*?\.profile-gate-sheet \{[\s\S]*?border-radius: 44% 44% 0 0/);
   assert.match(styles, /profile-gate-sheet-rise/);
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=282/);
-  assert.match(index, /ui\.css\?v=306/);
-  assert.match(index, /app\.js\?v=363/);
-  assert.match(serviceWorker, /seven-v364/);
-  assert.match(serviceWorker, /auth\.css\?v=282/);
-  assert.match(serviceWorker, /ui\.css\?v=306/);
-  assert.match(serviceWorker, /app\.js\?v=363/);
+  assert.match(index, /auth\.css\?v=283/);
+  assert.match(index, /ui\.css\?v=307/);
+  assert.match(index, /app\.js\?v=364/);
+  assert.match(serviceWorker, /seven-v365/);
+  assert.match(serviceWorker, /auth\.css\?v=283/);
+  assert.match(serviceWorker, /ui\.css\?v=307/);
+  assert.match(serviceWorker, /app\.js\?v=364/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
