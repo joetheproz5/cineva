@@ -33,11 +33,19 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
   assert.doesNotMatch(intro, /prefersReducedMotion|reduced-motion/);
   assert.match(styles, /\.seven-intro\.exiting/);
+  const introStyles = styles.slice(styles.indexOf(".seven-intro {"), styles.indexOf(".offline-screen"));
+  assert.match(introStyles, /\.seven-intro \{[^}]*height: 100vh; height: 100svh/);
+  assert.match(introStyles, /\.startup-intro-scene \{[^}]*position: absolute; z-index: 1; inset: 0/);
+  assert.match(introStyles, /@keyframes intro-out \{ to \{ opacity: 0; visibility: hidden; \} \}/);
+  assert.doesNotMatch(introStyles, /@keyframes intro-out \{[^}]*transform:/);
+  assert.match(introStyles, /\.startup-intro-mark \{[^}]*will-change: opacity, filter/);
+  assert.doesNotMatch(introStyles, /\.startup-intro-mark \{[^}]*transform:/);
+  assert.doesNotMatch(introStyles, /@keyframes intro-mark-focus \{[^}]*transform:/);
   assert.match(styles, /\.startup-intro-rays \{[^}]*animation: intro-rays/);
   assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=295/);
+  assert.match(index, /ui\.css\?v=296/);
   assert.match(index, /auth\.css\?v=273/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
@@ -48,7 +56,7 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.equal(workerCacheVersion, appVersion);
   assert.equal(workerRegistrationVersion, appVersion);
   assert.match(serviceWorker, /auth\.css\?v=273/);
-  assert.match(serviceWorker, /ui\.css\?v=295/);
+  assert.match(serviceWorker, /ui\.css\?v=296/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
