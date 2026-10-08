@@ -330,36 +330,16 @@
 .search-recent-query span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-recent-remove { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; color: #777; background: transparent; font-size: 14px; line-height: 1; transition: color 0.16s, background 0.16s; }
 .search-recent-remove:hover { color: #fff; background: #333; }
-html.seven-launching,html.seven-launching body { background: radial-gradient(ellipse at 50% 48%,rgba(153,12,25,.24),transparent 48%),linear-gradient(180deg,#050505 0%,#0d080a 52%,#050505 100%); }
+html.seven-launching,html.seven-launching body { background: var(--seven-startup-background); }
 html.seven-launching #app { visibility: hidden; }
-.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: transparent; cursor: default; isolation: isolate; }
-.seven-intro[aria-hidden="true"]:not(.live) { pointer-events: none; }
-html:not(.seven-launching) .seven-intro { display: none; }
+.seven-intro { position: fixed; z-index: 400; inset: 0; display: grid; place-items: center; overflow: hidden; background: var(--seven-startup-background); cursor: default; isolation: isolate; }
+html:not(.seven-launching) .seven-intro:not(.exiting) { display: none; }
 .seven-intro.exiting { animation: intro-out .44s ease forwards; pointer-events: none; }
-.seven-intro.handoff { background: transparent; pointer-events: none; transition: background-color .86s ease; }
-.seven-intro.handoff .startup-intro-scene { transform: translateY(-10svh); transition: transform .86s cubic-bezier(.2,.75,.25,1); }
-.seven-intro.handoff.profile-picked:not(.profile-pick-recede) .startup-intro-scene { opacity: 0; transform: translateY(-13svh) scale(.97); transition: opacity .28s ease, transform .28s cubic-bezier(.2,.75,.25,1); }
-.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-scene { opacity: 0; transform: translateY(-10svh); transition: opacity 1.4s ease-in-out .08s; }
 .startup-intro-scene { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; pointer-events: none; }
-.startup-intro-stage { position: absolute; z-index: 0; inset: 0; background: radial-gradient(ellipse at 50% 48%, rgba(153,12,25,.24), transparent 48%), linear-gradient(180deg,#050505 0%,#0d080a 52%,#050505 100%); opacity: 0; animation: intro-stage-light 2.3s ease-out both; pointer-events: none; }
-.startup-intro-atmosphere { position: absolute; z-index: 0; inset: -20%; background: linear-gradient(108deg,transparent 37%,rgba(255,255,255,.024) 47%,rgba(229,179,154,.065) 50%,transparent 59%),radial-gradient(ellipse at 50% 52%,rgba(150,11,26,.12),transparent 54%); filter: blur(22px); opacity: 0; transform: scale(1.035); animation: intro-atmosphere 2.4s ease-out .1s both; pointer-events: none; }
-.startup-intro-rays { position: absolute; z-index: 0; inset: -72% -22%; background: linear-gradient(116deg,transparent 30%,rgba(186,14,29,.12) 47%,transparent 57%),linear-gradient(67deg,transparent 37%,rgba(255,232,216,.075) 49%,transparent 59%),linear-gradient(139deg,transparent 42%,rgba(160,13,27,.12) 52%,transparent 63%); -webkit-mask-image: radial-gradient(ellipse at center,transparent 2%,#000 29%,transparent 74%); mask-image: radial-gradient(ellipse at center,transparent 2%,#000 29%,transparent 74%); opacity: 0; transform: scale(.88) rotate(-4deg); animation: intro-rays 1.55s cubic-bezier(.22,1,.36,1) .08s both; pointer-events: none; }
-.startup-intro-bloom { position: absolute; z-index: 1; inset: -24%; background: radial-gradient(ellipse at 50% 52%,rgba(207,19,35,.3) 0%,rgba(132,9,21,.17) 24%,transparent 64%),radial-gradient(ellipse at 50% 48%,rgba(255,222,205,.13),transparent 39%); filter: blur(26px); opacity: 0; transform: scale(.68); animation: intro-bloom 1.35s cubic-bezier(.22,1,.36,1) .1s both; pointer-events: none; }
-.startup-intro-flare { position: absolute; z-index: 2; top: 50%; left: 50%; width: min(78vw,780px); height: 1px; background: linear-gradient(90deg,transparent,rgba(255,242,231,.45) 43%,rgba(255,255,255,.78) 50%,rgba(255,242,231,.45) 57%,transparent); box-shadow: 0 0 20px 2px rgba(200,24,37,.32); opacity: 0; transform: translate(-50%,-50%) scaleX(.48); animation: intro-flare .82s cubic-bezier(.22,1,.36,1) .38s both; pointer-events: none; }
-.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-atmosphere,.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-rays,.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-bloom { filter: blur(42px); transform: scale(1.32); transition: filter .84s ease, transform .84s cubic-bezier(.2,.75,.25,1); }
-.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-flare { transform: translate(-50%,-50%) scaleX(1.35); transition: transform .76s cubic-bezier(.2,.75,.25,1); }
-.seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-logo { filter: blur(10px); transform: translateY(-5svh) scale(.64); transition: filter .82s ease, transform .84s cubic-bezier(.2,.75,.25,1); }
-.startup-intro-logo { position: relative; z-index: 3; width: min(74vw, 570px); aspect-ratio: 2172 / 724; }
+.startup-intro-logo { position: relative; z-index: 3; width: var(--seven-startup-logo-width); aspect-ratio: var(--seven-startup-logo-aspect-ratio); }
 .startup-intro-mark { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 1; filter: none; }
-.startup-intro-mark[hidden] { display: none; }
-.startup-intro-fallback { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; color: #e50914; font: 900 clamp(58px, 16vw, 148px)/.8 Arial, sans-serif; letter-spacing: -.09em; }
-.startup-intro-fallback[hidden] { display: none; }
+.seven-intro.logo-unavailable .startup-intro-mark { visibility: hidden; }
 @keyframes intro-out { to { opacity: 0; visibility: hidden; } }
-@keyframes intro-stage-light { 0% { opacity: 0; } 36% { opacity: 1; } 100% { opacity: .62; } }
-@keyframes intro-atmosphere { 0% { opacity: 0; transform: scale(1.035) translateX(-1%); } 54% { opacity: .72; } 100% { opacity: .52; transform: scale(1) translateX(1%); } }
-@keyframes intro-rays { 0% { opacity: 0; transform: scale(.88) rotate(-4deg); } 42% { opacity: .92; } 100% { opacity: .54; transform: scale(1.04) rotate(1deg); } }
-@keyframes intro-bloom { 0% { opacity: 0; transform: scale(.68); } 42% { opacity: 1; transform: scale(1.02); } 100% { opacity: .58; transform: scale(1.12); } }
-@keyframes intro-flare { 0% { opacity: 0; transform: translate(-50%,-50%) scaleX(.48); } 26% { opacity: .9; } 100% { opacity: 0; transform: translate(-50%,-50%) scaleX(1.12); } }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }
 .offline-logo { width: min(52vw, 260px); height: auto; opacity: .92; margin-bottom: 18px; }
 .offline-screen h1 { margin: 6px 0; font-size: clamp(26px, 4.6vw, 38px); letter-spacing: -1px; }
@@ -971,15 +951,6 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 @media (prefers-reduced-motion: reduce) {
   .series-hero-backdrop,.series-poster,.series-hero-copy { animation: none; }
   .series-next,.series-next-art img,.series-episode,.series-episode .episode-art img { transition: none; }
-  .seven-intro.handoff { transition-duration: .01ms; }
-  .seven-intro.handoff .startup-intro-scene { transition-duration: .01ms; }
-  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-stage,
-  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-scene,
-  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-atmosphere,
-  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-rays,
-  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-bloom,
-  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-flare,
-  .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-logo { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
 /* Account gates must cover the viewport, independent of Home's content width. */

@@ -17,7 +17,7 @@ let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false, profileCreationReturn:null };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introStarted: false, introAnimationComplete: false, introExitStarted: false, introDismissed: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false, profileCreationReturn:null };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -818,7 +818,6 @@ function beginProfileGateSelection(id) {
   if (!profile) return;
   if (!gate) { void activateProfile(id); return; }
   if (gate.classList.contains("profile-gate-selecting")) return;
-  releaseProfileGateIntro(true);
   const button = [...gate.querySelectorAll("[data-watch-profile]")].find(item => item.dataset.watchProfile === id), avatar = button?.querySelector(".profile-avatar"), rect = avatar?.getBoundingClientRect();
   const centerY = window.matchMedia("(max-width: 650px)").matches ? .46 : .5;
   const startX = rect ? Math.round(rect.left + rect.width / 2 - window.innerWidth / 2) : 0;
@@ -826,14 +825,6 @@ function beginProfileGateSelection(id) {
   gate.classList.add("profile-gate-selecting");
   gate.insertAdjacentHTML("beforeend", `<div class="profile-gate-handoff" role="status" aria-live="polite"><div class="profile-gate-handoff-avatar" style="--handoff-x:${startX}px;--handoff-y:${startY}px">${profileGateAvatar(profile)}</div><div class="profile-gate-handoff-loading"><span class="profile-gate-spinner" aria-hidden="true"></span><span>${t("Loading your profile…")}</span></div></div>`);
   void activateProfile(id, { handoff:true });
-}
-function releaseProfileGateIntro(profileSelected = false) {
-  const overlay = document.querySelector(".seven-intro.handoff");
-  if (!profileSelected) document.querySelector(".profile-gate")?.classList.remove("profile-gate-intro-active");
-  if (!overlay) return;
-  overlay.classList.add("profile-picked");
-  if (profileSelected) overlay.classList.add("profile-pick-recede");
-  setTimeout(() => overlay.remove(), profileSelected ? 1550 : 280);
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function localDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -846,7 +837,7 @@ function renderProfileGate() {
   const addProfile = account.profiles.length < 5 ? `<button class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:${account.profiles.length}" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>` : "";
   app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"} ${account.profiles.length >= 3 ? "profile-gate-multirow" : ""} ${account.profiles.length >= 5 ? "profile-gate-at-cap" : ""}">${profileGateShowcaseMarkup()}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
-  document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => { releaseProfileGateIntro(); showProfileEditor("", "profiles", "profile"); });
+  document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
 }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
@@ -1270,6 +1261,8 @@ async function syncNativePlayerEpisode(change) {
 }
 function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"), profile = cached?.profiles?.find(item => item.id === cached.activeProfileId), enabled = profile?.preferences?.introEnabled ?? cached?.preferences?.introEnabled; return enabled !== false; } catch { return true; } }
 function dismissIntro() {
+  if (state.introDismissed) return;
+  state.introDismissed = true;
   const overlay = document.querySelector(".seven-intro");
   clearTimeout(state.introTimer);
   clearTimeout(state.introSafetyTimer);
@@ -1287,67 +1280,53 @@ function maybeFinishIntro() {
   if (!overlay) return;
   state.introExitStarted = true;
   const profileGate = document.querySelector(".profile-gate");
-  if (profileGate?.classList.contains("profile-gate-pending") && window.matchMedia("(max-width: 650px)").matches) {
-    document.documentElement.classList.remove("seven-launching");
-    document.documentElement.style.overflow = "";
-    clearTimeout(state.introSafetyTimer);
-    state.introSafetyTimer = null;
-    profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
-    profileGate.classList.add("profile-gate-intro-active");
-    overlay.classList.add("handoff");
-    return;
-  }
+  if (profileGate?.classList.contains("profile-gate-pending")) profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
   overlay.classList.add("exiting");
   clearTimeout(state.introSafetyTimer);
   state.introTimer = setTimeout(dismissIntro, 520);
 }
 function StartupIntro() {
-  const overlay = document.querySelector(".seven-intro") || document.createElement("div");
-  if (!overlay.isConnected) {
+  let overlay = document.querySelector(".seven-intro");
+  if (!overlay) {
+    overlay = document.createElement("div");
     overlay.className = "seven-intro";
     overlay.setAttribute("aria-hidden", "true");
-    overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-stage"></span><span class="startup-intro-atmosphere"></span><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span></div></div>`;
+    overlay.innerHTML = `<div class="startup-intro-scene"><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"></div></div>`;
+    document.body.append(overlay);
   }
-  overlay.addEventListener("animationend", event => {
-    if (event.target === overlay.querySelector(".startup-intro-atmosphere") && event.animationName === "intro-atmosphere") {
-      state.introAnimationComplete = true;
-      maybeFinishIntro();
-    } else if (event.target === overlay && event.animationName === "intro-out") {
-      dismissIntro();
-    }
-  });
   return overlay;
 }
 function renderLaunchIntro() {
+  if (state.introStarted) return;
+  state.introStarted = true;
   if (!launchIntroEnabled()) {
     document.documentElement.classList.remove("seven-launching");
     document.querySelector(".seven-intro")?.remove();
     state.introAnimationComplete = true;
+    state.introDismissed = true;
     return;
   }
   const overlay = StartupIntro();
   const logo = overlay.querySelector(".startup-intro-mark");
   const startIntro = loaded => {
-    if (!overlay.isConnected) return;
-    if (!loaded) {
-      logo.hidden = true;
-      overlay.querySelector(".startup-intro-fallback").hidden = false;
-    }
+    if (!overlay.isConnected || state.introAnimationComplete) return;
+    if (!loaded) overlay.classList.add("logo-unavailable");
     overlay.classList.add("live");
+    state.introAnimationComplete = true;
+    maybeFinishIntro();
   };
   document.documentElement.classList.add("seven-launching");
   document.documentElement.style.overflow = "hidden";
   if (!overlay.isConnected) document.body.appendChild(overlay);
   state.introSafetyTimer = setTimeout(() => {
     state.startupReady = true;
-    state.introAnimationComplete = true;
     if (!overlay.classList.contains("live")) startIntro(false);
     maybeFinishIntro();
   }, 12000);
   const imageReady = typeof logo.decode === "function"
     ? logo.decode().then(() => true, () => false)
     : new Promise(resolve => { logo.onload = () => resolve(true); logo.onerror = () => resolve(false); });
-  Promise.race([imageReady, new Promise(resolve => setTimeout(() => resolve(false), 1800))]).then(startIntro);
+  imageReady.then(startIntro);
 }
 function screenTimeState(profile = currentProfile()) {
   if (!profile?.kids || !profile.screenTime?.enabled) return null;
@@ -2448,7 +2427,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=374", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=375", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

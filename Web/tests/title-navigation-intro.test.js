@@ -20,28 +20,32 @@ test("opening a movie or series does not scroll Home before its details load", (
   assert.match(openItem, /render\(\);\s*scrollToTop\(\);/);
 });
 
-test("the launch intro finishes its reveal and waits for startup before fading", () => {
+test("the launch intro is static on entry, starts once, and fades out once after readiness", () => {
   const start = app.indexOf("function dismissIntro()");
   const end = app.indexOf("function screenTimeState(", start);
   const intro = app.slice(start, end);
 
   assert.doesNotMatch(intro, /addEventListener\("click", dismissIntro/);
   assert.match(intro, /logo\.decode\(\)/);
-  assert.match(intro, /event\.animationName === "intro-atmosphere"/);
+  assert.match(intro, /if \(state\.introStarted\) return;\s*state\.introStarted = true;/);
+  assert.match(intro, /imageReady\.then\(startIntro\)/);
+  assert.match(intro, /if \(state\.introDismissed\) return;\s*state\.introDismissed = true;/);
   assert.match(intro, /!state\.startupReady \|\| !state\.introAnimationComplete/);
   assert.match(intro, /state\.introSafetyTimer = setTimeout\(/);
   assert.match(intro, /document\.documentElement\.classList\.add\("seven-launching"\)/);
   assert.match(intro, /document\.documentElement\.classList\.remove\("seven-launching"\)/);
-  assert.match(intro, /profileGate\?\.classList\.contains\("profile-gate-pending"\)[\s\S]*?profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\);\s*profileGate\.classList\.add\("profile-gate-intro-active"\);\s*overlay\.classList\.add\("handoff"\)/);
+  const finishIntroStart = app.indexOf("function maybeFinishIntro()");
+  const finishIntroEnd = app.indexOf("function StartupIntro()", finishIntroStart);
+  const finishIntro = app.slice(finishIntroStart, finishIntroEnd);
+  assert.match(finishIntro, /profileGate\?\.classList\.contains\("profile-gate-pending"\)[\s\S]*?profileGate\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\)/);
+  assert.match(finishIntro, /overlay\.classList\.add\("exiting"\)/);
+  assert.doesNotMatch(finishIntro, /profile-gate-intro-active|\.classList\.add\("handoff"\)/);
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
   assert.doesNotMatch(intro, /handoffDuration|setTimeout\(dismissIntro, handoffDuration\)/);
   assert.match(styles, /\.seven-intro\.exiting/);
-  assert.match(styles, /\.seven-intro\.handoff \{ background: transparent; pointer-events: none; transition: background-color \.86s ease; \}/);
-  assert.match(styles, /\.startup-intro-atmosphere \{[^}]*animation: intro-atmosphere 2\.4s ease-out \.1s both/);
-  assert.match(styles, /\.seven-intro\.handoff \{ background: transparent; pointer-events: none; transition: background-color \.86s ease; \}/);
-  assert.match(app, /event\.target === overlay\.querySelector\("\.startup-intro-atmosphere"\) && event\.animationName === "intro-atmosphere"/);
+  assert.match(styles, /\.seven-intro\.exiting \{ animation: intro-out \.44s ease forwards; pointer-events: none; \}/);
   const introStyles = styles.slice(styles.indexOf(".seven-intro {"), styles.indexOf(".offline-screen"));
-  assert.match(styles, /html\.seven-launching,html\.seven-launching body \{ background: radial-gradient/);
+  assert.match(styles, /html\.seven-launching,html\.seven-launching body \{ background: var\(--seven-startup-background\); \}/);
   assert.match(styles, /html\.seven-launching #app \{ visibility: hidden; \}/);
   assert.match(introStyles, /\.seven-intro \{[^}]*position: fixed; z-index: 400; inset: 0;/);
   assert.doesNotMatch(introStyles, /\.seven-intro \{[^}]*bottom: -96px/);
@@ -50,25 +54,33 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.doesNotMatch(introStyles, /@keyframes intro-out \{[^}]*transform:/);
   assert.match(introStyles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: none/);
   assert.doesNotMatch(introStyles, /\.startup-intro-mark \{[^}]*transform:/);
+  assert.doesNotMatch(introStyles, /animation:\s*(?:intro-stage|intro-atmosphere|intro-rays|intro-bloom|intro-flare)|@keyframes intro-(?:stage-light|atmosphere|rays|bloom|flare)/);
   assert.doesNotMatch(introStyles, /intro-mark-focus|intro-sweep|startup-intro-sweep/);
-  assert.match(styles, /\.startup-intro-rays \{[^}]*animation: intro-rays/);
   assert.doesNotMatch(styles, /\.startup-intro-mark \{[^}]*animation:/);
+  assert.equal((index.match(/class="seven-intro"/g) || []).length, 1);
+  assert.equal((index.match(/class="startup-intro-mark"/g) || []).length, 1);
+  assert.match(index, /viewport-fit=cover/);
+  assert.match(index, /apple-mobile-web-app-capable" content="yes"/);
+  assert.match(index, /apple-mobile-web-app-status-bar-style" content="black-translucent"/);
   assert.doesNotMatch(index + app, /startup-intro-sweep/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.doesNotMatch(styles, /\.seven-intro:not\(\.live\)[^}]*animation-play-state:\s*paused/);
-  assert.match(index, /ui\.css\?v=316/);
-  assert.match(index, /auth\.css\?v=283/);
+  assert.match(index, /ui\.css\?v=317/);
+  assert.match(index, /startup-theme\.css\?v=2/);
+  assert.match(index, /auth\.css\?v=284/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
   const workerCacheVersion = serviceWorker.match(/seven-v(\d+)/)?.[1];
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "374");
+  assert.equal(workerCacheVersion, "375");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
-  assert.match(serviceWorker, /auth\.css\?v=283/);
-  assert.match(serviceWorker, /ui\.css\?v=316/);
+  assert.match(serviceWorker, /auth\.css\?v=284/);
+  assert.match(serviceWorker, /ui\.css\?v=317/);
+  assert.match(serviceWorker, /startup-theme\.css\?v=2/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
+  assert.doesNotMatch(serviceWorker, /controllerchange|location\.reload\(|clients\.navigate\(/);
 });
 
 test("the footer back-to-top link animates even when reduced motion is requested", () => {
