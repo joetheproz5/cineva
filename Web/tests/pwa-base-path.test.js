@@ -20,14 +20,26 @@ test("the launch ident and PWA files work from a project subpath", () => {
   assert.match(serviceWorker, /const scopePath = new URL\(self\.registration\.scope\)\.pathname/);
 });
 
-test("iOS launch screens, page chrome, and intro use the same near-black base", () => {
+test("iOS launch screens, page chrome, and intro use the same SEVEN dark theme", () => {
   assert.match(index, /<meta name="theme-color" content="#050505"\s*\/>/);
   assert.match(manifest, /"background_color": "#050505"/);
   assert.match(manifest, /"theme_color": "#050505"/);
   assert.match(styles, /html\.seven-launching,html\.seven-launching body \{[^}]*linear-gradient\(180deg,#050505/);
-  assert.match(styles, /\.seven-intro \{[^}]*background: #050505/);
+  assert.match(styles, /\.seven-intro \{[^}]*background: transparent/);
   assert.doesNotMatch(index + manifest, /#071018/i);
-  const splashImages = [...index.matchAll(/href="(assets\/splash\/[^\"]+\.png\?v=2)"/g)];
+  const splashImages = [...index.matchAll(/href="(assets\/splash\/[^\"]+\.png\?v=3)"/g)];
   assert.equal(splashImages.length, 24);
   for (const [, image] of splashImages) assert.ok(fs.existsSync(path.join(web, image.split("?")[0])), `${image} should exist`);
+});
+
+test("the branded launch frame is painted before the application scripts run", () => {
+  const launchFlag = index.indexOf('document.documentElement.classList.add("seven-launching")');
+  const stylesheet = index.indexOf('href="ui.css?v=312"');
+  const introMarkup = index.indexOf('<div class="seven-intro"');
+  const appRoot = index.indexOf('<main id="app">');
+  assert.ok(launchFlag >= 0 && launchFlag < stylesheet, "launch state should be set before styles and app scripts load");
+  assert.ok(introMarkup >= 0 && introMarkup < appRoot, "the intro should exist before app.js can execute");
+  assert.match(styles, /html:not\(\.seven-launching\) \.seven-intro \{ display: none; \}/);
+  assert.match(styles, /\.seven-intro \{[^}]*background: transparent/);
+  assert.match(styles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: blur\(0\)/);
 });

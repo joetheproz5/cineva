@@ -332,7 +332,9 @@
 .search-recent-remove:hover { color: #fff; background: #333; }
 html.seven-launching,html.seven-launching body { background: radial-gradient(ellipse at 50% 48%,rgba(153,12,25,.24),transparent 48%),linear-gradient(180deg,#050505 0%,#0d080a 52%,#050505 100%); }
 html.seven-launching #app { visibility: hidden; }
-.seven-intro { position: fixed; z-index: 400; top: 0; right: 0; left: 0; display: grid; width: 100vw; height: 100vh; height: 100svh; place-items: center; overflow: hidden; background: #050505; cursor: default; isolation: isolate; }
+.seven-intro { position: fixed; z-index: 400; top: 0; right: 0; left: 0; display: grid; width: 100vw; height: 100vh; height: 100svh; place-items: center; overflow: hidden; background: transparent; cursor: default; isolation: isolate; }
+.seven-intro[aria-hidden="true"]:not(.live) { pointer-events: none; }
+html:not(.seven-launching) .seven-intro { display: none; }
 .seven-intro.exiting { animation: intro-out .44s ease forwards; pointer-events: none; }
 .seven-intro.handoff { background: transparent; pointer-events: none; transition: background-color .86s ease; }
 .seven-intro.handoff .startup-intro-scene { transform: translateY(-10svh); transition: transform .86s cubic-bezier(.2,.75,.25,1); }
@@ -349,7 +351,7 @@ html.seven-launching #app { visibility: hidden; }
 .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-flare { transform: translate(-50%,-50%) scaleX(1.35); transition: transform .76s cubic-bezier(.2,.75,.25,1); }
 .seven-intro.handoff.profile-picked.profile-pick-recede .startup-intro-logo { filter: blur(10px); transform: translateY(-5svh) scale(.64); transition: filter .82s ease, transform .84s cubic-bezier(.2,.75,.25,1); }
 .startup-intro-logo { position: relative; z-index: 3; width: min(74vw, 570px); aspect-ratio: 2172 / 724; }
-.startup-intro-mark { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; filter: blur(8px) brightness(.82); animation: intro-mark-focus .88s cubic-bezier(.22,1,.36,1) .12s both; will-change: opacity, filter; }
+.startup-intro-mark { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 1; filter: blur(0) brightness(.96) drop-shadow(0 0 16px rgba(161,18,27,.12)); animation: intro-mark-focus .88s cubic-bezier(.22,1,.36,1) .12s both; will-change: opacity, filter; }
 .startup-intro-mark[hidden] { display: none; }
 .startup-intro-fallback { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; color: #e50914; font: 900 clamp(58px, 16vw, 148px)/.8 Arial, sans-serif; letter-spacing: -.09em; }
 .startup-intro-fallback[hidden] { display: none; }
@@ -361,7 +363,7 @@ html.seven-launching #app { visibility: hidden; }
 @keyframes intro-rays { 0% { opacity: 0; transform: scale(.88) rotate(-4deg); } 42% { opacity: .92; } 100% { opacity: .54; transform: scale(1.04) rotate(1deg); } }
 @keyframes intro-bloom { 0% { opacity: 0; transform: scale(.68); } 42% { opacity: 1; transform: scale(1.02); } 100% { opacity: .58; transform: scale(1.12); } }
 @keyframes intro-flare { 0% { opacity: 0; transform: translate(-50%,-50%) scaleX(.48); } 26% { opacity: .9; } 100% { opacity: 0; transform: translate(-50%,-50%) scaleX(1.12); } }
-@keyframes intro-mark-focus { 0% { opacity: 0; filter: blur(8px) brightness(.82) drop-shadow(0 0 0 rgba(161,18,27,0)); } 50% { opacity: 1; filter: blur(1px) brightness(.98) drop-shadow(0 0 24px rgba(161,18,27,.16)); } 100% { opacity: 1; filter: blur(0) brightness(1) drop-shadow(0 0 16px rgba(161,18,27,.12)); } }
+@keyframes intro-mark-focus { 0% { opacity: 1; filter: blur(0) brightness(.96) drop-shadow(0 0 16px rgba(161,18,27,.12)); } 50% { opacity: 1; filter: blur(0) brightness(.99) drop-shadow(0 0 20px rgba(161,18,27,.14)); } 100% { opacity: 1; filter: blur(0) brightness(1) drop-shadow(0 0 16px rgba(161,18,27,.12)); } }
 @keyframes intro-sweep { 0% { opacity: 0; transform: translateX(-85%); } 24% { opacity: .65; } 100% { opacity: 0; transform: translateX(85%); } }
 .offline-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 78vh; text-align: center; padding: 24px; }
 .offline-logo { width: min(52vw, 260px); height: auto; opacity: .92; margin-bottom: 18px; }

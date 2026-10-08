@@ -1302,10 +1302,12 @@ function maybeFinishIntro() {
   state.introTimer = setTimeout(dismissIntro, 520);
 }
 function StartupIntro() {
-  const overlay = document.createElement("div");
-  overlay.className = "seven-intro";
-  overlay.setAttribute("aria-hidden", "true");
-  overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-stage"></span><span class="startup-intro-atmosphere"></span><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span><span class="startup-intro-sweep"></span></div></div>`;
+  const overlay = document.querySelector(".seven-intro") || document.createElement("div");
+  if (!overlay.isConnected) {
+    overlay.className = "seven-intro";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-stage"></span><span class="startup-intro-atmosphere"></span><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span><span class="startup-intro-sweep"></span></div></div>`;
+  }
   overlay.addEventListener("animationend", event => {
     if (event.target === overlay.querySelector(".startup-intro-atmosphere") && event.animationName === "intro-atmosphere") {
       state.introAnimationComplete = true;
@@ -1318,10 +1320,11 @@ function StartupIntro() {
 }
 function renderLaunchIntro() {
   if (!launchIntroEnabled()) {
+    document.documentElement.classList.remove("seven-launching");
+    document.querySelector(".seven-intro")?.remove();
     state.introAnimationComplete = true;
     return;
   }
-  if (document.querySelector(".seven-intro")) return;
   const overlay = StartupIntro();
   const logo = overlay.querySelector(".startup-intro-mark");
   const startIntro = loaded => {
@@ -1334,7 +1337,7 @@ function renderLaunchIntro() {
   };
   document.documentElement.classList.add("seven-launching");
   document.documentElement.style.overflow = "hidden";
-  document.body.appendChild(overlay);
+  if (!overlay.isConnected) document.body.appendChild(overlay);
   state.introSafetyTimer = setTimeout(() => {
     state.startupReady = true;
     state.introAnimationComplete = true;
@@ -2445,7 +2448,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=369", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=370", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
