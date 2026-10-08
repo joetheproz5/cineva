@@ -58,6 +58,10 @@ test("mobile profile screen keeps the simple middle glow and existing profile sh
   assert.match(styles, /\.profile-gate \.profile-gate-sheet \{[^}]*min-height: max\(40svh, 326px\)/);
   assert.match(styles, /background: linear-gradient\(180deg, #111215df 0%, #09090aeb 46%, #070708f2 100%\)/);
   assert.match(styles, /backdrop-filter: blur\(18px\) saturate\(1\.16\)/);
+  assert.match(app, /profileGate\.classList\.add\("profile-gate-startup-glow"\)/);
+  assert.match(styles, /\.profile-gate-startup-glow \.profile-gate-showcase::after \{[^}]*rgba\(207,19,35,\.3\)[^}]*animation: profile-gate-startup-glow \.86s ease forwards/);
+  assert.match(styles, /@keyframes profile-gate-startup-glow \{ from \{ opacity: 0; transform: scale\(\.72\); \} to \{ opacity: \.62; transform: scale\(1\.05\); \} \}/);
+  assert.match(styles, /\.profile-gate-startup-glow \.profile-gate-showcase::after \{ animation-duration: \.01ms; \}/);
   assert.doesNotMatch(styles, /\.profile-gate-logo/);
   assert.match(styles, /\.profile-gate-at-cap \.profile-chooser \{ gap: 15px 4px; width: min\(100%, 330px\)/);
   assert.match(styles, /\.profile-gate-multirow \.profile-chooser \{ row-gap: 17px; \}/);
@@ -145,12 +149,12 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=280/);
-  assert.match(index, /ui\.css\?v=304/);
-  assert.match(index, /app\.js\?v=361/);
-  assert.match(serviceWorker, /seven-v362/);
-  assert.match(serviceWorker, /auth\.css\?v=280/);
-  assert.match(serviceWorker, /ui\.css\?v=304/);
-  assert.match(serviceWorker, /app\.js\?v=361/);
+  assert.match(index, /auth\.css\?v=281/);
+  assert.match(index, /ui\.css\?v=305/);
+  assert.match(index, /app\.js\?v=362/);
+  assert.match(serviceWorker, /seven-v363/);
+  assert.match(serviceWorker, /auth\.css\?v=281/);
+  assert.match(serviceWorker, /ui\.css\?v=305/);
+  assert.match(serviceWorker, /app\.js\?v=362/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

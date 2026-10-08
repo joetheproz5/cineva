@@ -1290,6 +1290,7 @@ function maybeFinishIntro() {
     document.documentElement.style.overflow = "";
     clearTimeout(state.introSafetyTimer);
     state.introSafetyTimer = null;
+    profileGate.classList.add("profile-gate-startup-glow");
     profileGate.classList.replace("profile-gate-pending", "profile-gate-ready");
     overlay.classList.add("handoff");
     return;
@@ -2443,7 +2444,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=362", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=363", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
