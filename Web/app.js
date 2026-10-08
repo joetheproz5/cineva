@@ -1306,7 +1306,7 @@ function StartupIntro() {
   if (!overlay.isConnected) {
     overlay.className = "seven-intro";
     overlay.setAttribute("aria-hidden", "true");
-    overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-stage"></span><span class="startup-intro-atmosphere"></span><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span><span class="startup-intro-sweep"></span></div></div>`;
+    overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-stage"></span><span class="startup-intro-atmosphere"></span><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span></div></div>`;
   }
   overlay.addEventListener("animationend", event => {
     if (event.target === overlay.querySelector(".startup-intro-atmosphere") && event.animationName === "intro-atmosphere") {
@@ -2448,7 +2448,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=371", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=372", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

@@ -34,12 +34,12 @@ test("iOS launch screens, page chrome, and intro use the same SEVEN dark theme",
 
 test("the branded launch frame is painted before the application scripts run", () => {
   const launchFlag = index.indexOf('document.documentElement.classList.add("seven-launching")');
-  const stylesheet = index.indexOf('href="ui.css?v=313"');
+  const stylesheet = index.indexOf('href="ui.css?v=314"');
   const introMarkup = index.indexOf('<div class="seven-intro"');
   const appRoot = index.indexOf('<main id="app">');
   assert.ok(launchFlag >= 0 && launchFlag < stylesheet, "launch state should be set before styles and app scripts load");
   assert.ok(introMarkup >= 0 && introMarkup < appRoot, "the intro should exist before app.js can execute");
   assert.match(styles, /html:not\(\.seven-launching\) \.seven-intro \{ display: none; \}/);
   assert.match(styles, /\.seven-intro \{[^}]*background: transparent/);
-  assert.match(styles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: blur\(0\)/);
+  assert.match(styles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: drop-shadow/);
 });

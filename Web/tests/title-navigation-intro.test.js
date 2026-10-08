@@ -48,14 +48,15 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.match(introStyles, /\.startup-intro-scene \{[^}]*position: absolute; z-index: 1; inset: 0;/);
   assert.match(introStyles, /@keyframes intro-out \{ to \{ opacity: 0; visibility: hidden; \} \}/);
   assert.doesNotMatch(introStyles, /@keyframes intro-out \{[^}]*transform:/);
-  assert.match(introStyles, /\.startup-intro-mark \{[^}]*will-change: opacity, filter/);
+  assert.match(introStyles, /\.startup-intro-mark \{[^}]*opacity: 1; filter: drop-shadow/);
   assert.doesNotMatch(introStyles, /\.startup-intro-mark \{[^}]*transform:/);
-  assert.doesNotMatch(introStyles, /@keyframes intro-mark-focus \{[^}]*transform:/);
+  assert.doesNotMatch(introStyles, /intro-mark-focus|intro-sweep|startup-intro-sweep/);
   assert.match(styles, /\.startup-intro-rays \{[^}]*animation: intro-rays/);
-  assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
+  assert.doesNotMatch(styles, /\.startup-intro-mark \{[^}]*animation:/);
+  assert.doesNotMatch(index + app, /startup-intro-sweep/);
   assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
   assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=313/);
+  assert.match(index, /ui\.css\?v=314/);
   assert.match(index, /auth\.css\?v=283/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
@@ -63,10 +64,10 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   const workerRegistrationVersion = app.match(/register\("service-worker\.js\?v=(\d+)"/)?.[1];
   assert.ok(appVersion);
   assert.equal(workerShellAppVersion, appVersion);
-  assert.equal(workerCacheVersion, "371");
+  assert.equal(workerCacheVersion, "372");
   assert.equal(workerRegistrationVersion, workerCacheVersion);
   assert.match(serviceWorker, /auth\.css\?v=283/);
-  assert.match(serviceWorker, /ui\.css\?v=313/);
+  assert.match(serviceWorker, /ui\.css\?v=314/);
   assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
 });
 
