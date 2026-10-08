@@ -120,6 +120,16 @@ test("desktop profile selection uses the centered loading handoff and fades the 
   assert.match(desktopGate, /@keyframes profile-gate-desktop-exit-scene/);
 });
 
+test("reduced-motion users get a settled profile handoff instead of a half-animation", () => {
+  const reducedMotionStart = styles.indexOf("@media (prefers-reduced-motion: reduce)", styles.indexOf("@keyframes profile-gate-exit-scene"));
+  const reducedMotion = styles.slice(reducedMotionStart, styles.indexOf("\n}", reducedMotionStart));
+  assert.match(reducedMotion, /\.profile-gate-selecting \.profile-gate-sheet \{ animation: none !important; visibility: hidden; opacity: 0; \}/);
+  assert.match(reducedMotion, /\.profile-gate-handoff-avatar \{ animation: none !important; opacity: 1; transform: translate\(-50%, -50%\); \}/);
+  assert.match(reducedMotion, /\.profile-gate-handoff-loading \{ animation: none !important; opacity: 1; transform: translateX\(-50%\); \}/);
+  assert.match(reducedMotion, /\.profile-gate-handoff-loading \.profile-gate-spinner \{ border-color: #ed1b27; animation: none !important; \}/);
+  assert.match(reducedMotion, /\.profile-gate-handoff-exit \{ animation: none !important; opacity: 0; \}/);
+});
+
 test("profile panel waits for the SEVEN ident, then rises into a curved lower sheet", () => {
   assert.match(app, /querySelector\("\.profile-gate"\)\?\.classList\.replace\("profile-gate-pending", "profile-gate-ready"\)/);
   assert.match(styles, /\.profile-gate-ready \.profile-gate-sheet \{ animation: profile-gate-desktop-rise/);
@@ -128,10 +138,10 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=274/);
+  assert.match(index, /auth\.css\?v=275/);
   assert.match(index, /app\.js\?v=353/);
-  assert.match(serviceWorker, /seven-v353/);
-  assert.match(serviceWorker, /auth\.css\?v=274/);
+  assert.match(serviceWorker, /seven-v354/);
+  assert.match(serviceWorker, /auth\.css\?v=275/);
   assert.match(serviceWorker, /app\.js\?v=353/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
