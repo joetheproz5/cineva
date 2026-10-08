@@ -1,6 +1,6 @@
-const VERSION = "seven-v381";const DATA_CACHE = "seven-data-v1";
+const VERSION = "seven-v348";const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v1";
-const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=284", "ui.css?v=321", "startup-theme.css?v=4", "player-security.js?v=245", "profile-stats.js?v=1", "app.js?v=378", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png", "assets/avatars/robot.png"];
+const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=273", "ui.css?v=295", "player-security.js?v=245", "profile-stats.js?v=1", "app.js?v=348", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png", "assets/avatars/robot.png"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("message", event => { if (event.data?.type === "SEVEN_SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => ![VERSION, DATA_CACHE, IMAGE_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
@@ -9,16 +9,6 @@ self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
   // Player proxy and live API routes must always hit the network — never answer from a cache.
   if (url.origin === location.origin && url.pathname.startsWith("/api/")) return;
-  if (url.origin === location.origin && url.pathname.includes("/assets/splash/")) {
-    event.respondWith(caches.open(VERSION).then(async cache => {
-      const cached = await cache.match(event.request, { ignoreSearch:true });
-      if (cached) return cached;
-      const response = await fetch(event.request);
-      if (response.ok) await cache.put(event.request, response.clone());
-      return response;
-    }));
-    return;
-  }
   if (url.origin === "https://image.tmdb.org") {
     event.respondWith(caches.open(IMAGE_CACHE).then(async cache => {
       const cached = await cache.match(event.request);

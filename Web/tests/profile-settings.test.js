@@ -12,13 +12,11 @@ const detailSource = source.slice(source.indexOf("function iosDnsProtectionCard(
 
 function settingsContext() {
   const context = {
-    state:{ profileSettingsNotice:"", profileCreationReturn:null, account:{ profiles:[{ id:"main", name:"Joe" }] } },
+    state:{ profileSettingsNotice:"", account:{ profiles:[{ id:"main", name:"Joe" }] } },
     t:value => value,
     escapeHTML:value => String(value || "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[char]),
     profileAvatar:() => "<span class=\"profile-avatar\"></span>",
     PLAYER_PROVIDERS:["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"],
-    ONBOARDING_GENRES:[[28,"Action"],[12,"Adventure"],[16,"Animation"],[35,"Comedy"],[80,"Crime"],[99,"Documentary"],[18,"Drama"],[10751,"Family"],[27,"Horror"],[9648,"Mystery"],[10749,"Romance"],[53,"Thriller"]],
-    FAMILY_FRIENDLY_GENRES:new Set([12,16,35,99,10751]),
     accountAction:() => "",
     hiddenTitles:() => []
   };
@@ -30,13 +28,13 @@ function settingsContext() {
 test("the redesigned settings hub keeps all seven working categories discoverable", () => {
   const context = settingsContext();
   const html = context.profileSettingsHome({ id:"main", name:"Joe", kids:false }, false);
-  for (const category of ["profiles", "profile", "family", "taste", "playback", "language", "activity", "security"]) {
+  for (const category of ["profiles", "profile", "family", "playback", "language", "activity", "security"]) {
     assert.match(html, new RegExp(`data-profile-category="${category}"`));
   }
   assert.equal((html.match(/class="profile-settings-group"/g) || []).length, 3);
   assert.match(source, /profile-settings-topbar[\s\S]*?data-switch-profile/);
   assert.match(html, /data-profile-category="profile"/);
-  assert.equal((html.match(/class="profile-category-icon"/g) || []).length, 8);
+  assert.equal((html.match(/class="profile-category-icon"/g) || []).length, 7);
   assert.match(html, /class="profile-hub-edit" data-profile-category="profile"/);
 });
 
@@ -74,20 +72,6 @@ test("playback and display pages render controls that the profile form persists"
   }
   assert.match(source, /\["maturity", "language", "playerProvider"\]/);
   assert.match(source, /"moviesEnabled", "seriesEnabled"\]/);
-});
-
-test("taste controls are profile-scoped and new profiles continue into their own setup", () => {
-  const context = settingsContext();
-  const taste = context.profileSettingsDetail({ id:"next", name:"Guest", preferences:{} }, "taste", {
-    favoriteGenres:[28], contentMix:"movies", familySafe:false
-  }, false);
-  assert.match(taste, /data-profile-genre="28" aria-pressed="true"/);
-  assert.match(taste, /data-profile-mix="movies" aria-pressed="true"/);
-  assert.match(taste, /data-profile-family="false" aria-pressed="true"/);
-  assert.match(taste, /choices belong only to Guest/);
-  assert.match(source, /profile\.preferences = \{ \...\(profile\.preferences \|\| \{\}\), favoriteGenres:\[\.\.\.selected\] \}/);
-  assert.match(source, /if \(isNew && category === "profile"\)[\s\S]*state\.profileSettingsCategory = "taste"/);
-  assert.match(source, /if \(category === "taste" && state\.profileCreationReturn\)[\s\S]*state\.route = returnRoute/);
 });
 
 test("the startup intro honors the active profile preference before account defaults", () => {
