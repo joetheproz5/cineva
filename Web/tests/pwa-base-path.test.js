@@ -15,6 +15,7 @@ test("the launch ident and PWA files work from a project subpath", () => {
   assert.doesNotMatch(index, /(?:href|src)="\//);
   assert.match(manifest, /"start_url": "\.\/"/);
   assert.match(manifest, /"scope": "\.\/"/);
+  assert.match(manifest, /"client_mode": "navigate-existing"/);
   assert.match(serviceWorker, /const VERSION = "seven-v\d+"/);
   assert.match(serviceWorker, /const scopePath = new URL\(self\.registration\.scope\)\.pathname/);
 });

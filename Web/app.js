@@ -1526,13 +1526,16 @@ async function partyStart() {
     const code = partyCode();
     await partyConnect(code, "host");
     partySend({ kind:"join", name:currentProfile()?.name || "Host", color:currentProfile()?.color });
-    const url = new URL(location.href);
-    url.search = "";
-    url.searchParams.set("watch", code);
-    if (state.player) url.searchParams.set("title", state.player.type === "tv" ? `tv:${state.player.id}:${state.player.season}:${state.player.episode}` : `movie:${state.player.id}`);
+    const url = partyInviteURL(code);
     history.replaceState(history.state, "", url);
     renderPartyPanel();
   } catch (error) { party.error = error.message; renderPartyPanel(); }
+}
+function partyInviteURL(code) {
+  const url = new URL("./", window.location.href);
+  url.searchParams.set("watch", code);
+  if (state.player) url.searchParams.set("title", state.player.type === "tv" ? `tv:${state.player.id}:${state.player.season}:${state.player.episode}` : `movie:${state.player.id}`);
+  return url;
 }
 async function partyJoin(code) {
   try {
@@ -1583,7 +1586,7 @@ function renderPartyPanel() {
   const members = Object.entries(party.members);
   const currentKey = state.player ? `${state.player.type}:${state.player.id}:${state.player.season || 0}:${state.player.episode || 0}` : "";
   const differentTitle = party.role === "guest" && party.hostKey && party.hostKey !== currentKey;
-  const inviteURL = (() => { const url = new URL(location.href); url.searchParams.set("watch", party.code); return url.href; })();
+  const inviteURL = partyInviteURL(party.code).href;
   panel.innerHTML = `
     <div class="party-head"><span class="brand">WATCH PARTY${party.role === "host" ? " · YOU'RE HOSTING" : ""}</span><button class="party-leave" data-party-leave>Leave</button></div>
     <div class="party-code-row"><code class="party-code">${party.code}</code><button class="party-copy" data-party-copy>Copy invite link</button></div>
