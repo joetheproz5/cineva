@@ -1,0 +1,26 @@
+{
+  "name": "seven-release-alerts",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-09",
+  "workers_dev": true,
+  "vars": {
+    "APP_BASE_URL": "https://seven-9fm.pages.dev/",
+    "TMDB_PROXY_BASE": "https://seven-9fm.pages.dev/api/tmdb/",
+    "VAPID_SUBJECT": "https://seven-9fm.pages.dev",
+    "VAPID_PUBLIC_KEY": "BNfANB6hoWdNPQ7IQCK7pVjXBWDP2JifYZ-PW-wfgTfAuorIHT7VV5P69MZ1Lw1b--xrXS9xsFw0jfYar-xaeGY"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "seven-release-reminders",
+      "database_id": "c0c31981-4569-440d-bdcd-14a9634365e2",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    "crons": ["0 * * * *"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,9 +1,35 @@
-const VERSION = "seven-v351";const DATA_CACHE = "seven-data-v1";
+const VERSION = "seven-v352";const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v1";
-const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=273", "ui.css?v=298", "player-security.js?v=245", "profile-stats.js?v=1", "app.js?v=351", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png"];
+const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=273", "ui.css?v=299", "player-security.js?v=245", "profile-stats.js?v=1", "app.js?v=352", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("message", event => { if (event.data?.type === "SEVEN_SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => ![VERSION, DATA_CACHE, IMAGE_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
+self.addEventListener("push", event => {
+  let payload = {};
+  try { payload = event.data?.json() || {}; } catch { payload = { body:event.data?.text() || "A title on your list has reached its release date." }; }
+  const target = new URL(payload.url || "./", self.registration.scope);
+  if (target.origin !== self.location.origin) target.href = self.registration.scope;
+  event.waitUntil(self.registration.showNotification(payload.title || "SEVEN · Release day", {
+    body:payload.body || "A title you follow has reached its listed release date.",
+    icon:new URL("assets/icon-192.png", self.registration.scope).href,
+    badge:new URL("assets/icon-192.png", self.registration.scope).href,
+    tag:`seven-release-${Date.now()}`,
+    data:{ url:target.href }
+  }));
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "./", self.registration.scope);
+  if (target.origin !== self.location.origin) target.href = self.registration.scope;
+  event.waitUntil(self.clients.matchAll({ type:"window", includeUncontrolled:true }).then(async clients => {
+    const existing = clients.find(client => new URL(client.url).origin === self.location.origin);
+    if (existing) {
+      await existing.navigate(target.href);
+      return existing.focus();
+    }
+    return self.clients.openWindow(target.href);
+  }));
+});
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);

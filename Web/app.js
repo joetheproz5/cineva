@@ -3,6 +3,8 @@ const TMDB_BACKDROP = "https://image.tmdb.org/t/p/original";
 const TMDB_STILL = "https://image.tmdb.org/t/p/w780";
 const TMDB_PROFILE_POSTER = "https://image.tmdb.org/t/p/w780";
 const FEATURED_ID = 71712;
+const RELEASE_ALERTS_API = "https://seven-release-alerts.trexghaoui.workers.dev";
+const RELEASE_DEVICE_TOKEN_KEY = "seven.release-alerts.device-token";
 const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || window.matchMedia?.("(display-mode: fullscreen)").matches
   || navigator.standalone === true;
@@ -19,7 +21,7 @@ let sessionRefreshPromise;
 let deferredInstallPrompt;
 let profileGatePosterTimer = null, profileGatePosterGeneration = 0;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -34,6 +36,7 @@ const DISPLAY_LANGUAGES = { English:"en-US", Arabic:"ar-SA", French:"fr-FR" };
 const UI_STRINGS = {
   Arabic: {
     "Coming":"قريباً", "Out today":"متاح اليوم",
+    "Release dates from TMDB":"مواعيد الإصدار من TMDB", "Releases":"موعد الإصدار", "Remind me":"ذكّرني", "Reminder set":"تم ضبط التذكير", "Notify on this device":"أرسل تنبيهاً إلى هذا الجهاز", "Release alerts are not supported in this browser. Try an installed PWA or a supported browser.":"تنبيهات الإصدار غير مدعومة في هذا المتصفح. جرّب تثبيت التطبيق أو استخدام متصفح يدعمها.", "Allow notifications to get release alerts.":"اسمح بالإشعارات لتلقي تنبيهات الإصدار.", "Notification permission is blocked. Change it in your browser settings.":"تم حظر الإشعارات. غيّر الإعداد من إعدادات المتصفح.", "Release alerts are not connected yet. Try again in a moment.":"لم يتم الاتصال بتنبيهات الإصدار بعد. حاول مجدداً بعد قليل.", "We’ll notify this device when the listed release date arrives.":"سنرسل تنبيهاً إلى هذا الجهاز عند حلول موعد الإصدار المسجل.", "Release reminder removed.":"تمت إزالة تذكير الإصدار.",
     "Home":"الرئيسية", "For You":"مخصص لك", "Movies":"أفلام", "Series":"مسلسلات", "Favourites":"المفضلة", "Favs":"المفضلة",
     "Titles, movies, series":"عناوين، أفلام، مسلسلات", "Account":"الحساب", "Search":"بحث",
     "Play something":"شغّل شيئاً", "We’ll pick a trailer for you":"سنختار لك إعلاناً تشويقياً",
@@ -63,6 +66,7 @@ const UI_STRINGS = {
     "Password updated.":"تم تحديث كلمة المرور.", "Done":"تم"
   },
   French: {
+    "Release dates from TMDB":"Dates de sortie TMDB", "Releases":"Sortie le", "Remind me":"Me prévenir", "Reminder set":"Rappel activé", "Notify on this device":"Notifier cet appareil", "Release alerts are not supported in this browser. Try an installed PWA or a supported browser.":"Les alertes ne sont pas prises en charge par ce navigateur. Installez la PWA ou utilisez un navigateur compatible.", "Allow notifications to get release alerts.":"Autorisez les notifications pour recevoir les alertes de sortie.", "Notification permission is blocked. Change it in your browser settings.":"Les notifications sont bloquées. Modifiez ce réglage dans votre navigateur.", "Release alerts are not connected yet. Try again in a moment.":"Les alertes ne sont pas encore connectées. Réessayez dans un instant.", "We’ll notify this device when the listed release date arrives.":"Cet appareil sera averti à la date de sortie indiquée.", "Release reminder removed.":"Rappel de sortie supprimé.",
     "Coming":"À venir", "Out today":"Disponible aujourd’hui",
     "Home":"Accueil", "For You":"Pour vous", "Movies":"Films", "Series":"Séries", "Favourites":"Favoris", "Favs":"Favoris",
     "Titles, movies, series":"Titres, films, séries", "Account":"Compte", "Search":"Rechercher",
@@ -442,6 +446,107 @@ function episodeAlertKey(item) { return `${item.id}:${item.episode?.season_numbe
 function alertStorageKey() { return `seven.new-episode-alerts.${activeProfileId()}`; }
 async function requestEpisodeAlerts() { if (!("Notification" in window)) return false; return Notification.permission === "granted" || (Notification.permission === "default" && await Notification.requestPermission() === "granted"); }
 function notifyNewEpisodes() { if (currentPreferences().episodeAlerts !== true || !("Notification" in window) || Notification.permission !== "granted") return; const seen = new Set(JSON.parse(localStorage.getItem(alertStorageKey()) || "[]")), fresh = state.newEpisodes.filter(item => !seen.has(episodeAlertKey(item))); if (!fresh.length) return; fresh.slice(0, 3).forEach(item => new Notification("New episode on SEVEN", { body:`${titleOf(item)} · S${item.episode.season_number} E${item.episode.episode_number}`, icon:posterOf(item) })); fresh.forEach(item => seen.add(episodeAlertKey(item))); localStorage.setItem(alertStorageKey(), JSON.stringify([...seen].slice(-100))); }
+function releaseReminderKey(type, id) { return `${type}:${Number(id)}`; }
+function releaseDeviceToken(create = false) {
+  let token = localStorage.getItem(RELEASE_DEVICE_TOKEN_KEY);
+  if (!token && create) {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    localStorage.setItem(RELEASE_DEVICE_TOKEN_KEY, token);
+  }
+  return token;
+}
+function releaseBase64UrlBytes(value) {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - value.length % 4) % 4);
+  return Uint8Array.from(atob(padded), character => character.charCodeAt(0));
+}
+async function releaseAlertsRequest(path, { token = releaseDeviceToken(), ...options } = {}) {
+  const headers = new Headers(options.headers || {});
+  headers.set("Accept", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (options.body && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
+  const response = await fetch(`${RELEASE_ALERTS_API}${path}`, { ...options, headers, cache:"no-store" });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || "Release alerts are unavailable. Please try again.");
+  return body;
+}
+async function loadReleaseVapidKey() {
+  if (state.releaseVapidKey) return state.releaseVapidKey;
+  if (!state.releaseVapidKeyPromise) state.releaseVapidKeyPromise = releaseAlertsRequest("/api/vapid-public-key", { token:null })
+    .then(payload => state.releaseVapidKey = payload.publicKey || null)
+    .catch(() => null)
+    .finally(() => { state.releaseVapidKeyPromise = null; });
+  return state.releaseVapidKeyPromise;
+}
+function setReleaseReminderButton(button, enabled) {
+  button.classList.toggle("is-set", enabled);
+  button.setAttribute("aria-pressed", String(enabled));
+  button.setAttribute("aria-label", `${t(enabled ? "Reminder set" : "Remind me")} · ${button.dataset.releaseTitle}`);
+  button.querySelector("span")?.replaceChildren(document.createTextNode(t(enabled ? "Reminder set" : "Remind me")));
+}
+function syncReleaseReminderButtons() {
+  document.querySelectorAll("[data-release-reminder]").forEach(button => {
+    const [type, id] = button.dataset.releaseReminder.split(":");
+    setReleaseReminderButton(button, state.releaseReminders.has(releaseReminderKey(type, id)));
+  });
+}
+async function loadDeviceReleaseReminders() {
+  const token = releaseDeviceToken();
+  if (!token || state.releaseRemindersLoaded) return;
+  try {
+    const payload = await releaseAlertsRequest("/api/reminders", { token });
+    state.releaseReminders = new Set((payload.reminders || []).map(item => releaseReminderKey(item.type, item.id)));
+    state.releaseRemindersLoaded = true;
+    syncReleaseReminderButtons();
+  } catch { /* A device without a subscription has nothing to restore. */ }
+}
+async function createReleasePushSubscription() {
+  const supported = window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  if (!supported) throw new Error(t("Release alerts are not supported in this browser. Try an installed PWA or a supported browser."));
+  if (Notification.permission === "denied") throw new Error(t("Notification permission is blocked. Change it in your browser settings."));
+  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  if (permission !== "granted") throw new Error(t("Allow notifications to get release alerts."));
+  if (!state.releaseVapidKey && !await loadReleaseVapidKey()) throw new Error(t("Release alerts are not connected yet. Try again in a moment."));
+  const registration = await navigator.serviceWorker.ready;
+  if (!registration.pushManager) throw new Error(t("Release alerts are not supported in this browser. Try an installed PWA or a supported browser."));
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:releaseBase64UrlBytes(state.releaseVapidKey) });
+  const token = releaseDeviceToken(true);
+  await releaseAlertsRequest("/api/subscriptions", { token, method:"POST", body:JSON.stringify({ subscription:subscription.toJSON() }) });
+  return token;
+}
+async function toggleReleaseReminder(button) {
+  if (button.disabled) return;
+  button.disabled = true;
+  const [type, rawId] = button.dataset.releaseReminder.split(":"), id = Number(rawId), key = releaseReminderKey(type, id), exists = state.releaseReminders.has(key);
+  try {
+    if (exists) {
+      const token = releaseDeviceToken();
+      await releaseAlertsRequest(`/api/reminders?type=${encodeURIComponent(type)}&id=${id}`, { token, method:"DELETE" });
+      state.releaseReminders.delete(key);
+      watchlistToast(t("Release reminder removed."));
+    } else {
+      const token = await createReleasePushSubscription();
+      await releaseAlertsRequest("/api/reminders", { token, method:"POST", body:JSON.stringify({
+        type, id, title:button.dataset.releaseTitle,
+        releaseDate:button.dataset.releaseDate,
+        posterPath:button.dataset.releasePoster || null
+      }) });
+      state.releaseReminders.add(key);
+      state.releaseRemindersLoaded = true;
+      watchlistToast(t("We’ll notify this device when the listed release date arrives."));
+    }
+    setReleaseReminderButton(button, state.releaseReminders.has(key));
+  } catch (error) {
+    watchlistToast(error.message || t("Release alerts are not connected yet. Try again in a moment."));
+  } finally {
+    button.disabled = false;
+  }
+}
+function upcomingCard(item) {
+  const type = contentType(item), id = Number(item.id), date = releaseDateOf(item), key = releaseReminderKey(type, id), saved = state.releaseReminders.has(key), formatted = new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month:"short", day:"numeric" });
+  return `<article class="card upcoming-card"><button class="upcoming-open" data-open="${type}:${id}" aria-label="More about ${escapeHTML(titleOf(item))}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${type === "tv" ? "SERIES" : "MOVIE"}</i><em class="upcoming-date">${escapeHTML(formatted)}</em><strong class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></strong></span><span class="upcoming-copy"><b>${escapeHTML(titleOf(item))}</b><small>${escapeHTML(t("Releases"))} ${escapeHTML(formatted)} · ${escapeHTML(yearOf(item) || "TBA")}</small></span></button><button class="upcoming-reminder ${saved ? "is-set" : ""}" type="button" data-release-reminder="${type}:${id}" data-release-date="${escapeHTML(date)}" data-release-title="${escapeHTML(titleOf(item))}" data-release-poster="${escapeHTML(item.poster_path || "")}" aria-pressed="${saved}" aria-label="${escapeHTML(`${t(saved ? "Reminder set" : "Remind me")} · ${titleOf(item)}`)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span>${t(saved ? "Reminder set" : "Remind me")}</span></button></article>`;
+}
 async function loadNewEpisodes(airing = state.catalog["New series"] || []) { const savedIds = new Set(listItems().filter(item => item.type === "tv").map(item => Number(item.id))), candidates = airing.filter(item => savedIds.has(Number(item.id))).slice(0, 8); if (!candidates.length) { state.newEpisodes = []; return; } try { const shows = await Promise.all(candidates.map(item => api(`tv/${item.id}`))), today = new Date(); state.newEpisodes = shows.map(show => normalize(show, "tv")).map(show => ({ ...show, episode:show.last_episode_to_air })).filter(show => show.episode?.air_date && new Date(show.episode.air_date) <= today && !isWatched({ type:"tv", id:show.id, season:show.episode.season_number, episode:show.episode.episode_number })); notifyNewEpisodes(); } catch { state.newEpisodes = []; } }
 async function toggleMyList(item) { const inList = isInMyList(item), key = listKey({ profileId:activeProfileId(), type:item.type, id:item.id }); if (inList) { state.myList = state.myList.filter(entry => listKey(entry) !== key); persistMyList(); if (state.session) try { await localAPI(`/api/account/list?profile=${encodeURIComponent(activeProfileId())}&type=${encodeURIComponent(item.type)}&id=${encodeURIComponent(item.id)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} } else { const entry = listRecord({ profileId:activeProfileId(), type:item.type, id:item.id, title:titleOf(item), poster_path:item.poster_path, backdrop_path:item.backdrop_path, release_date:item.release_date || item.first_air_date, vote_average:item.vote_average, addedAt:new Date().toISOString() }); state.myList = [entry, ...state.myList]; persistMyList(); if (state.session) try { await localAPI("/api/account/list", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ profile_id:entry.profileId, content_type:entry.type, tmdb_id:entry.id, title:entry.title, poster_path:entry.poster_path, backdrop_path:entry.backdrop_path, release_date:entry.release_date, vote_average:entry.vote_average }) }); } catch {} } if (item.type === "tv") void loadNewEpisodes(); render(); }
 
@@ -458,11 +563,12 @@ async function refreshCatalogForLanguage() {
 async function refreshCatalogNow() {
   if (useFamilyCatalog()) {
     const year = new Date().getFullYear(), certification = currentProfile()?.kids ? "PG" : "PG-13", movieParams = { certification_country:"US", "certification.lte":certification, with_genres:"16|10751", sort_by:"popularity.desc" }, showParams = { with_genres:"16|10751", sort_by:"popularity.desc" };
-    const [movies, shows, recent, airing, upcoming, greatMovies, greatShows, adventureMovies, actionShows, trendingData] = await Promise.all([
+    const [movies, shows, recent, airing, upcomingMovies, upcomingShows, greatMovies, greatShows, adventureMovies, actionShows, trendingData] = await Promise.all([
       api("discover/movie", movieParams), api("discover/tv", showParams),
       api("discover/movie", { ...movieParams, "primary_release_date.gte":`${year - 1}-01-01`, sort_by:"primary_release_date.desc" }),
       api("discover/tv", { ...showParams, "first_air_date.gte":`${year - 1}-01-01`, sort_by:"first_air_date.desc" }),
-      api("discover/movie", { ...movieParams, "primary_release_date.gte":profileGateDateKey(), sort_by:"popularity.desc" }),
+      api("discover/movie", { ...movieParams, "primary_release_date.gte":profileGateDateKey(), sort_by:"primary_release_date.asc" }),
+      api("discover/tv", { ...showParams, "first_air_date.gte":profileGateDateKey(), sort_by:"first_air_date.asc" }),
       api("discover/movie", { ...movieParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
       api("discover/tv", { ...showParams, sort_by:"vote_average.desc", "vote_count.gte":80 }),
       api("discover/movie", { certification_country:"US", "certification.lte":certification, with_genres:"12", sort_by:"popularity.desc" }),
@@ -473,13 +579,13 @@ async function refreshCatalogNow() {
     state.featuredPool = shuffle([...recentList, ...airingList, ...movieList]).filter(item => item.backdrop_path).slice(0, 12);
     state.featured = state.featuredPool[0] || trending[0] || { id:FEATURED_ID, type:"tv", name:"SEVEN Kids", overview:"Family-friendly movies and series selected for this profile.", backdrop_path:null };
     state.featuredIndex = 0;
-    state.catalog = { "Trending now":trending, "New movies":recentList, "New series":airingList, "Popular movies":movieList, "Popular series":showList, "Coming soon":results(upcoming), "All-time greats":shuffle([...results(greatMovies), ...results(greatShows)]), "Action & adventure":shuffle([...results(adventureMovies), ...results(actionShows)]) };
+    state.catalog = { "Trending now":trending, "New movies":recentList, "New series":airingList, "Popular movies":movieList, "Popular series":showList, "Coming soon":upcomingTitles(upcomingMovies, upcomingShows), "All-time greats":shuffle([...results(greatMovies), ...results(greatShows)]), "Action & adventure":shuffle([...results(adventureMovies), ...results(actionShows)]) };
     await loadNewEpisodes(state.catalog["New series"]);
     return;
   }
-  const [featured, trending, movies, shows, recent, airing, upcoming, topMovies, topShows, actionMovies, actionShows] = await Promise.all([
+  const [featured, trending, movies, shows, recent, airing, upcomingMovies, upcomingShows, topMovies, topShows, actionMovies, actionShows] = await Promise.all([
     api(`tv/${FEATURED_ID}`), api("trending/all/week"), api("movie/popular"), api("tv/popular"), api("movie/now_playing"), api("tv/on_the_air"),
-    api("discover/movie", { "primary_release_date.gte":profileGateDateKey(), sort_by:"popularity.desc" }), api("movie/top_rated"), api("tv/top_rated"),
+    api("discover/movie", { "primary_release_date.gte":profileGateDateKey(), sort_by:"primary_release_date.asc" }), api("discover/tv", { "first_air_date.gte":profileGateDateKey(), sort_by:"first_air_date.asc" }), api("movie/top_rated"), api("tv/top_rated"),
     api("discover/movie", { with_genres:"28", sort_by:"popularity.desc" }), api("discover/tv", { with_genres:"10759", sort_by:"popularity.desc" })
   ]);
   const month = new Date().getMonth(), year = new Date().getFullYear();
@@ -492,7 +598,7 @@ async function refreshCatalogNow() {
   state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
   state.featured = state.featuredPool[0] || normalize(featured, "tv");
   state.featuredIndex = 0;
-  state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": results(upcoming), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]), ...(seasonalName && seasonalData ? { [seasonalName]: results(seasonalData) } : {}) };
+  state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": upcomingTitles(upcomingMovies, upcomingShows), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]), ...(seasonalName && seasonalData ? { [seasonalName]: results(seasonalData) } : {}) };
   await loadNewEpisodes(state.catalog["New series"]);
 }
 function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
@@ -553,6 +659,17 @@ function contentGenreIds(item) { return item.genre_ids || (item.genres || []).ma
 function contentAllowed(item, { directSearch = false } = {}) { const profile = currentProfile(), preferences = currentPreferences(), maturity = profileMaturity(), type = contentType(item), genres = contentGenreIds(item), has = id => genres.includes(id), restricted = restrictedTitles(profile).some(entry => entry.type === type && Number(entry.id) === Number(item.id)), familySafe = profile?.kids || preferences.familySafe; if (restricted || (!directSearch && isHiddenTitle(item))) return false; if (preferences.moviesEnabled === false && type === "movie") return false; if (preferences.seriesEnabled === false && type === "tv") return false; if (item.adult && maturity !== "18+") return false; if (!directSearch && familySafe && [27, 53, 80, 9648, 10752].some(has)) return false; if (!directSearch && preferences.blockScary && [27, 53, 9648].some(has)) return false; if (maturity === "Kids") return ![27, 53, 80, 9648, 10752].some(has); if (maturity === "13+") return ![27, 53].some(has); return true; }
 function results(payload, options) { return (payload.results || []).filter(item => item.media_type !== "person" && contentAllowed(item, options)).map(item => normalize(item)); }
 function normalize(item, fallbackType) { return { ...item, type: item.type || (item.media_type === "movie" || item.title ? "movie" : fallbackType || "tv") }; }
+function releaseDateOf(item) { return String(item.release_date || item.first_air_date || item.releaseDate || "").slice(0, 10); }
+function upcomingTitles(movieResults, seriesResults) {
+  const today = profileGateDateKey(), items = [
+    ...results(movieResults).map(item => normalize(item, "movie")),
+    ...results(seriesResults).map(item => normalize(item, "tv"))
+  ];
+  const unique = new Map();
+  items.filter(item => /^\d{4}-\d{2}-\d{2}$/.test(releaseDateOf(item)) && releaseDateOf(item) >= today)
+    .forEach(item => unique.set(`${contentType(item)}:${item.id}`, { ...item, type:contentType(item) }));
+  return [...unique.values()].sort((a, b) => releaseDateOf(a).localeCompare(releaseDateOf(b)) || (Number(b.popularity) || 0) - (Number(a.popularity) || 0)).slice(0, 20);
+}
 function header() {
   const profile = currentProfile() || defaultAccount().profiles[0];
   const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : state.route === "series" ? "shows" : state.route === "movie" ? "movies" : "";
@@ -822,7 +939,7 @@ function profileGateShowcaseMarkup() {
 }
 function profileGatePosterCandidates() {
   const today = profileGateDateKey(), upcoming = state.catalog["Coming soon"] || [];
-  const eligible = upcoming.filter(item => item.poster_path && String(item.release_date || "") >= today);
+  const eligible = upcoming.filter(item => item.poster_path && String(item.release_date || item.first_air_date || "") >= today);
   const fallback = eligible.length ? eligible : [...state.featuredPool, state.featured].filter(Boolean);
   const seen = new Set();
   return fallback.filter(item => {
@@ -931,8 +1048,11 @@ function renderHome() {
   const f = state.featured, loadingCatalog = Boolean(state.catalogRequest) && !Object.keys(state.catalog || {}).length;
   const continuing = continueWatching();
   const newEpisodes = state.newEpisodes || [];
-  app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${Object.entries(state.catalog).map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><small>${t("Not sure what to watch?").toUpperCase()}</small><b>${t("Play something")}</b><span>${t("We’ll pick a trailer for you")}</span></span><em>Start shuffling <b>›</b></em></button></section></main>${footer()}`;
+  const upcoming = state.catalog["Coming soon"] || [];
+  const otherCatalog = Object.entries(state.catalog).filter(([name]) => name !== "Coming soon");
+  app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${upcoming.length ? rail("Coming soon", upcoming) : ""}${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${otherCatalog.map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><small>${t("Not sure what to watch?").toUpperCase()}</small><b>${t("Play something")}</b><span>${t("We’ll pick a trailer for you")}</span></span><em>Start shuffling <b>›</b></em></button></section></main>${footer()}`;
   bindCommon(); bindHeroControls(); scheduleHero(); syncHeaderScroll();
+  if (upcoming.length) { void loadReleaseVapidKey(); void loadDeviceReleaseReminders(); }
   document.querySelectorAll("[data-trailers]").forEach(button => button.onclick = openTrailers);
   if (continuing.length) void repairContinuePosters(continuing);
   document.querySelectorAll("[data-remove-continue]").forEach(button => button.onclick = async () => {
@@ -974,7 +1094,7 @@ function setFeaturedIndex(index) { const count = state.featuredPool.length; if (
 function rotateHero(direction = 1) { if (state.featuredPool.length < 2) return; setFeaturedIndex(state.featuredIndex + direction); }
 function scheduleHero() { if (state.featuredPool.length > 1 && currentPreferences().autoplayPreviews !== false) state.heroTimer = setInterval(() => { if (state.route === "home") rotateHero(); }, 8500); }
 function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(t(name === "My List" ? "Favourites" : name))}</h2>`; }
-function rail(name, items) { const visible = name === "My List" ? items : items.filter(contentAllowed); if (!visible.length) return ""; const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name, ranked = name === "Trending now", railItems = ranked ? visible.slice(0, 4) : visible; state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route }; return `<section class="rail ${ranked ? "ranked-rail" : ""}"><div class="rail-title"><div>${railTitle(displayName)}<small>${ranked ? "This week on TMDB" : "Curated for your screen"}</small></div><button class="explore-all" data-explore="${escapeHTML(key)}">View all <b>›</b></button></div><div class="cards">${railItems.map((item, index) => card(item, ranked ? index + 1 : 0)).join("")}</div></section>`; }
+function rail(name, items) { const visible = name === "My List" ? items : items.filter(contentAllowed); if (!visible.length) return ""; const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name, ranked = name === "Trending now", upcoming = name === "Coming soon", railItems = ranked ? visible.slice(0, 4) : visible; state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route }; return `<section class="rail ${ranked ? "ranked-rail" : ""} ${upcoming ? "upcoming-rail" : ""}"><div class="rail-title"><div>${railTitle(displayName)}<small>${ranked ? "This week on TMDB" : upcoming ? t("Release dates from TMDB") : "Curated for your screen"}</small></div><button class="explore-all" data-explore="${escapeHTML(key)}">View all <b>›</b></button></div><div class="cards">${railItems.map((item, index) => upcoming ? upcomingCard(item) : card(item, ranked ? index + 1 : 0)).join("")}</div></section>`; }
 function newEpisodeRail(items) { return `<section class="rail new-episode-rail"><div class="rail-title">${railTitle("New episodes")}<span>From My List</span></div><div class="cards">${items.map(item => `<button class="card" data-open="tv:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>NEW EPISODE</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>S${item.episode.season_number} · E${item.episode.episode_number} · ${escapeHTML(item.episode.name || "New episode")}</small></button>`).join("")}</div></section>`; }
 function card(item, rank = 0) { return `<article class="card ${rank ? "ranked-card" : ""}"><button class="card-open" data-open="${item.type}:${item.id}" aria-label="More about ${escapeHTML(titleOf(item))}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><span class="card-shade"></span><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em class="card-score">★ ${item.vote_average.toFixed(1)}</em>` : ""}<strong class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></strong></span><span class="card-copy ${rank ? "ranked-copy" : ""}">${rank ? `<em class="card-rank" aria-label="Rank ${rank}">${String(rank).padStart(2, "0")}</em>` : ""}<b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>${watchlistAction(item, "card")}</article>`; }
 function mobileSearchCard(item) { return `<button class="msearch-card" data-open="${item.type}:${item.id}"><span class="msearch-poster"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em>★ ${item.vote_average.toFixed(1)}</em>` : ""}</span><span class="msearch-copy"><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`; }
@@ -2382,6 +2502,7 @@ function bindCommon() {
   document.querySelectorAll("[data-shows]").forEach(button => button.onclick = () => { state.mobileBrowseType = "tv"; openCatalog("tv"); });
   document.querySelectorAll("[data-mobile-browse]").forEach(button => button.onclick = () => openCatalog(state.mobileBrowseType || "movie"));
   document.querySelectorAll("[data-toggle-watchlist]").forEach(button => button.onclick = event => { event.stopPropagation(); const item = state.watchlistTargets.get(button.dataset.toggleWatchlist); if (item) void toggleWatchlist(item); });
+  document.querySelectorAll("[data-release-reminder]").forEach(button => button.onclick = event => { event.stopPropagation(); void toggleReleaseReminder(button); });
   document.querySelectorAll("[data-auth]").forEach(button => button.onclick = () => showAuth());
   document.querySelectorAll("[data-msearch]").forEach(button => button.onclick = openMobileSearch);
   document.querySelectorAll("[data-account]").forEach(button => button.onclick = showAccount);
@@ -2461,7 +2582,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=351", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=352", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

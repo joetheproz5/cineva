@@ -22,6 +22,7 @@ Web/cinepro.local.json
 
 # Wrangler local state
 .wrangler/
+Notifications/node_modules/
 .dev.vars*
 
 # macOS
