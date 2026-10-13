@@ -1256,10 +1256,11 @@ let playerEpisodeContextRequest = 0;
 function stopPlayerProgressPolling() { clearInterval(cineSrcPoll.timer); cineSrcPoll.timer = null; cineSrcPoll.currentTime = null; cineSrcPoll.duration = null; }
 function sendPlayerCommand(provider, command, value = null) {
   const frame = document.querySelector("iframe.player"), target = window.SEVENPlayerSecurity?.playerCommandFrame(provider);
-  if (!frame?.contentWindow || !target) return;
+  if (!frame?.contentWindow || !target) return false;
   const hasValue = value != null && Number.isFinite(Number(value));
   if (provider === "cinesrc") frame.contentWindow.postMessage({ type:"cinesrc:command", command, args:command === "seek" && hasValue ? [Number(value)] : [] }, target);
   else if (provider === "vidfast") frame.contentWindow.postMessage({ command, ...(hasValue ? { time:Number(value) } : {}) }, target);
+  return true;
 }
 function startPlayerProgressPolling() {
   stopPlayerProgressPolling();
@@ -1590,11 +1591,11 @@ function showScreenTimeBlock(profile, st) {
 function bindExtendButtons(overlay, profile) {
   overlay.querySelectorAll("[data-extend-time]").forEach(button => button.onclick = () => extendScreenTime(profile, Number(button.dataset.extendTime)));
 }
-const party = { code:null, role:null, socket:null, topic:null, ref:1, members:{}, hostClientId:null, hostKey:"", hostPosition:0, hostEvent:"", hostPlaying:true, hostProvider:null, guestTime:0, guestPlaying:true, lastHostTime:0, provider:null, following:false, followingKey:"", didInitialSync:false, outOfSync:false, localCommand:null, chat:[], heartbeat:null, error:"" };
+const party = { code:null, role:null, socket:null, topic:null, ref:1, members:{}, hostClientId:null, hostKey:"", hostPosition:0, hostEvent:"", hostPlaying:true, hostProvider:null, guestTime:0, guestPlaying:true, lastHostTime:0, provider:null, following:false, followingKey:"", didInitialSync:false, outOfSync:false, localCommand:null, pendingControl:null, chat:[], heartbeat:null, error:"", pollError:"", sendError:"" };
 function partyCode() { const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let code = ""; for (let index = 0; index < 6; index++) code += alphabet[Math.floor(Math.random() * alphabet.length)]; return code; }
 async function partyConnect(code, role) {
   await localAPI(`/api/party?code=${encodeURIComponent(code)}&limit=1`);
-  party.code = code; party.role = role; party.error = ""; party.cursor = new Date(Date.now() - 4000).toISOString(); party.clientId ||= Math.random().toString(36).slice(2, 10);
+  party.code = code; party.role = role; party.error = ""; party.pollError = ""; party.sendError = ""; party.cursor = new Date(Date.now() - 4000).toISOString(); party.clientId ||= Math.random().toString(36).slice(2, 10);
   if (!party.pollTimer) party.pollTimer = setInterval(partyPoll, 2000);
   if (!party.hostTimer) party.hostTimer = setInterval(() => {
     if (party.role === "host") partyBroadcastState();
@@ -1608,23 +1609,34 @@ async function partyPoll() {
   party.pollingBusy = true;
   try {
     const rows = await localAPI(`/api/party?code=${encodeURIComponent(party.code)}&since=${encodeURIComponent(party.cursor)}`);
+    if (party.pollError) { party.pollError = ""; renderPartyPanel(); }
     for (const row of Array.isArray(rows) ? rows : []) {
       const data = row.payload;
       if (row.created_at > party.cursor) party.cursor = row.created_at;
       if (!data || data.sender === party.clientId) continue;
       partyReceive(data);
     }
-  } catch { /* Transient polling errors are retried on the next tick. */ }
-  party.pollingBusy = false;
+  } catch {
+    if (!party.pollError) { party.pollError = "Party connection interrupted. Reconnecting…"; renderPartyPanel(); }
+  } finally { party.pollingBusy = false; }
 }
-function partySend(data) {
-  if (!party.code) return;
+async function partySend(data) {
+  if (!party.code) return false;
   data = { ...data, sender: party.clientId };
-  void localAPI("/api/party", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ code:party.code, payload:data }) }).catch(() => {});
+  try {
+    await localAPI("/api/party", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ code:party.code, payload:data }) });
+    if (party.sendError) { party.sendError = ""; renderPartyPanel(); }
+    return true;
+  } catch {
+    party.sendError = "Could not send a party update. Check the connection and try again.";
+    renderPartyPanel();
+    return false;
+  }
 }
 function partyTouchMember(name, color) { if (name) party.members[name] = { color:color || "#e50914", at:Date.now() }; }
 function partyPlayerKey(player = state.player) { return player ? `${player.type}:${player.id}:${player.season || 0}:${player.episode || 0}` : ""; }
 function partyCanControl(provider = selectedPlayerProvider()) { return provider === "cinesrc" || provider === "vidfast"; }
+function partyNeedsHostFollow(hostKey, currentKey, following, followingKey) { return Boolean(hostKey && hostKey !== currentKey && (!following || followingKey !== hostKey)); }
 function partyHostTitleChanged() {
   if (party.role !== "host" || !party.code) return;
   party.lastHostTime = 0;
@@ -1654,7 +1666,13 @@ function partySendHostControl(action, position = party.lastHostTime, playing = a
 function partyApplyRemoteControl(action, position, playing = null) {
   const provider = selectedPlayerProvider();
   if (!partyCanControl(provider)) return false;
+  const frame = document.querySelector("iframe.player");
   const time = Math.max(0, Math.floor(Number(position) || 0));
+  if (!frame || frame.dataset.partyPlayerReady !== "true") {
+    party.pendingControl = { action, position:time, playing };
+    return true;
+  }
+  party.pendingControl = null;
   if (["seek", "sync", "play", "pause"].includes(action)) sendPlayerCommand(provider, "seek", time);
   if (action === "play" || action === "pause" || action === "sync") {
     const shouldPlay = action === "play" ? true : action === "pause" ? false : playing !== false;
@@ -1709,7 +1727,11 @@ function partyReceive(data) {
     const currentKey = partyPlayerKey();
     if (data.key && data.key !== currentKey) {
       party.outOfSync = false;
-      if (party.following && party.followingKey !== data.key) { party.followingKey = data.key; party.syncPosition = party.hostPosition; void partyFollowHost(); }
+      if (partyNeedsHostFollow(data.key, currentKey, party.following, party.followingKey)) {
+        party.followingKey = data.key;
+        party.syncPosition = party.hostPosition;
+        void partyFollowHost();
+      }
       renderPartyPanel();
       return;
     }
@@ -1724,7 +1746,7 @@ function partyReceive(data) {
     const drift = Math.abs(party.guestTime - party.hostPosition);
     if (!party.didInitialSync) {
       party.didInitialSync = true;
-      if (party.following && (drift > 2 || party.guestPlaying !== party.hostPlaying)) partyApplyRemoteControl("sync", party.hostPosition, party.hostPlaying);
+      if (party.following) partyApplyRemoteControl("sync", party.hostPosition, party.hostPlaying);
     } else if (party.following && previousPlaying !== party.hostPlaying && party.guestPlaying !== party.hostPlaying) {
       partyApplyRemoteControl(party.hostPlaying ? "play" : "pause", party.hostPosition, party.hostPlaying);
     } else if (party.following && drift > 12) {
@@ -1779,7 +1801,7 @@ function partyLeave() {
   clearInterval(party.pollTimer);
   clearInterval(party.hostTimer);
   party.pollTimer = null; party.hostTimer = null;
-  party.code = null; party.role = null; party.socket = null; party.members = {}; party.chat = []; party.hostClientId = null; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.followingKey = ""; party.hostKey = ""; party.hostPosition = 0; party.hostPlaying = true; party.hostProvider = null; party.provider = null; party.guestTime = 0; party.guestPlaying = true; party.lastHostTime = 0; party.localCommand = null; party.cursor = null;
+  party.code = null; party.role = null; party.socket = null; party.members = {}; party.chat = []; party.hostClientId = null; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.followingKey = ""; party.hostKey = ""; party.hostPosition = 0; party.hostPlaying = true; party.hostProvider = null; party.provider = null; party.guestTime = 0; party.guestPlaying = true; party.lastHostTime = 0; party.localCommand = null; party.pendingControl = null; party.cursor = null; party.error = ""; party.pollError = ""; party.sendError = "";
   const url = new URL(location.href);
   url.searchParams.delete("watch");
   history.replaceState(history.state, "", url);
@@ -1827,14 +1849,23 @@ function renderPartyPanel() {
   const members = Object.entries(party.members);
   const currentKey = partyPlayerKey();
   const differentTitle = party.role === "guest" && party.hostKey && party.hostKey !== currentKey;
+  const followingDifferentTitle = differentTitle && party.following && party.followingKey === party.hostKey;
   const inviteURL = partyInviteURL(party.code).href;
-  const leaderControls = party.role === "host" ? partyCanControl() ? `<div class="party-leader-controls"><span>Leader controls</span><div><button type="button" data-party-playback="${party.hostPlaying ? "pause" : "play"}">${party.hostPlaying ? "Pause for everyone" : "Resume for everyone"}</button><button type="button" data-party-sync-all>Sync everyone</button></div></div>` : `<p class="party-control-note">Shared pause, resume, and seek controls work with CineSrc and VidFast.</p>` : "";
+  const leaderControls = party.role === "host" ? partyCanControl() ? `<div class="party-leader-controls"><span>Leader controls</span><div><button type="button" data-party-playback="${party.hostPlaying ? "pause" : "play"}">${party.hostPlaying ? "Pause for everyone" : "Resume for everyone"}</button><button type="button" data-party-sync-all>Sync everyone</button></div></div>` : `<p class="party-control-note">Switch to CineSrc or VidFast to control playback for everyone.</p>` : "";
   const status = party.role === "host" ? "Share the invite link — friends join in one tap." : party.hostPlaying ? "You're watching in sync with the host." : "The host paused playback.";
-  const stateContent = differentTitle
-    ? `<button class="party-sync primary" data-party-follow>Play along with the host</button>`
+  const partyError = party.sendError || party.pollError || party.error;
+  const unsupportedHostProvider = party.role === "guest" && party.hostProvider && !partyCanControl(party.hostProvider);
+  const stateContent = partyError
+    ? `<p class="party-status" role="status">${escapeHTML(partyError)}</p>`
+    : followingDifferentTitle
+      ? `<p class="party-status" role="status">Joining the host's playback…</p>`
+      : unsupportedHostProvider
+        ? `<p class="party-control-note" role="status">Ask the host to switch to CineSrc or VidFast for synced playback controls.</p>`
+      : differentTitle
+        ? `<button class="party-sync primary" data-party-follow>Play along with the host</button>`
     : party.role === "guest" && party.outOfSync
       ? `<button class="party-sync primary" data-party-sync>Sync with host</button>`
-      : `<p class="party-status">${escapeHTML(status)}</p>`;
+      : `<p class="party-status" role="status">${escapeHTML(status)}</p>`;
   if (!panel.querySelector("[data-party-chat]")) {
     panel.innerHTML = `
       <div class="party-head"><span class="brand" data-party-heading></span><button class="party-leave" data-party-leave>Leave</button></div>
@@ -1894,7 +1925,6 @@ function renderPlayer() {
   const media = `<iframe class="player" src="${playerURL(p, startAt)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>`;
   const partyControl = party.code ? "" : `<button class="party-quick" data-party-modal aria-label="Watch together" title="Watch together"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8.1" r="2.25"/><path d="M3.9 17.9c.45-3.03 1.92-4.62 4.1-4.62s3.65 1.59 4.1 4.62"/><circle cx="15.9" cy="9.3" r="1.7"/><path d="M14.2 14.3c.6-.58 1.18-.87 1.78-.87 1.6 0 2.72 1.22 3.08 3.46"/><path class="party-play" d="m16.8 5.2 3.35 1.95-3.35 1.95z"/></svg></button>`;
   app.innerHTML = `${header()}<button class="back" data-back>‹ Back</button><section class="player-stage"><div class="player-stage-bar"><span class="player-stage-context" data-player-episode-label>${label}</span><div class="player-stage-actions">${providerMenuHTML()}</div></div><div class="player-frame">${media}</div></section><section class="now"><div class="now-heading"><div><span class="brand">NOW PLAYING</span><h2 data-now-playing-title>${escapeHTML(p.title)}</h2></div>${partyControl}</div><div class="progress player-saved-progress"><i id="bar" style="width:${saved.progress || 0}%"></i></div><p id="time" class="player-saved-time">${playbackNote}</p></section>${party.code || state.pendingWatch ? `<section class="party-panel"></section>` : ""}${playerEpisodePanel(p)}${footer()}`;
-  party.syncPosition = 0;
   bindCommon(); bindPlayerEpisodes(p); bindPlayerControlLift(); ensurePlayerContext(p); startPlayerProgressPolling();
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
   document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
@@ -1902,9 +1932,12 @@ function renderPlayer() {
   document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); if (party.code && party.role === "host") { party.hostProvider = option.dataset.providerSelect; party.syncPosition = party.lastHostTime; partyBroadcastState(); } render(); });
   document.querySelector("iframe.player")?.addEventListener("load", event => {
     const frame = event.currentTarget;
+    frame.dataset.partyPlayerReady = "true";
     if (party.role !== "guest" || !party.following) return;
     setTimeout(() => {
-      if (document.querySelector("iframe.player") === frame) partyApplyRemoteControl("sync", party.hostPosition, party.hostPlaying);
+      if (document.querySelector("iframe.player") !== frame) return;
+      const pending = party.pendingControl;
+      partyApplyRemoteControl(pending?.action || "sync", pending?.position ?? party.hostPosition, pending?.playing ?? party.hostPlaying);
     }, 700);
   });
   renderPartyPanel();
@@ -2740,7 +2773,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=354", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=355", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
