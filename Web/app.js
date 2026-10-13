@@ -1830,32 +1830,46 @@ function renderPartyPanel() {
   const inviteURL = partyInviteURL(party.code).href;
   const leaderControls = party.role === "host" ? partyCanControl() ? `<div class="party-leader-controls"><span>Leader controls</span><div><button type="button" data-party-playback="${party.hostPlaying ? "pause" : "play"}">${party.hostPlaying ? "Pause for everyone" : "Resume for everyone"}</button><button type="button" data-party-sync-all>Sync everyone</button></div></div>` : `<p class="party-control-note">Shared pause, resume, and seek controls work with CineSrc and VidFast.</p>` : "";
   const status = party.role === "host" ? "Share the invite link — friends join in one tap." : party.hostPlaying ? "You're watching in sync with the host." : "The host paused playback.";
-  panel.innerHTML = `
-    <div class="party-head"><span class="brand">WATCH PARTY${party.role === "host" ? " · YOU'RE HOSTING" : ""}</span><button class="party-leave" data-party-leave>Leave</button></div>
-    <div class="party-code-row"><code class="party-code">${party.code}</code><button class="party-copy" data-party-copy>Copy invite link</button></div>
-    <div class="party-members"><b>${members.length + 1} ${members.length ? "people" : "person"} here</b><span>${escapeHTML(["You", ...members.map(([name]) => name)].slice(0, 6).join(", "))}</span></div>
-    ${differentTitle ? `<button class="party-sync primary" data-party-follow>Play along with the host</button>` : party.role === "guest" && party.outOfSync ? `<button class="party-sync primary" data-party-sync>Sync with host</button>` : `<p class="party-status">${status}</p>`}
-    ${leaderControls}
-    <div class="party-chat-log" data-party-log>${party.chat.length ? party.chat.map(message => `<p><b style="color:${escapeHTML(message.color)}">${escapeHTML(message.name)}</b> ${escapeHTML(message.text)}</p>`).join("") : `<p class="party-chat-empty">Say hi to your party.</p>`}</div>
-    <form class="party-chat-form" data-party-chat><input type="text" maxlength="240" placeholder="Say something…" autocomplete="off"><button type="submit">Send</button></form>`;
-  panel.querySelector("[data-party-leave]").onclick = () => { partyLeave(); render(); };
+  const stateContent = differentTitle
+    ? `<button class="party-sync primary" data-party-follow>Play along with the host</button>`
+    : party.role === "guest" && party.outOfSync
+      ? `<button class="party-sync primary" data-party-sync>Sync with host</button>`
+      : `<p class="party-status">${escapeHTML(status)}</p>`;
+  if (!panel.querySelector("[data-party-chat]")) {
+    panel.innerHTML = `
+      <div class="party-head"><span class="brand" data-party-heading></span><button class="party-leave" data-party-leave>Leave</button></div>
+      <div class="party-code-row"><code class="party-code"></code><button class="party-copy" data-party-copy>Copy invite link</button></div>
+      <div class="party-members"><b data-party-member-count></b><span data-party-member-names></span></div>
+      <div data-party-state></div><div data-party-leader-controls></div>
+      <div class="party-chat-log" data-party-log></div>
+      <form class="party-chat-form" data-party-chat><input type="text" maxlength="240" placeholder="Say something…" autocomplete="off"><button type="submit">Send</button></form>`;
+    panel.querySelector("[data-party-leave]").onclick = () => { partyLeave(); render(); };
+    panel.querySelector("[data-party-chat]").onsubmit = event => {
+      event.preventDefault();
+      const input = event.currentTarget.querySelector("input"), text = input.value.trim();
+      if (!text) return;
+      const message = { kind:"chat", name:currentProfile()?.name || "Guest", color:currentProfile()?.color || "#e50914", text };
+      party.chat.push({ name:message.name, color:message.color, text:message.text }); party.chat = party.chat.slice(-50);
+      partySend(message);
+      input.value = "";
+      renderPartyPanel();
+    };
+  }
+  panel.querySelector("[data-party-heading]").textContent = `WATCH PARTY${party.role === "host" ? " · YOU'RE HOSTING" : ""}`;
+  panel.querySelector(".party-code").textContent = party.code;
   panel.querySelector("[data-party-copy]").onclick = async event => { try { await navigator.clipboard.writeText(inviteURL); event.currentTarget.textContent = "Link copied!"; } catch { event.currentTarget.textContent = inviteURL; } };
+  panel.querySelector("[data-party-member-count]").textContent = `${members.length + 1} ${members.length ? "people" : "person"} here`;
+  panel.querySelector("[data-party-member-names]").textContent = ["You", ...members.map(([name]) => name)].slice(0, 6).join(", ");
+  panel.querySelector("[data-party-state]").innerHTML = stateContent;
+  panel.querySelector("[data-party-leader-controls]").innerHTML = leaderControls;
   panel.querySelector("[data-party-follow]")?.addEventListener("click", partyFollowHost);
   panel.querySelector("[data-party-sync]")?.addEventListener("click", partySyncToHost);
   panel.querySelector("[data-party-playback]")?.addEventListener("click", event => partyHostPlayback(event.currentTarget.dataset.partyPlayback));
   panel.querySelector("[data-party-sync-all]")?.addEventListener("click", () => partySendHostControl("sync", party.lastHostTime, party.hostPlaying));
   const log = panel.querySelector("[data-party-log]");
-  log.scrollTop = log.scrollHeight;
-  panel.querySelector("[data-party-chat]").onsubmit = event => {
-    event.preventDefault();
-    const input = event.currentTarget.querySelector("input"), text = input.value.trim();
-    if (!text) return;
-    const message = { kind:"chat", name:currentProfile()?.name || "Guest", color:currentProfile()?.color || "#e50914", text };
-    party.chat.push({ name:message.name, color:message.color, text:message.text }); party.chat = party.chat.slice(-50);
-    partySend(message);
-    input.value = "";
-    renderPartyPanel();
-  };
+  const wasAtBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
+  log.innerHTML = party.chat.length ? party.chat.map(message => `<p><b style="color:${escapeHTML(message.color)}">${escapeHTML(message.name)}</b> ${escapeHTML(message.text)}</p>`).join("") : `<p class="party-chat-empty">Say hi to your party.</p>`;
+  if (wasAtBottom || party.chat.length === 0) log.scrollTop = log.scrollHeight;
 }
 function showPartyModal() {
   document.querySelector(".modal")?.remove();
@@ -2726,7 +2740,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=353", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=354", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
