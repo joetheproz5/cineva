@@ -20,7 +20,7 @@ test("profile picker uses real cinematic poster art without a blown-up app icon"
   assert.match(gate, /class="profile-gate-poster" alt="" decoding="async" fetchpriority="high"/);
   assert.doesNotMatch(gate, /profile-gate-brand-mark|profile-gate-brand-orbit|seven-logo-red-download\.webp/);
   assert.match(app, /function profileGatePosterCandidates\(\)[\s\S]*?state\.catalog\["Coming soon"\]/);
-  assert.match(app, /release_date \|\| ""\) >= today/);
+  assert.match(app, /release_date \|\| item\.first_air_date \|\| ""\) >= today/);
   assert.match(app, /function startProfileGatePosterRotation\(\)/);
   assert.match(app, /TMDB_PROFILE_POSTER/);
   assert.match(app, /images\[nextImage\]\.classList\.add\("is-visible"\)/);
@@ -76,17 +76,18 @@ test("mobile artwork is one uncropped-feeling poster at a time with a clean hand
 
 test("startup only uses upcoming releases for the poster rotation when available", () => {
   const catalogLoad = app.slice(app.indexOf("async function refreshCatalogNow()"), app.indexOf("function playMovieNow"));
-  assert.match(catalogLoad, /api\("discover\/movie", \{ \.\.\.movieParams, "primary_release_date\.gte":profileGateDateKey\(\), sort_by:"popularity\.desc" \}\)/);
-  assert.match(catalogLoad, /api\("discover\/movie", \{ "primary_release_date\.gte":profileGateDateKey\(\), sort_by:"popularity\.desc" \}\)/);
-  assert.match(app, /const eligible = upcoming\.filter\(item => item\.poster_path && String\(item\.release_date \|\| ""\) >= today\)/);
+  assert.match(catalogLoad, /api\("discover\/movie", \{ \.\.\.movieParams, "primary_release_date\.gte":profileGateDateKey\(\), sort_by:"primary_release_date\.asc" \}\)/);
+  assert.match(catalogLoad, /api\("discover\/movie", \{ "primary_release_date\.gte":profileGateDateKey\(\), sort_by:"primary_release_date\.asc" \}\)/);
+  assert.match(app, /const eligible = upcoming\.filter\(item => item\.poster_path && String\(item\.release_date \|\| item\.first_air_date \|\| ""\) >= today\)/);
   assert.doesNotMatch(catalogLoad, /api\("movie\/upcoming"\)/);
 });
 
-test("mobile profile selection checks PIN first, then centers the selected avatar and waits for profile data", () => {
+test("profile selection checks PIN first, then centers the selected avatar and waits for profile data", () => {
   assert.match(app, /function beginProfileGateSelection\(id\)/);
-  assert.match(app, /rect\.top \+ rect\.height \/ 2 - window\.innerHeight \* \.46/);
+  assert.match(app, /centerY = mobile \? \.46 : \.5/);
+  assert.match(app, /rect\.top \+ rect\.height \/ 2 - window\.innerHeight \* centerY/);
   assert.match(gate, /beginProfileGateSelection\(profile\.id\)/);
-  assert.match(app, /mobileHandoff:true/);
+  assert.match(app, /handoff:true/);
   assert.match(app, /profile-gate-handoff-avatar/);
   assert.match(app, /profile-gate-handoff-loading/);
   assert.match(app, /profileSecret\(pin\) !== profile\.pinHash[\s\S]*?beginProfileGateSelection\(profile\.id\)/);
@@ -98,7 +99,7 @@ test("mobile profile selection checks PIN first, then centers the selected avata
   assert.match(styles, /\.profile-gate-selecting \.profile-gate-poster \{ opacity: 0;/);
   assert.match(styles, /@keyframes profile-gate-loading-arrive/);
   assert.match(styles, /@keyframes profile-gate-exit-scene/);
-  assert.match(activation, /if \(mobileHandoff\) state\.profileGateHomeEntry = true/);
+  assert.match(activation, /if \(handoff\) state\.profileGateHomeEntry = true/);
   const home = app.slice(app.indexOf("function renderHome()"), app.indexOf("function heroNavigation()"));
   assert.match(home, /Boolean\(state\.profileGateHomeEntry\)/);
   assert.match(home, /state\.profileGateHomeEntry = false/);
@@ -115,10 +116,10 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=273/);
-  assert.match(index, /app\.js\?v=355/);
-  assert.match(serviceWorker, /seven-v355/);
-  assert.match(serviceWorker, /auth\.css\?v=273/);
-  assert.match(serviceWorker, /app\.js\?v=355/);
+  assert.match(index, /auth\.css\?v=274/);
+  assert.match(index, /app\.js\?v=356/);
+  assert.match(serviceWorker, /seven-v356/);
+  assert.match(serviceWorker, /auth\.css\?v=274/);
+  assert.match(serviceWorker, /app\.js\?v=356/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });
