@@ -43,6 +43,18 @@ test("CineSrc lifecycle events normalize with safe placeholder times", () => {
   assert.equal(security.normalizePlayerEvent({ type:"cinesrc:volumechange", volume:0.5 }), null);
 });
 
+test("party playback controls accept only trusted CineSrc and VidFast play, pause, and seek events", () => {
+  const iframe = { contentWindow:{} }, pause = { type:"cinesrc:pause" };
+  assert.deepEqual(security.normalizePlayerControlEvent(pause, "cinesrc"), { action:"pause", time:null, event:"pause" });
+  assert.equal(security.isTrustedPlayerControlMessage({ origin:"https://cinesrc.st", source:iframe.contentWindow, data:pause }, iframe, "cinesrc"), true);
+  assert.equal(security.isTrustedPlayerControlMessage({ origin:"https://attacker.invalid", source:iframe.contentWindow, data:pause }, iframe, "cinesrc"), false);
+  const seek = { type:"PLAYER_EVENT", data:{ event:"seeked", currentTime:84, duration:300 } };
+  assert.deepEqual(security.normalizePlayerControlEvent(seek, "vidfast"), { action:"seek", time:84, event:"seeked" });
+  assert.equal(security.isTrustedPlayerControlMessage({ origin:"https://vidfast.vc", source:iframe.contentWindow, data:seek }, iframe, "vidfast"), true);
+  assert.equal(security.normalizePlayerControlEvent({ type:"PLAYER_EVENT", data:{ event:"pause", currentTime:400, duration:300 } }, "vidfast"), null);
+  assert.equal(security.normalizePlayerControlEvent({ type:"cinesrc:volumechange" }, "cinesrc"), null);
+});
+
 test("CineSrc native next-episode messages expose validated episode coordinates", () => {
   const message = { type:"cinesrc:nextepisode", season:5, episode:1, internalNavigation:true, source:"button" };
   const iframe = { contentWindow:{} };
@@ -79,7 +91,8 @@ test("CineSrc command responses are validated for the progress poller", () => {
   assert.equal(security.validPlayerResponse({ type:"PLAYER_EVENT", command:"getCurrentTime", result:5 }), false);
 });
 
-test("only CineSrc exposes a postMessage command target", () => {
+test("CineSrc and VidFast expose validated postMessage command targets", () => {
   assert.equal(security.playerCommandFrame("cinesrc"), "https://cinesrc.st");
-  for (const provider of ["vidsrc", "2embed", "vidfast", "multiembed"]) assert.equal(security.playerCommandFrame(provider), null);
+  assert.equal(security.playerCommandFrame("vidfast"), "https://vidfast.vc");
+  for (const provider of ["vidsrc", "2embed", "multiembed"]) assert.equal(security.playerCommandFrame(provider), null);
 });

@@ -69,9 +69,36 @@
     if (type === "PLAYER_EVENT" && ["nextepisode", "episodechange", "episodechanged"].includes(event)) return { next:true, internalNavigation:true, source:"vidfast" };
     return null;
   }
+  function normalizePlayerControlEvent(payload, provider) {
+    let event, rawTime;
+    if (provider === "cinesrc") {
+      const type = String(payload?.type || "");
+      if (!type.startsWith("cinesrc:")) return null;
+      event = type.slice("cinesrc:".length);
+      rawTime = payload.currentTime;
+    } else if (provider === "vidfast" && payload?.type === "PLAYER_EVENT" && payload.data && typeof payload.data === "object") {
+      event = String(payload.data.event || "");
+      rawTime = payload.data.currentTime;
+    } else return null;
+
+    const action = event === "play" ? "play"
+      : event === "pause" || event === "ended" ? "pause"
+      : event === "seeked" ? "seek" : null;
+    if (!action) return null;
+    const time = typeof rawTime === "number" && Number.isFinite(rawTime) && rawTime >= 0 && rawTime <= MAX_DURATION_SECONDS ? rawTime : null;
+    if (provider === "vidfast" && (time == null || !validPlayerEvent(payload))) return null;
+    return { action, time, event };
+  }
   function isTrustedPlayerEpisodeChange(event, iframe, provider) {
     return Boolean(normalizePlayerEpisodeChange(event?.data))
       && (provider === "cinesrc" || provider === "vidfast")
+      && Boolean(iframe?.contentWindow)
+      && event?.source === iframe.contentWindow
+      && event?.origin === originFor(provider);
+  }
+
+  function isTrustedPlayerControlMessage(event, iframe, provider) {
+    return Boolean(normalizePlayerControlEvent(event?.data, provider))
       && Boolean(iframe?.contentWindow)
       && event?.source === iframe.contentWindow
       && event?.origin === originFor(provider);
@@ -94,8 +121,8 @@
       && isFiniteNumber(data.result) && data.result >= 0 && data.result <= MAX_DURATION_SECONDS;
   }
   function playerCommandFrame(provider) {
-    return provider === "cinesrc" ? "https://cinesrc.st" : null;
+    return provider === "cinesrc" || provider === "vidfast" ? originFor(provider) : null;
   }
 
-  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, normalizePlayerEvent, normalizePlayerEpisodeChange, isTrustedPlayerMessage, isTrustedPlayerEpisodeChange, validPlayerResponse, playerCommandFrame };
+  return { PROVIDER_ORIGINS, originFor, validPlayerEvent, normalizePlayerEvent, normalizePlayerControlEvent, normalizePlayerEpisodeChange, isTrustedPlayerMessage, isTrustedPlayerControlMessage, isTrustedPlayerEpisodeChange, validPlayerResponse, playerCommandFrame };
 });

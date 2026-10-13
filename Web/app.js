@@ -107,7 +107,7 @@ const DEFAULT_PREFERENCES = { autoplayNext:true, autoplayPreviews:true, episodeA
 const PLAYER_PROVIDERS = Object.freeze(["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"]);
 const PREVIOUS_EPISODE_WATCHED_PERCENT = 50;
 const NEXT_EPISODE_CONFIRMATION_PERCENT = 25;
-function selectedPlayerProvider() { const provider = currentPreferences().playerProvider; return PLAYER_PROVIDERS.includes(provider) ? provider : "cinesrc"; }
+function selectedPlayerProvider() { const activeParty = typeof party === "undefined" ? null : party, partyProvider = activeParty?.code && activeParty.role === "guest" && activeParty.following ? activeParty.provider : null; if (PLAYER_PROVIDERS.includes(partyProvider)) return partyProvider; const provider = currentPreferences().playerProvider; return PLAYER_PROVIDERS.includes(provider) ? provider : "cinesrc"; }
 function playbackProgressPercent(record = {}) { const duration = Number(record.duration), currentTime = Number(record.currentTime), savedProgress = Number(record.progress); if (Number.isFinite(duration) && duration > 0 && Number.isFinite(currentTime) && currentTime >= 0) return Math.min(100, currentTime / duration * 100); return Number.isFinite(savedProgress) ? Math.min(100, Math.max(0, savedProgress)) : 0; }
 function isDirectNextEpisode(previous, current) { return previous?.type === "tv" && current?.type === "tv" && Number(previous.id) === Number(current.id) && Number(previous.season) === Number(current.season) && Number(current.episode) === Number(previous.episode) + 1; }
 function shouldConfirmPreviousEpisode(previous, current, previousRecord, currentProgress) { return isDirectNextEpisode(previous, current) && playbackProgressPercent(previousRecord) >= PREVIOUS_EPISODE_WATCHED_PERCENT && Number(currentProgress) >= NEXT_EPISODE_CONFIRMATION_PERCENT; }
@@ -601,7 +601,7 @@ async function refreshCatalogNow() {
   state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": upcomingTitles(upcomingMovies, upcomingShows), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]), ...(seasonalName && seasonalData ? { [seasonalName]: results(seasonalData) } : {}) };
   await loadNewEpisodes(state.catalog["New series"]);
 }
-function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
+function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; partyHostTitleChanged(); render(); scrollToTop(); }
 async function boot() {
   renderLoading();
   const verifiedEmail = await consumeEmailVerificationRedirect();
@@ -1231,7 +1231,7 @@ function savedStart(item) { try { const saved = JSON.parse(localStorage.getItem(
 function timeLabel(seconds) { const minutes = Math.floor(seconds / 60), remainder = String(seconds % 60).padStart(2, "0"); return `${minutes}:${remainder}`; }
 function resumeAction(item, attribute) { const seconds = savedStart(item); return seconds ? `<button class="secondary resume-action" ${attribute}><b>↻</b> Resume from ${timeLabel(seconds)}</button>` : ""; }
 async function playSeriesEpisode(season, episode, resume = false) { if (Number(state.selectedSeason) !== Number(season)) { state.selectedSeason = Number(season); await loadEpisodes(); } playEpisode(Number(episode), resume); }
-function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }, previous = state.player; state.pendingEpisodeCompletion = isDirectNextEpisode(previous, key) && playbackProgressPercent(savedProgress(previous)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? { ...previous } : null; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; render(); scrollToTop(); }
+function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }, previous = state.player; state.pendingEpisodeCompletion = isDirectNextEpisode(previous, key) && playbackProgressPercent(savedProgress(previous)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? { ...previous } : null; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; partyHostTitleChanged(); render(); scrollToTop(); }
 function playerURL(item, progress = 0) {
   const provider = selectedPlayerProvider();
   const season = item.season || 1, episode = item.episode || 1, start = Math.max(0, Math.floor(progress) || 0);
@@ -1254,10 +1254,12 @@ function nextPlayerEpisode(item) { if (item.type !== "tv" || Number(state.series
 const cineSrcPoll = { timer:null, currentTime:null, duration:null };
 let playerEpisodeContextRequest = 0;
 function stopPlayerProgressPolling() { clearInterval(cineSrcPoll.timer); cineSrcPoll.timer = null; cineSrcPoll.currentTime = null; cineSrcPoll.duration = null; }
-function sendPlayerCommand(provider, command) {
+function sendPlayerCommand(provider, command, value = null) {
   const frame = document.querySelector("iframe.player"), target = window.SEVENPlayerSecurity?.playerCommandFrame(provider);
   if (!frame?.contentWindow || !target) return;
-  frame.contentWindow.postMessage({ type:"cinesrc:command", command, args:[] }, target);
+  const hasValue = value != null && Number.isFinite(Number(value));
+  if (provider === "cinesrc") frame.contentWindow.postMessage({ type:"cinesrc:command", command, args:command === "seek" && hasValue ? [Number(value)] : [] }, target);
+  else if (provider === "vidfast") frame.contentWindow.postMessage({ command, ...(hasValue ? { time:Number(value) } : {}) }, target);
 }
 function startPlayerProgressPolling() {
   stopPlayerProgressPolling();
@@ -1456,6 +1458,7 @@ async function syncNativePlayerEpisode(change) {
   state.pendingEpisodeCompletion = isDirectNextEpisode(oldEpisode, { ...previous, season, episode }) && playbackProgressPercent(savedProgress(oldEpisode)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? oldEpisode : null;
   state.player = { ...previous, season, episode, title:`Episode ${episode}`, startAt:0 };
   state.selectedSeason = season;
+  partyHostTitleChanged();
   syncPlayerEpisodeDisplay();
   if (Number(state.episodesSeriesId) === Number(previous.id) && Number(state.episodesSeason) === season && Number(state.series?.id) === Number(previous.id)) return;
   const request = ++playerEpisodeContextRequest;
@@ -1587,7 +1590,7 @@ function showScreenTimeBlock(profile, st) {
 function bindExtendButtons(overlay, profile) {
   overlay.querySelectorAll("[data-extend-time]").forEach(button => button.onclick = () => extendScreenTime(profile, Number(button.dataset.extendTime)));
 }
-const party = { code:null, role:null, socket:null, topic:null, ref:1, members:{}, hostKey:"", hostPosition:0, hostEvent:"", guestTime:0, lastHostTime:0, following:false, didInitialSync:false, outOfSync:false, chat:[], heartbeat:null, error:"" };
+const party = { code:null, role:null, socket:null, topic:null, ref:1, members:{}, hostClientId:null, hostKey:"", hostPosition:0, hostEvent:"", hostPlaying:true, hostProvider:null, guestTime:0, guestPlaying:true, lastHostTime:0, provider:null, following:false, followingKey:"", didInitialSync:false, outOfSync:false, localCommand:null, chat:[], heartbeat:null, error:"" };
 function partyCode() { const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let code = ""; for (let index = 0; index < 6; index++) code += alphabet[Math.floor(Math.random() * alphabet.length)]; return code; }
 async function partyConnect(code, role) {
   await localAPI(`/api/party?code=${encodeURIComponent(code)}&limit=1`);
@@ -1620,32 +1623,139 @@ function partySend(data) {
   void localAPI("/api/party", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ code:party.code, payload:data }) }).catch(() => {});
 }
 function partyTouchMember(name, color) { if (name) party.members[name] = { color:color || "#e50914", at:Date.now() }; }
+function partyPlayerKey(player = state.player) { return player ? `${player.type}:${player.id}:${player.season || 0}:${player.episode || 0}` : ""; }
+function partyCanControl(provider = selectedPlayerProvider()) { return provider === "cinesrc" || provider === "vidfast"; }
+function partyHostTitleChanged() {
+  if (party.role !== "host" || !party.code) return;
+  party.lastHostTime = 0;
+  party.hostPlaying = true;
+  party.hostEvent = "title";
+  partyBroadcastState();
+}
+function partyPositionAt(position, playing, sentAt) {
+  const base = Math.max(0, Number(position) || 0), elapsed = playing && sentAt != null && Number.isFinite(Number(sentAt)) ? Math.max(0, Math.min(15, (Date.now() - Number(sentAt)) / 1000)) : 0;
+  return Math.floor(base + elapsed);
+}
 function partyBroadcastState() {
   const p = state.player;
   if (!p || party.role !== "host") return;
-  partySend({ kind:"state", key:`${p.type}:${p.id}:${p.season || 0}:${p.episode || 0}`, position:Math.floor(party.lastHostTime || 0), event:party.hostEvent, name:currentProfile()?.name || "Host", color:currentProfile()?.color });
+  partySend({ kind:"state", key:partyPlayerKey(p), position:Math.floor(party.lastHostTime || 0), playing:party.hostPlaying !== false, provider:selectedPlayerProvider(), sentAt:Date.now(), event:party.hostEvent, name:currentProfile()?.name || "Host", color:currentProfile()?.color });
+}
+function partySendHostControl(action, position = party.lastHostTime, playing = action === "play") {
+  if (party.role !== "host" || !party.code || !partyCanControl()) return;
+  const time = Math.max(0, Math.floor(Number(position) || 0));
+  party.lastHostTime = time;
+  party.hostPlaying = Boolean(playing);
+  party.hostEvent = action;
+  partySend({ kind:"control", key:partyPlayerKey(), action, position:time, playing:party.hostPlaying, provider:selectedPlayerProvider(), sentAt:Date.now() });
+  partyBroadcastState();
+  renderPartyPanel();
+}
+function partyApplyRemoteControl(action, position, playing = null) {
+  const provider = selectedPlayerProvider();
+  if (!partyCanControl(provider)) return false;
+  const time = Math.max(0, Math.floor(Number(position) || 0));
+  if (["seek", "sync", "play", "pause"].includes(action)) sendPlayerCommand(provider, "seek", time);
+  if (action === "play" || action === "pause" || action === "sync") {
+    const shouldPlay = action === "play" ? true : action === "pause" ? false : playing !== false;
+    sendPlayerCommand(provider, shouldPlay ? "play" : "pause");
+    party.guestPlaying = shouldPlay;
+  } else if (playing != null) {
+    sendPlayerCommand(provider, playing ? "play" : "pause");
+    party.guestPlaying = Boolean(playing);
+  }
+  party.guestTime = time;
+  return true;
+}
+function partyHostPlayback(action) {
+  if (party.role !== "host" || !partyCanControl()) return;
+  const time = Math.max(0, Math.floor(Number(party.lastHostTime) || 0));
+  party.localCommand = { action, at:Date.now() };
+  sendPlayerCommand(selectedPlayerProvider(), action);
+  partySendHostControl(action, time, action === "play");
+}
+function partyPlayerControl(control) {
+  const action = control.action, time = control.time == null
+    ? Math.max(0, Math.floor(party.role === "host" ? Number(party.lastHostTime) || 0 : Number(party.guestTime) || 0))
+    : Math.max(0, Math.floor(control.time));
+  if (party.role === "host") {
+    const playing = action === "play" ? true : action === "pause" ? false : party.hostPlaying !== false;
+    party.lastHostTime = time;
+    party.hostPlaying = playing;
+    party.hostEvent = control.event || action;
+    const local = party.localCommand;
+    if (local && local.action === action && Date.now() - local.at < 1800) party.localCommand = null;
+    else partySendHostControl(action, time, playing);
+  } else if (party.role === "guest") {
+    party.guestTime = time;
+    party.guestPlaying = action === "play" ? true : action === "pause" ? false : party.guestPlaying;
+  }
 }
 function partyReceive(data) {
   if (data.kind === "hello" && party.role === "host") { partyTouchMember(data.name, data.color); partyBroadcastState(); renderPartyPanel(); return; }
+  if (data.kind === "join") {
+    if (party.role === "guest" && data.role === "host" && !party.hostClientId) party.hostClientId = data.sender;
+    partyTouchMember(data.name, data.color);
+    renderPartyPanel();
+    return;
+  }
   if (data.kind === "state" && party.role === "guest") {
-    party.hostKey = data.key || ""; party.hostPosition = Number(data.position) || 0; partyTouchMember(data.name, data.color);
-    const currentKey = state.player ? `${state.player.type}:${state.player.id}:${state.player.season || 0}:${state.player.episode || 0}` : "";
-    if (data.key && data.key !== currentKey) { party.outOfSync = false; renderPartyPanel(); return; }
+    if (!party.hostClientId) party.hostClientId = data.sender;
+    if (party.hostClientId !== data.sender) return;
+    const previousPlaying = party.hostPlaying;
+    party.hostKey = data.key || ""; party.hostPlaying = data.playing !== false; party.hostProvider = PLAYER_PROVIDERS.includes(data.provider) ? data.provider : party.hostProvider;
+    party.hostPosition = partyPositionAt(data.position, party.hostPlaying, data.sentAt);
+    partyTouchMember(data.name, data.color);
+    const currentKey = partyPlayerKey();
+    if (data.key && data.key !== currentKey) {
+      party.outOfSync = false;
+      if (party.following && party.followingKey !== data.key) { party.followingKey = data.key; party.syncPosition = party.hostPosition; void partyFollowHost(); }
+      renderPartyPanel();
+      return;
+    }
+    if (!party.following && data.key === currentKey) { party.following = true; party.followingKey = data.key; }
+    const providerChanged = party.following && party.hostProvider && party.provider !== party.hostProvider;
+    if (providerChanged) {
+      party.provider = party.hostProvider;
+      party.syncPosition = party.hostPosition;
+      render();
+      return;
+    }
     const drift = Math.abs(party.guestTime - party.hostPosition);
-    if (party.didInitialSync && drift > 12 && !party.outOfSync) { party.outOfSync = true; }
-    else if (party.outOfSync && drift <= 8) { party.outOfSync = false; }
-    if (!party.didInitialSync) { party.didInitialSync = true; if (drift > 20) partySyncToHost(); }
+    if (!party.didInitialSync) {
+      party.didInitialSync = true;
+      if (party.following && (drift > 2 || party.guestPlaying !== party.hostPlaying)) partyApplyRemoteControl("sync", party.hostPosition, party.hostPlaying);
+    } else if (party.following && previousPlaying !== party.hostPlaying && party.guestPlaying !== party.hostPlaying) {
+      partyApplyRemoteControl(party.hostPlaying ? "play" : "pause", party.hostPosition, party.hostPlaying);
+    } else if (party.following && drift > 12) {
+      partyApplyRemoteControl("sync", party.hostPosition, party.hostPlaying);
+    }
+    party.outOfSync = false;
+    renderPartyPanel();
+    return;
+  }
+  if (data.kind === "control" && party.role === "guest") {
+    if (!party.hostClientId || data.sender !== party.hostClientId) return;
+    party.hostKey = data.key || party.hostKey;
+    party.hostPlaying = data.playing !== false;
+    party.hostProvider = PLAYER_PROVIDERS.includes(data.provider) ? data.provider : party.hostProvider;
+    party.hostPosition = partyPositionAt(data.position, party.hostPlaying, data.sentAt);
+    if (party.following && party.hostKey !== partyPlayerKey()) {
+      if (party.followingKey !== party.hostKey) { party.followingKey = party.hostKey; party.syncPosition = party.hostPosition; void partyFollowHost(); }
+      return;
+    }
+    if (party.following) partyApplyRemoteControl(data.action, party.hostPosition, party.hostPlaying);
     renderPartyPanel();
     return;
   }
   if (data.kind === "chat") { party.chat.push({ name:String(data.name || "Guest").slice(0, 24), color:data.color || "#e50914", text:String(data.text || "").slice(0, 300) }); party.chat = party.chat.slice(-50); partyTouchMember(data.name, data.color); renderPartyPanel(); return; }
-  if (data.kind === "join") { partyTouchMember(data.name, data.color); renderPartyPanel(); }
 }
 async function partyStart() {
   try {
     const code = partyCode();
     await partyConnect(code, "host");
-    partySend({ kind:"join", name:currentProfile()?.name || "Host", color:currentProfile()?.color });
+    partySend({ kind:"join", role:"host", name:currentProfile()?.name || "Host", color:currentProfile()?.color });
+    partyBroadcastState();
     const url = partyInviteURL(code);
     history.replaceState(history.state, "", url);
     renderPartyPanel();
@@ -1669,25 +1779,36 @@ function partyLeave() {
   clearInterval(party.pollTimer);
   clearInterval(party.hostTimer);
   party.pollTimer = null; party.hostTimer = null;
-  party.code = null; party.role = null; party.socket = null; party.members = {}; party.chat = []; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.hostKey = ""; party.hostPosition = 0; party.guestTime = 0; party.lastHostTime = 0; party.cursor = null;
+  party.code = null; party.role = null; party.socket = null; party.members = {}; party.chat = []; party.hostClientId = null; party.didInitialSync = false; party.outOfSync = false; party.following = false; party.followingKey = ""; party.hostKey = ""; party.hostPosition = 0; party.hostPlaying = true; party.hostProvider = null; party.provider = null; party.guestTime = 0; party.guestPlaying = true; party.lastHostTime = 0; party.localCommand = null; party.cursor = null;
   const url = new URL(location.href);
   url.searchParams.delete("watch");
   history.replaceState(history.state, "", url);
 }
-function partyFollowHost() {
+async function partyFollowHost() {
   const [type, id, season, episode] = (party.hostKey || "").split(":");
   if (!type || !id) return;
   party.following = true;
-  if (type === "movie") return openItem("movie", id);
-  openItem("tv", id).then(() => {
-    if (state.route === "series" && state.series && Number(state.series.id) === Number(id)) { state.selectedSeason = Number(season) || 1; playEpisode(Number(episode) || 1, false); }
-  });
+  party.followingKey = party.hostKey;
+  party.provider = party.hostProvider || party.provider;
+  party.syncPosition = party.hostPosition;
+  party.didInitialSync = true;
+  if (type === "movie") {
+    await openItem("movie", id);
+    if (state.route === "movie" && Number(state.movie?.id) === Number(id)) playMovieNow(state.movie, false);
+    return;
+  }
+  await openItem("tv", id);
+  if (state.route === "series" && state.series && Number(state.series.id) === Number(id)) {
+    state.selectedSeason = Number(season) || 1;
+    await loadEpisodes();
+    if (state.route === "series" && Number(state.series?.id) === Number(id)) playEpisode(Number(episode) || 1, false);
+  }
 }
 function partySyncToHost() {
   if (!state.player) return;
   party.syncPosition = party.hostPosition;
   party.outOfSync = false;
-  render();
+  if (!partyApplyRemoteControl("sync", party.hostPosition, party.hostPlaying)) render();
 }
 function ensurePartyPanel() {
   let panel = document.querySelector(".party-panel");
@@ -1704,20 +1825,25 @@ function renderPartyPanel() {
   if (!panel) return;
   if (!party.code) { if (party.error) panel.innerHTML = `<div class="party-head"><span class="brand">WATCH PARTY</span></div><p class="party-status">${escapeHTML(party.error)}</p>`; return; }
   const members = Object.entries(party.members);
-  const currentKey = state.player ? `${state.player.type}:${state.player.id}:${state.player.season || 0}:${state.player.episode || 0}` : "";
+  const currentKey = partyPlayerKey();
   const differentTitle = party.role === "guest" && party.hostKey && party.hostKey !== currentKey;
   const inviteURL = partyInviteURL(party.code).href;
+  const leaderControls = party.role === "host" ? partyCanControl() ? `<div class="party-leader-controls"><span>Leader controls</span><div><button type="button" data-party-playback="${party.hostPlaying ? "pause" : "play"}">${party.hostPlaying ? "Pause for everyone" : "Resume for everyone"}</button><button type="button" data-party-sync-all>Sync everyone</button></div></div>` : `<p class="party-control-note">Shared pause, resume, and seek controls work with CineSrc and VidFast.</p>` : "";
+  const status = party.role === "host" ? "Share the invite link — friends join in one tap." : party.hostPlaying ? "You're watching in sync with the host." : "The host paused playback.";
   panel.innerHTML = `
     <div class="party-head"><span class="brand">WATCH PARTY${party.role === "host" ? " · YOU'RE HOSTING" : ""}</span><button class="party-leave" data-party-leave>Leave</button></div>
     <div class="party-code-row"><code class="party-code">${party.code}</code><button class="party-copy" data-party-copy>Copy invite link</button></div>
     <div class="party-members"><b>${members.length + 1} ${members.length ? "people" : "person"} here</b><span>${escapeHTML(["You", ...members.map(([name]) => name)].slice(0, 6).join(", "))}</span></div>
-    ${differentTitle ? `<button class="party-sync primary" data-party-follow>Play along with the host</button>` : party.role === "guest" && party.outOfSync ? `<button class="party-sync primary" data-party-sync>Sync with host</button>` : `<p class="party-status">${party.role === "host" ? "Share the invite link — friends join in one tap." : "You're watching in sync with the host."}</p>`}
+    ${differentTitle ? `<button class="party-sync primary" data-party-follow>Play along with the host</button>` : party.role === "guest" && party.outOfSync ? `<button class="party-sync primary" data-party-sync>Sync with host</button>` : `<p class="party-status">${status}</p>`}
+    ${leaderControls}
     <div class="party-chat-log" data-party-log>${party.chat.length ? party.chat.map(message => `<p><b style="color:${escapeHTML(message.color)}">${escapeHTML(message.name)}</b> ${escapeHTML(message.text)}</p>`).join("") : `<p class="party-chat-empty">Say hi to your party.</p>`}</div>
     <form class="party-chat-form" data-party-chat><input type="text" maxlength="240" placeholder="Say something…" autocomplete="off"><button type="submit">Send</button></form>`;
   panel.querySelector("[data-party-leave]").onclick = () => { partyLeave(); render(); };
   panel.querySelector("[data-party-copy]").onclick = async event => { try { await navigator.clipboard.writeText(inviteURL); event.currentTarget.textContent = "Link copied!"; } catch { event.currentTarget.textContent = inviteURL; } };
   panel.querySelector("[data-party-follow]")?.addEventListener("click", partyFollowHost);
   panel.querySelector("[data-party-sync]")?.addEventListener("click", partySyncToHost);
+  panel.querySelector("[data-party-playback]")?.addEventListener("click", event => partyHostPlayback(event.currentTarget.dataset.partyPlayback));
+  panel.querySelector("[data-party-sync-all]")?.addEventListener("click", () => partySendHostControl("sync", party.lastHostTime, party.hostPlaying));
   const log = panel.querySelector("[data-party-log]");
   log.scrollTop = log.scrollHeight;
   panel.querySelector("[data-party-chat]").onsubmit = event => {
@@ -1759,7 +1885,14 @@ function renderPlayer() {
   if (state.pendingWatch && !party.code) { const code = state.pendingWatch; state.pendingWatch = null; partyJoin(code); }
   document.querySelector("[data-party-modal]")?.addEventListener("click", showPartyModal);
   document.querySelector("[data-provider-menu]")?.addEventListener("click", event => { event.stopPropagation(); const list = document.querySelector("[data-provider-list]"); if (list) list.hidden = !list.hidden; });
-  document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); render(); });
+  document.querySelectorAll("[data-provider-select]").forEach(option => option.onclick = async () => { updateCurrentPreferences({ playerProvider: option.dataset.providerSelect }); await saveAccount(); if (party.code && party.role === "host") { party.hostProvider = option.dataset.providerSelect; party.syncPosition = party.lastHostTime; partyBroadcastState(); } render(); });
+  document.querySelector("iframe.player")?.addEventListener("load", event => {
+    const frame = event.currentTarget;
+    if (party.role !== "guest" || !party.following) return;
+    setTimeout(() => {
+      if (document.querySelector("iframe.player") === frame) partyApplyRemoteControl("sync", party.hostPosition, party.hostPlaying);
+    }, 700);
+  });
   renderPartyPanel();
   document.querySelector("[data-back]").onclick = () => navigateBackInApp(() => { state.route = p.type === "tv" ? "series" : "home"; render(); });
 }
@@ -2527,7 +2660,16 @@ function recordPlaybackEvent(data) {
   const duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0;
   if (!duration) return;
   samplePlaybackWatchTime(currentTime);
-  if (party.code) { if (party.role === "host") { party.lastHostTime = currentTime; party.hostEvent = String(data.event || ""); } else { party.guestTime = currentTime; } }
+  if (party.role !== "guest") {
+    party.lastHostTime = currentTime;
+    if (data.event === "play") party.hostPlaying = true;
+    else if (data.event === "pause" || data.event === "ended") party.hostPlaying = false;
+    party.hostEvent = String(data.event || party.hostEvent || "");
+  } else {
+    party.guestTime = currentTime;
+    if (data.event === "play") party.guestPlaying = true;
+    else if (data.event === "pause" || data.event === "ended") party.guestPlaying = false;
+  }
   const progress = Math.min(100, currentTime / duration * 100);
   localStorage.setItem(watchKey(state.player), JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()}));
   queueProgressSync(state.player, currentTime, duration, progress);
@@ -2572,7 +2714,9 @@ window.addEventListener("message", async event => {
     if (iframe?.contentWindow && event.source === iframe.contentWindow && event.origin === security.playerCommandFrame(provider)) handlePlayerResponse(payload);
     return;
   }
-  const security = window.SEVENPlayerSecurity, playerEvent = { origin:event.origin, source:event.source, data:payload }, episodeChange = security?.normalizePlayerEpisodeChange(payload), trustedEpisodeChange = security?.isTrustedPlayerEpisodeChange(playerEvent, iframe, provider);
+  const security = window.SEVENPlayerSecurity, playerEvent = { origin:event.origin, source:event.source, data:payload }, control = security?.normalizePlayerControlEvent(payload, provider);
+  if (control && security?.isTrustedPlayerControlMessage(playerEvent, iframe, provider)) partyPlayerControl(control);
+  const episodeChange = security?.normalizePlayerEpisodeChange(payload), trustedEpisodeChange = security?.isTrustedPlayerEpisodeChange(playerEvent, iframe, provider);
   const normalized = security?.normalizePlayerEvent(payload);
   if (trustedEpisodeChange && episodeChange) {
     if (normalized) { try { await syncNativePlayerEpisode(episodeChange); } catch { /* Progress still syncs if episode metadata lookup fails. */ } }
@@ -2582,7 +2726,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=352", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=353", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
