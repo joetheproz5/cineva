@@ -71,12 +71,21 @@
 .explore-all { padding: 4px 0; color: #a9a9a9; background: transparent; font-size: 12px; font-weight: 650; }
 .explore-all:hover { color: #fff; text-decoration: underline; }
 .explore-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); margin-top: 18px; }
+.explore-grid .card img { aspect-ratio: 2 / 3; object-fit: cover; }
 .all-catalog { margin-top: 16px; padding: 9px 12px; border: 1px solid #4b4b4b; border-radius: 7px; color: #f4f4f4; background: #181818; font-size: 13px; font-weight: 750; }
 .all-catalog:hover { border-color: #c91520; background: #250a0c; }
 .all-catalog b { margin-left: 7px; color: #e31a25; font-size: 17px; line-height: 10px; }
 .load-more { display: block; min-width: 170px; margin: 28px auto 8px; padding: 12px 18px; border: 1px solid #555; border-radius: 7px; color: #fff; background: #191919; font-weight: 750; }
 .load-more:hover { border-color: #c91520; background: #26090c; }
 .catalog-loading { width: 170px; height: 42px; margin: 28px auto 8px; border-radius: 7px; }
+.load-more:disabled { cursor: wait; opacity: .65; }
+.collection-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 16px; }
+.collection-toolbar label { flex: 1 1 145px; min-width: 0; max-width: 220px; color: #aaa; font-size: 12px; font-weight: 600; }
+.collection-toolbar select { display: block; width: 100%; min-height: 44px; margin-top: 7px; padding: 10px 30px 10px 12px; border: 1px solid #353537; border-radius: 10px; color: #f3f3f3; background: #151517; font: inherit; }
+.collection-toolbar select:focus-visible { outline: 2px solid #ed1b27; outline-offset: 2px; }
+.collection-count { color: #939396; font-size: 13px; }
+.collection-empty, .collection-error { margin: 22px 0; color: #aaa; font-size: 14px; }
+@media (max-width: 650px) { .collection-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .collection-toolbar label { max-width: none; } .collection-toolbar select { font-size: 16px; } }
 .catalog-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
 .catalog-actions .all-catalog { margin-top: 0; }
 .list-action { border: 1px solid #545454; }

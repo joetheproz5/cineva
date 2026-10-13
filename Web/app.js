@@ -1098,7 +1098,7 @@ function setFeaturedIndex(index) { const count = state.featuredPool.length; if (
 function rotateHero(direction = 1) { if (state.featuredPool.length < 2) return; setFeaturedIndex(state.featuredIndex + direction); }
 function scheduleHero() { if (state.featuredPool.length > 1 && currentPreferences().autoplayPreviews !== false) state.heroTimer = setInterval(() => { if (state.route === "home") rotateHero(); }, 8500); }
 function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(t(name === "My List" ? "Favourites" : name))}</h2>`; }
-function rail(name, items) { const visible = name === "My List" ? items : items.filter(contentAllowed); if (!visible.length) return ""; const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name, ranked = name === "Trending now", upcoming = name === "Coming soon", railItems = ranked ? visible.slice(0, 4) : visible; state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route }; return `<section class="rail ${ranked ? "ranked-rail" : ""} ${upcoming ? "upcoming-rail" : ""}"><div class="rail-title"><div>${railTitle(displayName)}<small>${ranked ? "This week on TMDB" : upcoming ? t("Release dates from TMDB") : "Curated for your screen"}</small></div><button class="explore-all" data-explore="${escapeHTML(key)}">View all <b>›</b></button></div><div class="cards">${railItems.map((item, index) => upcoming ? upcomingCard(item) : card(item, ranked ? index + 1 : 0)).join("")}</div></section>`; }
+function rail(name, items) { const visible = name === "My List" ? items : items.filter(contentAllowed); if (!visible.length) return ""; const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name, ranked = name === "Trending now", upcoming = name === "Coming soon", railItems = ranked ? visible.slice(0, 4) : visible; state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route, sources:collectionSources(name) }; return `<section class="rail ${ranked ? "ranked-rail" : ""} ${upcoming ? "upcoming-rail" : ""}"><div class="rail-title"><div>${railTitle(displayName)}<small>${ranked ? "This week on TMDB" : upcoming ? t("Release dates from TMDB") : "Curated for your screen"}</small></div><button class="explore-all" data-explore="${escapeHTML(key)}">View all <b>›</b></button></div><div class="cards">${railItems.map((item, index) => upcoming ? upcomingCard(item) : card(item, ranked ? index + 1 : 0)).join("")}</div></section>`; }
 function newEpisodeRail(items) { return `<section class="rail new-episode-rail"><div class="rail-title">${railTitle("New episodes")}<span>From My List</span></div><div class="cards">${items.map(item => `<button class="card" data-open="tv:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>NEW EPISODE</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>S${item.episode.season_number} · E${item.episode.episode_number} · ${escapeHTML(item.episode.name || "New episode")}</small></button>`).join("")}</div></section>`; }
 function card(item, rank = 0) { return `<article class="card ${rank ? "ranked-card" : ""}"><button class="card-open" data-open="${item.type}:${item.id}" aria-label="More about ${escapeHTML(titleOf(item))}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><span class="card-shade"></span><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em class="card-score">★ ${item.vote_average.toFixed(1)}</em>` : ""}<strong class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></strong></span><span class="card-copy ${rank ? "ranked-copy" : ""}">${rank ? `<em class="card-rank" aria-label="Rank ${rank}">${String(rank).padStart(2, "0")}</em>` : ""}<b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>${watchlistAction(item, "card")}</article>`; }
 function mobileSearchCard(item) { return `<button class="msearch-card" data-open="${item.type}:${item.id}"><span class="msearch-poster"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em>★ ${item.vote_average.toFixed(1)}</em>` : ""}</span><span class="msearch-copy"><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`; }
@@ -2006,18 +2006,22 @@ async function openForYou() {
       showMovies ? (pickedGenres.length || familySafe ? api("discover/movie", { ...movieParams, "primary_release_date.gte":`${new Date().getFullYear() - 1}-01-01`, "primary_release_date.lte":new Date().toISOString().slice(0,10), sort_by:"primary_release_date.desc" }) : api("movie/now_playing")) : Promise.resolve({ results:[] }),
       showSeries ? (pickedGenres.length || familySafe ? api("discover/tv", { ...seriesParams, "first_air_date.gte":`${new Date().getFullYear() - 1}-01-01`, "first_air_date.lte":new Date().toISOString().slice(0,10), sort_by:"first_air_date.desc" }) : api("tv/on_the_air")) : Promise.resolve({ results:[] })
     ]);
-    const rails = {};
+    const rails = {}, sources = {};
     if (showMovies) {
       const movieHeading = pickedNames.length ? `More ${pickedNames.slice(0, 2).join(" & ")} movies` : movieGenre ? anchor?.title ? latestLike ? `Because you liked ${anchor.title}` : `Because you watched ${anchor.title}` : `${GENRES[movieGenre] || "Personalized"} movies for you` : "Popular movies for you";
       rails[movieHeading] = results(movies);
       rails["New movies"] = results(freshMovies);
+      sources[movieHeading] = [{ path:"discover/movie", type:"movie", params:movieParams }];
+      sources["New movies"] = [{ path:pickedGenres.length || familySafe ? "discover/movie" : "movie/now_playing", type:"movie", params:pickedGenres.length || familySafe ? { ...movieParams, "primary_release_date.gte":`${new Date().getFullYear() - 1}-01-01`, "primary_release_date.lte":new Date().toISOString().slice(0,10), sort_by:"primary_release_date.desc" } : {} }];
     }
     if (showSeries) {
       const seriesHeading = pickedNames.length ? `More ${pickedNames.slice(0, 2).join(" & ")} series` : seriesGenre ? `${GENRES[seriesGenre] || "Personalized"} series for you` : "Popular series for you";
       rails[seriesHeading] = results(series);
       rails["New series"] = results(freshSeries);
+      sources[seriesHeading] = [{ path:"discover/tv", type:"tv", params:seriesParams }];
+      sources["New series"] = [{ path:pickedGenres.length || familySafe ? "discover/tv" : "tv/on_the_air", type:"tv", params:pickedGenres.length || familySafe ? { ...seriesParams, "first_air_date.gte":`${new Date().getFullYear() - 1}-01-01`, "first_air_date.lte":new Date().toISOString().slice(0,10), sort_by:"first_air_date.desc" } : {} }];
     }
-    state.forYou = { genre:movieGenre || seriesGenre, latest, reason, rails };
+    state.forYou = { genre:movieGenre || seriesGenre, latest, reason, rails, sources };
   } catch (error) { state.forYou = { error:error.message, rails:{} }; }
   render();
 }
@@ -2026,20 +2030,110 @@ const MOVIE_FILTERS = [["All",null],["Action",28],["Adventure",12],["Animation",
 const SERIES_FILTERS = [["All",null],["Action",10759],["Animation",16],["Comedy",35],["Crime",80],["Documentary",99],["Drama",18],["Mystery",9648],["Sci-Fi",10765]];
 function discoverGenre(type, genre, sortBy) { const params = { with_genres:genre, sort_by:sortBy }; if (sortBy === "vote_average.desc") params["vote_count.gte"] = 100; return api(`discover/${type}`, params); }
 const DEFAULT_CATALOG_FILTERS = { date:"any", score:"", sort:"popularity.desc", certificate:"" };
+function collectionSources(name) {
+  if (state.route === "for-you") return state.forYou?.sources?.[name] || [];
+  const source = (path, type, params = {}) => ({ path, type, params });
+  if (state.route === "catalog" && state.browse?.genre) {
+    const type = state.browse.type, sort = name.startsWith("Top rated") ? "vote_average.desc" : name.startsWith("New") ? (type === "movie" ? "primary_release_date.desc" : "first_air_date.desc") : "popularity.desc";
+    return [source(`discover/${type}`, type, { with_genres:state.browse.genre, sort_by:sort, ...(sort === "vote_average.desc" ? { "vote_count.gte":100 } : {}) })];
+  }
+  const today = profileGateDateKey();
+  const sources = {
+    "Trending now":[source("trending/all/week", null)],
+    "New movies":[source("movie/now_playing", "movie")], "Now playing":[source("movie/now_playing", "movie")],
+    "New series":[source("tv/on_the_air", "tv")], "On the air":[source("tv/on_the_air", "tv")],
+    "Popular movies":[source("movie/popular", "movie")], "Popular series":[source("tv/popular", "tv")],
+    "Top rated movies":[source("movie/top_rated", "movie")], "Top rated series":[source("tv/top_rated", "tv")],
+    "Airing today":[source("tv/airing_today", "tv")],
+    "Coming soon":state.route === "catalog" ? [source("movie/upcoming", "movie")] : [source("discover/movie", "movie", { "primary_release_date.gte":today, sort_by:"primary_release_date.asc" }), source("discover/tv", "tv", { "first_air_date.gte":today, sort_by:"first_air_date.asc" })],
+    "All-time greats":[source("movie/top_rated", "movie"), source("tv/top_rated", "tv")],
+    "Action & adventure":[source("discover/movie", "movie", { with_genres:"28", sort_by:"popularity.desc" }), source("discover/tv", "tv", { with_genres:"10759", sort_by:"popularity.desc" })],
+    "Spooky picks":[source("discover/movie", "movie", { with_genres:"27", sort_by:"popularity.desc" })],
+    "Holiday favorites":[source("discover/movie", "movie", { with_keywords:"1563", sort_by:"popularity.desc" })],
+    "Date night picks":[source("discover/movie", "movie", { with_genres:"10749", sort_by:"popularity.desc" })],
+    "Summer blockbusters":[source("discover/movie", "movie", { with_genres:"28", "primary_release_date.gte":`${new Date().getFullYear()}-06-01`, "primary_release_date.lte":`${new Date().getFullYear()}-08-31`, sort_by:"popularity.desc" })]
+  };
+  return sources[name] || [];
+}
+const COLLECTION_GENRES = [["28:10759","Action"],["12:10759","Adventure"],["16:16","Animation"],["35:35","Comedy"],["80:80","Crime"],["99:99","Documentary"],["18:18","Drama"],["10751:10751","Family"],["27:","Horror"],["9648:9648","Mystery"],["10749:","Romance"],["878:10765","Sci-Fi"],["53:","Thriller"]];
+function titleBrowserToolbar(view, mixed = true) {
+  const options = (entries, value) => entries.map(([key, label]) => `<option value="${key}" ${String(value) === String(key) ? "selected" : ""}>${label}</option>`).join("");
+  const fixedType = mixed ? view.filters.type : view.type;
+  const genres = COLLECTION_GENRES.filter(([genre]) => fixedType === "all" || window.SEVENCatalogBrowser.genreFor(genre, fixedType));
+  const selectedGenre = String(view.filters.genre || "").includes(":") ? view.filters.genre : (genres.find(([genre]) => window.SEVENCatalogBrowser.genreFor(genre, fixedType) === String(view.filters.genre))?.[0] || "");
+  const latestSort = ["primary_release_date.desc", "first_air_date.desc"].includes(view.filters.sort) ? "newest" : view.filters.sort;
+  return `<div class="collection-toolbar">${mixed ? `<label>Type<select data-title-filter="type">${options([["all","Movies & series"],["movie","Movies"],["tv","Series"]], view.filters.type)}</select></label>` : ""}<label>Genre<select data-title-filter="genre">${options([["","All genres"],...genres], selectedGenre)}</select></label><label>Sort<select data-title-filter="sort">${options([["default","Collection order"],["popularity.desc","Most popular"],["newest","Newest release"],["vote_average.desc","Highest rated"]], latestSort)}</select></label><label>Released<select data-title-filter="date">${options([["any","Any time"],["year","This year"],["five","Last 5 years"],["2010s","2010–2019"],["older","Before 2010"]], view.filters.date)}</select></label><label>Rating<select data-title-filter="score">${options([["","Any score"],["5","5.0+"],["6","6.0+"],["7","7.0+"],["8","8.0+"]], view.filters.score)}</select></label></div>`;
+}
+function titleBrowserStatus(view) {
+  return `${view.error ? `<p class="collection-error" role="alert">${escapeHTML(view.error)}</p>` : ""}${view.loading ? `<button class="load-more" type="button" disabled aria-busy="true">Loading…</button>` : view.error || !view.exhausted ? `<button class="load-more" type="button" data-load-more>${view.error ? "Try again" : "Show more"}</button>` : ""}${!view.loading && !view.error && !view.items.length ? `<p class="collection-empty">No titles match these filters.</p>` : ""}`;
+}
+function updateTitleBrowser(view, route) {
+  const grid = document.querySelector(`[data-title-grid="${route}"]`), status = document.querySelector("[data-title-status]");
+  if (!grid || !status) { render(); return; }
+  const ranked = view.name === "Trending now" && view.filters.sort === "default";
+  const keys = [...grid.querySelectorAll(".card-open")].map(button => button.dataset.open);
+  const unchanged = keys.every((key, index) => key === `${view.items[index]?.type}:${view.items[index]?.id}`);
+  if (unchanged) grid.insertAdjacentHTML("beforeend", view.items.slice(keys.length).map((item, index) => card(item, ranked ? keys.length + index + 1 : 0)).join(""));
+  else grid.innerHTML = view.items.map((item, index) => card(item, ranked ? index + 1 : 0)).join("");
+  const count = document.querySelector(".collection-count");
+  if (count) count.textContent = `${view.items.length} titles${route === "explore" && view.filters.sort !== "default" && (view.localItems || view.sources.some(source => !source.path.startsWith("discover/"))) ? " · Sorting loaded titles" : ""}`;
+  status.innerHTML = titleBrowserStatus(view);
+  bindCommon(); bindTitleBrowser(view, route);
+}
+async function loadTitleBrowser(view, route, append = false) {
+  const isCurrent = () => state.route === route && (route === "explore" ? state.exploreView : state.allCatalog) === view;
+  const pending = window.SEVENCatalogBrowser.loadBatch(view, api, contentAllowed, isCurrent);
+  if (isCurrent()) { if (append) updateTitleBrowser(view, route); else render(); }
+  await pending;
+  if (isCurrent()) { if (append) updateTitleBrowser(view, route); else render(); }
+}
+function bindTitleBrowser(view, route) {
+  document.querySelector("[data-load-more]")?.addEventListener("click", () => { if (!view.loading) void loadTitleBrowser(view, route, true); });
+  document.querySelectorAll("[data-title-filter]").forEach(field => field.onchange = () => {
+    const filters = { ...view.filters, [field.dataset.titleFilter]:field.value };
+    if (field.dataset.titleFilter === "type") filters.genre = "";
+    if (route === "explore") void openExplore(view, filters);
+    else void openAllCatalog(view.type, null, 1, false, filters);
+  });
+}
+async function openExplore(collection, filters = null) {
+  const sources = collection.definitionSources || collection.sources || [];
+  const view = { ...window.SEVENCatalogBrowser.create(sources, collection.seedItems || collection.items, filters || {}), name:collection.name, fromRoute:collection.fromRoute, definitionSources:sources, seedItems:collection.seedItems || collection.items };
+  state.exploreView = view; state.route = "explore";
+  scrollToTop();
+  await loadTitleBrowser(view, "explore");
+}
 function filterTrigger() { return `<button class="filter-trigger" data-open-filters aria-label="Open filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10m-7 6h4"/></svg> Filters</button>`; }
 function discoveryParams(type, page, genre, filters) { const params = { sort_by:filters.sort || "popularity.desc", page }; if (genre) params.with_genres = genre; if (filters.score) { params["vote_average.gte"] = filters.score; params["vote_count.gte"] = 50; } const year = new Date().getFullYear(), dateKey = type === "movie" ? "primary_release_date" : "first_air_date"; if (filters.date === "year") params[`${dateKey}.gte`] = `${year}-01-01`; if (filters.date === "five") params[`${dateKey}.gte`] = `${year - 5}-01-01`; if (filters.date === "2010s") { params[`${dateKey}.gte`] = "2010-01-01"; params[`${dateKey}.lte`] = "2019-12-31"; } if (filters.date === "older") params[`${dateKey}.lte`] = "2009-12-31"; if (type === "movie" && filters.certificate) { params.certification_country = "US"; params.certification = filters.certificate; } return params; }
 function showCatalogFilters(type) { const saved = { ...DEFAULT_CATALOG_FILTERS, ...(state.catalogFilters?.[type] || {}) }, isMovie = type === "movie"; document.querySelector(".modal")?.remove(); app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="filter-panel" id="catalog-filter-form"><button type="button" class="modal-close" data-close>×</button><span class="brand">FILTER ${isMovie ? "MOVIES" : "SERIES"}</span><h2>Refine your picks</h2><label>Release date<select name="date"><option value="any">Any time</option><option value="year">This year</option><option value="five">Last 5 years</option><option value="2010s">2010–2019</option><option value="older">Before 2010</option></select></label><label>Minimum audience score<select name="score"><option value="">Any score</option><option value="5">5.0+</option><option value="6">6.0+</option><option value="7">7.0+</option><option value="8">8.0+</option></select></label>${isMovie ? `<label>Age rating (US)<select name="certificate"><option value="">Any rating</option><option value="G">G</option><option value="PG">PG</option><option value="PG-13">PG-13</option><option value="R">R</option></select></label>` : `<p class="filter-note">TV age ratings vary by region; SEVEN keeps date and audience-score filters available here.</p>`}<label>Sort by<select name="sort"><option value="popularity.desc">Most popular</option><option value="primary_release_date.desc">Newest release</option><option value="first_air_date.desc">Newest release</option><option value="vote_average.desc">Highest rated</option></select></label><button class="primary auth-submit" type="submit">Show results</button><button class="filter-clear" type="button" data-clear-filters>Clear filters</button></form></div>`); const form = document.querySelector("#catalog-filter-form"); Object.entries(saved).forEach(([name, value]) => { const field = form.elements.namedItem(name); if (field) field.value = value; }); document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove(); document.querySelector("[data-clear-filters]").onclick = () => { state.catalogFilters ||= {}; state.catalogFilters[type] = { ...DEFAULT_CATALOG_FILTERS }; document.querySelector(".modal")?.remove(); openAllCatalog(type); }; form.onsubmit = event => { event.preventDefault(); const values = new FormData(form); const filters = { date:values.get("date"), score:values.get("score"), sort:values.get("sort"), certificate:values.get("certificate") || "" }; if (type === "tv" && filters.sort === "primary_release_date.desc") filters.sort = "first_air_date.desc"; state.catalogFilters ||= {}; state.catalogFilters[type] = filters; document.querySelector(".modal")?.remove(); openAllCatalog(type, null, 1, false, filters); }; }
 async function openCatalog(type, genre = null) { state.route = "catalog"; state.browse = { type, genre, loading:true }; render(); const baseRoutes = type === "movie" ? [["Now playing","movie/now_playing"],["Popular movies","movie/popular"],["Top rated movies","movie/top_rated"],["Coming soon","movie/upcoming"]] : [["On the air","tv/on_the_air"],["Popular series","tv/popular"],["Top rated series","tv/top_rated"],["Airing today","tv/airing_today"]]; const routes = genre ? [[`Popular ${GENRES[genre] || ""}`.trim(),"popularity.desc"],[`Top rated ${GENRES[genre] || ""}`.trim(),"vote_average.desc"],[`New ${GENRES[genre] || ""}`.trim(), type === "movie" ? "primary_release_date.desc" : "first_air_date.desc"]] : baseRoutes; try { const responses = await Promise.all(routes.map(([, route]) => genre ? discoverGenre(type, genre, route) : api(route))); state.browse = { type, genre, rails:Object.fromEntries(routes.map(([name], index) => [name, results(responses[index])])) }; } catch (error) { state.browse = { type, genre, error:error.message, rails:{} }; } render(); }
 function renderCatalog() { const view = state.browse || { loading:true, type:"movie" }, label = view.type === "movie" ? "Movies" : "Series", filters = view.type === "movie" ? MOVIE_FILTERS : SERIES_FILTERS; app.innerHTML = `${header()}<section class="browse-page"><span class="brand">EXPLORE SEVEN</span><h2>${label}</h2><p>${view.type === "movie" ? "New releases, crowd favorites, and top-rated films." : "Series that are airing now, popular, and highly rated."}</p><div class="catalog-type-switch" role="tablist" aria-label="Browse movies or series"><button type="button" role="tab" aria-selected="${view.type === "movie"}" class="${view.type === "movie" ? "active" : ""}" data-catalog-type="movie">Movies</button><button type="button" role="tab" aria-selected="${view.type === "tv"}" class="${view.type === "tv" ? "active" : ""}" data-catalog-type="tv">Series</button></div><div class="catalog-actions">${filterTrigger()}<button class="all-catalog" data-all-catalog>Browse all ${label.toLowerCase()} <b>›</b></button></div><div class="filter-row" aria-label="Filter ${label}">${filters.map(([name, id]) => `<button class="filter ${view.genre === id ? "active" : ""}" data-filter="${id ?? "all"}">${name}</button>`).join("")}</div></section>${view.loading ? `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>` : view.error ? `<p class="setup">${escapeHTML(view.error)}</p>` : Object.entries(view.rails).map(([name, items]) => rail(name, items)).join("")}${footer()}`; bindCommon(); document.querySelector("[data-open-filters]").onclick = () => showCatalogFilters(view.type); document.querySelector("[data-all-catalog]").onclick = () => openAllCatalog(view.type); document.querySelectorAll("[data-catalog-type]").forEach(button => button.onclick = () => { state.mobileBrowseType = button.dataset.catalogType; openCatalog(button.dataset.catalogType); }); document.querySelectorAll("[data-filter]").forEach(button => button.onclick = () => openCatalog(view.type, button.dataset.filter === "all" ? null : Number(button.dataset.filter))); }
-async function openAllCatalog(type, genre = null, page = 1, append = false, selectedFilters = null) { const filters = { ...DEFAULT_CATALOG_FILTERS, ...(selectedFilters || state.catalogFilters?.[type] || {}) }, existing = append ? (state.allCatalog?.items || []) : []; state.route = "all-catalog"; state.allCatalog = { type, genre, page, filters, items:existing, loading:true }; render(); try { const response = await api(`discover/${type}`, discoveryParams(type, page, genre, filters)); state.allCatalog = { type, genre, page, filters, totalPages:Math.min(response.total_pages || 1, 500), items:[...existing, ...results(response)] }; } catch (error) { state.allCatalog = { type, genre, page, filters, items:existing, error:error.message }; } render(); }
-function renderAllCatalog() {
-  const view = state.allCatalog || { loading:true, type:"movie", items:[] }, label = view.type === "movie" ? "All movies" : "All series", filters = view.type === "movie" ? MOVIE_FILTERS : SERIES_FILTERS;
-  const loading = view.loading ? `<div class="catalog-loading skeleton"></div>` : view.page < (view.totalPages || 1) ? `<button class="load-more" data-load-more>Load more ${view.type === "movie" ? "movies" : "series"}</button>` : "";
-  const body = view.error ? `<p class="setup">${escapeHTML(view.error)}</p>` : `<div class="result-grid explore-grid">${view.items.map(item => card(item)).join("")}</div>${loading}`;
-  app.innerHTML = `${header()}<button class="back" data-back-all>‹ ${view.type === "movie" ? "Movies" : "Series"}</button><section class="browse-page"><span class="brand">COMPLETE CATALOG</span><h2>${label}</h2><p>Browse the full TMDB catalog, filtered the way you want.</p><div class="catalog-actions">${filterTrigger()}</div><div class="filter-row" aria-label="Filter ${label}">${filters.map(([name, id]) => `<button class="filter ${view.genre === id ? "active" : ""}" data-all-filter="${id ?? "all"}">${name}</button>`).join("")}</div></section>${body}${footer()}`;
-  bindCommon(); document.querySelector("[data-back-all]").onclick = () => navigateBackInApp(() => { state.route = "catalog"; render(); }); document.querySelector("[data-open-filters]").onclick = () => showCatalogFilters(view.type); document.querySelectorAll("[data-all-filter]").forEach(button => button.onclick = () => openAllCatalog(view.type, button.dataset.allFilter === "all" ? null : Number(button.dataset.allFilter))); document.querySelector("[data-load-more]")?.addEventListener("click", () => openAllCatalog(view.type, view.genre, view.page + 1, true));
+async function openAllCatalog(type, genre = null, page = 1, append = false, selectedFilters = null) {
+  if (append && state.allCatalog?.type === type) return loadTitleBrowser(state.allCatalog, "all-catalog", true);
+  const filters = { ...DEFAULT_CATALOG_FILTERS, ...(selectedFilters || state.catalogFilters?.[type] || {}), type }, selectedGenre = genre == null ? filters.genre || "" : String(genre);
+  filters.genre = selectedGenre;
+  state.catalogFilters ||= {}; state.catalogFilters[type] = filters;
+  const view = { ...window.SEVENCatalogBrowser.create([{ path:`discover/${type}`, type, params:{ sort_by:"popularity.desc" } }], [], filters), type, genre:selectedGenre };
+  state.route = "all-catalog"; state.allCatalog = view;
+  scrollToTop();
+  await loadTitleBrowser(view, "all-catalog");
 }
-function renderExplore() { const view = state.exploreView; if (!view) { state.route = "home"; return renderHome(); } const ranked = view.name === "Trending now"; app.innerHTML = `${header()}<button class="back" data-back-explore>‹ Back</button><section class="search-page"><span class="brand">SEVEN COLLECTION</span><h2>${escapeHTML(view.name)}</h2><p>Browse all ${view.items.length} titles in this collection.</p><div class="result-grid explore-grid">${view.items.map((item, index) => card(item, ranked ? index + 1 : 0)).join("")}</div></section>${footer()}`; bindCommon(); document.querySelector("[data-back-explore]").onclick = () => navigateBackInApp(() => { state.route = view.fromRoute; state.exploreView = null; render(); }); }
+function renderAllCatalog() {
+  const view = state.allCatalog;
+  if (!view) return;
+  const label = view.type === "movie" ? "All movies" : "All series";
+  app.innerHTML = `${header()}<button class="back" data-back-all>‹ ${view.type === "movie" ? "Movies" : "Series"}</button><section class="browse-page"><span class="brand">BROWSE SEVEN</span><h2>${label}</h2>${titleBrowserToolbar(view, false)}<p class="collection-count" role="status">${view.items.length} titles</p></section><div class="result-grid explore-grid" data-title-grid="all-catalog">${view.items.map(item => card(item)).join("")}</div><div data-title-status>${titleBrowserStatus(view)}</div>${footer()}`;
+  bindCommon(); bindTitleBrowser(view, "all-catalog");
+  document.querySelector("[data-back-all]").onclick = () => navigateBackInApp(() => { state.route = "catalog"; render(); });
+}
+function renderExplore() {
+  const view = state.exploreView;
+  if (!view) { state.route = "home"; return renderHome(); }
+  const ranked = view.name === "Trending now" && view.filters.sort === "default", loadedSort = view.filters.sort !== "default" && (view.localItems || view.sources.some(source => !source.path.startsWith("discover/")));
+  app.innerHTML = `${header()}<button class="back" data-back-explore>‹ Back</button><section class="search-page"><span class="brand">SEVEN COLLECTION</span><h2>${escapeHTML(view.name)}</h2>${titleBrowserToolbar(view)}<p class="collection-count" role="status">${view.items.length} titles${loadedSort ? " · Sorting loaded titles" : ""}</p><div class="result-grid explore-grid" data-title-grid="explore">${view.items.map((item, index) => card(item, ranked ? index + 1 : 0)).join("")}</div><div data-title-status>${titleBrowserStatus(view)}</div></section>${footer()}`;
+  bindCommon(); bindTitleBrowser(view, "explore");
+  document.querySelector("[data-back-explore]").onclick = () => navigateBackInApp(() => { state.route = view.fromRoute; state.exploreView = null; render(); });
+}
 function renderHistory() { const filter = state.historyFilter || "all", allEntries = historyEntries(), entries = allEntries.filter(entry => filter === "all" || filter === "progress" && !entry.watched || filter === "watched" && entry.watched); app.innerHTML = `${header()}<button class="back" data-history-back>‹ Browse</button><section class="history-page"><span class="brand">VIEWING ACTIVITY</span><h2>${escapeHTML(currentProfile()?.name || "Your")} history</h2><p>Everything watched with this profile. You can replay, resume, or hide an item from this device and your synced history.</p>${allEntries.length ? `<div class="history-toolbar"><div class="history-filters" role="group" aria-label="Filter viewing activity">${[["all","All"],["progress","In progress"],["watched","Watched"]].map(([value, label]) => `<button class="${filter === value ? "active" : ""}" data-history-filter="${value}">${label}</button>`).join("")}</div><span>${entries.length} ${entries.length === 1 ? "title" : "titles"}</span></div>${entries.length ? `<div class="history-list">${entries.map(entry => `<article class="history-item"><button class="history-main" data-history="${encodeURIComponent(entry.key)}"><img src="${entry.posterPath ? TMDB_IMAGE + entry.posterPath : "icon.svg"}" alt=""><span><b>${escapeHTML(entry.title)}</b><small>${entry.type === "tv" ? `Series · S${entry.season} E${entry.episode}` : "Movie"} · ${historyDate(entry.lastWatchedAt)}</small><em>${entry.watched ? "Watched" : `Resume from ${timeLabel(Math.floor(entry.currentTime || 0))}`}</em></span><i>›</i></button><button class="history-remove" data-remove-history="${encodeURIComponent(entry.key)}" aria-label="Hide ${escapeHTML(entry.title)}">×</button></article>`).join("")}</div>` : `<p class="history-empty">No ${filter === "progress" ? "unfinished titles" : "completed titles"} in this profile’s activity yet.</p>`}` : `<p class="history-empty">No viewing activity for this profile yet.</p>`}</section>${footer()}`; bindCommon(); document.querySelector("[data-history-back]").onclick = () => { state.route = state.historyReturn || "home"; state.historyReturn = null; render(); }; document.querySelectorAll("[data-history-filter]").forEach(button => button.onclick = () => { state.historyFilter = button.dataset.historyFilter; render(); }); document.querySelectorAll("[data-history]").forEach(button => button.onclick = () => openHistoryItem(decodeURIComponent(button.dataset.history))); document.querySelectorAll("[data-remove-history]").forEach(button => button.onclick = () => removeHistoryItem(decodeURIComponent(button.dataset.removeHistory))); }
 function renderMyList() {
   if (!state.user) { app.innerHTML = `${header()}<main class="favourites-locked"><button class="primary" data-favourites-auth>Sign in</button></main>`; bindCommon(); document.querySelector("[data-favourites-auth]").onclick = () => showAuth(); return; }
@@ -2671,7 +2765,7 @@ function bindCommon() {
   document.querySelectorAll("[data-open]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, id); });
   document.querySelectorAll("[data-person]").forEach(button => button.onclick = () => openPerson(button.dataset.person));
   document.querySelectorAll("[data-continue]").forEach(button => button.onclick = () => { const [type, id, season, episode] = button.dataset.continue.split(":"), item = { type, id:Number(id), season:Number(season) || undefined, episode:Number(episode) || undefined }, saved = JSON.parse(localStorage.getItem(watchKey(item)) || "{}"); state.player = { ...item, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(item) }; state.route = "player"; render(); scrollToTop(); });
-  document.querySelectorAll("[data-explore]").forEach(button => button.onclick = () => { const view = state.explorable?.[button.dataset.explore]; if (!view) return; state.exploreView = view; state.route = "explore"; render(); });
+  document.querySelectorAll("[data-explore]").forEach(button => button.onclick = () => { const view = state.explorable?.[button.dataset.explore]; if (!view) return; void openExplore(view); });
   const input = document.querySelector("#search"); let timer;
   if (input) {
     input.closest(".search")?.querySelector("span")?.addEventListener("click", () => input.focus());
@@ -2777,7 +2871,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=356", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=357", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
