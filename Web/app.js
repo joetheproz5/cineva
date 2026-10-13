@@ -411,6 +411,21 @@ async function loadAccountWatchlist(refreshView = false) {
   }
 }
 function watchlistToast(message) { document.querySelector(".watchlist-toast")?.remove(); app.insertAdjacentHTML("beforeend", `<div class="watchlist-toast" role="status" aria-live="polite">${escapeHTML(message)}</div>`); setTimeout(() => document.querySelector(".watchlist-toast")?.remove(), 3600); }
+function syncWatchlistControls() {
+  if (state.route === "watchlist") { render(); return; }
+  document.querySelectorAll("[data-toggle-watchlist]").forEach(button => {
+    const key = button.dataset.toggleWatchlist, [type, rawId] = key.split(":"), saved = isInWatchlist({ type, id:Number(rawId) });
+    const pending = state.watchlistPending.has(`${accountWatchlistUserId()}:${activeProfileId()}:${key}`);
+    const label = `${saved ? "Remove from" : "Add to"} Watchlist`, item = state.watchlistTargets.get(key);
+    button.classList.toggle("saved", saved);
+    button.setAttribute("aria-pressed", String(saved));
+    button.setAttribute("aria-busy", String(pending));
+    button.setAttribute("aria-label", item && button.classList.contains("card-watchlist") ? `${saved ? "Remove" : "Add"} ${titleOf(item)} ${saved ? "from" : "to"} Watchlist` : label);
+    button.title = label; button.disabled = pending;
+    const text = button.querySelector("span");
+    if (text) text.textContent = pending ? "Saving" : saved ? "Saved" : "Watchlist";
+  });
+}
 async function toggleWatchlist(item) {
   const ownerId = accountWatchlistUserId();
   if (!ownerId) { showAuth("login", "Sign in to save titles to your profile’s Watchlist."); return; }
@@ -425,7 +440,7 @@ async function toggleWatchlist(item) {
   state.watchlistLoaded = true; state.watchlistMutationVersion++;
   if (existing) state.watchlist = state.watchlist.filter(entry => watchlistKey(entry) !== key);
   else state.watchlist = [watchlistRecord({ type, id, title:titleOf(item), poster_path:item.poster_path || item.posterPath, backdrop_path:item.backdrop_path || item.backdropPath, release_date:item.release_date || item.first_air_date || item.releaseDate, vote_average:item.vote_average, addedAt:new Date().toISOString() }), ...state.watchlist];
-  persistWatchlist(); render();
+  persistWatchlist(); syncWatchlistControls();
   try {
     const request = existing
       ? localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profileId)}&type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`, { method:"DELETE", headers:authorizedHeaders() })
@@ -437,7 +452,7 @@ async function toggleWatchlist(item) {
   } finally {
     state.watchlistPending.delete(pendingKey);
     if (state.route === "watchlist") state.watchlistLoaded = true;
-    render();
+    syncWatchlistControls();
     if (failureMessage) watchlistToast(failureMessage);
     if (reconcileAfter && accountWatchlistUserId() === ownerId && activeProfileId() === profileId) void loadAccountWatchlist(true);
   }
@@ -2871,7 +2886,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=357", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=358", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

@@ -80,6 +80,19 @@ test("authenticated Watchlist requests are scoped to one profile", async () => {
   } finally { global.fetch = originalFetch; }
 });
 
+test("successful Watchlist removals preserve the empty 204 response instead of throwing a JSON-body error", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => new Response(null, { status:204 });
+  try {
+    const removed = await request("DELETE", { query:"?profile=main&type=movie&id=12" });
+    assert.equal(removed.status, 204);
+    assert.equal(await removed.text(), "");
+    const cleared = await request("DELETE", { query:"?profile=main&all=true" });
+    assert.equal(cleared.status, 204);
+    assert.equal(await cleared.text(), "");
+  } finally { global.fetch = originalFetch; }
+});
+
 test("mobile keeps five slots by combining Movies and Series under Browse", () => {
   assert.match(app, /data-mobile-browse/);
   assert.match(app, /data-catalog-type="movie"/);
