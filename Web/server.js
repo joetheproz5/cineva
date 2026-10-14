@@ -8,7 +8,7 @@ const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_
 
 function config(name) { try { return JSON.parse(fs.readFileSync(path.join(root, name), "utf8")); } catch { return {}; } }
 function sendJSON(response, status, payload) { if (response.headersSent) { response.end(); return; } response.writeHead(status, { "Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store" }); response.end(JSON.stringify(payload)); }
-function readBody(request) { return new Promise((resolve, reject) => { let body = ""; request.on("data", chunk => { body += chunk; if (body.length > 50_000) request.destroy(); }); request.on("end", () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error("Invalid JSON.")); } }); request.on("error", reject); }); }
+function readBody(request,limit=50_000) { return new Promise((resolve, reject) => { let body = ""; request.on("data", chunk => { body += chunk; if (body.length > limit) { reject(new Error("Request body is too large.")); request.destroy(); } }); request.on("end", () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error("Invalid JSON.")); } }); request.on("error", reject); }); }
 function supabase() { const local = config("supabase.local.json"), settings = { url:local.url || process.env.SUPABASE_URL, publishableKey:local.publishableKey || process.env.SUPABASE_PUBLISHABLE_KEY, emailRedirectTo:local.emailRedirectTo || process.env.SUPABASE_EMAIL_REDIRECT_TO }; return settings.url && settings.publishableKey ? settings : null; }
 function dashboardEnvironment() { const local = config("supabase.local.json"); return { SUPABASE_URL:local.url || process.env.SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY:local.publishableKey || process.env.SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY:process.env.SUPABASE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY:process.env.SUPABASE_SERVICE_ROLE_KEY, SEVEN_ADMIN_USERNAME:process.env.SEVEN_ADMIN_USERNAME, SEVEN_ADMIN_PASSWORD:process.env.SEVEN_ADMIN_PASSWORD, SEVEN_DASHBOARD_SECRET:process.env.SEVEN_DASHBOARD_SECRET }; }
 async function dashboardAPI(request, response, sourceURL) {
@@ -165,7 +165,7 @@ async function parentAccess(request, response) {
     return sendJSON(response, 405, { error:"Unsupported parent access action." });
   } catch (error) { sendJSON(response, 400, { error:error.message || "Parent access could not be updated." }); }
 }
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
   const sourceURL = new URL(request.url, "http://localhost");
   if (sourceURL.pathname.startsWith("/api/install/")) return void downloadRedirect(request, response, sourceURL);
   if (sourceURL.pathname === "/api/metrics/event" || sourceURL.pathname.startsWith("/api/admin/")) return void dashboardAPI(request, response, sourceURL);
@@ -175,6 +175,14 @@ const server = http.createServer((request, response) => {
   if (sourceURL.pathname === "/api/auth/refresh") return auth(request, response, "refresh");
   if (sourceURL.pathname === "/api/auth/user") return auth(request, response, "user");
   if (sourceURL.pathname === "/api/account/progress") return progress(request, response);
+  if (sourceURL.pathname === "/api/account/progress/batch") {
+    if(request.method!=="POST")return sendJSON(response,405,{error:"Method not allowed."});
+    try {
+      const body=await readBody(request,750_000), module=await import("../shared/progress-batch.mjs");
+      const result=await module.handleProgressBatch(new Request(sourceURL.href,{method:request.method,headers:request.headers,body:JSON.stringify(body)}),dashboardEnvironment());
+      return sendJSON(response,result.status,await result.json());
+    }catch(error){return sendJSON(response,400,{error:error.message});}
+  }
   if (sourceURL.pathname === "/api/account/watch-time") return watchTime(request, response);
   if (sourceURL.pathname === "/api/account/list") return myList(request, response, sourceURL);
   if (sourceURL.pathname === "/api/account/watchlist") return accountWatchlist(request, response, sourceURL);

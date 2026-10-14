@@ -1,5 +1,5 @@
 (function(root){
-  const metadata=new Map(),pendingStatus=new Set();let generation=0,episodeSync=Promise.resolve(),alertScope="",alertError="";
+  const metadata=new Map(),pendingStatus=new Set(),bulkPending=new Set(),undoByScope=new Map();let generation=0,episodeSync=Promise.resolve(),alertScope="",alertError="";
   const identity=()=>`${accountWatchlistUserId()||""}:${activeProfileId()}`;
   const tracker=()=>root.SEVENSeriesTracker;
   function follows(){
@@ -71,7 +71,7 @@
   function dateLabel(value){return tracker().validDate(value)?new Date(value+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"}):"Date not announced";}
   function toolbar(){
     const mode=state.watchlistView||"saved";
-    return '<div class="tracker-tabs" role="group" aria-label="Watchlist views">'+[["saved","Saved"],["shows","Up next"],["calendar","Calendar"]].map(([value,label])=>`<button type="button" data-tracker-view="${value}" aria-pressed="${mode===value}">${label}</button>`).join("")+'</div><div id="series-tracker-slot"></div>';
+    return '<div class="tracker-toolbar"><div class="tracker-tabs" role="group" aria-label="Watchlist views">'+[["saved","Saved"],["shows","Up next"],["calendar","Calendar"]].map(([value,label])=>`<button type="button" data-tracker-view="${value}" aria-pressed="${mode===value}">${label}</button>`).join("")+`</div><div class="tracker-tools"><button type="button" data-progress-import>Import history</button><button type="button" data-progress-undo ${hasUndo()?"":"hidden"}>Undo last change</button></div></div><div id="series-tracker-slot"></div>`;
   }
   function markup(){
     const view=state.seriesTracker,mode=state.watchlistView||"saved";
@@ -100,6 +100,7 @@
     slot.innerHTML=markup();bindCommon();bind(slot);
   }
   function bind(scope=document){
+    root.SEVENProgressUI?.bind(scope);
     scope.querySelectorAll("[data-tracker-view]").forEach(button=>button.onclick=()=>{state.watchlistView=button.dataset.trackerView;render();if(state.watchlistView!=="saved")void refresh();});
     scope.querySelectorAll("[data-tracker-week]").forEach(button=>button.onclick=()=>{state.trackerWeek=Math.max(-4,Math.min(12,(Number(state.trackerWeek)||0)+Number(button.dataset.trackerWeek)));paint();});
     scope.querySelector("[data-tracker-today]")?.addEventListener("click",()=>{state.trackerWeek=0;paint();});
@@ -128,6 +129,7 @@
     if(!signedIn&&!allowGuest)throw Error("Sign in to save episode progress.");
     if(tracker().validDate(episode.air_date)&&episode.air_date>tracker().todayKey())throw Error("This episode has not reached its listed release date.");
     const scope=identity(),item={type:"tv",id:Number(show.id),season:Number(season),episode:Number(episode.episode_number),title:episode.name||titleOf(show),posterPath:show.poster_path||episode.still_path||null,genreIds:(show.genres||[]).map(genre=>genre.id)},key=watchKey(item),pending=`${scope}:${key}`;
+    if(bulkPending.has(scope))throw Error("A history change is saving. Please wait.");
     if(pendingStatus.has(pending))return;pendingStatus.add(pending);
     const before=localStorage.getItem(key);let saved={};try{saved=before?JSON.parse(before):{};}catch{}
     if(state.pendingProgress?.content_key===key){clearTimeout(state.progressTimer);state.pendingProgress=null;}
@@ -140,6 +142,77 @@
       if(signedIn)upsertAccountProgress(payload);state.seriesNext=null;if(state.seriesTracker)state.seriesTracker.signature="";if(signedIn)void newEpisodes();
     }catch(error){if(identity()===scope){if(before)localStorage.setItem(key,before);else localStorage.removeItem(key);}throw error;}
     finally{pendingStatus.delete(pending);}
+  }
+  const hasUndo=()=>!!undoByScope.get(identity())?.length;
+  function batchRequest(body,headers=authorizedHeaders()){return localAPI("/api/account/progress/batch",{method:"POST",headers:{"Content-Type":"application/json",...headers},body:JSON.stringify(body)});}
+  function statusChanged(){state.seriesNext=null;if(state.seriesTracker)state.seriesTracker.signature="";root.SEVENProgressUI?.updateUndo();void newEpisodes();void refresh();}
+  async function saveBatch(changes){
+    if(!state.session||!accountWatchlistUserId())throw Error("Sign in to save viewing history.");
+    const scope=identity(),profile=activeProfileId(),headers=authorizedHeaders();
+    if(bulkPending.has(scope)||[...pendingStatus].some(key=>key.startsWith(scope+":")))throw Error("Wait for the current episode change to finish.");
+    const unique=new Map();
+    for(const change of changes){
+      const {show,season,episode}=change,type=contentType(show),item={type,id:Number(show.id),season:type==="tv"?Number(season):null,episode:type==="tv"?Number(episode?.episode_number):null,title:type==="tv"?episode?.name||titleOf(show):titleOf(show),posterPath:show.poster_path||null,genreIds:(show.genres||[]).map(genre=>genre.id)};
+      if(!["movie","tv"].includes(type)||!Number.isSafeInteger(item.id)||item.id<1||!contentAllowed(show)||typeof change.value!=="boolean"||
+        (type==="tv"&&(!Number.isSafeInteger(item.season)||item.season<0||!Number.isSafeInteger(item.episode)||item.episode<1||!tracker().aired(episode)))||
+        (type==="movie"&&(!tracker().validDate(show.release_date)||show.release_date>tracker().todayKey())))throw Error("Only released titles and episodes can be imported or marked in bulk.");
+      const key=watchKey(item);unique.set(key,{...change,item,key});
+    }
+    if(!unique.size)throw Error("There are no changes to save.");if(unique.size>10000)throw Error("Choose a smaller history change.");
+    bulkPending.add(scope);for(const key of unique.keys())pendingStatus.add(`${scope}:${key}`);
+    try{
+      if(state.pendingProgress&&unique.has(state.pendingProgress.content_key)){
+        const pending=state.pendingProgress;clearTimeout(state.progressTimer);state.pendingProgress=null;
+        await localAPI("/api/account/progress",{method:"POST",headers:{"Content-Type":"application/json",...headers},body:JSON.stringify(pending)});
+      }
+      const rows=[],keys=[...unique.keys()];
+      for(let offset=0;offset<keys.length;offset+=1000){const page=await batchRequest({action:"read",profile,keys:keys.slice(offset,offset+1000)},headers);if(identity()!==scope)throw Error("Profile changed. Nothing was saved.");if(!Array.isArray(page))throw Error("Couldn’t read the previous progress. Try again.");rows.push(...page);}
+      if(identity()!==scope)throw Error("Profile changed. Nothing was saved.");
+      if(!Array.isArray(rows))throw Error("Couldn’t read the previous progress. Try again.");
+      const remote=new Map(rows.map(row=>[row.content_key,row])),stamp=new Date().toISOString(),journal=[],records=[];
+      for(const {item,key,value} of unique.values()){
+        const previous=remote.get(key)||null;let local={};try{local=JSON.parse(localStorage.getItem(key)||"{}");}catch{}
+        const saved=previous&&Date.parse(previous.last_watched_at)>(Date.parse(local.lastWatchedAt)||0)?accountProgressRecord(previous):local;
+        const done=!!saved.watched||Number(saved.progress)>=90;if(done===value&&!(value===false&&Number(saved.currentTime)>0))continue;
+        const currentTime=value?Math.max(0,Number(saved.currentTime)||0):0,duration=Math.max(0,Number(saved.duration)||0);
+        const record={...saved,...item,currentTime,duration,progress:value?100:0,watched:value,lastWatchedAt:stamp};
+        const payload={content_key:key,content_type:item.type,tmdb_id:item.id,season:item.season,episode:item.episode,title:item.title,poster_path:item.posterPath,progress_seconds:currentTime,duration_seconds:duration,is_watched:value,last_watched_at:stamp};
+        journal.push({key,expected:stamp,previous,localBefore:previous?{...local,...accountProgressRecord(previous)}:null,record,payload});records.push(payload);
+      }
+      if(!records.length)return {count:0};
+      if(records.length>1000)throw Error("Save up to 1,000 changed episodes at a time. Choose an earlier episode first.");
+      const written=await batchRequest({profile,records},headers);
+      if(!Array.isArray(written)||written.length!==records.length)throw Error("Couldn’t confirm the save. Refresh before retrying.");
+      undoByScope.set(scope,journal);
+      if(identity()===scope){for(const item of journal){localStorage.setItem(item.key,JSON.stringify(item.record));upsertAccountProgress(item.payload);}statusChanged();}
+      return {count:records.length};
+    }finally{bulkPending.delete(scope);for(const key of unique.keys())pendingStatus.delete(`${scope}:${key}`);}
+  }
+  async function undoBatch(){
+    const scope=identity(),profile=activeProfileId(),journal=undoByScope.get(scope),headers=authorizedHeaders();
+    if(!state.session||!accountWatchlistUserId())throw Error("Sign in to undo history changes.");
+    if(!journal?.length)return {count:0,changed:0};if(bulkPending.has(scope)||[...pendingStatus].some(key=>key.startsWith(scope+":")))throw Error("Wait for the current episode change to finish.");
+    bulkPending.add(scope);for(const item of journal)pendingStatus.add(`${scope}:${item.key}`);
+    let count=0,changed=0;
+    try{
+      for(let index=0;index<journal.length;index+=20){
+        if(identity()!==scope)throw Error("Profile changed. Continue undo on the original profile.");
+        const chunk=journal.slice(index,index+20),response=await batchRequest({action:"undo",profile,entries:chunk.map(({key,expected,previous})=>({key,expected,previous}))},headers);
+        if(!Array.isArray(response.results))throw Error("Couldn’t confirm the undo. Try again.");
+        for(const result of response.results){
+          const item=chunk.find(item=>item.key===result.key);if(!item||!["restored","changed"].includes(result.status))continue;
+          undoByScope.set(scope,(undoByScope.get(scope)||[]).filter(entry=>entry.key!==item.key));
+          if(result.status==="changed"){
+            changed++;
+            if(identity()===scope){const latest=await batchRequest({action:"read",profile,keys:[item.key]},headers);if(identity()===scope&&Array.isArray(latest)){if(latest[0]){localStorage.setItem(item.key,JSON.stringify({...item.record,...accountProgressRecord(latest[0])}));upsertAccountProgress(latest[0]);}else{localStorage.removeItem(item.key);forgetAccountProgress(item.key);}}}
+            continue;
+          }count++;
+          if(identity()===scope){if(item.localBefore){localStorage.setItem(item.key,JSON.stringify(item.localBefore));upsertAccountProgress(item.previous);}else{localStorage.removeItem(item.key);forgetAccountProgress(item.key);}}
+        }
+        if(response.results.some(result=>result.status==="failed"))throw Error("Some changes couldn’t be undone. Try again to finish.");
+      }
+      return {count,changed};
+    }finally{bulkPending.delete(scope);for(const item of journal)pendingStatus.delete(`${scope}:${item.key}`);if(identity()===scope)statusChanged();}
   }
   async function manage(id){
     const scope=identity();try{
@@ -160,7 +233,7 @@
             finally{if(button.isConnected)button.disabled=false;}
           });
         }catch(error){if(current===request&&modal.isConnected)list.innerHTML=`<p>${escapeHTML(error.message)}</p><button type="button" data-tracker-retry-season>Try again</button>`;list.querySelector("[data-tracker-retry-season]")?.addEventListener("click",draw);}
-      };select.onchange=draw;modal.querySelector("[data-tracker-close]").focus();await draw();
+      };select.onchange=draw;root.SEVENProgressUI?.attachManage(modal,show,select,draw);modal.querySelector("[data-tracker-close]").focus();await draw();
     }catch(error){showToast(error.message||"Episode information unavailable.");}
   }
   function revision(){const key="seven.episode-alerts.revision",value=Math.max(Date.now(),Number(localStorage.getItem(key)||0)+1);localStorage.setItem(key,String(value));return value;}
@@ -188,7 +261,7 @@
     if(!interactive)task.catch(error=>{if(identity()===scope){alertError=error.message;paint();}});
     return task;
   }
-  function clear(){generation++;state.seriesTracker=null;state.newEpisodes=[];alertScope="";alertError="";document.querySelector(".tracker-episode-modal")?.remove();void syncAlerts({clear:true});}
+  function clear(){generation++;state.seriesTracker=null;state.newEpisodes=[];alertScope="";alertError="";document.querySelector(".tracker-episode-modal")?.remove();document.querySelector(".tracker-progress-modal")?.remove();void syncAlerts({clear:true});}
   document.addEventListener("visibilitychange",()=>{if(typeof state!=="undefined"&&document.visibilityState==="visible"&&state.route==="watchlist"&&(state.watchlistView||"saved")!=="saved")void refresh();});
-  root.SEVENTrackerUI={follows,refresh,newEpisodes,toolbar,paint,bind,play,manage,saveStatus,syncAlerts,clear};
+  root.SEVENTrackerUI={follows,refresh,newEpisodes,toolbar,paint,bind,play,manage,saveStatus,saveBatch,undoBatch,hasUndo,cached,identity,syncAlerts,clear};
 })(window);

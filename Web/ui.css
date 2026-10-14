@@ -1114,6 +1114,35 @@ html,body { touch-action: pan-x pan-y; }
 /* Upcoming releases and device-level push reminders. */
 /* Shared search controls; detailed filters stay collapsed on phones. */
 /* Series tracking stays within Watchlist, without adding navigation items. */
+.tracker-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.tracker-toolbar .tracker-tabs { margin-bottom: 0; }
+.tracker-tools,.progress-season-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.tracker-tools button,.progress-season-tools button,.progress-template { padding: 10px 12px; min-height: 42px; border: 1px solid #343438; border-radius: 8px; background: #171719; color: #ccc; font: inherit; font-size: 13px; }
+.tracker-progress-modal [hidden],.tracker-episode-modal[hidden],.tracker-tools [hidden],.progress-season-tools [hidden] { display: none !important; }
+.progress-season-tools { margin: 18px 0 12px; }
+.progress-season-tools button:disabled { opacity: .4; }
+.progress-body p { line-height: 1.5; }
+.progress-note { font-size: 13px; color: #999; }
+.progress-preview { max-height: 40svh; overflow: auto; margin: 20px 0; }
+.progress-preview > div { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid #29292e; font-size: 13px; }
+.progress-preview small { color: #aaa; flex-shrink: 0; }
+.progress-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; padding-top: 16px; }
+.progress-footer button { background: #e50914; color: #fff; border: 0; border-radius: 8px; padding: 12px 18px; min-height: 44px; font: inherit; font-size: 14px; }
+.progress-footer button:disabled { opacity: .4; }
+.progress-footer span { color: #aaa; font-size: 13px; }
+.progress-cursor { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; margin: 20px 0; }
+.progress-cursor label,.progress-row-episode label { display: grid; gap: 7px; font-size: 13px; }
+.progress-cursor select { width: 100%; min-width: 0; }
+.progress-file { margin: 18px 0; flex-wrap: wrap; font-size: 14px; }
+.progress-file input { max-width: 100%; min-width: 0; color: #ddd; font-size: 14px; }
+.progress-import-row { padding: 16px 0; border-top: 1px solid #29292e; }
+.progress-import-row .progress-row-check { display: flex; gap: 10px; align-items: start; color: #eee; line-height: 1.4; margin-bottom: 12px; font-size: 14px; }
+.progress-row-check input { width: 18px; height: 18px; flex: 0 0 18px; margin: 1px 0; accent-color: #e50914; }
+.progress-import-row select { width: 100%; min-width: 0; }
+.progress-import-row small { display: block; color: #999; line-height: 1.5; margin-top: 8px; font-size: 12px; }
+.progress-row-episode { display: flex; gap: 12px; margin-top: 12px; }
+.progress-row-episode input { width: 90px; min-height: 42px; padding: 8px 10px; border: 1px solid #39393f; border-radius: 8px; background: #212124; color: #eee; font: inherit; font-size: 16px; }
+@media(max-width: 600px) { .progress-cursor { grid-template-columns: 1fr; } .tracker-tools { width: 100%; } .progress-season-tools button { flex: 1 1 auto; } }
 .tracker-tabs { display: flex; gap: 6px; margin: 0 0 24px; padding: 5px; width: fit-content; border: 1px solid #2a2a2e; border-radius: 12px; background: #111113; }
 .tracker-tabs button { min-height: 42px; padding: 10px 20px; border-radius: 8px; color: #aaa; background: transparent; font: inherit; font-size: 14px; }
 .tracker-tabs button[aria-pressed="true"] { color: #fff; background: #29292e; }

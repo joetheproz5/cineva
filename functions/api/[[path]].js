@@ -1,4 +1,5 @@
 import { handleDashboardRequest, handleDownloadRedirect } from "../../shared/admin-dashboard.mjs";
+import { handleProgressBatch } from "../../shared/progress-batch.mjs";
 
 const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos|recommendations)?)?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos|recommendations))?)|person\/\d+(\/combined_credits)?|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
 
@@ -298,6 +299,7 @@ export async function onRequest(context) {
   if (path === "auth/refresh" && request.method === "POST") return auth("refresh", request, env);
   if (path === "auth/user" && request.method === "GET") return auth("user", request, env);
   if (path === "account/progress") return progress(request, requestURL, env);
+  if (path === "account/progress/batch") return handleProgressBatch(request, env);
   if (path === "account/list") return myList(request, requestURL, env);
   if (path === "account/watchlist") return accountWatchlist(request, requestURL, env);
   if (path === "account/settings" && request.method === "PUT") return accountSettings(request, env);
