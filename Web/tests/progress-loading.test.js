@@ -6,3 +6,7 @@ test('progress helpers load in order and are included in the offline shell',()=>
 test('both production and local proxies mount the same batch handler; local server remains valid JS',()=>{
  const repo=path.resolve(__dirname,'../..'),production=fs.readFileSync(path.join(repo,'functions/api/[[path]].js'),'utf8'),local=fs.readFileSync(path.join(repo,'Web/server.js'),'utf8');assert.match(production,/account\/progress\/batch.*handleProgressBatch/);assert.match(local,/account\/progress\/batch/);assert.match(local,/module\.handleProgressBatch/);assert.doesNotThrow(()=>require('node:vm').createScript(local));
 });
+test('TMDB TV taxonomy types such as Scripted normalize to tv, not a third content type',()=>{
+ const source=fs.readFileSync(path.resolve(__dirname,'../app.js'),'utf8'),normalize=require('node:vm').runInNewContext(`(${source.match(/function normalize\(item, fallbackType\) \{[^\n]+/)[0]})`);
+ assert.equal(normalize({id:1396,name:'Breaking Bad',type:'Scripted'},'tv').type,'tv');assert.equal(normalize({id:1,name:'Talk show',type:'Talk Show'},'tv').type,'tv');assert.equal(normalize({id:1,title:'A movie'},'movie').type,'movie');assert.equal(normalize({id:1,name:'Series',type:'tv'},'movie').type,'tv');
+});
