@@ -37,4 +37,4 @@ keep their original behavior and do not replace the last bulk undo entry.
 Tests: `node --test Web/tests/*.test.js`. The shared endpoint is mounted in both
 Cloudflare Pages Functions and the local development server. Web-only changes
 are served by the existing Windows/Android wrappers, without rebuilding their
-installers. Service worker version: `seven-v365`.
+installers. Service worker version: `seven-v366`.
