@@ -2079,54 +2079,80 @@ function renderSearch() {
   bindCommon(); bindSearchOptions(document.querySelector("#search-body"));
 }
 const GENRES = { 12:"Adventure", 16:"Animation", 18:"Drama", 28:"Action", 35:"Comedy", 53:"Thriller", 80:"Crime", 99:"Documentary", 10749:"Romance", 878:"Science fiction", 9648:"Mystery", 10751:"Family", 10759:"Action & adventure", 10765:"Sci-fi & fantasy" };
-function watchedGenres(type = "") { const counts = {}; likedTitles().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 3; })); historyEntries().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; })); return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([id]) => Number(id)); }
+function forYouSignature() {
+  const preferences=currentPreferences();
+  return JSON.stringify([activeProfileId(),currentProfile()?.kids,restrictedTitles(),["favoriteGenres","contentMix","maturity","familySafe","blockScary","moviesEnabled","seriesEnabled"].map(key=>preferences[key]),likedTitles(),hiddenTitles(),historyEntries().map(item=>[item.type,item.id,item.season,item.episode,item.currentTime,item.duration,item.watched,item.genreIds,item.lastWatchedAt])]);
+}
 async function openForYou() {
   state.route = "for-you";
-  state.forYou = { loading:true };
+  const profileId = activeProfileId(), view = state.forYou = { loading:true, profileId, signature:forYouSignature(), rails:{}, sources:{} };
   render();
-  const activity = historyEntries(), latest = activity[0], latestLike = likedTitles()[0], anchor = latestLike || latest;
-  const preferences = currentPreferences(), savedGenreIds = new Set((Array.isArray(preferences.favoriteGenres) ? preferences.favoriteGenres : []).map(Number));
-  const pickedGenres = ONBOARDING_GENRES.filter(([id]) => savedGenreIds.has(id)).slice(0, 3);
-  const movieGenre = pickedGenres.length ? pickedGenres.map(([id]) => id).join("|") : watchedGenres("movie")[0] || watchedGenres()[0];
-  const seriesGenre = pickedGenres.length ? [...new Set(pickedGenres.map(([, , tvId]) => tvId).filter(Boolean))].join("|") : watchedGenres("tv")[0] || watchedGenres()[0];
-  const showMovies = preferences.contentMix !== "series", showSeries = preferences.contentMix !== "movies", familySafe = useFamilyCatalog();
-  const movieParams = { ...(movieGenre ? { with_genres:movieGenre } : {}), sort_by:"popularity.desc" };
-  const seriesParams = { ...(seriesGenre ? { with_genres:seriesGenre } : {}), sort_by:"popularity.desc" };
+  const preferences = currentPreferences(), ranking = window.SEVENRecommendations;
+  const seeds = Object.values(state.catalog).flat();
+  const model = ranking.build({ profileId, preferences, history:historyEntries(), liked:likedTitles(), hidden:hiddenTitles(), metadata:seeds });
+  const movieGenre = ranking.topGenres(model,"movie").join("|"), seriesGenre = ranking.topGenres(model,"tv").join("|");
+  const showMovies = preferences.contentMix !== "series" && preferences.moviesEnabled !== false, showSeries = preferences.contentMix !== "movies" && preferences.seriesEnabled !== false, familySafe = useFamilyCatalog();
+  const today = new Date(model.now).toISOString().slice(0,10), recentFrom = String(new Date(model.now).getFullYear()-1) + "-01-01";
+  const movieParams = { ...(movieGenre ? { with_genres:movieGenre } : {}), sort_by:"popularity.desc", "primary_release_date.lte":today };
+  const seriesParams = { ...(seriesGenre ? { with_genres:seriesGenre } : {}), sort_by:"popularity.desc", "first_air_date.lte":today };
   if (familySafe) {
-    movieParams.certification_country = "US";
-    movieParams["certification.lte"] = currentProfile()?.kids ? "PG" : "PG-13";
-    seriesParams.certification_country = "US";
-    seriesParams["certification.lte"] = "TV-PG";
+    movieParams.certification_country = "US"; movieParams["certification.lte"] = currentProfile()?.kids ? "PG" : "PG-13";
+    seriesParams.certification_country = "US"; seriesParams["certification.lte"] = "TV-PG";
   }
-  const pickedNames = pickedGenres.map(([, name]) => name);
-  const reason = pickedNames.length ? `Selected for your taste: ${pickedNames.join(", ")}.` : latestLike ? `Built around what ${currentProfile()?.name || "you"} likes.` : latest ? `Built around ${currentProfile()?.name || "your"} viewing activity.` : "Play a title or rate one to tune this page.";
-  try {
-    const [movies, series, freshMovies, freshSeries] = await Promise.all([
-      showMovies ? api("discover/movie", movieParams) : Promise.resolve({ results:[] }),
-      showSeries ? api("discover/tv", seriesParams) : Promise.resolve({ results:[] }),
-      showMovies ? (pickedGenres.length || familySafe ? api("discover/movie", { ...movieParams, "primary_release_date.gte":`${new Date().getFullYear() - 1}-01-01`, "primary_release_date.lte":new Date().toISOString().slice(0,10), sort_by:"primary_release_date.desc" }) : api("movie/now_playing")) : Promise.resolve({ results:[] }),
-      showSeries ? (pickedGenres.length || familySafe ? api("discover/tv", { ...seriesParams, "first_air_date.gte":`${new Date().getFullYear() - 1}-01-01`, "first_air_date.lte":new Date().toISOString().slice(0,10), sort_by:"first_air_date.desc" }) : api("tv/on_the_air")) : Promise.resolve({ results:[] })
-    ]);
-    const rails = {}, sources = {};
-    if (showMovies) {
-      const movieHeading = pickedNames.length ? `More ${pickedNames.slice(0, 2).join(" & ")} movies` : movieGenre ? anchor?.title ? latestLike ? `Because you liked ${anchor.title}` : `Because you watched ${anchor.title}` : `${GENRES[movieGenre] || "Personalized"} movies for you` : "Popular movies for you";
-      rails[movieHeading] = results(movies);
-      rails["New movies"] = results(freshMovies);
-      sources[movieHeading] = [{ path:"discover/movie", type:"movie", params:movieParams }];
-      sources["New movies"] = [{ path:pickedGenres.length || familySafe ? "discover/movie" : "movie/now_playing", type:"movie", params:pickedGenres.length || familySafe ? { ...movieParams, "primary_release_date.gte":`${new Date().getFullYear() - 1}-01-01`, "primary_release_date.lte":new Date().toISOString().slice(0,10), sort_by:"primary_release_date.desc" } : {} }];
-    }
-    if (showSeries) {
-      const seriesHeading = pickedNames.length ? `More ${pickedNames.slice(0, 2).join(" & ")} series` : seriesGenre ? `${GENRES[seriesGenre] || "Personalized"} series for you` : "Popular series for you";
-      rails[seriesHeading] = results(series);
-      rails["New series"] = results(freshSeries);
-      sources[seriesHeading] = [{ path:"discover/tv", type:"tv", params:seriesParams }];
-      sources["New series"] = [{ path:pickedGenres.length || familySafe ? "discover/tv" : "tv/on_the_air", type:"tv", params:pickedGenres.length || familySafe ? { ...seriesParams, "first_air_date.gte":`${new Date().getFullYear() - 1}-01-01`, "first_air_date.lte":new Date().toISOString().slice(0,10), sort_by:"first_air_date.desc" } : {} }];
-    }
-    state.forYou = { genre:movieGenre || seriesGenre, latest, reason, rails, sources };
-  } catch (error) { state.forYou = { error:error.message, rails:{} }; }
-  render();
+  const requests = [];
+  const addSources = (type, params) => {
+    const dateKey = type === "movie" ? "primary_release_date" : "first_air_date";
+    requests.push({ path:"discover/"+type, type, params:{...params,page:1} },{ path:"discover/"+type, type, params:{...params,page:2} });
+    const broad = {...params, "vote_count.gte":50}; delete broad.with_genres;
+    requests.push({path:"discover/"+type,type,params:broad});
+    requests.push({path:"discover/"+type,type,params:{...params,[dateKey+".gte"]:recentFrom,sort_by:dateKey+".desc"}});
+    const anchor = model.anchors.find(item=>item.type===type && Number(item.id)>0);
+    if (anchor) requests.push({path:type+"/"+Number(anchor.id)+"/recommendations",type,params:{page:1},anchor});
+  };
+  if (showMovies) addSources("movie",movieParams);
+  if (showSeries) addSources("tv",seriesParams);
+  const responses = await Promise.allSettled(requests.map(source=>api(source.path,source.params)));
+  if (state.forYou !== view || activeProfileId() !== profileId) return;
+  const pools = {movie:[],tv:[]};
+  for(const item of seeds) if(pools[contentType(item)]) pools[contentType(item)].push(normalize(item));
+  responses.forEach((response,index)=>{
+    if(response.status!=="fulfilled")return;
+    const source=requests[index],items=(response.value.results || []).map(item=>normalize(item,source.type));
+    pools[source.type].push(...items);
+    if(source.anchor) ranking.addRelated(model,source.anchor,items);
+  });
+  const addRails = type => {
+    const name=type==="movie" ? "Movies for you" : "Series for you",freshName=type==="movie" ? "New movies" : "New series";
+    const items=ranking.rank(pools[type],model,{allowed:contentAllowed});
+    view.rails[name]=items;
+    const excluded = new Set(items.slice(0,12).map(ranking.keyOf));
+    view.rails[freshName]=ranking.rank(pools[type].filter(item=>String(item.release_date || item.first_air_date || "")>=recentFrom),model,{allowed:contentAllowed,exclude:excluded});
+    // View all pages the same ranked snapshot rather than switching back to popularity.
+    view.sources[name]=[];view.sources[freshName]=[];
+  };
+  if(showMovies)addRails("movie");
+  if(showSeries)addRails("tv");
+  view.genre=movieGenre || seriesGenre;
+  view.reason=model.signals ? "Based on what you watch, rate, and choose." : "Popular and highly rated picks.";
+  view.loading=false;
+  if (!Object.values(view.rails).some(items=>items.length) && requests.length && responses.every(response=>response.status==="rejected")) view.error="Couldn’t load recommendations. Try again.";
+  if (state.route==="for-you") render();
 }
-function renderForYou() { const view = state.forYou || { loading:true }; app.innerHTML = `${header()}<section class="browse-page"><span class="brand">MADE FOR YOU</span><h2>For You</h2><p>${escapeHTML(view.reason || (view.genre ? `Personal picks based on ${currentProfile()?.name || "your profile"}’s viewing activity.` : "Play a title or rate one to tune this page."))}</p></section>${view.loading ? `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>` : view.error ? `<p class="setup">${escapeHTML(view.error)}</p>` : Object.entries(view.rails).map(([name, items]) => rail(name, items)).join("")}${footer()}`; bindCommon(); }
+function forYouRail(name,items) {
+  const html=rail(name,items.slice(0,12)),collection=state.explorable?.["for-you:"+name];
+  if(collection)collection.items=items.filter(contentAllowed);
+  return html;
+}
+function renderForYou() {
+  const view=state.forYou || {loading:true};
+  if(view.profileId !== activeProfileId() || !view.loading && view.signature !== forYouSignature()) {void openForYou();return;}
+  app.innerHTML=header()+'<section class="browse-page"><span class="brand">MADE FOR YOU</span><h2>For You</h2><p>'+escapeHTML(view.reason || "Finding your next watch…")+'</p></section>'+
+    (view.loading ? '<section class="rail"><div class="skeleton-line wide"></div><div class="cards">'+Array.from({length:7},()=>'<div class="card-skeleton skeleton"></div>').join("")+'</div></section>' :
+    view.error ? '<p class="setup">'+escapeHTML(view.error)+' <button type="button" data-for-you-retry>Try again</button></p>' :
+    Object.values(view.rails).some(items=>items.length) ? Object.entries(view.rails).map(([name,items])=>forYouRail(name,items)).join("") :
+    '<p class="setup">No titles match this profile’s current preferences.</p>')+footer();
+  bindCommon();document.querySelector("[data-for-you-retry]")?.addEventListener("click",openForYou);
+}
 const MOVIE_FILTERS = [["All",null],["Action",28],["Adventure",12],["Animation",16],["Comedy",35],["Crime",80],["Drama",18],["Family",10751],["Horror",27],["Romance",10749],["Sci-Fi",878],["Thriller",53]];
 const SERIES_FILTERS = [["All",null],["Action",10759],["Animation",16],["Comedy",35],["Crime",80],["Documentary",99],["Drama",18],["Mystery",9648],["Sci-Fi",10765]];
 function discoverGenre(type, genre, sortBy) { const params = { with_genres:genre, sort_by:sortBy }; if (sortBy === "vote_average.desc") params["vote_count.gte"] = 100; return api(`discover/${type}`, params); }
@@ -2663,7 +2689,7 @@ async function hideTitle(item) {
   const profile = currentProfile();
   if (!profile) return showAuth();
   const key = hiddenTitleKey(item);
-  const record = { type:item.type, id:Number(item.id), title:titleOf(item), poster_path:item.poster_path || null, release_date:item.release_date || item.first_air_date || null, vote_average:Number(item.vote_average) || 0, hiddenAt:new Date().toISOString() };
+  const record = { type:item.type, id:Number(item.id), title:titleOf(item), poster_path:item.poster_path || null, release_date:item.release_date || item.first_air_date || null, vote_average:Number(item.vote_average) || 0, genreIds:item.genre_ids || (item.genres || []).map(genre=>genre.id), hiddenAt:new Date().toISOString() };
   profile.hiddenTitles = [record, ...hiddenTitles().filter(hidden => hiddenTitleKey(hidden) !== key)];
   profile.likedTitles = likedTitles().filter(liked => hiddenTitleKey(liked) !== key);
   state.featuredPool = state.featuredPool.filter(featured => !isHiddenTitle(featured));
@@ -2972,7 +2998,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=362", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=363", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

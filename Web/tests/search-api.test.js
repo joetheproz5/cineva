@@ -16,3 +16,15 @@ test("the production proxy permits numeric combined credits but rejects arbitrar
   const server=fs.readFileSync(path.resolve(__dirname,"../server.js"),"utf8"),expression=server.match(/const tmdbAllowed = (\/.*\/);/)[1];
   const allowed=Function(`return ${expression}`)();assert.equal(allowed.test("person/31/combined_credits"),true);assert.equal(allowed.test("person/31/arbitrary"),false);
 });
+test("movie and series recommendation endpoints are allowed without opening arbitrary TMDB paths", async () => {
+  const {onRequest}=await import(pathToFileURL(path.resolve(__dirname,"../../functions/api/[[path]].js")).href);
+  const originalFetch=global.fetch;const calls=[];global.fetch=async url=>{calls.push(String(url));return Response.json({results:[]});};
+  try {
+    for(const endpoint of ["movie/157336/recommendations","tv/1396/recommendations"]) {
+      const response=await onRequest({request:new Request(`https://seven.example/api/tmdb/${endpoint}?page=1`),env:{TMDB_BEARER_TOKEN:"fixture-token"},params:{path:`tmdb/${endpoint}`}});assert.equal(response.status,200);
+    }
+    const invalid=await onRequest({request:new Request("https://seven.example/api/tmdb/movie/157336/delete"),env:{TMDB_BEARER_TOKEN:"fixture-token"},params:{path:"tmdb/movie/157336/delete"}});assert.equal(invalid.status,400);assert.equal(calls.length,2);
+  }finally{global.fetch=originalFetch;}
+  const source=fs.readFileSync(path.resolve(__dirname,"../server.js"),"utf8"),expression=source.match(/const tmdbAllowed = (\/.*\/);/)[1],allowed=Function(`return ${expression}`)();
+  assert.equal(allowed.test("movie/157336/recommendations"),true);assert.equal(allowed.test("tv/1396/recommendations"),true);assert.equal(allowed.test("movie/157336/delete"),false);
+});
