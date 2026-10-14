@@ -10,7 +10,7 @@ const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || navigator.standalone === true;
 if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
-const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft"];
+const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "searchView", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft"];
 const appRouteSnapshots = new Map();
 let appNavigationIndex = 0, appNavigationReady = false, appNavigationRestoring = false, appNavigationIdentity = "";
 let searchRequest = 0;
@@ -690,7 +690,7 @@ function header() {
   const profile = currentProfile() || defaultAccount().profiles[0];
   const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : state.route === "series" ? "shows" : state.route === "movie" ? "movies" : "";
   const account = state.user ? `<button class="account signed-in" data-account title="Account">${profileAvatar(profile)}<i class="account-caret" aria-hidden="true">▾</i></button>` : `<button class="account account-guest" data-auth aria-label="Guest profile. Sign in or create an account" title="Guest profile"><svg class="account-guest-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.65-3.55 2.82-5.4 6.5-5.4s5.85 1.85 6.5 5.4"/></svg></button>`;
-  const search = currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="${t("Titles, movies, series")}" autocomplete="off" enterkeyhint="search" aria-label="Search titles"><div class="search-suggestions" hidden></div></div><button class="msearch-open" data-msearch aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>` : "";
+  const search = currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="Titles, actors, directors" autocomplete="off" enterkeyhint="search" maxlength="160" aria-label="Search titles, actors and directors"><div class="search-suggestions" hidden></div></div><button class="msearch-open" data-msearch aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>` : "";
   const homeLink = `<button class="nav-link ${activeNav === "home" ? "active" : ""}" data-home><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg><span>${t("Home")}</span></button>`;
   const forYouLink = `<button class="nav-link ${activeNav === "for-you" ? "active" : ""}" data-for-you><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></svg><span>${t("For You")}</span></button>`;
   const moviesLink = `<button class="nav-link ${activeNav === "movies" ? "active" : ""}" data-movies><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4Z M4 9h16 M8 5l3 4m2-4 3 4M8 20l3-4m2 4 3-4"/></svg><span>${t("Movies")}</span></button>`;
@@ -919,6 +919,7 @@ async function activateProfile(id, { handoff = false } = {}) {
   stopProfileGateLayout();
   const catalogStale = state.catalogKey !== id;
   state.account.activeProfileId = id;
+  searchRequest++; state.searchView = null; state.searchResults = []; state.search = ""; state.mSearch = null;
   hydrateWatchlist();
   void loadAccountWatchlist();
   void saveAccount();
@@ -1335,13 +1336,14 @@ function openMobileSearch() {
   if (state.route !== "msearch") state.mSearchReturn = state.route;
   state.route = "msearch";
   state.mSearch ||= { query: state.search || "", results: state.searchResults || [], trending: state.catalog["Trending now"]?.slice(0, 12) || null };
+  if (state.searchView?.query) state.mSearch.query = state.searchView.query;
   if (!state.mSearch.trending) api("trending/all/week").then(payload => { state.mSearch.trending = results(payload).slice(0, 12); if (state.route === "msearch" && (state.mSearch.query || "").trim().length < 2) renderMSearch(); }).catch(() => { state.mSearch.trending = []; });
   render();
   setTimeout(() => document.querySelector("#msearch-input")?.focus(), 80);
 }
 function renderMSearch() {
   const view = state.mSearch || { query:"", results:[], trending:null };
-  app.innerHTML = `${header()}<div class="msearch-page"><div class="msearch-bar"><button class="msearch-back" data-msearch-back aria-label="${t("Back")}">‹</button><div class="msearch-input-wrap"><span class="msearch-magnifier" aria-hidden="true">⌕</span><input id="msearch-input" type="search" placeholder="${t("Titles, movies, series")}" value="${escapeHTML(view.query || "")}" autocomplete="off" enterkeyhint="search"><button class="msearch-clear" data-msearch-clear ${view.query ? "" : "hidden"} aria-label="Clear">×</button></div></div><div id="msearch-body"></div></div>`;
+  app.innerHTML = `${header()}<div class="msearch-page"><div class="msearch-bar"><button class="msearch-back" data-msearch-back aria-label="${t("Back")}">‹</button><div class="msearch-input-wrap"><span class="msearch-magnifier" aria-hidden="true">⌕</span><input id="msearch-input" type="search" placeholder="Titles, actors, directors" value="${escapeHTML(view.query || "")}" autocomplete="off" enterkeyhint="search" maxlength="160"><button class="msearch-clear" data-msearch-clear ${view.query ? "" : "hidden"} aria-label="Clear">×</button></div></div><div id="msearch-body"></div></div>`;
   bindCommon();
   const body = document.querySelector("#msearch-body"), input = document.querySelector("#msearch-input"), clearButton = document.querySelector("[data-msearch-clear]");
   const viewport = window.visualViewport;
@@ -1360,24 +1362,27 @@ function renderMSearch() {
     body.innerHTML = `<h2 class="msearch-title">${t("Top searches")}</h2><div class="msearch-top">${!trending ? Array.from({ length: 8 }, () => `<div class="msearch-top-item"><div class="skeleton" style="aspect-ratio:16/9"></div></div>`).join("") : trending.length ? trending.map((item, index) => `<button class="msearch-top-item" data-open="${item.type}:${item.id}"><img src="${item.backdrop_path ? TMDB_IMAGE + item.backdrop_path : posterOf(item)}" alt="" loading="lazy"><b>${index + 1}</b><span>${escapeHTML(titleOf(item))}</span></button>`).join("") : `<p class="msearch-empty">Nothing to show yet.</p>`}</div>`;
     bindCommon();
   };
-  const renderResults = (items, loading, query) => {
-    body.innerHTML = loading ? `<div class="msearch-grid">${Array.from({ length: 6 }, () => `<div class="msearch-skeleton skeleton"></div>`).join("")}</div>` : items.length ? `<div class="msearch-grid">${items.map(mobileSearchCard).join("")}</div>` : `<p class="msearch-empty">No matches for “${escapeHTML(query)}”.</p>`;
-    bindCommon();
-  };
-  if ((view.query || "").trim().length >= 2) renderResults(view.results, false, view.query); else renderIdle();
-  clearButton.onclick = () => { input.value = ""; view.query = ""; view.results = []; clearButton.hidden = true; renderIdle(); input.focus(); };
+  if ((view.query || "").trim().length >= 2) {
+    if (!state.searchView || state.searchView.query !== view.query.trim()) { state.searchView = createSearchView(view.query); void loadSearchView(state.searchView); }
+    paintSearchResults();
+  } else renderIdle();
+  clearButton.onclick = () => { clearTimeout(timer); searchRequest++; input.value = ""; view.query = ""; view.results = []; state.search = ""; state.searchView = null; clearButton.hidden = true; renderIdle(); input.focus(); };
   document.querySelector("[data-msearch-back]").onclick = () => navigateBackInApp(() => { state.route = state.mSearchReturn || "home"; state.mSearchReturn = null; render(); });
   let timer;
   input.oninput = () => {
     view.query = input.value;
+    state.search = input.value;
+    state.searchView = null;
+    searchRequest++;
     clearButton.hidden = !input.value;
     clearTimeout(timer);
     timer = setTimeout(async () => {
       const query = input.value.trim();
       if (query.length < 2) { view.results = []; renderIdle(); return; }
-      renderResults([], true, query);
-      try { view.results = results(await api("search/multi", { query })); } catch { view.results = []; }
-      if (input.value.trim() === query && state.route === "msearch") renderResults(view.results, false, query);
+      if (state.route !== "msearch" || !input.isConnected) return;
+      state.searchView = createSearchView(query);
+      void addRecentSearch(query);
+      await loadSearchView(state.searchView);
     }, 300);
   };
 }
@@ -1969,15 +1974,20 @@ function simplifiedTitleQuery(query) {
 }
 function searchResults(payload) {
   const titles = (payload.results || []).filter(item => item.media_type !== "person");
-  return (currentProfile()?.kids ? titles.filter(item => contentAllowed(item)) : titles).map(item => normalize(item));
+  return titles.filter(item => contentAllowed(item, { directSearch:true })).map(item => normalize(item));
 }
 async function findTitles(query) {
-  const primary = searchResults(await api("search/multi", { query }));
-  if (primary.length) return primary;
-  const fallback = simplifiedTitleQuery(query);
-  return fallback ? searchResults(await api("search/multi", { query:fallback })) : primary;
+  const view = createSearchView(query);
+  await window.SEVENSearch.load(view, api, item => contentAllowed(item, { directSearch:true }));
+  if (view.error) throw new Error(view.error);
+  return view.items;
 }
-async function search(query) { state.search = query; state.searchFilter = "all"; if (query.trim().length < 2) { state.searchResults = []; state.route = "home"; render(); return; } void addRecentSearch(query.trim()); try { state.searchResults = await findTitles(query); state.route = "search"; } catch (error) { state.error = error.message; state.route = "home"; } render(); }
+async function search(query) {
+  searchRequest++; state.search = query.trim(); state.searchFilter = "all";
+  if (state.search.length < 2) { state.searchResults = []; state.searchView = null; state.route = "home"; render(); return; }
+  void addRecentSearch(state.search); state.searchView = createSearchView(state.search); state.route = "search";
+  render(); await loadSearchView(state.searchView);
+}
 function hideSearchSuggestions(input) { const menu = input?.closest(".search")?.querySelector(".search-suggestions"); if (menu) { menu.hidden = true; menu.innerHTML = ""; } }
 function showRecentSearches(input) {
   const menu = input?.closest(".search")?.querySelector(".search-suggestions");
@@ -1990,9 +2000,86 @@ function showRecentSearches(input) {
   menu.querySelectorAll("[data-remove-recent-search]").forEach(button => { button.onmousedown = event => event.preventDefault(); button.onclick = async () => { await removeRecentSearch(button.dataset.removeRecentSearch); if (input && input.value.trim().length < 2) showRecentSearches(input); }; });
   menu.querySelector("[data-clear-recent-searches]")?.addEventListener("click", async event => { event.preventDefault(); await clearRecentSearches(); hideSearchSuggestions(input); });
 }
-function showSearchSuggestions(input, query, items) { const menu = input.closest(".search")?.querySelector(".search-suggestions"); if (!menu) return; const picks = items.slice(0, 5); menu.innerHTML = picks.length ? `${picks.map(item => `<button class="search-suggestion" data-search-result="${item.type}:${item.id}"><img src="${posterOf(item)}" alt=""><span><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`).join("")}<button class="search-all" data-search-all>See all results for “${escapeHTML(query)}” <b>›</b></button>` : `<p class="search-empty">No quick matches yet.</p>`; menu.hidden = false; menu.querySelectorAll("[data-search-result]").forEach(button => button.onclick = () => { void addRecentSearch(query.trim()); const [type, id] = button.dataset.searchResult.split(":"); openItem(type, id); }); menu.querySelector("[data-search-all]")?.addEventListener("click", () => { void addRecentSearch(query.trim()); state.search = query; state.route = "search"; render(); }); }
+function showSearchSuggestions(input, query, items) { const menu = input.closest(".search")?.querySelector(".search-suggestions"); if (!menu) return; const picks = items.slice(0, 5); menu.innerHTML = picks.length ? `${picks.map(item => `<button class="search-suggestion" data-search-result="${item.type}:${item.id}"><img src="${posterOf(item)}" alt=""><span><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`).join("")}<button class="search-all" data-search-all>See all results for “${escapeHTML(query)}” <b>›</b></button>` : `<p class="search-empty">No quick matches yet.</p>`; menu.hidden = false; menu.querySelectorAll("[data-search-result]").forEach(button => button.onclick = () => { void addRecentSearch(query.trim()); const [type, id] = button.dataset.searchResult.split(":"); openItem(type, id); }); menu.querySelector("[data-search-all]")?.addEventListener("click", () => { hideSearchSuggestions(input); void search(query); }); }
 async function suggestSearch(input) { const query = input.value.trim(), request = ++searchRequest; state.search = input.value; if (query.length < 2) return showRecentSearches(input); try { const found = await findTitles(query); if (request !== searchRequest || input.value.trim() !== query) return; state.searchResults = found; showSearchSuggestions(input, query, found); } catch { if (request === searchRequest) hideSearchSuggestions(input); } }
-function renderSearch() { const filter = state.searchFilter || "all", items = state.searchResults.filter(item => filter === "all" || item.type === filter); app.innerHTML = `${header()}<section class="search-page"><span class="brand">DISCOVER</span><h2>Search results</h2>${state.searchResults.length ? `<div class="search-filters" role="group" aria-label="Filter search results">${[["all","All"],["movie","Movies"],["tv","Series"]].map(([value, label]) => `<button class="${filter === value ? "active" : ""}" data-search-filter="${value}">${label}</button>`).join("")}</div>${items.length ? `<div class="result-grid">${items.map(item => card(item)).join("")}</div>` : `<p class="search-empty">No ${filter === "movie" ? "movies" : "series"} match this search.</p>`}` : "<p>No matches found. Try a movie, series, or actor name.</p>"}</section>${footer()}`; bindCommon(); document.querySelectorAll("[data-search-filter]").forEach(button => button.onclick = () => { state.searchFilter = button.dataset.searchFilter; renderSearch(); }); }
+function createSearchView(query) {
+  return window.SEVENSearch.create(query, Object.values(state.catalog).flat().filter(item => contentAllowed(item, { directSearch:true })));
+}
+function searchToolbar(view) {
+  const filters = view.filters, year = new Date().getFullYear();
+  const select = (key, label, options) => '<label><span>' + label + '</span><select data-search-option="' + key + '">' + options.map(([value, title]) => '<option value="' + escapeHTML(value) + '"' + (filters[key] === value ? ' selected' : '') + '>' + escapeHTML(title) + '</option>').join('') + '</select></label>';
+  const years = [...new Set([filters.year, ...Array.from({ length:80 }, (_, i) => String(year + 1 - i))].filter(Boolean))].sort((a,b) => Number(b)-Number(a));
+  const languages = [["","Any language"],["en","English"],["ar","Arabic"],["fr","French"],["es","Spanish"],["de","German"],["hi","Hindi"],["ko","Korean"],["ja","Japanese"],["zh","Chinese"],["tr","Turkish"],["it","Italian"],["pt","Portuguese"]];
+  if (filters.language && !languages.some(([code]) => code === filters.language)) languages.push([filters.language, filters.language.toUpperCase()]);
+  return '<div class="smart-search-toolbar">' +
+    select("type", "Type", [["all","Movies & series"],["movie","Movies"],["tv","Series"]]) +
+    select("scope", "Search by", [["all","Titles & people"],["titles","Title"],["actor","Actor"],["director","Director"]]) +
+    '<button class="search-filter-toggle" type="button" data-search-expand aria-expanded="' + !!view.expanded + '">Filters' + (["genre","year","language"].some(key => filters[key]) ? ' · On' : '') + '</button>' +
+    '<div class="smart-search-extra' + (view.expanded ? ' expanded' : '') + '">' +
+    select("genre","Genre",[["","Any genre"],...COLLECTION_GENRES]) +
+    select("year","Year",[["","Any year"],...years.map(value => [value,value])]) +
+    select("language","Original language",languages) + '</div>' +
+    (Object.entries(filters).some(([key,value]) => value !== window.SEVENSearch.defaults[key]) || view.person ? '<button type="button" class="search-reset" data-search-reset>Clear filters</button>' : '') + '</div>';
+}
+function searchPanel(view, mobile) {
+  if (!view) return "";
+  const items = view.items, people = view.people;
+  const context = view.person ? (window.SEVENSearch.roleFor(view) === "director" ? "Directed by " : "With ") + view.person.name : "";
+  return searchToolbar(view) +
+    (view.suggestion ? '<p class="search-note">Did you mean <button type="button" class="search-spelling" data-search-correction>' + escapeHTML(view.suggestion) + '</button>?</p>' : "") +
+    (view.correction ? '<p class="search-note">Showing results for <b>' + escapeHTML(view.correction) + '</b></p>' : "") +
+    (people.length ? '<div class="search-people" aria-label="Matching actors and directors">' + people.map(person => '<button type="button" data-search-person="' + Number(person.id) + '" aria-pressed="' + (view.person?.id === person.id) + '">' + escapeHTML(person.name) + '<small>' + (person.known_for_department === "Directing" ? "Director" : "Actor") + '</small></button>').join("") + '</div>' : "") +
+    (context ? '<h3 class="search-context">' + escapeHTML(context) + '</h3>' : "") +
+    '<div class="search-feedback" role="status" aria-live="polite">' + (view.loading ? "Searching…" : view.error ? "Couldn’t load search results." : items.length ? items.length + " titles" : view.exhausted ? "No matches. Try another name or clear your filters." : "No matches yet. More results may match your filters.") + '</div>' +
+    (view.loading && !items.length ? '<div class="msearch-grid search-skeletons">' + Array.from({length:6}, () => '<div class="msearch-skeleton skeleton"></div>').join("") + '</div>' : mobile ? '<div class="msearch-grid">' + items.map(mobileSearchCard).join("") + '</div>' : '<div class="result-grid search-result-grid">' + items.map(item => card(item)).join("") + '</div>') +
+    (view.error || !view.exhausted ? '<div class="search-more"><button type="button" data-search-more' + (view.loading ? ' disabled' : '') + '>' + (view.loading ? "Searching…" : view.error ? "Try again" : items.length ? "Show more" : "Keep looking") + '</button></div>' : "");
+}
+function paintSearchResults() {
+  if (!["search","msearch"].includes(state.route)) return;
+  const slot = document.querySelector(state.route === "msearch" ? "#msearch-body" : "#search-body");
+  if (!slot) return;
+  const focusKey = slot.contains(document.activeElement) ? document.activeElement.dataset.searchOption : "";
+  slot.innerHTML = searchPanel(state.searchView, state.route === "msearch");
+  bindCommon(); bindSearchOptions(slot);
+  if (focusKey) slot.querySelector('[data-search-option="' + focusKey + '"]')?.focus({ preventScroll:true });
+}
+async function loadSearchView(view, more = false) {
+  const profile = activeProfileId(), isCurrent = () => state.searchView === view && activeProfileId() === profile && ["search","msearch"].includes(state.route);
+  const promise = window.SEVENSearch.load(view, api, item => contentAllowed(item, { directSearch:true }), isCurrent, more);
+  paintSearchResults(); await promise;
+  if (!isCurrent()) return;
+  state.searchResults = view.items;
+  if (state.mSearch) state.mSearch.results = view.items;
+  paintSearchResults();
+}
+function bindSearchOptions(slot) {
+  slot.querySelector("[data-search-correction]")?.addEventListener("click", () => {
+    const query = state.searchView.suggestion;
+    if (state.route === "msearch") {
+      state.mSearch.query = query; state.search = query; state.searchView = createSearchView(query);
+      const input = document.querySelector("#msearch-input"); if (input) input.value = query;
+      void loadSearchView(state.searchView);
+    } else void search(query);
+  });
+  const change = (filters, person) => { state.searchView = window.SEVENSearch.configure(state.searchView, filters, person); void loadSearchView(state.searchView); };
+  slot.querySelectorAll("[data-search-option]").forEach(select => select.onchange = () => change({ [select.dataset.searchOption]:select.value }));
+  slot.querySelectorAll("[data-search-person]").forEach(button => button.onclick = () => {
+    const person = state.searchView.people.find(entry => Number(entry.id) === Number(button.dataset.searchPerson));
+    if (person) change({ scope:["actor","director"].includes(state.searchView.filters.scope) ? state.searchView.filters.scope : person.known_for_department === "Directing" ? "director" : "actor" }, person);
+  });
+  slot.querySelector("[data-search-reset]")?.addEventListener("click", () => change(window.SEVENSearch.defaults, null));
+  slot.querySelector("[data-search-more]")?.addEventListener("click", () => void loadSearchView(state.searchView, !state.searchView.error));
+  slot.querySelector("[data-search-expand]")?.addEventListener("click", event => {
+    const expanded = state.searchView.expanded = !state.searchView.expanded;
+    slot.querySelector(".smart-search-extra")?.classList.toggle("expanded", expanded);
+    event.currentTarget.setAttribute("aria-expanded", String(expanded));
+  });
+}
+function renderSearch() {
+  state.searchView ||= createSearchView(state.search || "");
+  app.innerHTML = header() + '<section class="search-page"><h2>Search</h2><p class="search-query">' + escapeHTML(state.searchView.query) + '</p><div id="search-body">' + searchPanel(state.searchView, false) + '</div></section>' + footer();
+  bindCommon(); bindSearchOptions(document.querySelector("#search-body"));
+}
 const GENRES = { 12:"Adventure", 16:"Animation", 18:"Drama", 28:"Action", 35:"Comedy", 53:"Thriller", 80:"Crime", 99:"Documentary", 10749:"Romance", 878:"Science fiction", 9648:"Mystery", 10751:"Family", 10759:"Action & adventure", 10765:"Sci-fi & fantasy" };
 function watchedGenres(type = "") { const counts = {}; likedTitles().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 3; })); historyEntries().filter(entry => !type || entry.type === type).forEach(entry => (entry.genreIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; })); return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([id]) => Number(id)); }
 async function openForYou() {
@@ -2887,7 +2974,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=360", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=361", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
