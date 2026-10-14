@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const web = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(web, "app.js"), "utf8");
@@ -112,4 +113,52 @@ test("Watchlist caches and requests are scoped to the active account profile", (
   assert.match(app, /data-watchlist-remove/);
   assert.match(app, /Your Watchlist is empty\./);
   assert.doesNotMatch(app, /Shared across every profile on your account/);
+});
+
+function watchlistUIContext(rows) {
+  const buttons = ["movie:12", "movie:12", "tv:12", "movie:13"].map(key => ({
+    dataset:{ toggleWatchlist:key }, attributes:{}, saved:false, text:{ textContent:"Watchlist" },
+    classList:{ contains:() => false, toggle(name, value) { if (name === "saved") this.button.saved = value; } },
+    setAttribute(name, value) { this.attributes[name] = value; }, querySelector() { return this.text; }
+  }));
+  buttons.forEach(button => { button.classList.button = button; });
+  const state = { session:{ access_token:"test-token", user:{ id:"owner" } }, user:{ id:"owner" }, activeProfile:"one", route:"explore", watchlist:[], watchlistOwnerId:"owner", watchlistProfileId:"one", watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistPending:new Set(), watchlistTargets:new Map() };
+  const storage = new Map();
+  const context = vm.createContext({ state, buttons, PROFILE_WATCHLIST_STORAGE_PREFIX:"test.", WATCHLIST_STORAGE_PREFIX:"old.", activeProfileId:() => state.activeProfile, authorizedHeaders:() => ({}), localAPI:async () => rows,
+    localStorage:{ getItem:key => storage.get(key) || null, setItem:(key, value) => storage.set(key, value), removeItem:key => storage.delete(key) },
+    document:{ querySelectorAll:() => buttons }, contentType:item => item.name ? "tv" : "movie", render:() => { throw Error("The grid must stay mounted"); }, titleOf:item => item.title || item.name || "Title"
+  });
+  const identity = app.match(/function savedTitleIdentity\([^\n]+/)[0];
+  const helpers = app.slice(app.indexOf("function accountWatchlistUserId()"), app.indexOf("async function toggleWatchlist("));
+  vm.runInContext(`${identity}\n${helpers}`, context);
+  return { context, state, buttons };
+}
+
+test("background Watchlist sync updates every visible copy and detail label without redrawing the grid", async () => {
+  const { context, buttons } = watchlistUIContext([{ content_type:"movie", tmdb_id:12, title:"Saved title" }]);
+  await context.loadAccountWatchlist(false);
+  assert.equal(buttons[0].saved, true); assert.equal(buttons[1].saved, true);
+  assert.equal(buttons[0].attributes["aria-pressed"], "true"); assert.equal(buttons[1].text.textContent, "Saved");
+  assert.equal(buttons[2].saved, false); assert.equal(buttons[3].saved, false);
+});
+
+test("the same saved title matches normalized cards, search results and database rows", () => {
+  const { context, state } = watchlistUIContext([]);
+  state.watchlist = [{ type:"movie", id:12 }];
+  assert.equal(context.isInWatchlist({ type:"movie", id:"12" }), true);
+  assert.equal(context.isInWatchlist({ media_type:"movie", id:12 }), true);
+  assert.equal(context.isInWatchlist({ content_type:"movie", tmdb_id:"12" }), true);
+  assert.equal(context.isInWatchlist({ type:"tv", id:12 }), false);
+  state.activeProfile = "two";
+  assert.equal(context.isInWatchlist({ type:"movie", id:12 }), false);
+});
+
+test("a slow sync for the previous profile cannot alter the new profile's bookmarks", async () => {
+  let resolve;
+  const { context, state, buttons } = watchlistUIContext([]);
+  context.localAPI = () => new Promise(done => { resolve = done; });
+  const pending = context.loadAccountWatchlist(false);
+  state.activeProfile = "two";
+  resolve([{ content_type:"movie", tmdb_id:12 }]); await pending;
+  assert.equal(state.watchlist.length, 0); assert.ok(buttons.every(button => !button.saved));
 });
