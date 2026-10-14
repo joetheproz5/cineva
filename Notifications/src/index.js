@@ -1,10 +1,11 @@
 import { buildPushPayload } from "@block65/webcrypto-web-push";
+import { validateFollows, releaseDecision } from "./episodes.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://seven-9fm.pages.dev",
   "https://joetheproz5.github.io"
 ]);
-const MAX_BODY_BYTES = 8192;
+const MAX_BODY_BYTES = 32768;
 const MAX_REMINDERS_PER_DEVICE = 80;
 const MAX_REMINDER_YEARS_AHEAD = 10;
 const MAX_DELIVERIES_PER_RUN = 10;
@@ -132,6 +133,8 @@ async function handleUnsubscribe(request, env, cors) {
   const deviceId = await authenticatedDevice(request, env);
   if (!deviceId) return json({ ok: true }, 200, cors);
   await env.DB.batch([
+    env.DB.prepare("DELETE FROM episode_follows WHERE device_id = ?").bind(deviceId),
+    env.DB.prepare("DELETE FROM episode_follow_sets WHERE device_id = ?").bind(deviceId),
     env.DB.prepare("DELETE FROM release_reminders WHERE device_id = ?").bind(deviceId),
     env.DB.prepare("DELETE FROM push_subscriptions WHERE device_id = ?").bind(deviceId),
     env.DB.prepare("DELETE FROM devices WHERE id = ?").bind(deviceId)
@@ -161,12 +164,14 @@ async function handleReminders(request, env, url, cors) {
       env.DB.prepare("DELETE FROM release_reminders WHERE device_id = ? AND media_type = ? AND tmdb_id = ?")
         .bind(deviceId, type, id),
       env.DB.prepare(`DELETE FROM push_subscriptions WHERE device_id = ?
-        AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)`)
-        .bind(deviceId, deviceId),
+        AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)
+        AND NOT EXISTS (SELECT 1 FROM episode_follows WHERE device_id = ?)`)
+        .bind(deviceId, deviceId, deviceId),
       env.DB.prepare(`DELETE FROM devices WHERE id = ?
         AND NOT EXISTS (SELECT 1 FROM push_subscriptions WHERE device_id = ?)
-        AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)`)
-        .bind(deviceId, deviceId, deviceId)
+        AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)
+        AND NOT EXISTS (SELECT 1 FROM episode_follow_sets WHERE device_id = ?)`)
+        .bind(deviceId, deviceId, deviceId, deviceId)
     ]);
     return json({ ok: true }, 200, cors);
   }
@@ -196,6 +201,24 @@ async function handleReminders(request, env, url, cors) {
   return json({ ok: true }, 201, cors);
 }
 
+async function handleEpisodeFollows(request,env,cors) {
+  const deviceId=await authenticatedDevice(request,env);
+  if(!deviceId)return errorResponse("Register notifications on this device first.",401,cors);
+  const body=validateFollows(await readJson(request)),ids=body.series.map(item=>item.id);
+  const statements=[env.DB.prepare(`INSERT INTO episode_follow_sets(device_id,revision) VALUES(?,?)
+    ON CONFLICT(device_id) DO UPDATE SET revision=excluded.revision WHERE excluded.revision>=episode_follow_sets.revision`).bind(deviceId,body.revision)];
+  statements.push(env.DB.prepare(`DELETE FROM episode_follows WHERE device_id=?
+    AND EXISTS(SELECT 1 FROM episode_follow_sets WHERE device_id=? AND revision=?)
+    ${ids.length?`AND tmdb_id NOT IN (${ids.map(()=>"?").join(",")})`:""}`).bind(deviceId,deviceId,body.revision,...ids));
+  for(const item of body.series)statements.push(env.DB.prepare(`INSERT INTO episode_follows(device_id,tmdb_id,profile_scope,title,last_season,last_episode)
+    SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM episode_follow_sets WHERE device_id=? AND revision=?)
+    ON CONFLICT(device_id,tmdb_id) DO UPDATE SET title=excluded.title,
+      last_season=CASE WHEN episode_follows.profile_scope<>excluded.profile_scope THEN excluded.last_season ELSE episode_follows.last_season END,
+      last_episode=CASE WHEN episode_follows.profile_scope<>excluded.profile_scope THEN excluded.last_episode ELSE episode_follows.last_episode END,
+      next_check_at=CASE WHEN episode_follows.profile_scope<>excluded.profile_scope THEN NULL ELSE episode_follows.next_check_at END,
+      profile_scope=excluded.profile_scope`).bind(deviceId,item.id,body.scope,item.title,item.season,item.episode,deviceId,body.revision));
+  await env.DB.batch(statements);return json({ok:true},200,cors);
+}
 async function handleRequest(request, env) {
   const url = new URL(request.url);
   const origin = request.headers.get("origin") || "";
@@ -209,6 +232,7 @@ async function handleRequest(request, env) {
   }
   if (url.pathname === "/api/subscriptions" && request.method === "POST") return handleSubscribe(request, env, cors);
   if (url.pathname === "/api/subscriptions" && request.method === "DELETE") return handleUnsubscribe(request, env, cors);
+  if (url.pathname === "/api/episode-follows" && request.method === "POST") return handleEpisodeFollows(request,env,cors);
   if (url.pathname === "/api/reminders" && ["GET", "POST", "DELETE"].includes(request.method)) {
     return handleReminders(request, env, url, cors);
   }
@@ -278,12 +302,14 @@ async function deliverDueReminders(env) {
       await env.DB.batch([
         env.DB.prepare("DELETE FROM release_reminders WHERE id = ? AND notified_at IS NULL").bind(reminder.id),
         env.DB.prepare(`DELETE FROM push_subscriptions WHERE device_id = ?
-          AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)`)
-          .bind(reminder.device_id, reminder.device_id),
+          AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)
+          AND NOT EXISTS (SELECT 1 FROM episode_follows WHERE device_id = ?)`)
+          .bind(reminder.device_id, reminder.device_id, reminder.device_id),
         env.DB.prepare(`DELETE FROM devices WHERE id = ?
           AND NOT EXISTS (SELECT 1 FROM push_subscriptions WHERE device_id = ?)
-          AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)`)
-          .bind(reminder.device_id, reminder.device_id, reminder.device_id)
+          AND NOT EXISTS (SELECT 1 FROM release_reminders WHERE device_id = ?)
+          AND NOT EXISTS (SELECT 1 FROM episode_follow_sets WHERE device_id = ?)`)
+          .bind(reminder.device_id, reminder.device_id, reminder.device_id, reminder.device_id)
       ]);
     } catch (error) {
       console.error("Release reminder delivery failed.", { reminderId: reminder.id, message: error?.message || "Unknown error" });
@@ -291,6 +317,43 @@ async function deliverDueReminders(env) {
   }
 }
 
+async function deliverEpisodeFollows(env) {
+  if(!env.VAPID_PUBLIC_KEY||!env.VAPID_PRIVATE_KEY||!env.VAPID_SUBJECT)return;
+  // Together with the ten legacy reminder deliveries, stay below 50 external requests/run.
+  const due=await env.DB.prepare(`SELECT f.tmdb_id FROM episode_follows f JOIN push_subscriptions s ON s.device_id=f.device_id
+    WHERE (f.next_check_at IS NULL OR f.next_check_at<=CURRENT_TIMESTAMP)
+      AND (f.checked_at IS NULL OR f.checked_at<=datetime('now','-45 minutes'))
+    GROUP BY f.tmdb_id ORDER BY COALESCE(MIN(f.checked_at),'1970-01-01') LIMIT 8`).all();
+  let remaining=20;
+  for(const entry of due.results||[]) {
+    let show;
+    try{const response=await fetch(`${env.TMDB_PROXY_BASE}tv/${entry.tmdb_id}?language=en-US`,{signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error("Episode metadata unavailable.");show=await response.json();}
+    catch(error){console.error("Episode metadata check failed.",{id:entry.tmdb_id,message:error.message});await env.DB.prepare("UPDATE episode_follows SET checked_at=CURRENT_TIMESTAMP,next_check_at=datetime('now','+45 minutes') WHERE tmdb_id=?").bind(entry.tmdb_id).run();continue;}
+    const follows=await env.DB.prepare(`SELECT f.*,s.endpoint,s.p256dh,s.auth FROM episode_follows f JOIN push_subscriptions s ON s.device_id=f.device_id WHERE f.tmdb_id=?
+      AND (f.next_check_at IS NULL OR f.next_check_at<=CURRENT_TIMESTAMP)
+      AND (f.checked_at IS NULL OR f.checked_at<=datetime('now','-45 minutes'))
+      ORDER BY COALESCE(f.checked_at,'1970-01-01') LIMIT 30`).bind(entry.tmdb_id).all();
+    for(const follow of follows.results||[]) {
+      const decision=releaseDecision(follow,show);
+      if(decision.notify&&remaining<=0)continue;
+      const claim=await env.DB.prepare(`UPDATE episode_follows SET checked_at=CURRENT_TIMESTAMP WHERE device_id=? AND tmdb_id=? AND profile_scope=? AND last_season=? AND last_episode=?
+        AND (checked_at IS NULL OR checked_at<=datetime('now','-45 minutes'))`).bind(follow.device_id,follow.tmdb_id,follow.profile_scope,follow.last_season,follow.last_episode).run();
+      if(!claim.meta?.changes)continue;
+      try {
+        if(decision.notify) {
+          const target=new URL(`/?title=tv:${follow.tmdb_id}`,env.APP_BASE_URL);
+          const payload=await buildPushPayload({data:JSON.stringify({title:decision.newSeason?"New season":"New episode",body:`${show.name||follow.title} · S${decision.season} E${decision.episode} has reached its listed release date.`,url:target.href,tag:`seven-episode-${follow.tmdb_id}-${decision.season}-${decision.episode}`}),options:{ttl:86400,urgency:"normal"}},{endpoint:follow.endpoint,keys:{p256dh:follow.p256dh,auth:follow.auth}},{subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY});
+          remaining--;const response=await fetch(follow.endpoint,{...payload,signal:AbortSignal.timeout(10000)});
+          if([404,410].includes(response.status)){await env.DB.prepare("DELETE FROM push_subscriptions WHERE device_id=?").bind(follow.device_id).run();continue;}
+          if(!response.ok)throw Error(`Push returned ${response.status}.`);
+        }
+        // Recheck unannounced/changed dates within six hours; announced dates at least daily.
+        await env.DB.prepare(`UPDATE episode_follows SET title=?,last_season=?,last_episode=?,next_check_at=CASE WHEN ? IS NULL THEN datetime('now','+6 hours') WHEN datetime(?)<datetime('now','+1 day') THEN datetime(?) ELSE datetime('now','+1 day') END
+          WHERE device_id=? AND tmdb_id=? AND profile_scope=? AND last_season=? AND last_episode=?`).bind(show.name||follow.title,decision.notify?decision.season:follow.last_season,decision.notify?decision.episode:follow.last_episode,decision.nextDate,decision.nextDate,decision.nextDate,follow.device_id,follow.tmdb_id,follow.profile_scope,follow.last_season,follow.last_episode).run();
+      }catch(error){console.error("Episode alert delivery failed.",{id:follow.tmdb_id,message:error.message});}
+    }
+  }
+}
 export default {
   async fetch(request, env) {
     if (new URL(request.url).pathname === "/__scheduled") return new Response("Not found.", { status: 404 });
@@ -307,5 +370,6 @@ export default {
   },
   async scheduled(_controller, env) {
     await deliverDueReminders(env);
+    await deliverEpisodeFollows(env);
   }
 };

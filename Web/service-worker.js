@@ -1,6 +1,6 @@
-const VERSION = "seven-v363";const DATA_CACHE = "seven-data-v1";
+const VERSION = "seven-v364";const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v1";
-const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=274", "ui.css?v=304", "player-security.js?v=246", "profile-stats.js?v=1", "catalog-browser.js?v=1", "search-engine.js?v=1", "recommendations.js?v=1", "app.js?v=363", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png"];
+const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=274", "ui.css?v=305", "player-security.js?v=246", "profile-stats.js?v=1", "catalog-browser.js?v=1", "search-engine.js?v=1", "recommendations.js?v=1", "series-tracker.js?v=1", "series-tracker-ui.js?v=1", "app.js?v=364", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("message", event => { if (event.data?.type === "SEVEN_SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => ![VERSION, DATA_CACHE, IMAGE_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
@@ -13,7 +13,7 @@ self.addEventListener("push", event => {
     body:payload.body || "A title you follow has reached its listed release date.",
     icon:new URL("assets/icon-192.png", self.registration.scope).href,
     badge:new URL("assets/icon-192.png", self.registration.scope).href,
-    tag:`seven-release-${Date.now()}`,
+    tag:payload.tag || `seven-release-${Date.now()}`,
     data:{ url:target.href }
   }));
 });
