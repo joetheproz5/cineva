@@ -117,9 +117,9 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
   assert.match(index, /auth\.css\?v=274/);
-  assert.match(index, /app\.js\?v=366/);
-  assert.match(serviceWorker, /seven-v366/);
+  assert.match(index, /app\.js\?v=367/);
+  assert.match(serviceWorker, /seven-v367/);
   assert.match(serviceWorker, /auth\.css\?v=274/);
-  assert.match(serviceWorker, /app\.js\?v=366/);
+  assert.match(serviceWorker, /app\.js\?v=367/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

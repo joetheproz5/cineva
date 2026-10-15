@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" fill="none">
+  <defs>
+    <linearGradient id="ground" x1="54" y1="30" x2="546" y2="870" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17171b"/>
+      <stop offset="1" stop-color="#090a0d"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0" cy="0" r="1" gradientTransform="matrix(350 0 0 430 300 430)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8f1721" stop-opacity=".25"/>
+      <stop offset="1" stop-color="#8f1721" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="silhouette" x1="188" y1="312" x2="420" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7a7475"/>
+      <stop offset="1" stop-color="#28282c"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#ground)" d="M0 0h600v900H0z"/>
+  <path fill="url(#light)" d="M0 0h600v900H0z"/>
+  <path d="M300 262a93 93 0 1 0 0 186 93 93 0 0 0 0-186Zm0 244c-125 0-204 69-220 172h440c-16-103-95-172-220-172Z" fill="url(#silhouette)"/>
+  <path d="M56 56h488v788H56z" stroke="#fff" stroke-opacity=".07"/>
+  <path d="M88 722h424" stroke="#e31b2b" stroke-opacity=".5"/>
+  <text x="88" y="772" fill="#f2eeea" fill-opacity=".56" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="700" letter-spacing="7">SEVEN</text>
+</svg>

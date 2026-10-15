@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none">
+  <defs>
+    <linearGradient id="ground" x1="114" y1="18" x2="1492" y2="884" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111317"/>
+      <stop offset=".48" stop-color="#090a0d"/>
+      <stop offset="1" stop-color="#101014"/>
+    </linearGradient>
+    <radialGradient id="ember" cx="0" cy="0" r="1" gradientTransform="matrix(880 532 -498 824 770 425)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#80141d" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#80141d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="edge" x1="122" y1="94" x2="1476" y2="822" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f4f0ec" stop-opacity=".08"/>
+      <stop offset=".52" stop-color="#f4f0ec" stop-opacity=".01"/>
+      <stop offset="1" stop-color="#f4f0ec" stop-opacity=".065"/>
+    </linearGradient>
+    <linearGradient id="rule" x1="184" y1="0" x2="1416" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e31b2b"/>
+      <stop offset=".45" stop-color="#e31b2b" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#e31b2b" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="lines" width="9" height="9" patternUnits="userSpaceOnUse">
+      <path d="M0 8.5h9" stroke="#fff" stroke-opacity=".018"/>
+    </pattern>
+  </defs>
+  <path fill="url(#ground)" d="M0 0h1600v900H0z"/>
+  <path fill="url(#ember)" d="M0 0h1600v900H0z"/>
+  <path fill="url(#lines)" d="M0 0h1600v900H0z"/>
+  <path d="M60 52h1480v796H60z" stroke="url(#edge)"/>
+  <path d="M100 52v796M1500 52v796" stroke="#fff" stroke-opacity=".035"/>
+  <path d="M184 182h1232M184 718h1232" stroke="#fff" stroke-opacity=".055"/>
+  <text x="800" y="558" fill="#f3efec" fill-opacity=".055" font-family="Arial,Helvetica,sans-serif" font-size="560" font-weight="700" letter-spacing="-42" text-anchor="middle">7</text>
+  <path d="M184 718h472" stroke="url(#rule)" stroke-width="2"/>
+  <text x="184" y="768" fill="#f2eeea" fill-opacity=".64" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" letter-spacing="9">SEVEN</text>
+  <circle cx="1412" cy="758" r="3" fill="#e31b2b" fill-opacity=".75"/>
+</svg>
