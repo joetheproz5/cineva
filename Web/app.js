@@ -2203,12 +2203,31 @@ function collectionSources(name) {
 }
 const COLLECTION_GENRES = [["28:10759","Action"],["12:10759","Adventure"],["16:16","Animation"],["35:35","Comedy"],["80:80","Crime"],["99:99","Documentary"],["18:18","Drama"],["10751:10751","Family"],["27:","Horror"],["9648:9648","Mystery"],["10749:","Romance"],["878:10765","Sci-Fi"],["53:","Thriller"]];
 function titleBrowserToolbar(view, mixed = true) {
-  const options = (entries, value) => entries.map(([key, label]) => `<option value="${key}" ${String(value) === String(key) ? "selected" : ""}>${label}</option>`).join("");
-  const fixedType = mixed ? view.filters.type : view.type;
-  const genres = COLLECTION_GENRES.filter(([genre]) => fixedType === "all" || window.SEVENCatalogBrowser.genreFor(genre, fixedType));
-  const selectedGenre = String(view.filters.genre || "").includes(":") ? view.filters.genre : (genres.find(([genre]) => window.SEVENCatalogBrowser.genreFor(genre, fixedType) === String(view.filters.genre))?.[0] || "");
-  const latestSort = ["primary_release_date.desc", "first_air_date.desc"].includes(view.filters.sort) ? "newest" : view.filters.sort;
-  return `<div class="collection-toolbar">${mixed ? `<label>Type<select data-title-filter="type">${options([["all","Movies & series"],["movie","Movies"],["tv","Series"]], view.filters.type)}</select></label>` : ""}<label>Genre<select data-title-filter="genre">${options([["","All genres"],...genres], selectedGenre)}</select></label><label>Sort<select data-title-filter="sort">${options([["default","Collection order"],["popularity.desc","Most popular"],["newest","Newest release"],["vote_average.desc","Highest rated"]], latestSort)}</select></label><label>Released<select data-title-filter="date">${options([["any","Any time"],["year","This year"],["five","Last 5 years"],["2010s","2010–2019"],["older","Before 2010"]], view.filters.date)}</select></label><label>Rating<select data-title-filter="score">${options([["","Any score"],["5","5.0+"],["6","6.0+"],["7","7.0+"],["8","8.0+"]], view.filters.score)}</select></label></div>`;
+  const activeCount = [mixed && view.filters.type !== "all", view.filters.genre, view.filters.sort !== "default", view.filters.date !== "any", view.filters.score].filter(Boolean).length;
+  return `<div class="collection-toolbar"><button type="button" class="filter-trigger" data-open-title-browser-filters aria-haspopup="dialog" aria-label="Open collection filters${activeCount ? `, ${activeCount} active` : ""}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10m-7 6h4"/></svg>Filters${activeCount ? `<span class="filter-trigger-count">${activeCount}</span>` : ""}</button></div>`;
+}
+function showTitleBrowserFilters(view, route) {
+  const mixed = route === "explore", fixedType = mixed ? view.filters.type : view.type;
+  const options = (entries, value) => entries.map(([key, label]) => `<option value="${escapeHTML(key)}" ${String(value) === String(key) ? "selected" : ""}>${escapeHTML(label)}</option>`).join("");
+  const genresFor = (type, selected = "") => {
+    const genres = COLLECTION_GENRES.filter(([genre]) => type === "all" || window.SEVENCatalogBrowser.genreFor(genre, type));
+    const selectedGenre = String(selected).includes(":") ? selected : (genres.find(([genre]) => window.SEVENCatalogBrowser.genreFor(genre, type) === String(selected))?.[0] || "");
+    return options([["", "All genres"], ...genres], selectedGenre);
+  };
+  const sort = ["primary_release_date.desc", "first_air_date.desc"].includes(view.filters.sort) ? "newest" : view.filters.sort;
+  const typeField = mixed ? `<label>Type<select name="type">${options([["all", "Movies & series"], ["movie", "Movies"], ["tv", "Series"]], fixedType)}</select></label>` : "";
+  document.querySelector(".modal")?.remove();
+  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="filter-panel collection-filter-panel" id="title-browser-filter-form" role="dialog" aria-modal="true" aria-labelledby="title-browser-filter-title"><button type="button" class="modal-close" data-close aria-label="Close filters">×</button><span class="brand">COLLECTION FILTERS</span><h2 id="title-browser-filter-title">Refine titles</h2>${typeField}<label>Genre<select name="genre">${genresFor(fixedType, view.filters.genre)}</select></label><label>Sort<select name="sort">${options([["default", "Collection order"], ["popularity.desc", "Most popular"], ["newest", "Newest release"], ["vote_average.desc", "Highest rated"]], sort)}</select></label><label>Released<select name="date">${options([["any", "Any time"], ["year", "This year"], ["five", "Last 5 years"], ["2010s", "2010–2019"], ["older", "Before 2010"]], view.filters.date)}</select></label><label>Rating<select name="score">${options([["", "Any score"], ["5", "5.0+"], ["6", "6.0+"], ["7", "7.0+"], ["8", "8.0+"]], view.filters.score)}</select></label><button type="submit" class="primary auth-submit">Apply filters</button><button type="button" class="filter-clear" data-clear-title-browser-filters>Clear filters</button></form></div>`);
+  const modal = document.querySelector(".modal"), form = modal.querySelector("#title-browser-filter-form"), genreField = form.elements.namedItem("genre"), typeSelect = form.elements.namedItem("type");
+  typeSelect?.addEventListener("change", () => { genreField.innerHTML = genresFor(typeSelect.value); });
+  modal.querySelector("[data-close]").onclick = () => modal.remove();
+  const apply = filters => { modal.remove(); if (route === "explore") void openExplore(view, filters); else void openAllCatalog(view.type, null, 1, false, filters); };
+  modal.querySelector("[data-clear-title-browser-filters]").onclick = () => apply({ ...window.SEVENCatalogBrowser.defaults, type:mixed ? "all" : view.type });
+  form.onsubmit = event => {
+    event.preventDefault();
+    const values = new FormData(form);
+    apply({ ...view.filters, type:mixed ? values.get("type") : view.type, genre:values.get("genre") || "", sort:values.get("sort") || "default", date:values.get("date") || "any", score:values.get("score") || "" });
+  };
 }
 function titleBrowserStatus(view) {
   return `${view.error ? `<p class="collection-error" role="alert">${escapeHTML(view.error)}</p>` : ""}${view.loading ? `<button class="load-more" type="button" disabled aria-busy="true">Loading…</button>` : view.error || !view.exhausted ? `<button class="load-more" type="button" data-load-more>${view.error ? "Try again" : "Show more"}</button>` : ""}${!view.loading && !view.error && !view.items.length ? `<p class="collection-empty">No titles match these filters.</p>` : ""}`;
@@ -2235,12 +2254,7 @@ async function loadTitleBrowser(view, route, append = false) {
 }
 function bindTitleBrowser(view, route) {
   document.querySelector("[data-load-more]")?.addEventListener("click", () => { if (!view.loading) void loadTitleBrowser(view, route, true); });
-  document.querySelectorAll("[data-title-filter]").forEach(field => field.onchange = () => {
-    const filters = { ...view.filters, [field.dataset.titleFilter]:field.value };
-    if (field.dataset.titleFilter === "type") filters.genre = "";
-    if (route === "explore") void openExplore(view, filters);
-    else void openAllCatalog(view.type, null, 1, false, filters);
-  });
+  document.querySelector("[data-open-title-browser-filters]")?.addEventListener("click", () => showTitleBrowserFilters(view, route));
 }
 async function openExplore(collection, filters = null) {
   const sources = collection.definitionSources || collection.sources || [];
@@ -3019,7 +3033,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=367", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=368", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
