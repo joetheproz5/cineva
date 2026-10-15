@@ -68,8 +68,9 @@ async function auth(request, response, action) {
     if (action === "login") route = "/auth/v1/token?grant_type=password";
     if (action === "refresh") route = "/auth/v1/token?grant_type=refresh_token";
     if (!route) return sendJSON(response, 404, { error:"Unknown auth action." });
-    const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+    const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json", "User-Agent":(request.headers["user-agent"] || "SEVEN").slice(0,600) }, body:JSON.stringify(payload) });
     result.data = normalizeAuthResponse(action, result.data);
+    if(action==="refresh"&&result.data.session?.access_token){const devices=await import("../shared/devices.mjs"),check=await devices.guardDeviceSession(new Request("http://localhost/api/auth/refresh",{headers:{Authorization:`Bearer ${result.data.session.access_token}`,"User-Agent":request.headers["user-agent"]||""}}),dashboardEnvironment());if(check)return sendJSON(response,check.status,await check.json());}
     sendJSON(response, result.status, result.data);
   } catch (error) { sendJSON(response, 400, { error:error.message || "Authentication request failed." }); }
 }
@@ -166,7 +167,12 @@ async function parentAccess(request, response) {
   } catch (error) { sendJSON(response, 400, { error:error.message || "Parent access could not be updated." }); }
 }
 const server = http.createServer(async (request, response) => {
-  const sourceURL = new URL(request.url, "http://localhost");
+  const sourceURL = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+  const devicePath=sourceURL.pathname.replace(/^\/api\//,"");
+  if(devicePath==="auth/logout"||devicePath==="account/devices"||devicePath.startsWith("account/devices/")){
+    try{let body;if(!["GET","HEAD"].includes(request.method))body=JSON.stringify(await readBody(request));const module=await import("../shared/devices.mjs"),webRequest=new Request(sourceURL.href,{method:request.method,headers:request.headers,...(body?{body}:{})}),result=devicePath==="auth/logout"?await module.handleLogout(webRequest,dashboardEnvironment()):await module.handleDevices(webRequest,dashboardEnvironment(),devicePath.slice("account/devices".length).replace(/^\//,""));if(result.status===204){response.writeHead(204);return response.end();}return sendJSON(response,result.status,await result.json());}catch{return sendJSON(response,503,{error:"Device management is unavailable."});}
+  }
+  if((devicePath.startsWith("account/")||devicePath==="auth/user"||devicePath==="party")&&request.headers.authorization){try{const module=await import("../shared/devices.mjs"),result=await module.guardDeviceSession(new Request(sourceURL.href,{headers:request.headers}),dashboardEnvironment());if(result)return sendJSON(response,result.status,await result.json());}catch{return sendJSON(response,503,{error:"Session verification is temporarily unavailable."});}}
   if (sourceURL.pathname.startsWith("/api/install/")) return void downloadRedirect(request, response, sourceURL);
   if (sourceURL.pathname === "/api/metrics/event" || sourceURL.pathname.startsWith("/api/admin/")) return void dashboardAPI(request, response, sourceURL);
   if (sourceURL.pathname.startsWith("/api/tmdb/")) return proxyTMDB(response, sourceURL);

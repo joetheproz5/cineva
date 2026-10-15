@@ -25,7 +25,7 @@ test("history entries distinguish detail pages and retain their view data", () =
   assert.match(app, /"movie", "series", "person"[\s\S]*?"browse", "allCatalog", "exploreView"/);
   assert.match(app, /function resetAppNavigation\(\)/);
   assert.match(app, /resetAppNavigation\(\);\s*state\.route = "profiles"/);
-  assert.match(app, /function signOut\(\) \{ clearSession\(\); resetAppNavigation\(\)/);
+  assert.match(app, /function signOut\(\) \{[^\n]*?SEVENDevices\?\.logout\(\); clearSession\(\); resetAppNavigation\(\)/);
 });
 
 test("phone and desktop back controls pop app history instead of leaving the site", () => {
@@ -36,8 +36,8 @@ test("phone and desktop back controls pop app history instead of leaving the sit
 });
 
 test("the installed PWA receives the navigation-history fix from the versioned shell", () => {
-  assert.match(index, /app\.js\?v=368/);
-  assert.match(worker, /seven-v368/);
-  assert.match(worker, /app\.js\?v=368/);
-  assert.match(app, /service-worker\.js\?v=368/);
+  assert.match(index, /app\.js\?v=369/);
+  assert.match(worker, /seven-v369/);
+  assert.match(worker, /app\.js\?v=369/);
+  assert.match(app, /service-worker\.js\?v=369/);
 });

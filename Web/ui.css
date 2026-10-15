@@ -1115,6 +1115,33 @@ html,body { touch-action: pan-x pan-y; }
 /* Shared search controls; detailed filters stay collapsed on phones. */
 /* Series tracking stays within Watchlist, without adding navigation items. */
 .tracker-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.devices-panel { width: min(680px,calc(100vw - 32px)); max-height: calc(100svh - 48px); overflow: auto; padding: 26px; background: #111113; color: #eee; border: 1px solid #333338; border-radius: 16px; }
+.devices-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.devices-heading h2 { font-size: 24px; margin: 0; }
+.devices-heading > button { width: 40px; height: 40px; padding: 0; flex: 0 0 40px; background: #252528; color: #ddd; border-radius: 8px; font-size: 24px; }
+.devices-note { font-size: 13px; color: #999; line-height: 1.6; margin: 8px 0; }
+.devices-body form { display: grid; gap: 18px; margin-top: 24px; }
+.devices-body label { display: grid; gap: 8px; color: #bbb; font-size: 14px; }
+.devices-body input { width: 100%; box-sizing: border-box; min-height: 48px; padding: 12px 14px; border: 1px solid #3d3d42; border-radius: 8px; background: #202023; color: #eee; font: inherit; font-size: 16px; }
+.devices-body button { min-height: 42px; padding: 10px 14px; background: #232326; color: #ddd; border: 1px solid #3b3b40; border-radius: 8px; font: inherit; font-size: 13px; }
+.devices-body .devices-primary { background: #e50914; border-color: #e50914; color: #fff; }
+.devices-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+.device-row { display: flex; align-items: center; gap: 14px; padding: 20px 0; border-top: 1px solid #29292e; }
+.device-symbol { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 48px; color: #aaa; }
+.device-symbol svg { width: 25px; height: 30px; }
+.device-copy { min-width: 0; flex: 1; }
+.device-copy h3 { display: flex; flex-wrap: wrap; gap: 7px 10px; align-items: center; font-size: 15px; margin: 0 0 7px; line-height: 1.5; }
+.device-copy p { color: #999; font-size: 12px; margin: 0; line-height: 1.5; }
+.device-current { display: inline-block; border: 1px solid #613037; border-radius: 5px; padding: 1px 6px; color: #e7b6bb; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.devices-footer { padding-top: 12px; border-top: 1px solid #29292e; }
+.devices-footer .devices-note { margin-top: 16px; }
+.devices-error { color: #ed8b91; font-size: 13px; line-height: 1.5; margin: 14px 0 0; }
+.devices-error:empty { display: none; }
+.devices-confirm-title { font-size: 19px; line-height: 1.5; }
+.devices-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.devices-panel button:disabled { opacity: .4; cursor: default; }
+.devices-panel :focus-visible { outline: 2px solid #e50914; outline-offset: 3px; }
+@media(max-width: 600px) { .devices-panel { padding: 20px; } .device-row { gap: 10px; flex-wrap: wrap; } .device-symbol { flex-basis: 28px; width: 28px; } .device-copy { flex-basis: calc(100% - 38px); } .device-row > button { margin-left: 38px; } }
 .tracker-toolbar .tracker-tabs { margin-bottom: 0; }
 .tracker-tools,.progress-season-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 .tracker-tools button,.progress-season-tools button,.progress-template { padding: 10px 12px; min-height: 42px; border: 1px solid #343438; border-radius: 8px; background: #171719; color: #ccc; font: inherit; font-size: 13px; }

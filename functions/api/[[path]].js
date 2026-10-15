@@ -1,5 +1,6 @@
 import { handleDashboardRequest, handleDownloadRedirect } from "../../shared/admin-dashboard.mjs";
 import { handleProgressBatch } from "../../shared/progress-batch.mjs";
+import { guardDeviceSession, handleDevices, handleLogout } from "../../shared/devices.mjs";
 
 const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos|recommendations)?)?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos|recommendations))?)|person\/\d+(\/combined_credits)?|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
 
@@ -82,8 +83,9 @@ async function auth(action, request, env) {
     if (action === "login") route = "/auth/v1/token?grant_type=password";
     if (action === "refresh") route = "/auth/v1/token?grant_type=refresh_token";
     if (!route) return json({ error:"Unknown auth action." }, 404);
-    const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+    const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json", "User-Agent":(request.headers.get("User-Agent") || "SEVEN").slice(0,600) }, body:JSON.stringify(payload) });
     result.data = normalizeAuthResponse(action, result.data);
+    if(action==="refresh"&&result.data.session?.access_token){const check=await guardDeviceSession(new Request(request.url,{headers:{Authorization:`Bearer ${result.data.session.access_token}`,"User-Agent":request.headers.get("User-Agent")||""}}),env);if(check)return check;}
     return json(result.data, result.status);
   } catch (error) { return json({ error:error.message || "Authentication request failed." }, 400); }
 }
@@ -289,6 +291,9 @@ export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
+  if (path === "auth/logout") return handleLogout(request,env);
+  if (path === "account/devices" || path.startsWith("account/devices/")) return handleDevices(request,env,path.slice("account/devices".length).replace(/^\//,""));
+  if ((path.startsWith("account/") || path === "auth/user" || path === "party") && request.headers.get("Authorization")) { const rejected=await guardDeviceSession(request,env); if(rejected)return rejected; }
   if (path.startsWith("install/")) return handleDownloadRedirect(request, env, path.slice("install/".length));
   if (path === "metrics/event" || path.startsWith("admin/")) return handleDashboardRequest(request, env);
   if (path === "account/watch-time") return watchTime(request, env);
