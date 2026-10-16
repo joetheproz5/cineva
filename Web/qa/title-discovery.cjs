@@ -1,12 +1,12 @@
 // Optional browser regression suite. All account writes use fixtures, including SEVEN_LIVE=1.
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.SEVEN_PLAYWRIGHT_PATH || 'playwright');
-const root=path.resolve(__dirname,'..'),shots=process.env.TEMP || require('node:os').tmpdir();let films,requests=[],failRelated=false,failCollection=false,delay=0;
+const root=path.resolve(__dirname,'..'),shots=process.env.TEMP || require('node:os').tmpdir();let films,requests=[],failRelated=false,failCollection=false,heldRelated=null;
 const fixture=(id,extra={})=>({...films[0],id,title:'Related film '+id,belongs_to_collection:null,...extra});
 const series={id:1396,name:'Breaking Bad',type:'Scripted',first_air_date:'2008-01-20',poster_path:'/ztkUQFLlC19CCMYHW9o1zWhJrn7.jpg',backdrop_path:films?.[0]?.backdrop_path,number_of_seasons:1,number_of_episodes:1,seasons:[{season_number:1}],credits:{cast:[],crew:[]},videos:{results:[]},genres:[{id:18,name:'Drama'}]};
 const collection=()=>({id:404609,name:'John Wick Collection',overview:'Every chapter. In release order.',backdrop_path:films[0].backdrop_path,parts:[films[2],films[0],films[1],films[3],fixture(99999,{title:'A future chapter',release_date:'2099-01-01'}),fixture(99998,{title:'An unannounced chapter',release_date:''})]});
 const api=async(req,url)=>{
- requests.push(url.pathname);if(delay&&url.pathname.includes('/recommendations'))await new Promise(done=>setTimeout(done,delay));
+ requests.push(url.pathname);if(heldRelated&&/\/(recommendations|similar)$/.test(url.pathname))await heldRelated;
  if(url.pathname==='/api/config')return {configured:true};
  if(url.pathname==='/api/account/watchlist')return req.method==='GET'?[]:[];
  if(url.pathname.includes('/collection/')){if(failCollection)throw Error('Collection fixture offline');return collection();}
@@ -106,7 +106,7 @@ const server=http.createServer(async(req,res)=>{
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   if(process.env.SEVEN_LIVE)await page.route('**/api/**',async route=>{try{await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(await api({method:route.request().method()},new URL(route.request().url())))});}catch(error){await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:error.message})});}});
   if(scenario==='failure'){failCollection=true;failRelated=true;await page.goto(origin+'/?title=movie:245891');await page.waitForFunction(()=>state.titleDiscovery?.started&&!state.titleDiscovery.loading&&!state.titleDiscovery.collectionLoading);await page.evaluate(()=>document.querySelector('.seven-intro')?.remove());assert.equal(await page.locator('[data-retry-collection]').count(),1);assert.equal(await page.locator('.related-titles .discovery-card').count(),0);failCollection=false;failRelated=false;await page.locator('[data-retry-collection]').click();await page.waitForSelector('.franchise-preview');await page.locator('[data-more-related]').click();await page.waitForSelector('.related-titles .discovery-card');}
-  else{delay=700;await page.goto(origin+'/?title=movie:245891');await page.waitForFunction(()=>state.titleDiscovery?.loading);await page.evaluate(()=>{state.route='home';render();});await page.waitForTimeout(900);assert.equal(await page.locator('[data-title-discovery]').count(),0);delay=0;}
+  else{let resume;heldRelated=new Promise(done=>{resume=done;});await page.goto(origin+'/?title=movie:245891',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>state.titleDiscovery?.loading);await page.evaluate(()=>{state.route='home';render();});heldRelated=null;resume();await page.waitForFunction(()=>!state.titleDiscovery.loading);assert.equal(await page.locator('[data-title-discovery]').count(),0);}
   assert.deepEqual(errors,[]);console.log('PASS',scenario);await context.close();
  }
  }finally{await browser.close();server.close();}
