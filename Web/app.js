@@ -612,6 +612,7 @@ async function refreshCatalogNow() {
     state.featuredPool = shuffle([...recentList, ...airingList, ...movieList]).filter(item => item.backdrop_path).slice(0, 12);
     state.featured = state.featuredPool[0] || trending[0] || { id:FEATURED_ID, type:"tv", name:"SEVEN Kids", overview:"Family-friendly movies and series selected for this profile.", backdrop_path:null };
     state.featuredIndex = 0;
+    window.SEVENHero.preload(state.featuredPool);
     state.catalog = { "Trending now":trending, "New movies":recentList, "New series":airingList, "Popular movies":movieList, "Popular series":showList, "Coming soon":upcomingTitles(upcomingMovies, upcomingShows), "All-time greats":shuffle([...results(greatMovies), ...results(greatShows)]), "Action & adventure":shuffle([...results(adventureMovies), ...results(actionShows)]) };
     void loadNewEpisodes();
     return;
@@ -631,6 +632,7 @@ async function refreshCatalogNow() {
   state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
   state.featured = state.featuredPool[0] || normalize(featured, "tv");
   state.featuredIndex = 0;
+  window.SEVENHero.preload(state.featuredPool);
   state.catalog = { "Trending now": results(trending), "New movies": results(recent), "New series": results(airing), "Popular movies": results(movies), "Popular series": results(shows), "Coming soon": upcomingTitles(upcomingMovies, upcomingShows), "All-time greats": shuffle([...results(topMovies), ...results(topShows)]), "Action & adventure": shuffle([...results(actionMovies), ...results(actionShows)]), ...(seasonalName && seasonalData ? { [seasonalName]: results(seasonalData) } : {}) };
   void loadNewEpisodes();
 }
@@ -815,6 +817,7 @@ function render() {
   }
   syncAppRouteHistory();
   document.documentElement.classList.toggle("seven-collection-view", state.route === "franchise");
+  if (state.route !== "home") window.SEVENHero?.cancel();
   if (state.route !== "profiles") { stopProfileGateLayout(); stopProfileGatePosterRotation(); }
   state.watchlistTargets = new Map();
   if (state.route !== "player") stopPlayerProgressPolling();
@@ -1093,7 +1096,7 @@ function renderHome() {
   const newEpisodes = state.newEpisodes || [];
   const otherCatalog = Object.entries(state.catalog).filter(([name]) => name !== "Coming soon");
   app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : featuredMarkup(f)}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${otherCatalog.map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><small>${t("Not sure what to watch?").toUpperCase()}</small><b>${t("Play something")}</b><span>${t("We’ll pick a trailer for you")}</span></span><em>Start shuffling <b>›</b></em></button></section></main>${footer()}`;
-  bindCommon(); bindHeroControls(); scheduleHero(); syncHeaderScroll();
+  bindCommon(); window.SEVENHero.mount(); scheduleHero(); syncHeaderScroll();
   document.querySelectorAll("[data-trailers]").forEach(button => button.onclick = openTrailers);
   if (continuing.length) void repairContinuePosters(continuing);
   document.querySelectorAll("[data-remove-continue]").forEach(button => button.onclick = async () => {
@@ -1121,7 +1124,7 @@ function bindHeroControls() {
   const featured = document.querySelector("#featured");
   if (!featured) return;
   const selectAndFocus = direction => {
-    setFeaturedIndex(state.featuredIndex + direction);
+    void rotateHero(direction);
     featured.querySelector(`[data-hero-direction="${direction}"]`)?.focus({ preventScroll:true });
   };
   featured.querySelectorAll("[data-hero-direction]").forEach(button => button.onclick = () => selectAndFocus(Number(button.dataset.heroDirection)));
@@ -1131,9 +1134,9 @@ function bindHeroControls() {
     if (button.role === "button") button.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } };
   });
 }
-function setFeaturedIndex(index) { const count = state.featuredPool.length; if (!count) return; state.featuredIndex = (index + count) % count; state.featured = state.featuredPool[state.featuredIndex]; const featured = document.querySelector("#featured"); if (featured && state.route === "home") { featured.classList.remove("hero-refresh"); void featured.offsetWidth; featured.innerHTML = featuredMarkup(state.featured); featured.classList.add("hero-refresh"); bindHeroControls(); } }
-function rotateHero(direction = 1) { if (state.featuredPool.length < 2) return; setFeaturedIndex(state.featuredIndex + direction); }
-function scheduleHero() { if (state.featuredPool.length > 1 && currentPreferences().autoplayPreviews !== false) state.heroTimer = setInterval(() => { if (state.route === "home") rotateHero(); }, 8500); }
+function setFeaturedIndex(index) { return window.SEVENHero.select(index); }
+function rotateHero(direction = 1) { return window.SEVENHero.move(direction); }
+function scheduleHero() { if (state.featuredPool.length > 1 && currentPreferences().autoplayPreviews !== false) state.heroTimer = setInterval(() => { if (state.route === "home") void window.SEVENHero.move(1, { automatic:true }); }, 8500); }
 function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(t(name === "My List" ? "Favourites" : name))}</h2>`; }
 function rail(name, items) { const visible = name === "My List" ? items : items.filter(contentAllowed); if (!visible.length) return ""; const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name, ranked = name === "Trending now", upcoming = name === "Coming soon", railItems = ranked ? visible.slice(0, 4) : visible; state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route, sources:collectionSources(name) }; return `<section class="rail ${ranked ? "ranked-rail" : ""} ${upcoming ? "upcoming-rail" : ""}"><div class="rail-title"><div>${railTitle(displayName)}<small>${ranked ? "This week on TMDB" : upcoming ? t("Release dates from TMDB") : "Curated for your screen"}</small></div><button class="explore-all" data-explore="${escapeHTML(key)}">View all <b>›</b></button></div><div class="cards">${railItems.map((item, index) => upcoming ? upcomingCard(item) : card(item, ranked ? index + 1 : 0)).join("")}</div></section>`; }
 function newEpisodeRail(items) { return `<section class="rail new-episode-rail"><div class="rail-title">${railTitle("New episodes")}<span>From followed series</span></div><div class="cards">${items.map(item => `<button class="card" data-open="tv:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>NEW EPISODE</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>S${item.episode.season_number} · E${item.episode.episode_number} · ${escapeHTML(item.episode.name || "New episode")}</small></button>`).join("")}</div></section>`; }
@@ -3045,7 +3048,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=372", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=373", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

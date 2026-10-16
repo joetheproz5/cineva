@@ -1,0 +1,11 @@
+/* The Home carousel slides horizontally; launch/profile animations are untouched. */
+#featured.spotlight-ready .spotlight-slide { display: contents; }
+#featured.spotlight-ready .home-hero-backdrop,
+#featured.spotlight-ready .home-hero-layout,
+#featured.spotlight-ready .home-hero-content,
+#featured.spotlight-ready .hero-word { animation: none !important; }
+#featured.spotlight-ready .home-hero-backdrop { transform: none; }
+#featured.spotlight-ready .home-hero-layout { will-change: transform; }
+#featured.spotlight-ready .home-hero-grade { animation: none; }
+#featured.spotlight-ready .spotlight-slide[aria-hidden="true"] .home-hero-layout { pointer-events: none; }
+#featured.spotlight-ready .spotlight-placeholder { position: absolute; inset: 0; background: radial-gradient(ellipse at 68% 35%,#1c1015,#08090b 70%); }
