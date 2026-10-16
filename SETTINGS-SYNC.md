@@ -1,10 +1,12 @@
-# Reliable account settings sync (build 378)
+# Reliable account settings sync (build 382)
 
 ## Data path
 
 `saveAccount` delegates to `Web/settings-sync.js` through `settings-sync-ui.js`. An owner-scoped local outbox is written before a request is sent. Brief pending-enqueue backups protect saves interrupted while waiting for a browser queue lock. Confirmed snapshots have a separate cache so stale offline Auth metadata cannot replace a newer acknowledged save.
 
 The UI distinguishes **Saved**, **Saving**, **Waiting to sync**, **Review changes**, and authentication/storage errors. Offline/transient failures retry with bounded exponential backoff (2–60 seconds), immediately on connectivity return, and on foregrounding. Visible clients check for remote updates once per minute. Failed or malformed responses never count as acknowledgement. Password changes and parent-code verification remain immediate credential operations, not queued requests. Plain passwords, codes and session tokens are excluded from the outbox; existing profile-lock hashes remain account settings.
+
+Routine queueing, successful background saves and offline retries are silent outside Settings. The inline status and retry/review controls remain available in Settings. Only actionable conflicts, authentication requirements and permanent/storage failures get a popup outside Settings, once per unresolved issue. Recovery and account changes clear the notification state. In particular, `enqueue` briefly reporting `waiting` before a healthy request starts must never trigger a warning.
 
 Active profile selection stays local to each device. All synced records and retries are scoped to the authenticated account, including across account switches. Settings saves do not replace a playing iframe or erase text in an open form.
 

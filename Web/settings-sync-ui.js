@@ -1,5 +1,6 @@
 (function(root){
-  let engine=null,accountOwner=null,generation=0,lastPhase='',lastRefresh=0,view={phase:'local',conflicts:[]};
+  let engine=null,accountOwner=null,generation=0,lastRefresh=0,view={phase:'local',conflicts:[]};
+  const notifiedProblems=new Set();
   let translated=false;
   function translations(){if(translated||typeof UI_STRINGS==='undefined')return;translated=true;Object.assign(UI_STRINGS.French,{'Saved':'Enregistré','Saving…':'Enregistrement…','Waiting to sync':'En attente de synchronisation','Review changes':'Vérifier les modifications','Sign in to sync':'Connectez-vous pour synchroniser','Couldn’t sync':'Synchronisation impossible','Saved on this device':'Enregistré sur cet appareil','Retry now':'Réessayer','Review':'Vérifier','Keep this device':'Garder cet appareil','Use other device':'Utiliser l’autre appareil','The same setting changed on another device. Choose which one to keep.':'Ce réglage a changé sur un autre appareil. Choisissez la valeur à conserver.','Saved on this device. Waiting to sync.':'Enregistré sur cet appareil. En attente de synchronisation.'});Object.assign(UI_STRINGS.Arabic,{'Saved':'تم الحفظ','Saving…':'جارٍ الحفظ…','Waiting to sync':'بانتظار المزامنة','Review changes':'مراجعة التغييرات','Sign in to sync':'سجّل الدخول للمزامنة','Couldn’t sync':'تعذّرت المزامنة','Saved on this device':'محفوظ على هذا الجهاز','Retry now':'إعادة المحاولة','Review':'مراجعة','Keep this device':'الاحتفاظ بقيمة هذا الجهاز','Use other device':'استخدام قيمة الجهاز الآخر','The same setting changed on another device. Choose which one to keep.':'تغيّر هذا الإعداد على جهاز آخر. اختر القيمة التي تريد الاحتفاظ بها.','Saved on this device. Waiting to sync.':'محفوظ على هذا الجهاز. بانتظار المزامنة.'});}
   const model=()=>root.SEVENSettingsModel,owner=()=>state.session?.access_token&&!state.user?.is_anonymous?(state.session.user?.id||state.user?.id||null):null;
@@ -18,7 +19,7 @@
   function ensure(){
     translations();
     const id=owner();if(id===accountOwner&&engine)return engine;
-    engine?.stop();engine=null;accountOwner=id;generation++;view={phase:id?'saved':'local',conflicts:[]};
+    engine?.stop();engine=null;accountOwner=id;generation++;view={phase:id?'saved':'local',conflicts:[]};notifiedProblems.clear();document.querySelector('.settings-sync-notice')?.remove();
     if(!id)return null;
     const context=generation,guard=()=>{if(owner()!==id||generation!==context)throw Error('Account changed.');};
     async function request(options){guard();if(accessTokenExpiresSoon()&&sessionCanRefresh())try{await refreshSession();}catch{}guard();const send=()=>localAPI('/api/account/settings',{...options,signal:AbortSignal.timeout(12000),headers:{'Content-Type':'application/json',...authorizedHeaders()}});let result;try{result=await send();}catch(error){if(error.status!==401||error.code==='SEVEN_SESSION_REVOKED'||!sessionCanRefresh())throw error;guard();await refreshSession();guard();result=await send();}guard();return result;}
@@ -39,14 +40,20 @@
     const safe=normalize(account),backup='seven.settings.pending.'+id+'.'+crypto.randomUUID();
     view={...view,phase:navigator.onLine?'saving':'waiting'};paint();
     try{localStorage.setItem(backup,JSON.stringify({owner:id,time:Date.now(),before:base?normalize(base):current.snapshot(),account:safe}));if(await current.enqueue(safe,base))localStorage.removeItem(backup);}catch(error){view={...view,phase:'error',error:'Could not safely store these changes. Free device storage and try again.'};paint();throw error;}
-    if(generation!==context)return {saved:false};const result=await current.flush({strict});if(!result.saved&&!document.querySelector('.profile-settings-redesign'))notice(result.conflict?'Settings changed on another device. Review them in Settings.':'Saved on this device. Waiting to sync.');return result;
+    if(generation!==context)return {saved:false};return current.flush({strict});
   }
   function labels(){return {saved:'Saved',saving:'Saving…',waiting:'Waiting to sync',conflict:'Review changes',signin:'Sign in to sync',error:'Couldn’t sync',local:'Saved on this device'};}
   function paint(){
     const page=document.querySelector('.profile-settings-redesign');
     if(page&&!page.querySelector('[data-settings-sync-status]')){const bar=document.createElement('div');bar.className='settings-sync-bar';bar.innerHTML='<span data-settings-sync-status role="status" aria-live="polite"></span><button type="button" data-settings-sync-action hidden></button>';page.querySelector('.profile-settings-topbar')?.after(bar);bar.querySelector('button').onclick=()=>view.phase==='conflict'?review():view.phase==='signin'?showAuth('login'):void ensure()?.flush();}
     const text=document.querySelector('[data-settings-sync-status]'),button=document.querySelector('[data-settings-sync-action]');if(text){text.textContent=t(labels()[view.phase]||'Waiting to sync');text.title=view.error||'';}if(button){button.hidden=!['waiting','conflict','signin','error'].includes(view.phase);button.textContent=t(view.phase==='conflict'?'Review':view.phase==='signin'?'Sign in':'Retry now');}
-    if(view.phase!==lastPhase){if(view.phase==='saved')document.querySelector('.settings-sync-notice')?.remove();if(['waiting','conflict','signin','error'].includes(view.phase)&&lastPhase==='saving'&&!page)notice(view.phase==='conflict'?'Settings changed on another device. Review them in Settings.':'Saved on this device. Waiting to sync.');lastPhase=view.phase;}
+    // Queueing is a normal part of every save, not a reason to interrupt browsing.
+    // Keep waiting/retry feedback in Settings; surface actionable problems once.
+    if(view.phase==='saved'){notifiedProblems.clear();document.querySelector('.settings-sync-notice')?.remove();}
+    else if(page)document.querySelector('.settings-sync-notice')?.remove();
+    else if(['conflict','signin','error'].includes(view.phase)&&!notifiedProblems.has(view.phase)){
+      notifiedProblems.add(view.phase);notice(view.phase==='conflict'?'Settings changed on another device. Review them in Settings.':labels()[view.phase]);
+    }
   }
   function notice(message){document.querySelector('.settings-sync-notice')?.remove();const el=document.createElement('div');el.className='settings-sync-notice';el.setAttribute('role','status');el.textContent=t(message);document.body.append(el);setTimeout(()=>el.remove(),4500);}
   function settingName(path){const names={name:'Profile name',language:'Display language',playerProvider:'Player',maturity:'Maturity rating',kids:'Kids profile',profiles:'Profiles',favoriteGenres:'Favourite genres',pinHash:'Profile PIN',familySafe:'Family-safe filtering',blockScary:'Scary titles',screenTime:'Screen time',minutes:'Daily limit',autoplayNext:'Autoplay',avatar:'Profile picture',likedTitles:'Ratings',hiddenTitles:'Hidden titles',restrictedTitles:'Blocked titles'};return path.filter(part=>!['preferences'].includes(part)).map(part=>part.startsWith('@')?state.account.profiles.find(p=>p.id===part.slice(1))?.name||'Title':names[part]||part).join(' · ');}
@@ -60,7 +67,7 @@
     modal.querySelector('[data-close]').focus();
   }
   async function refresh({force=false}={}){const current=ensure();if(!current||!force&&Date.now()-lastRefresh<15000)return;lastRefresh=Date.now();await current.refresh();}
-  function stop(){lastRefresh=0;generation++;engine?.stop();engine=null;accountOwner=null;view={phase:'local',conflicts:[]};}
+  function stop(){lastRefresh=0;generation++;engine?.stop();engine=null;accountOwner=null;view={phase:'local',conflicts:[]};notifiedProblems.clear();document.querySelector('.settings-sync-notice')?.remove();}
   root.SEVENSettingsSync={save,attach:()=>{stop();ensure();paint();},refresh,review,stop,state:()=>view};
   new MutationObserver(()=>{if(typeof state!=='undefined'){ensure();paint();}}).observe(document.querySelector('#app'),{childList:true});
   root.addEventListener('online',()=>{lastRefresh=0;void refresh();});root.addEventListener('focus',()=>void refresh());document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh();});root.addEventListener('storage',event=>{if(event.key==='seven.settings.sync.'+accountOwner)void engine?.ingestStored();});

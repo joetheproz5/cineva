@@ -42,9 +42,8 @@ test("genres, content mix, and family preferences each have a separate onboardin
   assert.equal((onboarding.match(/data-onboarding-default=/g) || []).length, 1);
   assert.match(onboarding, /defaultAction\("Keep current profile", 1\)/);
   assert.match(onboarding, /defaultAction\("No genre preference", 2\)/);
-  assert.match(onboarding, /defaultAction\("Keep both", 3\)/);
-  assert.match(onboarding, /defaultAction\("Show everything", 4\)/);
-  assert.match(onboarding, /if \(step === 1\)[\s\S]*saveOnboardingProfile\(button\)[\s\S]*step === 2[\s\S]*saveOnboardingChoices\(3, button\)[\s\S]*step === 3[\s\S]*saveOnboardingChoices\(4, button\)[\s\S]*step === 4[\s\S]*finishOnboarding\(button\)/);
+  assert.doesNotMatch(onboarding, /defaultAction\("Keep both"|defaultAction\("Show everything"/);
+  assert.match(onboarding, /if \(step === 1\)[\s\S]*saveOnboardingProfile\(button\)[\s\S]*step === 2[\s\S]*saveOnboardingChoices\(3, button\)/);
   assert.match(onboarding, /submit\.hasAttribute\("data-onboarding-default"\) \? "Saving…"/);
   assert.match(styles, /\.onboarding-actions-start \{ display: flex; min-width: 0; align-items: center;/);
   assert.match(styles, /\.onboarding-back \{[^}]*text-align: left;/);
@@ -52,11 +51,10 @@ test("genres, content mix, and family preferences each have a separate onboardin
   assert.match(styles, /\.onboarding-default-action \{ display: flex; min-height: 44px;[^}]*border: 1px solid/);
 });
 
-test("taste answers change the actual For You requests and each page can keep its own default", () => {
+test("taste answers change For You requests and listed defaults use the normal continue action", () => {
   assert.match(onboarding, /Pick up to three genres\. We’ll use them to shape your For You page\./);
   assert.match(onboarding, /draft\.favoriteGenres = \[\];\s*void saveOnboardingChoices\(3, button\)/);
-  assert.match(onboarding, /draft\.contentMix = "both";\s*void saveOnboardingChoices\(4, button\)/);
-  assert.match(onboarding, /draft\.familySafe = false;\s*void finishOnboarding\(button\)/);
+  assert.match(onboarding, /if \(Number\(state\.onboardingStep\) === 4\) void finishOnboarding\(\);\s*else void saveOnboardingChoices\(nextStep\)/);
   assert.match(onboarding, /favoriteGenres:draft\.favoriteGenres\.slice\(0,3\)/);
   assert.match(onboarding, /contentMix:\["movies","series"\]\.includes\(draft\.contentMix\) \? draft\.contentMix : "both"/);
   assert.match(onboarding, /SEVENSettingsSync.save\(state.account,\{strict:true\}\)/);
