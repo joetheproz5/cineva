@@ -102,7 +102,7 @@ test("discovery hooks preserve title navigation, use profile-scoped progress and
   assert.doesNotMatch(ui,/data-play|card-play|localStorage\.setItem/);
   for(const asset of ["title-discovery.js?v=1","title-discovery-ui.js?v=2","title-discovery.css?v=3"]){assert.ok(index.includes(asset));assert.ok(worker.includes(asset));}
   assert.ok(index.indexOf("title-discovery.js?v=1")<index.indexOf("title-discovery-ui.js?v=2"));
-  assert.ok(index.indexOf("title-discovery-ui.js?v=2")<index.indexOf("app.js?v=375"));
+  assert.ok(index.indexOf("title-discovery-ui.js?v=2")<index.indexOf("app.js?v=376"));
 });
 test("collection filters reserve classic scrollbar space without changing startup or other pages",()=>{
   const css=fs.readFileSync(path.resolve(__dirname,'../title-discovery.css'),'utf8'),app=fs.readFileSync(path.resolve(__dirname,'../app.js'),'utf8');
