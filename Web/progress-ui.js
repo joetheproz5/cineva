@@ -31,7 +31,7 @@
   }
   async function preview(show,changes,label,after){
     const modal=dialog(label);modal.body.innerHTML=`<p>${changes.length} released episode${changes.length===1?'':'s'} · ${escapeHTML(titleOf(show))}</p><p class="progress-note">Only this profile. Watch hours aren’t added.</p><div class="progress-preview">${changes.map(({season,episode,value})=>`<div><span>S${season} · E${episode.episode_number} · ${escapeHTML(episode.name||'Episode')}</span><small>${value?'Watched':'Unwatched'}</small></div>`).join('')}</div><div class="progress-footer"><button type="button" data-confirm ${changes.length?'':'disabled'}>Save changes</button></div>`;
-    modal.body.querySelector('[data-confirm]').onclick=()=>run(modal,async()=>{const result=await ui().saveBatch(changes);modal.busy=false;modal.close();if(ui().identity()===modal.scope){showToast(result.count?`${result.count} episode${result.count===1?'':'s'} updated.`:'Already up to date.');if(after)await after();}});
+    modal.body.querySelector('[data-confirm]').onclick=()=>run(modal,async()=>{const result=await ui().saveBatch(changes);modal.busy=false;modal.close();if(ui().identity()===modal.scope){if(!result.count||!root.SEVENUndo?.current())showToast(result.count?`${result.count} episode${result.count===1?'':'s'} updated.`:'Already up to date.');if(after)await after();}});
   }
   function attachManage(modal,show,select,draw){
     modal.querySelector('.tracker-episode-list').insertAdjacentHTML('beforebegin','<div class="progress-season-tools"><button type="button" data-catchup>Catch up to an episode</button><button type="button" data-season-watched>Season watched</button><button type="button" data-season-unwatched>Season unwatched</button><button type="button" data-progress-undo hidden>Undo last change</button></div>');bind(modal);updateUndo();
@@ -110,7 +110,7 @@ el.innerHTML=`<label class="progress-row-check"><input type="checkbox" data-incl
         }catch(error){row.message=error.message;}if(modal.alive()&&current===version){drawRow(row);summary();}}}));if(modal.alive()&&current===version){resolving=false;summary();}
       }catch(error){if(modal.alive()&&current===version){resolving=false;rows=[];list.innerHTML='';modal.error.textContent=error.message;}}
     };
-    save.onclick=()=>run(modal,async()=>{const result=await ui().saveBatch(rows.filter(row=>row.selected&&row.change).map(row=>row.change));if(!modal.alive())return;modal.busy=false;modal.close();showToast(result.count?`${result.count} title${result.count===1?'':'s'} imported.`:'Already up to date.');});
+    save.onclick=()=>run(modal,async()=>{const result=await ui().saveBatch(rows.filter(row=>row.selected&&row.change).map(row=>row.change));if(!modal.alive())return;modal.busy=false;modal.close();if(!result.count||!root.SEVENUndo?.current())showToast(result.count?`${result.count} title${result.count===1?'':'s'} imported.`:'Already up to date.');});
   }
   root.SEVENProgressUI={bind,updateUndo,attachManage,importHistory,undo};
 })(window);

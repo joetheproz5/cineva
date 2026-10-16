@@ -325,6 +325,7 @@ function persistSession(session, startedAt = sessionStartedAt(session)) {
   globalThis.window?.SEVENDevices?.start();
 }
 function clearSession() {
+  globalThis.window?.SEVENUndo?.clear();
   globalThis.window?.SEVENDevices?.stop();
   globalThis.window?.SEVENTrackerUI?.clear();
   void flushProfileWatchStats();
@@ -432,7 +433,7 @@ async function loadAccountWatchlist(refreshView = false) {
 }
 function watchlistToast(message) { document.querySelector(".watchlist-toast")?.remove(); app.insertAdjacentHTML("beforeend", `<div class="watchlist-toast" role="status" aria-live="polite">${escapeHTML(message)}</div>`); setTimeout(() => document.querySelector(".watchlist-toast")?.remove(), 3600); }
 function syncWatchlistControls() {
-  if (state.route === "watchlist") { render(); return; }
+  if (state.route === "watchlist") { if(document.querySelector(".modal"))state.undoViewDirty=true;else render();return; }
   document.querySelectorAll("[data-toggle-watchlist]").forEach(button => {
     const key = button.dataset.toggleWatchlist, [type, rawId] = key.split(":"), saved = isInWatchlist({ type, id:Number(rawId) });
     const pending = state.watchlistPending.has(`${accountWatchlistUserId()}:${activeProfileId()}:${key}`);
@@ -446,7 +447,7 @@ function syncWatchlistControls() {
     if (text) text.textContent = pending ? "Saving" : saved ? "Saved" : "Watchlist";
   });
 }
-async function toggleWatchlist(item) {
+async function toggleWatchlist(item, {undoable=true} = {}) {
   const ownerId = accountWatchlistUserId();
   if (!ownerId) { showAuth("login", "Sign in to save titles to your profile’s Watchlist."); return; }
   const profileId = activeProfileId();
@@ -454,28 +455,32 @@ async function toggleWatchlist(item) {
   const { type, id } = savedTitleIdentity(item), key = watchlistKey({ type, id });
   const pendingKey = `${ownerId}:${profileId}:${key}`;
   if (!["movie", "tv"].includes(type) || !Number.isSafeInteger(id) || id < 1 || state.watchlistPending.has(pendingKey)) return;
+  const ticket=undoable?globalThis.window?.SEVENUndo?.begin("watchlist:"+key):null;
   const before = state.watchlist.map(watchlistRecord), existing = state.watchlist.some(entry => watchlistKey(entry) === key), reconcileAfter = state.watchlistLoading;
+  const removed=before.find(entry=>watchlistKey(entry)===key);
   let failureMessage = "";
   state.watchlistPending.add(pendingKey);
   state.watchlistLoaded = true; state.watchlistMutationVersion++;
   if (existing) state.watchlist = state.watchlist.filter(entry => watchlistKey(entry) !== key);
-  else state.watchlist = [watchlistRecord({ type, id, title:titleOf(item), poster_path:item.poster_path || item.posterPath, backdrop_path:item.backdrop_path || item.backdropPath, release_date:item.release_date || item.first_air_date || item.releaseDate, vote_average:item.vote_average, addedAt:new Date().toISOString() }), ...state.watchlist];
+  else state.watchlist = [watchlistRecord({ type, id, title:titleOf(item), poster_path:item.poster_path || item.posterPath, backdrop_path:item.backdrop_path || item.backdropPath, release_date:item.release_date || item.first_air_date || item.releaseDate, vote_average:item.vote_average, addedAt:item.addedAt||new Date().toISOString() }), ...state.watchlist];
   persistWatchlist(); syncWatchlistControls();
   try {
     const request = existing
       ? localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profileId)}&type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`, { method:"DELETE", headers:authorizedHeaders() })
-      : localAPI("/api/account/watchlist", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ profile_id:profileId, content_type:type, tmdb_id:id, title:titleOf(item), poster_path:item.poster_path || item.posterPath || null, backdrop_path:item.backdrop_path || item.backdropPath || null, release_date:item.release_date || item.first_air_date || item.releaseDate || null, vote_average:item.vote_average ?? null }) });
+      : localAPI("/api/account/watchlist", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ profile_id:profileId, content_type:type, tmdb_id:id, title:titleOf(item), poster_path:item.poster_path || item.posterPath || null, backdrop_path:item.backdrop_path || item.backdropPath || null, release_date:item.release_date || item.first_air_date || item.releaseDate || null, vote_average:item.vote_average ?? null,...(!undoable?{added_at:item.addedAt}:{}) }) });
     await request;
     if (accountWatchlistUserId() === ownerId && activeProfileId() === profileId) state.watchlistError = null;
+    if(existing&&undoable)globalThis.window?.SEVENUndo?.offer(ticket,"Removed from Watchlist.",async()=>{if(!await toggleWatchlist(removed,{undoable:false}))throw Error("Could not restore this title. Try again.");return {undone:true};},()=>!isInWatchlist(removed)&&!state.watchlistPending.has(pendingKey));
   } catch (error) {
-    if (accountWatchlistUserId() === ownerId && activeProfileId() === profileId) { state.watchlist = before; persistWatchlist(); failureMessage = error.message || "Could not update your Watchlist. Try again."; }
+    if (accountWatchlistUserId() === ownerId && activeProfileId() === profileId) { state.watchlist = state.watchlist.filter(entry=>watchlistKey(entry)!==key);if(removed)state.watchlist.push(removed);persistWatchlist();failureMessage = error.message || "Could not update your Watchlist. Try again."; }
   } finally {
     state.watchlistPending.delete(pendingKey);
     if (state.route === "watchlist") state.watchlistLoaded = true;
     syncWatchlistControls();
-    if (failureMessage) watchlistToast(failureMessage);
+    if (failureMessage && undoable) watchlistToast(failureMessage);
     if (reconcileAfter && accountWatchlistUserId() === ownerId && activeProfileId() === profileId) void loadAccountWatchlist(true);
   }
+  return !failureMessage&&accountWatchlistUserId()===ownerId&&activeProfileId()===profileId;
 }
 function episodeAlertKey(item) { return `${item.id}:${item.episode?.season_number || 0}:${item.episode?.episode_number || 0}`; }
 function alertStorageKey() { return `seven.new-episode-alerts.${activeProfileId()}`; }
@@ -583,7 +588,35 @@ function upcomingCard(item) {
   return `<article class="card upcoming-card"><button class="upcoming-open" data-open="${type}:${id}" aria-label="More about ${escapeHTML(titleOf(item))}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${type === "tv" ? "SERIES" : "MOVIE"}</i><em class="upcoming-date">${escapeHTML(formatted)}</em><strong class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></strong></span><span class="upcoming-copy"><b>${escapeHTML(titleOf(item))}</b><small>${escapeHTML(t("Releases"))} ${escapeHTML(formatted)} · ${escapeHTML(yearOf(item) || "TBA")}</small></span></button><button class="upcoming-reminder ${saved ? "is-set" : ""}" type="button" data-release-reminder="${type}:${id}" data-release-date="${escapeHTML(date)}" data-release-title="${escapeHTML(titleOf(item))}" data-release-poster="${escapeHTML(item.poster_path || "")}" aria-pressed="${saved}" aria-label="${escapeHTML(`${t(saved ? "Reminder set" : "Remind me")} · ${titleOf(item)}`)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span>${t(saved ? "Reminder set" : "Remind me")}</span></button></article>`;
 }
 async function loadNewEpisodes() { return window.SEVENTrackerUI?.newEpisodes(); }
-async function toggleMyList(item) { const inList = isInMyList(item), key = listKey({ profileId:activeProfileId(), type:item.type, id:item.id }); if (inList) { state.myList = state.myList.filter(entry => listKey(entry) !== key); persistMyList(); if (state.session) try { await localAPI(`/api/account/list?profile=${encodeURIComponent(activeProfileId())}&type=${encodeURIComponent(item.type)}&id=${encodeURIComponent(item.id)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} } else { const entry = listRecord({ profileId:activeProfileId(), type:item.type, id:item.id, title:titleOf(item), poster_path:item.poster_path, backdrop_path:item.backdrop_path, release_date:item.release_date || item.first_air_date, vote_average:item.vote_average, addedAt:new Date().toISOString() }); state.myList = [entry, ...state.myList]; persistMyList(); if (state.session) try { await localAPI("/api/account/list", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ profile_id:entry.profileId, content_type:entry.type, tmdb_id:entry.id, title:entry.title, poster_path:entry.poster_path, backdrop_path:entry.backdrop_path, release_date:entry.release_date, vote_average:entry.vote_average }) }); } catch {} } if (item.type === "tv") void loadNewEpisodes(); render(); }
+function undoActionScope() { return JSON.stringify([accountWatchlistUserId() || state.user?.id || "guest",activeProfileId(),Boolean(state.session)]); }
+async function refreshUndoView() {
+  if(state.route==="player")return; // Undo must never restart a playing iframe.
+  if(state.route==="profile-settings"||state.route==="onboarding")return; // Keep forms and unsaved input in place.
+  if(document.querySelector('.modal:not(.tracker-episode-modal)')){state.undoViewDirty=true;return;}
+  const modal=document.querySelector(".tracker-episode-modal");
+  if(modal){const id=Number(modal.dataset.trackerSeries),season=Number(modal.querySelector("[data-tracker-season]")?.value);modal.querySelectorAll("[data-tracker-status]").forEach(button=>{const done=isWatched({type:"tv",id,season,episode:Number(button.dataset.trackerStatus)});button.setAttribute("aria-pressed",String(done));button.textContent=done?"Watched":"Mark watched";});void window.SEVENTrackerUI?.refresh();return;}
+  if(state.route==="series"){const scope=undoActionScope(),id=state.series?.id;await loadSeriesNext();if(state.route==="series"&&state.series?.id===id&&undoActionScope()===scope)renderSeries();return;}
+  render();
+}
+const favouriteMutations=new Set();
+async function toggleMyList(item,{undoable=true}={}) {
+  const profileId=activeProfileId(),scope=undoActionScope(),identity=savedTitleIdentity(item),key=listKey({profileId,...identity}),pending=scope+":"+key;
+  if(favouriteMutations.has(pending))return false;
+  const previous=state.myList.find(entry=>listKey(entry)===key),entry=previous||listRecord({profileId,...identity,title:titleOf(item),poster_path:item.poster_path,backdrop_path:item.backdrop_path,release_date:item.release_date||item.first_air_date,vote_average:item.vote_average,addedAt:item.addedAt||new Date().toISOString()}),ticket=undoable?globalThis.window?.SEVENUndo?.begin("favourite:"+key):null;
+  favouriteMutations.add(pending);state.myList=state.myList.filter(value=>listKey(value)!==key);if(!previous)state.myList.unshift(entry);persistMyList();
+  try {
+    if(state.session)await localAPI(previous?`/api/account/list?profile=${encodeURIComponent(profileId)}&type=${encodeURIComponent(entry.type)}&id=${encodeURIComponent(entry.id)}`:"/api/account/list",{method:previous?"DELETE":"POST",headers:{"Content-Type":"application/json",...authorizedHeaders()},...(!previous?{body:JSON.stringify({profile_id:profileId,content_type:entry.type,tmdb_id:entry.id,title:entry.title,poster_path:entry.poster_path,backdrop_path:entry.backdrop_path,release_date:entry.release_date,vote_average:entry.vote_average,...(!undoable?{added_at:entry.addedAt}:{})})}:{})});
+    if(undoActionScope()!==scope)return false;
+    if(previous&&undoable)globalThis.window?.SEVENUndo?.offer(ticket,"Removed from Favourites.",async()=>{if(!await toggleMyList(entry,{undoable:false}))throw Error("Could not restore this title. Try again.");return {undone:true};},()=>!isInMyList(entry)&&!favouriteMutations.has(pending));
+    return true;
+  } catch(error) {
+    if(undoActionScope()===scope){state.myList=state.myList.filter(value=>listKey(value)!==key);if(previous)state.myList.push(previous);persistMyList();if(undoable)showToast(error.message||"Could not update Favourites. Try again.");}
+    return false;
+  } finally {
+    favouriteMutations.delete(pending);
+    if(undoActionScope()===scope){if(entry.type==="tv")void loadNewEpisodes();await refreshUndoView();}
+  }
+}
 
 async function api(path, params = {}) {
   const query = new URLSearchParams(params); if (!query.has("language")) query.set("language", DISPLAY_LANGUAGES[currentPreferences().language] || DISPLAY_LANGUAGES.English);
@@ -2773,6 +2806,21 @@ async function clearRecentSearches(profile = currentProfile()) {
   if (state.user) await saveAccount();
 }
 function hiddenTitleKey(item) { return `${item.type}:${Number(item.id)}`; }
+const feedbackUndoPending=new Set();
+function restoreUndoItem(items,previous,index,key) { const next=(items||[]).filter(item=>hiddenTitleKey(item)!==key);if(previous)next.splice(Math.min(Math.max(0,index),next.length),0,previous);return next; }
+async function undoHiddenTitle(ticket,record,hiddenBefore,likedBefore,hiddenIndex,likedIndex,featuredBefore) {
+  const scope=undoActionScope(),key=hiddenTitleKey(record),pending=scope+":"+key,profileId=activeProfileId(),account=JSON.parse(JSON.stringify(state.account)),target=account.profiles.find(profile=>profile.id===profileId);
+  if(!target||feedbackUndoPending.has(pending))throw Error("Wait for the current change to finish.");
+  feedbackUndoPending.add(pending);
+  try {
+    target.hiddenTitles=restoreUndoItem(target.hiddenTitles,hiddenBefore,hiddenIndex,key);target.likedTitles=restoreUndoItem(target.likedTitles,likedBefore,likedIndex,key);
+    if(state.session)await localAPI("/api/account/settings",{method:"PUT",headers:{"Content-Type":"application/json",...authorizedHeaders()},body:JSON.stringify({account})});
+    if(!ticket.isCurrent()||undoActionScope()!==scope)return {changed:true};
+    const profile=currentProfile();profile.hiddenTitles=restoreUndoItem(profile.hiddenTitles,hiddenBefore,hiddenIndex,key);profile.likedTitles=restoreUndoItem(profile.likedTitles,likedBefore,likedIndex,key);persistLocalAccount();
+    for(const item of featuredBefore)if(!state.featuredPool.some(entry=>hiddenTitleKey(entry)===key)&&contentAllowed(item))state.featuredPool.push(item);
+    await refreshUndoView();return {undone:true};
+  } finally {feedbackUndoPending.delete(pending);}
+}
 function hiddenTitles() { return Array.isArray(currentProfile()?.hiddenTitles) ? currentProfile().hiddenTitles.filter(item => item?.type && item?.id) : []; }
 function isHiddenTitle(item) { return hiddenTitles().some(hidden => hiddenTitleKey(hidden) === hiddenTitleKey(item)); }
 function likedTitles() { return Array.isArray(currentProfile()?.likedTitles) ? currentProfile().likedTitles.filter(item => item?.type && item?.id) : []; }
@@ -2782,6 +2830,8 @@ function ratingAction(item) { if (!state.user) return ""; const liked = isLikedT
 async function likeTitle(item) {
   const profile = currentProfile();
   if (!profile) return showAuth();
+  if(feedbackUndoPending.has(undoActionScope()+":"+hiddenTitleKey(item)))return;
+  globalThis.window?.SEVENUndo?.begin("feedback:"+hiddenTitleKey(item));
   const key = hiddenTitleKey(item), existing = likedTitles().filter(liked => hiddenTitleKey(liked) !== key);
   if (isLikedTitle(item)) profile.likedTitles = existing;
   else profile.likedTitles = [{ type:item.type, id:Number(item.id), title:titleOf(item), poster_path:item.poster_path || null, release_date:item.release_date || item.first_air_date || null, vote_average:Number(item.vote_average) || 0, genreIds:item.genre_ids || (item.genres || []).map(genre => genre.id), likedAt:new Date().toISOString() }, ...existing];
@@ -2792,12 +2842,16 @@ async function hideTitle(item) {
   const profile = currentProfile();
   if (!profile) return showAuth();
   const key = hiddenTitleKey(item);
+  const scope=undoActionScope();if(feedbackUndoPending.has(scope+":"+key))return;
+  const ticket=globalThis.window?.SEVENUndo?.begin("feedback:"+key),hiddenBefore=hiddenTitles().find(item=>hiddenTitleKey(item)===key),likedBefore=likedTitles().find(item=>hiddenTitleKey(item)===key),hiddenIndex=hiddenTitles().findIndex(item=>hiddenTitleKey(item)===key),likedIndex=likedTitles().findIndex(item=>hiddenTitleKey(item)===key),featuredBefore=state.featuredPool.filter(item=>hiddenTitleKey(item)===key);
   const record = { type:item.type, id:Number(item.id), title:titleOf(item), poster_path:item.poster_path || null, release_date:item.release_date || item.first_air_date || null, vote_average:Number(item.vote_average) || 0, genreIds:item.genre_ids || (item.genres || []).map(genre=>genre.id), hiddenAt:new Date().toISOString() };
   profile.hiddenTitles = [record, ...hiddenTitles().filter(hidden => hiddenTitleKey(hidden) !== key)];
   profile.likedTitles = likedTitles().filter(liked => hiddenTitleKey(liked) !== key);
   state.featuredPool = state.featuredPool.filter(featured => !isHiddenTitle(featured));
   if (isHiddenTitle(state.featured)) { state.featuredIndex = 0; state.featured = state.featuredPool[0] || null; }
   await saveAccount();
+  if(undoActionScope()!==scope)return;
+  globalThis.window?.SEVENUndo?.offer(ticket,"Title hidden.",()=>undoHiddenTitle(ticket,record,hiddenBefore,likedBefore,hiddenIndex,likedIndex,featuredBefore),()=>hiddenTitles().find(item=>hiddenTitleKey(item)===key)?.hiddenAt===record.hiddenAt&&!feedbackUndoPending.has(scope+":"+key));
   state.route = "home";
   scrollToTop();
   render();
@@ -2805,6 +2859,8 @@ async function hideTitle(item) {
 async function restoreHiddenTitle(key) {
   const profile = currentProfile();
   if (!profile) return;
+  if(feedbackUndoPending.has(undoActionScope()+":"+key))return;
+  globalThis.window?.SEVENUndo?.begin("feedback:"+key);
   profile.hiddenTitles = hiddenTitles().filter(item => hiddenTitleKey(item) !== key);
   await saveAccount();
   renderHiddenTitles();
@@ -2977,6 +3033,7 @@ function showInstallSEVEN() {
   document.querySelector("[data-confirm-install]")?.addEventListener("click", async () => { const prompt = deferredInstallPrompt; if (!prompt) return; prompt.prompt(); await prompt.userChoice; deferredInstallPrompt = null; document.querySelector(".install-modal")?.remove(); });
 }
 function queueProgressSync(item, currentTime, duration, progress, immediate = false) {
+  globalThis.window?.SEVENUndo?.begin("progress:"+watchKey(item));
   if (!state.session) return;
   const payload = { content_key:watchKey(item), content_type:item.type, tmdb_id:item.id, season:item.season || null, episode:item.episode || null, title:item.title || "Untitled", poster_path:item.posterPath || null, progress_seconds:currentTime, duration_seconds:duration, is_watched:progress >= 90, last_watched_at:new Date().toISOString() };
   upsertAccountProgress(payload);
@@ -3108,7 +3165,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=376", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=377", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

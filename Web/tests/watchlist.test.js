@@ -93,6 +93,14 @@ test("successful Watchlist removals preserve the empty 204 response instead of t
     assert.equal(await cleared.text(), "");
   } finally { global.fetch = originalFetch; }
 });
+test('Undo can restore the original list date, but malformed/future dates are rejected',async()=>{
+ const original=global.fetch,calls=[];global.fetch=async(url,options={})=>{calls.push({url,options});return Response.json([]);};
+ try{for(const list of ['watchlist','list']){const headers={Authorization:'Bearer test','Content-Type':'application/json'},body={profile_id:'main',content_type:'movie',tmdb_id:12,title:'Film',added_at:'2020-01-01T00:00:00.000Z'};
+  const run=added_at=>(route()).then(handler=>handler({request:new Request('https://seven.test/api/account/'+list,{method:'POST',headers,body:JSON.stringify({...body,added_at})}),params:{path:'account/'+list},env:{SUPABASE_URL:'https://fixture.supabase.co',SUPABASE_PUBLISHABLE_KEY:'fixture'}}));
+  assert.equal((await run(body.added_at)).status,200);assert.equal(JSON.parse(calls.at(-1).options.body).added_at,body.added_at);
+  for(const invalid of ['not-a-date','2999-01-01T00:00:00.000Z',123])assert.equal((await run(invalid)).status,400);
+ }}finally{global.fetch=original;}
+});
 
 test("mobile keeps five slots by combining Movies and Series under Browse", () => {
   assert.match(app, /data-mobile-browse/);

@@ -125,6 +125,7 @@
       state.series=normalize(show,"tv");state.selectedSeason=season;state.episodes=data;state.episodesSeriesId=id;state.episodesSeason=season;state.seriesNext=null;playEpisode(episode,true);
     }catch(error){showToast(error.message||"Couldn’t open this episode.");}
   }
+  function matchesStatus(key,record){try{const current=JSON.parse(localStorage.getItem(key)||"null");return !!current&&Date.parse(current.lastWatchedAt)===Date.parse(record.lastWatchedAt)&&Number(current.currentTime)===Number(record.currentTime)&&Number(current.duration)===Number(record.duration)&&(!!current.watched||Number(current.progress)>=90)===(!!record.watched||Number(record.progress)>=90);}catch{return false;}}
   async function saveStatus(show,season,episode,value,{allowGuest=false}={}){
     const signedIn=!!state.session&&!!accountWatchlistUserId();
     if(!signedIn&&!allowGuest)throw Error("Sign in to save episode progress.");
@@ -132,7 +133,8 @@
     const scope=identity(),item={type:"tv",id:Number(show.id),season:Number(season),episode:Number(episode.episode_number),title:episode.name||titleOf(show),posterPath:show.poster_path||episode.still_path||null,genreIds:(show.genres||[]).map(genre=>genre.id)},key=watchKey(item),pending=`${scope}:${key}`;
     if(bulkPending.has(scope))throw Error("A history change is saving. Please wait.");
     if(pendingStatus.has(pending))return;pendingStatus.add(pending);
-    const before=localStorage.getItem(key);let saved={};try{saved=before?JSON.parse(before):{};}catch{}
+    const before=localStorage.getItem(key);let saved={},hasBefore=false;try{const parsed=before?JSON.parse(before):null;if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed)){saved=parsed;hasBefore=true;}}catch{}
+    const ticket=root.SEVENUndo?.begin("progress:"+key),profile=activeProfileId(),headers=authorizedHeaders();
     if(state.pendingProgress?.content_key===key){clearTimeout(state.progressTimer);state.pendingProgress=null;}
     const record={...saved,...item,currentTime:value?Math.max(1,Number(saved.currentTime)||0):0,duration:Math.max(1,Number(saved.duration)||0),progress:value?100:0,watched:value,lastWatchedAt:new Date().toISOString()};
     const payload={content_key:key,content_type:"tv",tmdb_id:item.id,season:item.season,episode:item.episode,title:item.title,poster_path:item.posterPath,progress_seconds:record.currentTime,duration_seconds:record.duration,is_watched:value,last_watched_at:record.lastWatchedAt};
@@ -141,7 +143,17 @@
       if(signedIn)await localAPI("/api/account/progress",{method:"POST",headers:{"Content-Type":"application/json",...authorizedHeaders()},body:JSON.stringify(payload)});
       if(identity()!==scope)return;
       if(signedIn)upsertAccountProgress(payload);state.seriesNext=null;if(state.seriesTracker)state.seriesTracker.signature="";if(signedIn)void newEpisodes();
-    }catch(error){if(identity()===scope){if(before)localStorage.setItem(key,before);else localStorage.removeItem(key);}throw error;}
+      const previous=hasBefore?{...payload,progress_seconds:Math.max(0,Number(saved.currentTime)||0),duration_seconds:Math.max(0,Number(saved.duration)||0),is_watched:!!saved.watched||Number(saved.progress)>=90,last_watched_at:Number.isFinite(Date.parse(saved.lastWatchedAt))?saved.lastWatchedAt:new Date(Date.parse(record.lastWatchedAt)-1).toISOString()}:null;
+      root.SEVENUndo?.offer(ticket,value?"Marked watched.":"Marked unwatched.",async()=>{
+        pendingStatus.add(pending);
+        try {
+          if(signedIn){const result=await batchRequest({action:"undo",profile,entries:[{key,expected:record.lastWatchedAt,previous}]},headers),status=result.results?.find(entry=>entry.key===key)?.status;if(status==="changed")return {changed:true};if(status!=="restored")throw Error("Could not restore progress. Try again.");}
+          if(identity()!==scope||!ticket.isCurrent()||!matchesStatus(key,record))return {changed:true};
+          if(previous){localStorage.setItem(key,before);if(signedIn)upsertAccountProgress(previous);}else{localStorage.removeItem(key);if(signedIn)forgetAccountProgress(key);}
+          statusChanged();await root.refreshUndoView?.();return {undone:true};
+        } finally {pendingStatus.delete(pending);}
+      },()=>identity()===scope&&!pendingStatus.has(pending)&&!bulkPending.has(scope)&&matchesStatus(key,record));
+    }catch(error){if(identity()===scope&&matchesStatus(key,record)){if(before)localStorage.setItem(key,before);else localStorage.removeItem(key);}throw error;}
     finally{pendingStatus.delete(pending);}
   }
   const hasUndo=()=>!!undoByScope.get(identity())?.length;
@@ -160,6 +172,8 @@
       const key=watchKey(item);unique.set(key,{...change,item,key});
     }
     if(!unique.size)throw Error("There are no changes to save.");if(unique.size>10000)throw Error("Choose a smaller history change.");
+    const ticket=root.SEVENUndo?.begin("history-batch");
+    for(const key of unique.keys())root.SEVENUndo?.begin("progress:"+key);
     bulkPending.add(scope);for(const key of unique.keys())pendingStatus.add(`${scope}:${key}`);
     try{
       if(state.pendingProgress&&unique.has(state.pendingProgress.content_key)){
@@ -186,29 +200,33 @@
       if(!Array.isArray(written)||written.length!==records.length)throw Error("Couldn’t confirm the save. Refresh before retrying.");
       undoByScope.set(scope,journal);
       if(identity()===scope){for(const item of journal){localStorage.setItem(item.key,JSON.stringify(item.record));upsertAccountProgress(item.payload);}statusChanged();}
+      root.SEVENUndo?.offer(ticket,"Viewing history updated.",async()=>{const result=await undoBatch({quick:true});await root.refreshUndoView?.();return result.changed?{changed:true}:{undone:true};},()=>(undoByScope.get(scope)||[]).some(entry=>entry.expected===stamp)&&!bulkPending.has(scope));
       return {count:records.length};
     }finally{bulkPending.delete(scope);for(const key of unique.keys())pendingStatus.delete(`${scope}:${key}`);}
   }
-  async function undoBatch(){
+  async function undoBatch({quick=false}={}){
     const scope=identity(),profile=activeProfileId(),journal=undoByScope.get(scope),headers=authorizedHeaders();
     if(!state.session||!accountWatchlistUserId())throw Error("Sign in to undo history changes.");
     if(!journal?.length)return {count:0,changed:0};if(bulkPending.has(scope)||[...pendingStatus].some(key=>key.startsWith(scope+":")))throw Error("Wait for the current episode change to finish.");
+    if(!quick)root.SEVENUndo?.begin("history-batch");
     bulkPending.add(scope);for(const item of journal)pendingStatus.add(`${scope}:${item.key}`);
     let count=0,changed=0;
     try{
       for(let index=0;index<journal.length;index+=20){
         if(identity()!==scope)throw Error("Profile changed. Continue undo on the original profile.");
-        const chunk=journal.slice(index,index+20),response=await batchRequest({action:"undo",profile,entries:chunk.map(({key,expected,previous})=>({key,expected,previous}))},headers);
+        const chunk=journal.slice(index,index+20).filter(item=>{if(matchesStatus(item.key,item.record))return true;changed++;undoByScope.set(scope,(undoByScope.get(scope)||[]).filter(entry=>entry.key!==item.key));return false;});
+        if(!chunk.length)continue;
+        const response=await batchRequest({action:"undo",profile,entries:chunk.map(({key,expected,previous})=>({key,expected,previous}))},headers);
         if(!Array.isArray(response.results))throw Error("Couldn’t confirm the undo. Try again.");
         for(const result of response.results){
           const item=chunk.find(item=>item.key===result.key);if(!item||!["restored","changed"].includes(result.status))continue;
           undoByScope.set(scope,(undoByScope.get(scope)||[]).filter(entry=>entry.key!==item.key));
           if(result.status==="changed"){
             changed++;
-            if(identity()===scope){const latest=await batchRequest({action:"read",profile,keys:[item.key]},headers);if(identity()===scope&&Array.isArray(latest)){if(latest[0]){localStorage.setItem(item.key,JSON.stringify({...item.record,...accountProgressRecord(latest[0])}));upsertAccountProgress(latest[0]);}else{localStorage.removeItem(item.key);forgetAccountProgress(item.key);}}}
+            if(identity()===scope&&matchesStatus(item.key,item.record)){const latest=await batchRequest({action:"read",profile,keys:[item.key]},headers);if(identity()===scope&&matchesStatus(item.key,item.record)&&Array.isArray(latest)){if(latest[0]){localStorage.setItem(item.key,JSON.stringify({...item.record,...accountProgressRecord(latest[0])}));upsertAccountProgress(latest[0]);}else{localStorage.removeItem(item.key);forgetAccountProgress(item.key);}}}
             continue;
           }count++;
-          if(identity()===scope){if(item.localBefore){localStorage.setItem(item.key,JSON.stringify(item.localBefore));upsertAccountProgress(item.previous);}else{localStorage.removeItem(item.key);forgetAccountProgress(item.key);}}
+          if(identity()===scope&&matchesStatus(item.key,item.record)){if(item.localBefore){localStorage.setItem(item.key,JSON.stringify(item.localBefore));upsertAccountProgress(item.previous);}else{localStorage.removeItem(item.key);forgetAccountProgress(item.key);}}
         }
         if(response.results.some(result=>result.status==="failed"))throw Error("Some changes couldn’t be undone. Try again to finish.");
       }
@@ -221,6 +239,7 @@
       document.querySelector(".tracker-episode-modal")?.remove();
       app.insertAdjacentHTML("beforeend",`<div class="modal tracker-episode-modal"><section class="tracker-episode-panel" role="dialog" aria-modal="true" aria-label="Episodes for ${escapeHTML(titleOf(show))}"><div class="tracker-modal-heading"><h2>${escapeHTML(titleOf(show))}</h2><button type="button" data-tracker-close aria-label="Close episodes">×</button></div><label>Season <select data-tracker-season>${(show.seasons||[]).map(season=>`<option value="${Number(season.season_number)}">${escapeHTML(season.name||`Season ${season.season_number}`)}</option>`).join("")}</select></label><p class="tracker-modal-error" role="status"></p><div class="tracker-episode-list"></div></section></div>`);
       const modal=document.querySelector(".tracker-episode-modal"),select=modal.querySelector("[data-tracker-season]"),tracked=state.seriesTracker?.shows.find(item=>Number(item.show.id)===id);select.value=String(tracked?.next?.season||(show.seasons||[]).find(season=>season.season_number>0)?.season_number||0);
+      modal.dataset.trackerSeries=String(id);
       modal.querySelector("[data-tracker-close]").onclick=()=>modal.remove();modal.addEventListener("click",event=>{if(event.target===modal)modal.remove();});modal.addEventListener("keydown",event=>{if(event.key==="Escape")modal.remove();});
       let request=0;
       const draw=async()=>{

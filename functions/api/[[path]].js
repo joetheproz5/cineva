@@ -169,6 +169,7 @@ async function myList(request, requestURL, env) {
       vote_average:Number(body.vote_average) || null
     };
     if (!Number.isInteger(payload.tmdb_id) || payload.tmdb_id < 1) return json({ error:"A valid title is required." }, 400);
+    if(body.added_at!==undefined){if(typeof body.added_at!=="string"||!Number.isFinite(Date.parse(body.added_at))||Date.parse(body.added_at)>Date.now()+60000)return json({error:"The saved date is invalid."},400);payload.added_at=new Date(body.added_at).toISOString();}
     const result = await upstream(`${settings.url}/rest/v1/my_list?on_conflict=user_id,profile_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
     return json(result.data, result.status);
   } catch (error) { return json({ error:error.message || "My List could not be synced." }, 400); }
@@ -211,6 +212,7 @@ async function accountWatchlist(request, requestURL, env) {
     if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) return json({ error:"The rating is invalid." }, 400);
     const optionalPath = value => typeof value === "string" && value.trim() ? value.trim().slice(0, 300) : null;
     const payload = { profile_id:profile, content_type:type, tmdb_id:id, title, poster_path:optionalPath(body.poster_path || body.posterPath), backdrop_path:optionalPath(body.backdrop_path || body.backdropPath), release_date:releaseDate, vote_average:rating };
+    if(body.added_at!==undefined){if(typeof body.added_at!=="string"||!Number.isFinite(Date.parse(body.added_at))||Date.parse(body.added_at)>Date.now()+60000)return json({error:"The saved date is invalid."},400);payload.added_at=new Date(body.added_at).toISOString();}
     const result = await upstream(`${table}?on_conflict=user_id,profile_id,content_type,tmdb_id`, { method:"POST", headers:{ ...headers, Prefer:"resolution=merge-duplicates,return=representation" }, body:JSON.stringify(payload) });
     return json(result.data, result.status);
   } catch (error) { return json({ error:error.message || "Watchlist could not be synced." }, 400); }

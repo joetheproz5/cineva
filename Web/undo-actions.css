@@ -1,0 +1,11 @@
+.action-undo { position:fixed; z-index:11000; left:50%; bottom:max(24px,env(safe-area-inset-bottom)); transform:translateX(-50%); display:flex; align-items:center; gap:16px; box-sizing:border-box; width:max-content; max-width:min(480px,calc(100vw - 32px)); min-height:56px; padding:12px 12px 12px 18px; border:1px solid #3c3c42; border-radius:12px; color:#eee; background:#1b1b1ef5; box-shadow:0 12px 40px #0007; font-family:inherit; font-size:13px; line-height:1.45; animation:action-undo-in .18s ease-out; }
+.action-undo-copy { min-width:0; overflow-wrap:anywhere; }
+.action-undo button { flex-shrink:0; min-width:54px; min-height:36px; padding:7px 12px; border:1px solid #5a5a62; border-radius:7px; color:#fff; background:#303035; font:inherit; font-weight:650; cursor:pointer; }
+.action-undo button:hover { background:#414148; }
+.action-undo .action-undo-close { min-width:32px; width:32px; padding:0; border-color:transparent; color:#aaa; background:transparent; font-size:21px; font-weight:400; }
+.action-undo button:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+.action-undo button:disabled { opacity:.55; cursor:wait; }
+.action-undo-notice { min-height:44px; padding:12px 18px; }
+@keyframes action-undo-in { from { opacity:0; translate:0 7px; } to { opacity:1; translate:0 0; } }
+@media(max-width:720px){.action-undo { bottom:calc(82px + env(safe-area-inset-bottom)); max-width:calc(100vw - 24px); gap:10px; padding-left:14px; font-size:12px; }}
+@media(prefers-reduced-motion:reduce){.action-undo { animation:none; }}

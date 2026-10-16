@@ -75,7 +75,7 @@ test('details, replay and party playback are gated before any iframe is created'
 });
 test('new classification assets ship before app code in the refreshed PWA shell',()=>{
  const base=path.resolve(__dirname,'..'),index=fs.readFileSync(path.join(base,'index.html'),'utf8'),sw=fs.readFileSync(path.join(base,'service-worker.js'),'utf8');
- for(const name of ['age-ratings.js?v=1','age-ratings.css?v=1','series-tracker-ui.js?v=3']){assert.ok(index.includes(name));assert.ok(sw.includes(name));}
- assert.ok(index.indexOf('age-ratings.js?v=1')<index.indexOf('app.js?v=376'));assert.match(sw,/seven-v376/);
+ for(const name of ['age-ratings.js?v=1','age-ratings.css?v=1','series-tracker-ui.js?v=4']){assert.ok(index.includes(name));assert.ok(sw.includes(name));}
+ assert.ok(index.indexOf('age-ratings.js?v=1')<index.indexOf('app.js?v=377'));assert.match(sw,/seven-v377/);
  assert.match(sw,/release_dates\|content_ratings[^\n]*event.respondWith\(fetch\(event.request\)\)/);
 });
