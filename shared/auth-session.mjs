@@ -1,5 +1,6 @@
 import {securityJSON,sameOrigin,boundedJSON,throttle,passwordSafety} from './auth-security.mjs';
 import {guardDeviceSession,claims} from './devices.mjs';
+import {emailStatus} from './email-assurance.mjs';
 
 const encoder=new TextEncoder(),DAYS=30*86400;
 const cookieName=request=>new URL(request.url).protocol==='https:'?'__Host-seven_refresh':'seven_refresh_dev';
@@ -19,7 +20,8 @@ export async function sessionReply(request,env,data,status=200,started=Date.now(
 export async function requireMFA(request,env){
   const token=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');if(!token)return null;
   const result=await authUpstream(env,'/auth/v1/user',{token});if(result.status>=500)return securityJSON({error:'Account verification is temporarily unavailable.'},503);if(result.status!==200)return securityJSON({error:'Sign in required.'},401);
-  if(result.data.factors?.some(f=>f.status==='verified')&&claims(token).aal!=='aal2')return securityJSON({error:'Enter your authenticator code to continue.',code:'SEVEN_MFA_REQUIRED'},403);return null;
+  if(result.data.factors?.some(f=>f.status==='verified')&&claims(token).aal!=='aal2')return securityJSON({error:'Enter your authenticator code to continue.',code:'SEVEN_MFA_REQUIRED'},403);
+  try{const status=await emailStatus(env,result.data,claims(token));if(!status.active)return securityJSON({error:'Sign in required.'},401);if(status.required)return securityJSON({error:'Enter the code from your email to continue.',code:'SEVEN_EMAIL_REQUIRED'},403);}catch{return securityJSON({error:'Account security is temporarily unavailable.'},503);}return null;
 }
 export async function cleanupVerification(env,data){const token=data.access_token||data.session?.access_token;if(token)await fetch(env.SUPABASE_URL+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+token},signal:AbortSignal.timeout(8000)}).catch(()=>{});}
 export async function secureLogout(request,env){
@@ -53,6 +55,23 @@ export async function handleAuthSession(action,request,env){
       const session=result.data.session||result.data,guard=await guardDeviceSession(new Request(request.url,{headers:{Authorization:'Bearer '+session.access_token,'User-Agent':request.headers.get('User-Agent')||''}}),env);if(guard)return new Response(guard.body,{status:guard.status,headers:{...Object.fromEntries(guard.headers),'Set-Cookie':clearRefreshCookie(request)}});
       return sessionReply(request,env,result.data,200,stored?.started||Date.now());
     }
+    if(['resend-verification','verify-email'].includes(action)){
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254)return securityJSON({error:'Enter a valid email address.'},400);
+      const denied=await throttle(request,env,action,{identity:email,limit:action==='verify-email'?8:3,seconds:600,ipLimit:action==='verify-email'?30:12});if(denied)return denied;
+      if(action==='resend-verification'){
+        const resent=await authUpstream(env,'/auth/v1/resend'+(env.SUPABASE_EMAIL_REDIRECT_TO?'?redirect_to='+encodeURIComponent(env.SUPABASE_EMAIL_REDIRECT_TO):''),{method:'POST',body:{email,type:'signup'}});
+        if(resent.status>=500)return securityJSON({error:'Could not send the email. Please try again.'},503);
+        if(resent.status===429)return securityJSON({error:'Please wait before requesting another email.'},429,{'Retry-After':'60'});
+        return securityJSON({ok:true,message:'If this account needs verification, a new email is on its way.'});
+      }
+      if(!/^\d{6}$/.test(body.code||''))return securityJSON({error:'Enter the six-digit code from your email.'},400);
+      const verification=await authUpstream(env,'/auth/v1/verify',{method:'POST',body:{email,token:body.code,type:'signup'}});
+      const user=verification.data.user||verification.data.session?.user;
+      const confirmed=verification.status===200&&user?.email_confirmed_at&&String(user.email).toLowerCase()===email;
+      await cleanupVerification(env,verification.data);
+      if(!confirmed)return securityJSON({error:'That code did not work. Try again or request a new email.'},400);
+      return securityJSON({verified:true,email});
+    }
     if(!['login','signup'].includes(action))return securityJSON({error:'Unknown auth action.'},404);
     const limited=await throttle(request,env,action,{identity:email,limit:10,ipLimit:40,seconds:900});if(limited)return limited;
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254)return securityJSON({error:'Enter a valid email address.'},400);
@@ -61,7 +80,7 @@ export async function handleAuthSession(action,request,env){
     const route=action==='login'?'/auth/v1/token?grant_type=password':'/auth/v1/signup'+(env.SUPABASE_EMAIL_REDIRECT_TO?'?redirect_to='+encodeURIComponent(env.SUPABASE_EMAIL_REDIRECT_TO):'');
     const payload=action==='login'?{email,password}:{email,password,data:{display_name:String(body.displayName||'').slice(0,50),seven_account:{onboardingComplete:false,onboardingStep:1}}};
     const result=await authUpstream(env,route,{method:'POST',body:payload});
-    if(result.status>=400)return securityJSON({error:result.status===429?'Too many attempts. Please wait before trying again.':action==='login'?'That email or password didn’t work.':'Could not create this account. Try signing in or resetting your password.'},result.status);
+    if(result.status>=400){if(action==='login'&&result.data.error_code==='email_not_confirmed')return securityJSON({error:'Verify your email before signing in.',code:'SEVEN_EMAIL_UNCONFIRMED'},403);return securityJSON({error:result.status===429?'Too many attempts. Please wait before trying again.':action==='login'?'That email or password didn’t work.':'Could not create this account. Try signing in or resetting your password.'},result.status);}
     return sessionReply(request,env,result.data,result.status);
   }catch(error){return securityJSON({error:[400,413].includes(error.status)?error.message:'Authentication is temporarily unavailable. Please try again.'},[400,413].includes(error.status)?error.status:503);}
 }

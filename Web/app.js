@@ -2480,7 +2480,7 @@ async function consumeEmailVerificationRedirect() {
   try {
     const user = await localAPI("/api/auth/user", { headers:{ Authorization:`Bearer ${accessToken}` } });
     const email = String(user?.email || "").trim().toLowerCase();
-    if (!email || (pending?.email && pending.email.trim().toLowerCase() !== email)) return null;
+    if (!email || !user.email_confirmed_at || (pending?.email && pending.email.trim().toLowerCase() !== email)) return null;
     localStorage.setItem(VERIFIED_EMAIL_KEY, JSON.stringify({ email, verifiedAt:Date.now() }));
     localStorage.removeItem(PENDING_EMAIL_VERIFICATION_KEY);
     return email;
@@ -2492,9 +2492,17 @@ function showAuthPending(email, pending = null) {
   const current = pending || readPendingEmailVerification() || { email, createdAt:Date.now() };
   state.pendingEmailVerification = { email:String(email || current.email), createdAt:current.createdAt };
   form.querySelector("[data-auth-success-title]").textContent = "Verify your email";
-  form.querySelector("[data-auth-success-copy]").textContent = `We sent a verification link to ${email}. This screen will stay here until your email is verified.`;
+  form.querySelector("[data-auth-success-copy]").textContent = `Enter the code sent to ${email}, or open the verification link in your email.`;
+  form.querySelector('[data-email-confirmation]')?.remove();
+  const verification = document.createElement('div'); verification.dataset.emailConfirmation='';
+  verification.innerHTML='<label>Verification code<input name="signupCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-label="Email verification code"></label><button type="button" class="primary" data-confirm-email>Verify email</button><button type="button" class="secondary" data-resend-email>Resend email</button><p role="status" aria-live="polite" data-email-message></p>';
+  form.querySelector('[data-auth-success-copy]').after(verification);
+  const confirm=verification.querySelector('[data-confirm-email]'),resend=verification.querySelector('[data-resend-email]'),code=verification.querySelector('input'),notice=verification.querySelector('[data-email-message]');
+  confirm.onclick=async()=>{if(confirm.disabled)return;if(!/^\d{6}$/.test(code.value))return void(notice.textContent='Enter the six-digit code from your email.');confirm.disabled=true;resend.disabled=true;notice.textContent='Verifying…';try{const result=await localAPI('/api/auth/verify-email',{signal:AbortSignal.timeout(25000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,code:code.value})});code.value='';if(!result.verified)throw Error('Could not confirm your email.');localStorage.setItem(VERIFIED_EMAIL_KEY,JSON.stringify({email,verifiedAt:Date.now()}));await finishEmailVerification(email);}catch(error){notice.textContent=error.message;}finally{confirm.disabled=false;resend.disabled=false;}};
+  code.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();void confirm.click();}});
+  resend.onclick=async()=>{if(resend.disabled)return;resend.disabled=true;notice.textContent='Sending…';try{await localAPI('/api/auth/resend-verification',{signal:AbortSignal.timeout(20000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});notice.textContent='If verification is needed, a new email is on its way.';let wait=60;resend.textContent='Resend in 60s';const timer=setInterval(()=>{if(!resend.isConnected)return clearInterval(timer);wait--;resend.textContent=wait>0?'Resend in '+wait+'s':'Resend email';if(wait<=0){clearInterval(timer);resend.disabled=false;}},1000);}catch(error){notice.textContent=error.message;resend.disabled=false;}};
   form.querySelector("[data-close]").disabled = true;
-  form.querySelectorAll("input, [data-switch], [type=submit]").forEach(control => { control.disabled = true; });
+  form.querySelectorAll(".auth-content input, [data-switch], [type=submit]").forEach(control => { control.disabled = true; });
   const continueButton = form.querySelector("[data-pending-login]");
   if (continueButton) {
     continueButton.hidden = false;
@@ -2586,6 +2594,7 @@ async function submitAuth(event, mode) {
     else state.route = "profiles";
     render();
   } catch (error) {
+    if(error.code==='SEVEN_EMAIL_UNCONFIRMED'){const pending={email:String(values.get('email')||'').trim().toLowerCase(),createdAt:Date.now()};localStorage.setItem(PENDING_EMAIL_VERIFICATION_KEY,JSON.stringify(pending));showAuthPending(pending.email,pending);return;}
     formElement.classList.remove("auth-submitting", "auth-success");
     formElement.setAttribute("aria-busy", "false");
     message.textContent = error.message || "We couldn’t sign you in. Please try again.";
@@ -3192,7 +3201,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=379", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=380", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

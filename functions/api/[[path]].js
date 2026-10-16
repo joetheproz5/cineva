@@ -3,6 +3,7 @@ import { handleProgressBatch } from "../../shared/progress-batch.mjs";
 import { guardDeviceSession, handleDevices } from "../../shared/devices.mjs";
 import { handleAuthSession, secureLogout, requireMFA, cleanupVerification } from "../../shared/auth-session.mjs";
 import { handleMFA } from "../../shared/auth-mfa.mjs";
+import { handleEmailSecurity } from "../../shared/auth-email.mjs";
 import { sameOrigin, throttle, passwordSafety } from "../../shared/auth-security.mjs";
 
 const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos|recommendations|similar|release_dates))?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos|recommendations|similar|content_ratings))?)|collection\/\d+|person\/\d+(\/combined_credits)?|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
@@ -269,6 +270,7 @@ export async function onRequest(context) {
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
   if(!["GET","HEAD","OPTIONS"].includes(request.method)&&!sameOrigin(request))return json({error:"Request origin rejected."},403);
   if (path === "auth/logout") return secureLogout(request,env);
+  if(path.startsWith('auth/email/')){const rejected=await guardDeviceSession(request,env);return rejected||handleEmailSecurity(path.slice('auth/email/'.length),request,env);}
   if(path.startsWith('auth/mfa/')){const rejected=await guardDeviceSession(request,env);return rejected||handleMFA(path.slice('auth/mfa/'.length),request,env);}
   if(path.startsWith('auth/')){if(path==='auth/user'){const rejected=await guardDeviceSession(request,env);if(rejected)return rejected;}return handleAuthSession(path.slice(5),request,env);}
   if(path.startsWith('account/')){const rejected=await requireMFA(request,env);if(rejected)return rejected;}

@@ -1,5 +1,7 @@
 # Authentication hardening — web build 379
 
+Build 380 follow-up: signup email verification and optional, session-bound email checks are documented in [EMAIL-SECURITY.md](EMAIL-SECURITY.md). The “verification off” statements below record the original build 379 rollout, not the current provider configuration.
+
 ## What changed
 
 - Persistent member refresh credentials moved from `cineva.supabase.session` in localStorage to an AES-GCM authenticated, origin-bound `__Host-seven_refresh` cookie. It is Secure, HttpOnly, SameSite=Lax, Path=/, has no Domain attribute, and lasts 30 days with renewal. Access JWTs stay in memory for the existing bearer-authenticated APIs; the local cache contains only non-authoritative UI identity/preferences and expiry metadata. A script running through XSS can still act as an active user: this is risk reduction, not a claim that XSS is impossible.

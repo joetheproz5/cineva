@@ -6,4 +6,12 @@
 .account-security-modal .form-error{color:#eee}.account-security-modal .auth-setup-key{display:block;word-break:break-all;user-select:text;padding:16px;background:#1c1c1c;border:1px solid #333;border-radius:8px;color:#fff;margin-bottom:12px;letter-spacing:.08em}
 .account-security-modal [data-copy-key]{margin-bottom:20px}.account-security-modal [name=code]{letter-spacing:.3em;font-size:22px}.account-security-modal [hidden]{display:none!important}
 .account-security-modal :focus-visible{outline:2px solid #eee;outline-offset:3px}
+.auth-waiting [data-email-confirmation]{display:grid;gap:12px;width:min(100%,320px);margin:20px auto;text-align:left}
+.auth-waiting [data-email-confirmation] label{display:grid;gap:8px;color:#ccc;font-size:14px}
+.auth-waiting [data-email-confirmation] input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #383838;border-radius:8px;background:#191919;color:#fff;font-size:22px;letter-spacing:.25em}
+.auth-waiting [data-email-confirmation] button{width:100%;min-height:44px}
+.auth-waiting [data-email-message]{font-size:13px;line-height:1.5;margin:0}
+.auth-flow.auth-waiting{min-height:570px;max-height:calc(100dvh - 32px);overflow:auto}
+.auth-flow.auth-waiting .auth-success-stage{position:relative;inset:auto;transform:none;min-height:490px}
+.auth-flow.auth-waiting .auth-content{display:none}
 @media(max-width:420px){.account-security-modal{padding:12px}.account-security-modal .auth-card{padding:26px 20px;max-height:calc(100dvh - 24px)}}

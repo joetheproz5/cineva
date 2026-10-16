@@ -17,7 +17,7 @@ async function request(method, { token = "test-user-token", body, query = "", en
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (body !== undefined) headers.set("Content-Type", "application/json");
   const request = new Request(`https://seven.test/api/account/watchlist${query}`, { method, headers, ...(body !== undefined ? { body:JSON.stringify(body) } : {}) });
-  const original=global.fetch;global.fetch=require("./security-fixture.cjs").wrap(original);try{return await (await route())({ request, params:{ path:"account/watchlist" }, env });}finally{global.fetch=original;}
+  const securityFixture=require("./security-fixture.cjs"),original=global.fetch;global.fetch=securityFixture.wrap(original);try{return await (await route())({ request, params:{ path:"account/watchlist" }, env:{...securityFixture.env,...env} });}finally{global.fetch=original;}
 }
 
 test("Watchlist rows are unique per profile with owner-only, permanent-account RLS", () => {
@@ -94,9 +94,9 @@ test("successful Watchlist removals preserve the empty 204 response instead of t
   } finally { global.fetch = originalFetch; }
 });
 test('Undo can restore the original list date, but malformed/future dates are rejected',async()=>{
- const original=global.fetch,calls=[];global.fetch=async(url,options={})=>{calls.push({url,options});return Response.json([]);};
+ const original=global.fetch,calls=[],securityFixture=require('./security-fixture.cjs');global.fetch=securityFixture.wrap(async(url,options={})=>{calls.push({url,options});return Response.json([]);});
  try{for(const list of ['watchlist','list']){const headers={Authorization:'Bearer test','Content-Type':'application/json'},body={profile_id:'main',content_type:'movie',tmdb_id:12,title:'Film',added_at:'2020-01-01T00:00:00.000Z'};
-  const run=added_at=>(route()).then(handler=>handler({request:new Request('https://seven.test/api/account/'+list,{method:'POST',headers,body:JSON.stringify({...body,added_at})}),params:{path:'account/'+list},env:{SUPABASE_URL:'https://fixture.supabase.co',SUPABASE_PUBLISHABLE_KEY:'fixture'}}));
+  const run=added_at=>(route()).then(handler=>handler({request:new Request('https://seven.test/api/account/'+list,{method:'POST',headers,body:JSON.stringify({...body,added_at})}),params:{path:'account/'+list},env:{...securityFixture.env,SUPABASE_URL:'https://fixture.supabase.co',SUPABASE_PUBLISHABLE_KEY:'fixture'}}));
   assert.equal((await run(body.added_at)).status,200);assert.equal(JSON.parse(calls.at(-1).options.body).added_at,body.added_at);
   for(const invalid of ['not-a-date','2999-01-01T00:00:00.000Z',123])assert.equal((await run(invalid)).status,400);
  }}finally{global.fetch=original;}

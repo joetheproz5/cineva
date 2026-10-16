@@ -1,5 +1,5 @@
 import {securityJSON,sameOrigin,boundedJSON,throttle} from './auth-security.mjs';
-import {authUpstream,sessionReply,cleanupVerification} from './auth-session.mjs';
+import {authUpstream,sessionReply,cleanupVerification,requireMFA} from './auth-session.mjs';
 import {claims,mainProfile} from './devices.mjs';
 
 export async function handleMFA(action,request,env){
@@ -12,6 +12,7 @@ export async function handleMFA(action,request,env){
     if(action==='status')return securityJSON({enabled:verified.length>0,required:verified.length>0&&aal!=='aal2',factors:verified.map(f=>({id:f.id,name:f.friendly_name||'Authenticator app'}))});
     const limited=await throttle(request,env,'mfa-'+action,{identity:user.id,limit:8,ipLimit:30,seconds:600});if(limited)return limited;
     const body=await boundedJSON(request);
+    if(['enroll','disable'].includes(action)){const denied=await requireMFA(request,env);if(denied)return denied;}
     if(action==='enroll'){
       if(request.headers.get('X-Seven-Profile')!==mainProfile(user))return securityJSON({error:'Use the main profile to change account security.'},403);
       if(verified.length)return securityJSON({error:'Two-step verification is already enabled.'},409);
