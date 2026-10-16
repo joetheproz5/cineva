@@ -6,8 +6,9 @@ const server=http.createServer((req,res)=>{const u=new URL(req.url,'http://local
 try{for(const width of [1440,768,390,320]){
  const context=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'}),page=await context.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));
  await context.addInitScript(()=>localStorage.setItem('seven.account.settings',JSON.stringify({preferences:{introEnabled:false,autoplayPreviews:false}})));
- let rejectPassword=false;
+ let rejectPassword=false; const settingsFixture=require('./settings-fixture.cjs')();
  await page.route('**/api/**',route=>{const req=route.request(),u=new URL(req.url());let body=req.postDataJSON?.();requests.push({url:u.pathname+u.search,method:req.method(),body});let data={results:[],total_pages:1};
+  if(u.pathname==='/api/account/settings'&&!body?.password){return settingsFixture(route);}
   if(u.pathname==='/api/account/settings'){if(body?.password&&rejectPassword)return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:'Current password is incorrect.'})});data={id:'qa',email:'qa@example.test'};}
   else if(u.pathname==='/api/config')data={configured:true};
   else if(u.pathname==='/api/account/parent-access')data={verified:true};

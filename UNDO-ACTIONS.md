@@ -8,6 +8,8 @@ Saved-title restores use the existing authenticated, profile-scoped list endpoin
 
 The toast lives outside the route container, above mobile navigation and safe-area insets. It does not restart a playing iframe or replace settings/password forms. It uses text-only status messages, keyboard-operable buttons and reduced-motion support. No database migration or third-party package is required.
 
+Build 378: feedback Undo uses the settings outbox. A locally completed restore can show **Waiting to sync** and retry automatically after a network failure; list/progress endpoint failures still retain their direct retry behavior.
+
 ## Verification
 
 ```powershell

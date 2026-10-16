@@ -159,7 +159,7 @@ function animateScrollToTop() {
   state.footerScrollFrame = requestAnimationFrame(step);
 }
 
-async function localAPI(path, options = {}) { const response = await fetch(path, options); const data = await response.json().catch(() => ({})); if (!response.ok) { const error = new Error(data.error || data.msg || "Request failed."); error.status = response.status; error.code = data.code; if(data.code === "SEVEN_SESSION_REVOKED") globalThis.window?.SEVENDevices?.rejected(data,new Headers(options.headers).get("Authorization")?.replace(/^Bearer /,"")); throw error; } return data; }
+async function localAPI(path, options = {}) { const response = await fetch(path, options); const data = await response.json().catch(() => ({})); if (!response.ok) { const error = new Error(data.error || data.msg || "Request failed."); error.status = response.status; error.code = data.code; error.account=data.account; error.revision=data.revision; if(data.code === "SEVEN_SESSION_REVOKED") globalThis.window?.SEVENDevices?.rejected(data,new Headers(options.headers).get("Authorization")?.replace(/^Bearer /,"")); throw error; } return data; }
 function authorizedHeaders() { return state.session?.access_token ? { Authorization:`Bearer ${state.session.access_token}` } : {}; }
 function analyticsAllowed() { return navigator.doNotTrack !== "1" && window.doNotTrack !== "1" && navigator.globalPrivacyControl !== true; }
 function reportAccountVisit() { if (state.session?.access_token) window.SevenMetrics?.trackAccountVisit(state.session.access_token); }
@@ -197,11 +197,11 @@ async function flushProfileWatchStats(keepalive = false) {
     if (keepalive && state.watchStatsSyncPending) return flushProfileWatchStats(true);
     return;
   }
-  const snapshot = JSON.stringify({ account:state.account });
+  const snapshot = JSON.parse(JSON.stringify(state.account));
   state.watchStatsSyncPending = false;
   state.watchStatsSyncPromise = (async () => {
     try {
-      await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:snapshot, keepalive });
+      await window.SEVENSettingsSync?.save(snapshot);
     } catch { state.watchStatsSyncPending = true; }
     finally { state.watchStatsSyncPromise = null; if (state.watchStatsSyncPending) scheduleProfileWatchStatsSync(); }
   })();
@@ -268,7 +268,7 @@ function hydrateAccount() {
     if ((!state.user?.id && !owner) || (state.user?.id && owner === state.user.id)) local = candidate;
   } catch {}
   const remote = state.user?.user_metadata?.seven_account, saved = remote || local || {}, fallback = defaultAccount();
-  state.account = { ...fallback, ...saved, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } };
+  state.account = { ...fallback, ...saved, activeProfileId:local?.activeProfileId || saved.activeProfileId || fallback.activeProfileId, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } };
   let migratedKidsPin = false, cleanedEmptyPin = false, mergedLocalStats = false;
   state.account.profiles.forEach(profile => {
     profile.preferences = { ...(profile.preferences || {}), maturity:maturityForProfile(profile) };
@@ -289,12 +289,13 @@ function hydrateAccount() {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account));
   if (state.user?.id) localStorage.setItem(ACCOUNT_OWNER_KEY, state.user.id);
   if (mergedLocalStats && state.session) { state.watchStatsSyncPending = true; scheduleProfileWatchStatsSync(); }
+  globalThis.window?.SEVENSettingsSync?.attach();
   if ((migratedKidsPin || cleanedEmptyPin) && state.session) void saveAccount();
 }
 function migrateLegacyProgress() { const prefix = `seven-progress-${activeProfileId()}-`; Object.keys(localStorage).filter(key => key.startsWith("cineva-progress-")).forEach(key => { const next = key.replace("cineva-progress-", prefix); if (!localStorage.getItem(next)) localStorage.setItem(next, localStorage.getItem(key)); }); }
 function parentAccessConfigured() { return Boolean(state.account?.parentAccessEnabled || state.account?.parentPinHash); }
 async function refreshParentAccessStatus() { if (!state.session || !state.account) return; try { const data = await localAPI("/api/account/parent-access", { headers:authorizedHeaders() }); if (data.enabled) { const hadLegacyHash = Boolean(state.account.parentPinHash); state.account.parentAccessEnabled = true; delete state.account.parentPinHash; if (hadLegacyHash) await saveAccount(); } else if (!state.account.parentPinHash) state.account.parentAccessEnabled = false; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); } catch { /* Keep a legacy local verifier available until the user migrates it. */ } }
-async function saveAccount(remote = true) { persistLocalAccount(); if (!remote || !state.session) return; const account = JSON.parse(JSON.stringify(state.account)); if (account.parentAccessEnabled) delete account.parentPinHash; try { const user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) }); state.user = user; } catch { /* Local account preferences remain available if sync is offline. */ } }
+async function saveAccount(remote = true, options = {}) { persistLocalAccount(); if (!remote || !state.session) return {saved:false,local:true}; if(!globalThis.window?.SEVENSettingsSync) return {saved:false,queued:true}; return window.SEVENSettingsSync.save(state.account,options); }
 function readStoredSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } }
 function sessionStartedAt(session) { const saved = Number(session?.seven_started_at); if (saved) return saved; const expiresAt = Number(session?.expires_at), expiresIn = Number(session?.expires_in); return expiresAt && expiresIn ? expiresAt * 1000 - expiresIn * 1000 : Date.now(); }
 function flushWatchTypeChange() { void flushWatchTime(); playbackWatch.sample = null; if (playbackWatch.buffered < 0.5) { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; } }
@@ -329,6 +330,7 @@ function clearSession() {
   globalThis.window?.SEVENDevices?.stop();
   globalThis.window?.SEVENTrackerUI?.clear();
   void flushProfileWatchStats();
+  globalThis.window?.SEVENSettingsSync?.stop();
   flushWatchTypeChange();
   clearTimeout(sessionRefreshTimer);
   clearTimeout(state.progressTimer);
@@ -2516,7 +2518,7 @@ function showChangePassword() {
     if (password === currentPassword) return void (message.textContent = "Choose a password different from your current password.");
     try {
       submit.disabled = true;
-      await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account:state.account, currentPassword, password }) });
+      await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ currentPassword, password }) });
       document.querySelector(".password-change")?.remove();
       app.insertAdjacentHTML("beforeend", `<div class="seven-update password-success"><span>Password updated.</span><button type="button" data-close-password-success>Done</button></div>`);
       document.querySelector("[data-close-password-success]").onclick = () => document.querySelector(".password-success")?.remove();
@@ -2722,9 +2724,8 @@ function bindOnboarding() {
 async function persistOnboardingAccount() {
   if (!state.session?.access_token) throw new Error("Sign in again to save this profile.");
   persistLocalAccount();
-  const account = JSON.parse(JSON.stringify(state.account));
-  if (account.parentAccessEnabled) delete account.parentPinHash;
-  state.user = await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ account }) });
+  if(!window.SEVENSettingsSync) throw new Error("Settings sync is unavailable. Reopen SEVEN and try again.");
+  await window.SEVENSettingsSync.save(state.account,{strict:true});
 }
 async function saveOnboardingProfile(submitButton = null) {
   const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = submitButton || document.querySelector("[data-onboarding-next]");
@@ -2814,7 +2815,7 @@ async function undoHiddenTitle(ticket,record,hiddenBefore,likedBefore,hiddenInde
   feedbackUndoPending.add(pending);
   try {
     target.hiddenTitles=restoreUndoItem(target.hiddenTitles,hiddenBefore,hiddenIndex,key);target.likedTitles=restoreUndoItem(target.likedTitles,likedBefore,likedIndex,key);
-    if(state.session)await localAPI("/api/account/settings",{method:"PUT",headers:{"Content-Type":"application/json",...authorizedHeaders()},body:JSON.stringify({account})});
+    if(state.session)await window.SEVENSettingsSync.save(account);
     if(!ticket.isCurrent()||undoActionScope()!==scope)return {changed:true};
     const profile=currentProfile();profile.hiddenTitles=restoreUndoItem(profile.hiddenTitles,hiddenBefore,hiddenIndex,key);profile.likedTitles=restoreUndoItem(profile.likedTitles,likedBefore,likedIndex,key);persistLocalAccount();
     for(const item of featuredBefore)if(!state.featuredPool.some(entry=>hiddenTitleKey(entry)===key)&&contentAllowed(item))state.featuredPool.push(item);
@@ -2934,11 +2935,13 @@ function renderProfileSettings() {
   syncAppRouteHistory();
   const profile = state.profileDraft;
   if (!profile) { state.route = "account"; return render(); }
+  const initialAccount = JSON.parse(JSON.stringify(state.account));let avatarTouched=false;
   const isNew = state.profileEditorIsNew, preferences = { ...currentPreferences(), ...(profile.preferences || {}) }, category = state.profileSettingsCategory || "home", titles = { profiles:"Manage profiles", profile:"Edit this profile", family:"Family controls", playback:"Playback", language:"Language & display", activity:"Your SEVEN activity", security:"Privacy & security" }, descriptions = { profiles:"Manage each profile's details and viewing limits.", profile:"Choose a profile name and avatar.", family:"Choose what this profile can discover and watch.", playback:"Make playback fit your preferences.", language:"Choose the language and content you want to see.", activity:"Review saved titles, ratings, and watch history.", security:"Protect the profile and manage account access." };
   const detailHeading = category === "home" ? "" : `<header class="profile-settings-page-heading"><button class="profile-category-back" data-profile-category-back>‹ ${t("All settings")}</button><div class="profile-settings-heading-copy"><span class="brand">${t("PROFILE SETTINGS")}</span><h2>${t(titles[category])}</h2></div><p>${t(descriptions[category])}</p></header>`;
   app.innerHTML = `${header()}<main class="profile-settings-page profile-settings-mobile-first profile-settings-redesign"><div class="profile-settings-topbar"><button class="account-back" data-profile-settings-back>‹ ${t("Browse")}</button><button class="profile-settings-switch" data-switch-profile><span>${t("Switch profile")}</span><i aria-hidden="true">⇄</i></button></div>${category === "home" ? profileSettingsHome(profile, isNew) : `<div class="profile-settings-detail-page">${detailHeading}${profileSettingsDetail(profile, category, preferences, isNew)}</div>`}</main>`;
   if (category === "security") document.querySelector(".profile-settings-detail-page")?.insertAdjacentHTML("beforeend", iosDnsProtectionCard());
   document.querySelectorAll(".screen-time-rows input, .screen-time-rows select").forEach(field => { field.disabled = !profile.kids; });
+  const initialFields=new Map([...document.querySelectorAll('#profile-settings-form input[name],#profile-settings-form select[name]')].map(field=>[field.name,field.type==='checkbox'?field.checked:field.value]));
   bindCommon();
   document.querySelectorAll(".parent-access-card").forEach(card => { const detail = parentAccessConfigured() ? "This code protects profile and account settings. It never locks the profile picker." : "Set a code to protect profile and account settings without locking the profile picker."; card.innerHTML = `<h2>${t("Parent access code")}</h2><p>${escapeHTML(detail)}</p>${parentAccessCodeAction()}`; });
   document.querySelector("[data-profile-settings-back]").onclick = () => { state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; render(); };
@@ -2949,24 +2952,26 @@ function renderProfileSettings() {
   document.querySelector("[data-add-profile-mobile]")?.addEventListener("click", () => { state.profileDraft = { id:`profile-${Date.now()}`, name:"", color:PROFILE_COLORS[state.account.profiles.length % PROFILE_COLORS.length], kids:false }; state.profileEditorIsNew = true; state.profileSettingsCategory = "profile"; renderProfileSettings(); });
   document.querySelector("[data-toggle-avatar-picker]")?.addEventListener("click", event => { const picker = document.querySelector("#avatar-choices"), open = picker.hasAttribute("hidden"); picker.toggleAttribute("hidden", !open); event.currentTarget.setAttribute("aria-expanded", String(open)); });
   document.querySelectorAll("[data-change-parent-code]").forEach(button => button.addEventListener("click", showParentCodeChange));
-  document.querySelectorAll("[data-avatar-option]").forEach(button => button.onclick = () => { profile.avatar = button.dataset.avatarOption; document.querySelector("[data-avatar-preview]").innerHTML = profileAvatar(profile); document.querySelectorAll("[data-avatar-option]").forEach(option => option.classList.toggle("selected", option === button)); });
-  document.querySelector("[data-avatar-upload]")?.addEventListener("change", async event => { const error = document.querySelector("#profile-error"); try { error.textContent = ""; profile.avatar = await prepareUploadedAvatar(event.currentTarget.files?.[0]); document.querySelector("[data-avatar-preview]").innerHTML = profileAvatar(profile); document.querySelectorAll("[data-avatar-option]").forEach(option => option.classList.remove("selected")); } catch (failure) { error.textContent = failure.message; } });
+  document.querySelectorAll("[data-avatar-option]").forEach(button => button.onclick = () => { avatarTouched=true; profile.avatar = button.dataset.avatarOption; document.querySelector("[data-avatar-preview]").innerHTML = profileAvatar(profile); document.querySelectorAll("[data-avatar-option]").forEach(option => option.classList.toggle("selected", option === button)); });
+  document.querySelector("[data-avatar-upload]")?.addEventListener("change", async event => { const error = document.querySelector("#profile-error"); try { error.textContent = ""; profile.avatar = await prepareUploadedAvatar(event.currentTarget.files?.[0]);avatarTouched=true; document.querySelector("[data-avatar-preview]").innerHTML = profileAvatar(profile); document.querySelectorAll("[data-avatar-option]").forEach(option => option.classList.remove("selected")); } catch (failure) { error.textContent = failure.message; } });
   document.querySelector('[name="kids"]')?.addEventListener("change", event => { const maturity = document.querySelector('[name="maturity"]'); if (maturity) { maturity.disabled = !event.currentTarget.checked; maturity.value = event.currentTarget.checked ? "Kids" : "18+"; } const rows = document.querySelector(".screen-time-rows"), enabled = event.currentTarget.checked && parentAccessConfigured(); rows?.classList.toggle("row-disabled", !enabled); rows?.querySelectorAll("input, select").forEach(field => { field.disabled = !enabled; }); if (event.currentTarget.checked && !parentAccessConfigured()) showParentCodeSetup(); });
-  document.querySelector("[data-family-search]")?.addEventListener("click", async () => { const input = document.querySelector("#family-title-search"), resultsSlot = document.querySelector("#family-title-results"), error = document.querySelector("#family-title-error") || document.querySelector("#profile-error"), query = input.value.trim(); if (query.length < 2) { error.textContent = "Enter at least two characters to find a title."; return; } const request = state.familySearchRequest = (state.familySearchRequest || 0) + 1; try { error.textContent = ""; resultsSlot.hidden = false; resultsSlot.innerHTML = `<small>Searching…</small>`; const response = await api("search/multi", { query }); if (!resultsSlot.isConnected || state.profileDraft?.id !== profile.id || request !== state.familySearchRequest) return; const found = (response.results || []).filter(item => item.media_type !== "person" && ["movie", "tv"].includes(contentType(item))).slice(0, 6).map(item => normalize(item)); state.familyTitleResults = found; resultsSlot.innerHTML = found.length ? found.map(item => `<article><img src="${posterOf(item)}" alt=""><span><b>${escapeHTML(titleOf(item))}</b><small>${item.type === "tv" ? "Series" : "Movie"} · ${yearOf(item) || "New"}</small></span><button type="button" data-block-title="${item.type}:${item.id}">Block</button></article>`).join("") : `<small>No titles found.</small>`; resultsSlot.querySelectorAll("[data-block-title]").forEach(button => button.onclick = async () => { const [type, id] = button.dataset.blockTitle.split(":"), item = found.find(result => result.type === type && Number(result.id) === Number(id)); if (!item || button.disabled) return; button.disabled = true; profile.restrictedTitles = [...restrictedTitles(profile).filter(entry => !(entry.type === type && Number(entry.id) === Number(id))), { id:Number(item.id), type:item.type, title:titleOf(item), posterPath:item.poster_path || item.posterPath || null }]; state.account.profiles = state.account.profiles.map(entry => entry.id === profile.id ? { ...profile } : entry); await saveAccount(); if (state.route === "profile-settings" && state.profileDraft?.id === profile.id) renderProfileSettings(); }); } catch (failure) { if (!resultsSlot.isConnected || state.profileDraft?.id !== profile.id || request !== state.familySearchRequest) return; resultsSlot.hidden = true; error.textContent = failure.message; } });
-  document.querySelectorAll("[data-unblock-title]").forEach(button => button.onclick = async () => { if (button.disabled) return; button.disabled = true; const [type, id] = button.dataset.unblockTitle.split(":" ); profile.restrictedTitles = restrictedTitles(profile).filter(item => !(item.type === type && Number(item.id) === Number(id))); state.account.profiles = state.account.profiles.map(entry => entry.id === profile.id ? { ...profile } : entry); await saveAccount(); if (state.route === "profile-settings" && state.profileDraft?.id === profile.id) renderProfileSettings(); });
+  document.querySelector("[data-family-search]")?.addEventListener("click", async () => { const input = document.querySelector("#family-title-search"), resultsSlot = document.querySelector("#family-title-results"), error = document.querySelector("#family-title-error") || document.querySelector("#profile-error"), query = input.value.trim(); if (query.length < 2) { error.textContent = "Enter at least two characters to find a title."; return; } const request = state.familySearchRequest = (state.familySearchRequest || 0) + 1; try { error.textContent = ""; resultsSlot.hidden = false; resultsSlot.innerHTML = `<small>Searching…</small>`; const response = await api("search/multi", { query }); if (!resultsSlot.isConnected || state.profileDraft?.id !== profile.id || request !== state.familySearchRequest) return; const found = (response.results || []).filter(item => item.media_type !== "person" && ["movie", "tv"].includes(contentType(item))).slice(0, 6).map(item => normalize(item)); state.familyTitleResults = found; resultsSlot.innerHTML = found.length ? found.map(item => `<article><img src="${posterOf(item)}" alt=""><span><b>${escapeHTML(titleOf(item))}</b><small>${item.type === "tv" ? "Series" : "Movie"} · ${yearOf(item) || "New"}</small></span><button type="button" data-block-title="${item.type}:${item.id}">Block</button></article>`).join("") : `<small>No titles found.</small>`; resultsSlot.querySelectorAll("[data-block-title]").forEach(button => button.onclick = async () => { const [type, id] = button.dataset.blockTitle.split(":"), item = found.find(result => result.type === type && Number(result.id) === Number(id)); if (!item || button.disabled) return; button.disabled = true; const target=state.account.profiles.find(entry=>entry.id===profile.id)||profile; target.restrictedTitles = [...restrictedTitles(target).filter(entry => !(entry.type === type && Number(entry.id) === Number(id))), { id:Number(item.id), type:item.type, title:titleOf(item), posterPath:item.poster_path || item.posterPath || null }]; state.account.profiles = state.account.profiles.map(entry => entry.id === profile.id ? { ...target } : entry); if(state.profileDraft?.id===target.id)state.profileDraft={...state.profileDraft,restrictedTitles:target.restrictedTitles}; await saveAccount(); if (state.route === "profile-settings" && state.profileDraft?.id === profile.id) renderProfileSettings(); }); } catch (failure) { if (!resultsSlot.isConnected || state.profileDraft?.id !== profile.id || request !== state.familySearchRequest) return; resultsSlot.hidden = true; error.textContent = failure.message; } });
+  document.querySelectorAll("[data-unblock-title]").forEach(button => button.onclick = async () => { if (button.disabled) return; button.disabled = true; const [type, id] = button.dataset.unblockTitle.split(":" ); const target=state.account.profiles.find(entry=>entry.id===profile.id)||profile; target.restrictedTitles = restrictedTitles(target).filter(item => !(item.type === type && Number(item.id) === Number(id))); state.account.profiles = state.account.profiles.map(entry => entry.id === profile.id ? { ...target } : entry); if(state.profileDraft?.id===target.id)state.profileDraft={...state.profileDraft,restrictedTitles:target.restrictedTitles}; await saveAccount(); if (state.route === "profile-settings" && state.profileDraft?.id === profile.id) renderProfileSettings(); });
   document.querySelector("#profile-settings-form")?.addEventListener("submit", async event => {
     event.preventDefault();
-    const form = event.currentTarget, values = new FormData(form), pin = String(values.get("pin") || ""), parentPin = String(values.get("parentPin") || ""), error = document.querySelector("#profile-error"), next = { ...profile, preferences:{ ...(profile.preferences || {}) } };
+    const form = event.currentTarget, values = new FormData(form), pin = String(values.get("pin") || ""), parentPin = String(values.get("parentPin") || ""), error = document.querySelector("#profile-error"), fresh = state.account.profiles.find(item=>item.id===profile.id) || profile, next = { ...fresh, preferences:{ ...(fresh.preferences || {}) } };
+    if(avatarTouched)next.avatar=profile.avatar;
+    const changed=name=>{const field=form.elements[name];return field&&!field.disabled&&(field.type==='checkbox'?field.checked:field.value)!==initialFields.get(name);};
     try {
-      if (form.elements.name) { next.name = String(values.get("name") || "").trim(); if (!next.name) throw new Error("Enter a profile name."); }
-      ["maturity", "language", "playerProvider"].forEach(name => { if (form.elements[name]) next.preferences[name] = String(values.get(name)); });
-      ["kids", "autoplayNext", "introEnabled", "autoplayPreviews", "episodeAlerts", "familySafe", "blockScary", "searchEnabled", "moviesEnabled", "seriesEnabled"].forEach(name => { if (form.elements[name]) { if (name === "kids") next.kids = form.elements[name].checked; else next.preferences[name] = form.elements[name].checked; } });
+      if (form.elements.name) { if(changed('name')||isNew)next.name = String(values.get("name") || "").trim(); if (!next.name) throw new Error("Enter a profile name."); }
+      ["maturity", "language", "playerProvider"].forEach(name => { if (changed(name)) next.preferences[name] = String(values.get(name)); });
+      ["kids", "autoplayNext", "introEnabled", "autoplayPreviews", "episodeAlerts", "familySafe", "blockScary", "searchEnabled", "moviesEnabled", "seriesEnabled"].forEach(name => { if (changed(name)) { if (name === "kids") next.kids = form.elements[name].checked; else next.preferences[name] = form.elements[name].checked; } });
       if (form.elements.episodeAlerts?.checked && !await requestEpisodeAlerts()) { form.elements.episodeAlerts.checked = false; throw new Error("Allow browser notifications to enable episode alerts."); }
       const refreshFamilyCatalog = next.id === activeProfileId() && ["kids", "maturity", "familySafe", "blockScary", "language"].some(name => form.elements[name]);
-      if (next.kids) { if (!parentAccessConfigured()) throw new Error("Set a parent access code before enabling Kids profile."); next.preferences.maturity = maturityForProfile(next); delete next.pinHash; if (form.elements.screenTimeEnabled) next.screenTime = { ...(next.screenTime || {}), enabled: form.elements.screenTimeEnabled.checked, minutes: Number(values.get("screenTimeMinutes")) || 60 }; } else { next.preferences.maturity = "18+"; delete next.screenTime; if (pin) next.pinHash = await profileSecret(pin); else if (form.elements.removePin?.checked) delete next.pinHash; }
+      if (next.kids) { if (!parentAccessConfigured()) throw new Error("Set a parent access code before enabling Kids profile."); next.preferences.maturity = maturityForProfile(next); delete next.pinHash; if (form.elements.screenTimeEnabled) next.screenTime = { ...(next.screenTime || {}), enabled: changed("screenTimeEnabled")?form.elements.screenTimeEnabled.checked:next.screenTime?.enabled===true, minutes: changed("screenTimeMinutes")?Number(values.get("screenTimeMinutes"))||60:Number(next.screenTime?.minutes)||60 }; } else { next.preferences.maturity = "18+"; delete next.screenTime; if (pin) next.pinHash = await profileSecret(pin); else if (form.elements.removePin?.checked) delete next.pinHash; }
       if (isNew) state.account.profiles.push(next); else state.account.profiles = state.account.profiles.map(item => item.id === profile.id ? next : item);
       state.profileDraft = next;
-      try { await saveAccount(); }
+      try { await saveAccount(true,{base:initialAccount}); }
       catch (failure) { if (isNew) state.account.profiles = state.account.profiles.filter(item => item.id !== next.id); throw failure; }
       if (isNew) state.profileEditorIsNew = false;
       if (form.elements.language) applyLocale();
@@ -2976,8 +2981,9 @@ function renderProfileSettings() {
         state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsNotice = ""; state.profileSettingsReturn = null; state.route = "profiles"; render(); return;
       }
       state.profileSettingsCategory = "home";
-      state.profileSettingsNotice = "Settings saved.";
+      state.profileSettingsNotice = window.SEVENSettingsSync?.state().phase === "saved" ? "Settings saved." : "Saved on this device. Waiting to sync.";
       renderProfileSettings();
+      scrollToTop();
     } catch (failure) { error.textContent = failure.message; }
   });
   document.querySelector("[data-profile-stats]")?.addEventListener("click", () => { state.route = "stats"; scrollToTop(); render(); });
@@ -3165,7 +3171,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=377", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=378", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

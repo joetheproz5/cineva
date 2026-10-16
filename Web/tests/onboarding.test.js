@@ -59,7 +59,7 @@ test("taste answers change the actual For You requests and each page can keep it
   assert.match(onboarding, /draft\.familySafe = false;\s*void finishOnboarding\(button\)/);
   assert.match(onboarding, /favoriteGenres:draft\.favoriteGenres\.slice\(0,3\)/);
   assert.match(onboarding, /contentMix:\["movies","series"\]\.includes\(draft\.contentMix\) \? draft\.contentMix : "both"/);
-  assert.match(onboarding, /localAPI\("\/api\/account\/settings"/);
+  assert.match(onboarding, /SEVENSettingsSync.save\(state.account,\{strict:true\}\)/);
   assert.match(forYou, /currentPreferences\(\)/);
   assert.match(forYou, /with_genres:movieGenre/);
   assert.match(forYou, /with_genres:seriesGenre/);

@@ -219,24 +219,29 @@ async function accountWatchlist(request, requestURL, env) {
 }
 
 async function accountSettings(request, env) {
-  const settings = supabase(env);
-  const token = authorization(request);
-  if (!settings) return json({ error:"Supabase is not configured." }, 503);
-  if (!token) return json({ error:"Sign in required." }, 401);
+  const settings = supabase(env), token = authorization(request);
+  if (!settings) return json({error:"Supabase is not configured."},503);
+  if (!token) return json({error:"Sign in required."},401);
+  const headers={apikey:settings.publishableKey,Authorization:`Bearer ${token}`,"Content-Type":"application/json"};
   try {
-    const body = await readJSON(request);
-    const payload = { data:{ seven_account:body.account || {} } };
-    if (body.password) {
-      if (!body.currentPassword) return json({ error:"Enter your current password." }, 400);
-      const user = await upstream(`${settings.url}/auth/v1/user`, { headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}` } });
-      if (!user.data?.email) return json({ error:"Your session has expired. Please sign in again." }, 401);
-      const verification = await upstream(`${settings.url}/auth/v1/token?grant_type=password`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json" }, body:JSON.stringify({ email:user.data.email, password:body.currentPassword }) });
-      if (!verification.data?.access_token) return json({ error:"Your current password is not correct." }, 401);
-      payload.password = body.password;
+    const body=request.method==="GET"?{}:await readJSON(request);
+    if(body.password) {
+      if(!body.currentPassword)return json({error:"Enter your current password."},400);
+      const user=await upstream(`${settings.url}/auth/v1/user`,{headers});
+      if(!user.data?.email)return json({error:"Your session has expired. Please sign in again."},401);
+      const verification=await upstream(`${settings.url}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:settings.publishableKey,"Content-Type":"application/json"},body:JSON.stringify({email:user.data.email,password:body.currentPassword})});
+      if(!verification.data?.access_token)return json({error:"Your current password is not correct."},401);
+      // Credential changes must never overwrite account metadata from an old form.
+      const result=await upstream(`${settings.url}/auth/v1/user`,{method:"PUT",headers,body:JSON.stringify({password:body.password})});
+      return json(result.data,result.status);
     }
-    const result = await upstream(`${settings.url}/auth/v1/user`, { method:"PUT", headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}`, "Content-Type":"application/json" }, body:JSON.stringify(payload) });
-    return json(result.data, result.status);
-  } catch (error) { return json({ error:error.message || "Account settings could not be saved." }, 400); }
+    if(request.method!=="GET"&&(body.protocol!==1||!Number.isSafeInteger(body.revision)||body.revision<0||!body.account||typeof body.account!=="object"||Array.isArray(body.account)))return json({error:"Update SEVEN before saving these settings.",code:"SETTINGS_CLIENT_UPDATE_REQUIRED"},409);
+    if(request.method!=="GET"&&JSON.stringify(body.account).length>1000000)return json({error:"These settings are too large to sync."},413);
+    const result=await upstream(`${settings.url}/rest/v1/rpc/seven_settings_sync`,{method:"POST",headers,body:JSON.stringify(request.method==="GET"?{}:{p_expected_revision:body.revision,p_account:body.account})});
+    if(result.status===404&&result.data?.code==="PGRST202")return json({error:"Settings sync is temporarily unavailable. Your changes stay on this device.",code:"SETTINGS_SYNC_UNAVAILABLE"},503);
+    if(result.data?.conflict)return json({...result.data,error:"Settings changed on another device.",code:"SETTINGS_CONFLICT"},409);
+    return json(result.data,result.status);
+  } catch(error){return json({error:error.message||"Account settings could not be saved."},502);}
 }
 
 async function parentAccess(request, env) {
@@ -309,7 +314,7 @@ export async function onRequest(context) {
   if (path === "account/progress/batch") return handleProgressBatch(request, env);
   if (path === "account/list") return myList(request, requestURL, env);
   if (path === "account/watchlist") return accountWatchlist(request, requestURL, env);
-  if (path === "account/settings" && request.method === "PUT") return accountSettings(request, env);
+  if (path === "account/settings" && ["GET","PUT"].includes(request.method)) return accountSettings(request, env);
   if (path === "account/parent-access") return parentAccess(request, env);
   if (path === "party") return party(request, requestURL, env);
   return json({ error:"Not found." }, 404);
