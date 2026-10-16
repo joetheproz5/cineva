@@ -43,5 +43,5 @@ test('Home switches artwork and copy together only after readiness, and uses hor
 test('spotlight assets load before the app and are available in the offline shell',()=>{
  const web=path.resolve(__dirname,'..'),index=fs.readFileSync(path.join(web,'index.html'),'utf8'),worker=fs.readFileSync(path.join(web,'service-worker.js'),'utf8');
  for(const file of ['hero-spotlight.js?v=1','hero-spotlight.css?v=1']){assert.ok(index.includes(file));assert.ok(worker.includes(file));}
- assert.ok(index.indexOf('hero-spotlight.js?v=1')<index.indexOf('app.js?v=380'));
+ assert.ok(index.indexOf('hero-spotlight.js?v=1')<index.indexOf('app.js?v=381'));
 });

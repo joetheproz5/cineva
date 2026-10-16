@@ -721,6 +721,12 @@ async function boot() {
   if (state.user) { state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles"; if (state.route === "onboarding") beginOnboarding(); render(); } else renderLoading();
   await loadStartupData();
   if (verifiedEmail) await finishEmailVerification(verifiedEmail);
+  else if (state.emailVerificationError) {
+    const pendingVerification=readPendingEmailVerification();
+    if(pendingVerification){showAuthPending(pendingVerification.email);document.querySelector('[data-email-message]').textContent=state.emailVerificationError;}
+    else showAuth('login',state.emailVerificationError);
+  }
+  else if(params.get('auth')==='login'&&!state.user)showAuth('login');
   else {
     const pendingVerification = readPendingEmailVerification();
     if (pendingVerification) showAuthPending(pendingVerification.email);
@@ -2474,6 +2480,11 @@ function readPendingEmailVerification() {
 }
 async function consumeEmailVerificationRedirect() {
   const params = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if(params.has('error')||params.has('error_code')){
+    history.replaceState(history.state,'',`${location.pathname}${location.search}`);
+    state.emailVerificationError='This verification link has expired or already been used. Try signing in if you already verified, or request a new email.';
+    return null;
+  }
   const accessToken = params.get("access_token"), type = params.get("type"), pending = readPendingEmailVerification();
   if (!accessToken || (type && type !== "signup") || (!type && !pending)) return null;
   history.replaceState(history.state, "", `${location.pathname}${location.search}`);
@@ -2495,10 +2506,10 @@ function showAuthPending(email, pending = null) {
   form.querySelector("[data-auth-success-copy]").textContent = `Enter the code sent to ${email}, or open the verification link in your email.`;
   form.querySelector('[data-email-confirmation]')?.remove();
   const verification = document.createElement('div'); verification.dataset.emailConfirmation='';
-  verification.innerHTML='<label>Verification code<input name="signupCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-label="Email verification code"></label><button type="button" class="primary" data-confirm-email>Verify email</button><button type="button" class="secondary" data-resend-email>Resend email</button><p role="status" aria-live="polite" data-email-message></p>';
+  verification.innerHTML='<label>Verification code<input name="signupCode" inputmode="numeric" autocomplete="one-time-code" pattern="([0-9]{6}|[0-9]{8})" maxlength="8" aria-label="Email verification code"></label><button type="button" class="primary" data-confirm-email>Verify email</button><button type="button" class="secondary" data-resend-email>Resend email</button><p role="status" aria-live="polite" data-email-message></p>';
   form.querySelector('[data-auth-success-copy]').after(verification);
   const confirm=verification.querySelector('[data-confirm-email]'),resend=verification.querySelector('[data-resend-email]'),code=verification.querySelector('input'),notice=verification.querySelector('[data-email-message]');
-  confirm.onclick=async()=>{if(confirm.disabled)return;if(!/^\d{6}$/.test(code.value))return void(notice.textContent='Enter the six-digit code from your email.');confirm.disabled=true;resend.disabled=true;notice.textContent='Verifying…';try{const result=await localAPI('/api/auth/verify-email',{signal:AbortSignal.timeout(25000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,code:code.value})});code.value='';if(!result.verified)throw Error('Could not confirm your email.');localStorage.setItem(VERIFIED_EMAIL_KEY,JSON.stringify({email,verifiedAt:Date.now()}));await finishEmailVerification(email);}catch(error){notice.textContent=error.message;}finally{confirm.disabled=false;resend.disabled=false;}};
+  confirm.onclick=async()=>{if(confirm.disabled)return;if(!/^(?:\d{6}|\d{8})$/.test(code.value))return void(notice.textContent='Enter the complete code from your email.');confirm.disabled=true;resend.disabled=true;notice.textContent='Verifying…';try{const result=await localAPI('/api/auth/verify-email',{signal:AbortSignal.timeout(25000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,code:code.value})});code.value='';if(!result.verified)throw Error('Could not confirm your email.');localStorage.setItem(VERIFIED_EMAIL_KEY,JSON.stringify({email,verifiedAt:Date.now()}));await finishEmailVerification(email);}catch(error){notice.textContent=error.message;}finally{confirm.disabled=false;resend.disabled=false;}};
   code.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();void confirm.click();}});
   resend.onclick=async()=>{if(resend.disabled)return;resend.disabled=true;notice.textContent='Sending…';try{await localAPI('/api/auth/resend-verification',{signal:AbortSignal.timeout(20000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});notice.textContent='If verification is needed, a new email is on its way.';let wait=60;resend.textContent='Resend in 60s';const timer=setInterval(()=>{if(!resend.isConnected)return clearInterval(timer);wait--;resend.textContent=wait>0?'Resend in '+wait+'s':'Resend email';if(wait<=0){clearInterval(timer);resend.disabled=false;}},1000);}catch(error){notice.textContent=error.message;resend.disabled=false;}};
   form.querySelector("[data-close]").disabled = true;
@@ -3201,7 +3212,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=380", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=381", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

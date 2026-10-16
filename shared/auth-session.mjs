@@ -56,21 +56,24 @@ export async function handleAuthSession(action,request,env){
       return sessionReply(request,env,result.data,200,stored?.started||Date.now());
     }
     if(['resend-verification','verify-email'].includes(action)){
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254)return securityJSON({error:'Enter a valid email address.'},400);
-      const denied=await throttle(request,env,action,{identity:email,limit:action==='verify-email'?8:3,seconds:600,ipLimit:action==='verify-email'?30:12});if(denied)return denied;
+      const link=action==='verify-email'&&typeof body.tokenHash==='string';
+      if(link?!/^[A-Za-z0-9_-]{40,256}$/.test(body.tokenHash):(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254))return securityJSON({error:link?'This verification link is incomplete. Request a new email.':'Enter a valid email address.'},400);
+      const denied=await throttle(request,env,action,{identity:link?'link':email,limit:action==='verify-email'?8:3,seconds:600,ipLimit:action==='verify-email'?30:12});if(denied)return denied;
       if(action==='resend-verification'){
         const resent=await authUpstream(env,'/auth/v1/resend'+(env.SUPABASE_EMAIL_REDIRECT_TO?'?redirect_to='+encodeURIComponent(env.SUPABASE_EMAIL_REDIRECT_TO):''),{method:'POST',body:{email,type:'signup'}});
         if(resent.status>=500)return securityJSON({error:'Could not send the email. Please try again.'},503);
         if(resent.status===429)return securityJSON({error:'Please wait before requesting another email.'},429,{'Retry-After':'60'});
         return securityJSON({ok:true,message:'If this account needs verification, a new email is on its way.'});
       }
-      if(!/^\d{6}$/.test(body.code||''))return securityJSON({error:'Enter the six-digit code from your email.'},400);
-      const verification=await authUpstream(env,'/auth/v1/verify',{method:'POST',body:{email,token:body.code,type:'signup'}});
+      if(!link&&!/^(?:\d{6}|\d{8})$/.test(body.code||''))return securityJSON({error:'Enter the complete code from your email.'},400);
+      const verification=await authUpstream(env,'/auth/v1/verify',{method:'POST',body:link?{token_hash:body.tokenHash,type:'signup'}:{email,token:body.code,type:'signup'}});
+      if(verification.status>=500)return securityJSON({error:'Email verification is temporarily unavailable. Please try again.'},503);
+      if(verification.status===429)return securityJSON({error:'Please wait before trying to verify again.'},429,{'Retry-After':'60'});
       const user=verification.data.user||verification.data.session?.user;
-      const confirmed=verification.status===200&&user?.email_confirmed_at&&String(user.email).toLowerCase()===email;
+      const confirmed=verification.status===200&&user?.email_confirmed_at&&user.email&&(link||String(user.email).toLowerCase()===email);
       await cleanupVerification(env,verification.data);
-      if(!confirmed)return securityJSON({error:'That code did not work. Try again or request a new email.'},400);
-      return securityJSON({verified:true,email});
+      if(!confirmed)return securityJSON({error:link?'This link has expired or already been used. Try signing in, or request a new verification email.':'That code did not work. Try again or request a new email.',...(link?{code:'SEVEN_EMAIL_LINK_EXPIRED'}:{})},400);
+      return securityJSON({verified:true,email:String(user.email).toLowerCase()});
     }
     if(!['login','signup'].includes(action))return securityJSON({error:'Unknown auth action.'},404);
     const limited=await throttle(request,env,action,{identity:email,limit:10,ipLimit:40,seconds:900});if(limited)return limited;

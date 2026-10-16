@@ -13,7 +13,7 @@ function fixture(){const f=baseFixture(),original=f.fetch;Object.assign(f.state,
   if(b.p_action==='finish'){c.used=true;s.emailProof=true;if(c.purpose==='enable')s.emailEnabled=true;if(c.purpose==='disable')s.emailEnabled=false;return Response.json({valid:true,enabled:s.emailEnabled});}
  }
  if(u.pathname==='/auth/v1/otp'){assert.equal(b.create_user,false);assert.equal(b.email,'member@example.test');s.otp=true;return Response.json(s.mailBroken?{error:'SMTP internal error'}:{},{status:s.mailBroken?500:200});}
- if(u.pathname==='/auth/v1/verify'){if(b.token!=='112233'||!s.otp)return Response.json({error:'wrong code'},{status:400});s.otp=false;return Response.json(f.issue());}
+ if(u.pathname==='/auth/v1/verify'){f.calls.push({url:String(url),body:b});if(s.verifyUnavailable)return Response.json({error:'private provider error'},{status:s.verifyUnavailable});if((b.token!==(s.emailCode||'112233')&&!(s.tokenHash&&b.token_hash===s.tokenHash))||!s.otp)return Response.json({error:'wrong code'},{status:400});s.otp=false;return Response.json(f.issue());}
  if(u.pathname==='/auth/v1/resend')return Response.json({});
  return original(url,options);
  };return f;}
@@ -41,3 +41,19 @@ test('authenticator is not bypassed by email, and disabling email requires fresh
  });});
 test('failed mail delivery and database failure cannot enable email security or disclose internals',async()=>{const f=fixture();f.state.mailBroken=true;await run(f,async()=>{const token=f.legacy.access_token,r=await req('auth/email/send',token,{purpose:'enable',password:'existing8'});assert.equal(r.status,503);assert.equal(f.state.emailEnabled,false);assert.doesNotMatch(await r.text(),/SMTP internal/);f.state.storeBroken=true;const denied=await req('account/settings',token,undefined,'main','GET');assert.equal(denied.status,503);assert.doesNotMatch(await denied.text(),/private database/);});});
 test('signup resend is generic and signup code verification returns no credentials',async()=>{const f=fixture();await run(f,async()=>{const resend=await req('auth/resend-verification',null,{email:'member@example.test'});assert.equal(resend.status,200);assert.equal((await resend.json()).ok,true);f.state.otp=true;const r=await req('auth/verify-email',null,{email:'member@example.test',code:'112233'});assert.equal(r.status,200);const d=await r.json();assert.equal(d.verified,true);assert.doesNotMatch(JSON.stringify(d),/access_token|refresh_token/);assert.equal(r.headers.has('set-cookie'),false);});});
+
+test('configured eight-digit email codes work for signup and session-bound email verification',async()=>{const f=fixture();f.state.emailCode='11223344';await run(f,async()=>{
+ f.state.otp=true;assert.equal((await req('auth/verify-email',null,{email:'member@example.test',code:'11223344'})).status,200);
+ const token=f.legacy.access_token,challenge=await(await req('auth/email/send',token,{purpose:'enable',password:'existing8'})).json();
+ assert.equal((await req('auth/email/verify',token,{id:challenge.id,code:'11223344'})).status,200);assert.equal(f.state.emailEnabled,true);
+ });});
+
+test('signup token hashes verify only signup and never expose a session; malformed and replayed proofs fail',async()=>{const f=fixture();f.state.tokenHash='a'.repeat(56);await run(f,async()=>{
+ assert.equal((await req('auth/verify-email',null,{tokenHash:'incomplete'})).status,400);
+ f.state.otp=true;const r=await req('auth/verify-email',null,{tokenHash:f.state.tokenHash,type:'recovery',redirectTo:'https://untrusted.test'});assert.equal(r.status,200);assert.equal(r.headers.has('set-cookie'),false);assert.equal(r.headers.get('cache-control'),'no-store');const result=await r.json();assert.deepEqual(result,{verified:true,email:'member@example.test'});assert.doesNotMatch(JSON.stringify(result),/access_token|refresh_token/);
+ assert.deepEqual(f.calls.find(c=>new URL(c.url).pathname==='/auth/v1/verify').body,{token_hash:f.state.tokenHash,type:'signup'});
+ assert.ok(f.calls.some(c=>c.url.includes('/logout?scope=local')));
+ const replay=await req('auth/verify-email',null,{tokenHash:f.state.tokenHash});assert.equal(replay.status,400);assert.equal((await replay.json()).code,'SEVEN_EMAIL_LINK_EXPIRED');
+ });});
+
+test('transient provider errors do not incorrectly mark verification links expired',async()=>{const f=fixture();f.state.tokenHash='a'.repeat(56);await run(f,async()=>{for(const status of [500,429]){f.state.verifyUnavailable=status;const r=await req('auth/verify-email',null,{tokenHash:f.state.tokenHash});assert.equal(r.status,status===500?503:429);const result=await r.json();assert.notEqual(result.code,'SEVEN_EMAIL_LINK_EXPIRED');assert.doesNotMatch(JSON.stringify(result),/private provider/);}});});

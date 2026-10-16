@@ -45,7 +45,7 @@
           if(!challenge.id)throw Error('Could not request a code.');
           if(!dialog.element.isConnected)return;
           dialog.element.querySelector('[data-copy]').textContent='Enter the code sent to '+challenge.email+'. It expires in 10 minutes.';
-          dialog.body.innerHTML='<form><label>Email code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button type="submit" class="primary auth-submit">'+(purpose==='enable'?'Enable email verification':purpose==='disable'?'Turn off email verification':'Continue')+'</button></form><button type="button" class="secondary" data-resend disabled>Resend in 60s</button>';
+          dialog.body.innerHTML='<form><label>Email code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="([0-9]{6}|[0-9]{8})" maxlength="8" required></label><button type="submit" class="primary auth-submit">'+(purpose==='enable'?'Enable email verification':purpose==='disable'?'Turn off email verification':'Continue')+'</button></form><button type="button" class="secondary" data-resend disabled>Resend in 60s</button>';
           const resend=dialog.body.querySelector('[data-resend]');let wait=60;
           timer=setInterval(()=>{if(!dialog.element.isConnected)return clearInterval(timer);wait--;resend.textContent=wait>0?'Resend in '+wait+'s':purpose==='signin'?'Resend code':'Request a new code';resend.disabled=wait>0;if(wait<=0)clearInterval(timer);},1000);
           resend.onclick=()=>{if(purpose==='signin')void send();else{done=true;dialog.close(true);resolve({restart:true});}};

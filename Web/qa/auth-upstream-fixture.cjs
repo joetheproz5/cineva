@@ -26,7 +26,7 @@ function fixture(){
    if(body.p_action==='finish'){c.used=true;state.emailProof=true;if(c.purpose==='enable')state.emailEnabled=true;if(c.purpose==='disable')state.emailEnabled=false;return Response.json({valid:true,enabled:state.emailEnabled});}
   }
   if(u.pathname==='/auth/v1/otp'||u.pathname==='/auth/v1/resend'){state.otp=true;return Response.json({});}
-  if(u.pathname==='/auth/v1/verify'){if(body.token!=='112233'||!state.otp)return Response.json({error:'Incorrect email code'},{status:400});state.otp=false;return Response.json(issue());}
+  if(u.pathname==='/auth/v1/verify'){if((body.token!==(state.emailCode||'112233')&&!(state.tokenHash&&body.token_hash===state.tokenHash))||!state.otp)return Response.json({error:'Incorrect email code'},{status:400});state.otp=false;return Response.json(issue());}
   if(u.pathname==='/auth/v1/signup'){if(state.confirmSignup){state.otp=true;return Response.json({user:user()});}return Response.json(issue());}
   if(u.pathname==='/auth/v1/logout'){if(state.logoutBroken)return Response.json({error:'Unavailable'},{status:503});for(const [key,value]of sessions)if(value.token===token)sessions.delete(key);return new Response(null,{status:204});}
   if(u.pathname==='/auth/v1/factors'&&options.method==='POST'){state.unverified=true;return Response.json({id:factorId,totp:{secret:'SETUPKEYONLYINMODAL',uri:'otpauth://totp/SEVEN'}});}

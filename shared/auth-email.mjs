@@ -39,7 +39,7 @@ export async function handleEmailSecurity(action,request,env){
    if(sent.status>=400){await emailRPC(env,'cancel',{...base,p_challenge:challenge.id});return securityJSON({error:sent.status===429?'Please wait before requesting another code.':'Could not send the code. Please try again.'},sent.status===429?429:503);}
    return securityJSON({id:challenge.id,expiresIn:600,email:String(user.email||'').replace(/^(.).+(@.*)$/,'$1•••$2')});
   }
-  if(!UUID.test(body.id||'')||!/^\d{6}$/.test(body.code||''))return securityJSON({error:'Enter the six-digit code from your email.'},400);
+  if(!UUID.test(body.id||'')||!/^(?:\d{6}|\d{8})$/.test(body.code||''))return securityJSON({error:'Enter the complete code from your email.'},400);
   const attempt=await emailRPC(env,'attempt',{...base,p_challenge:body.id});
   if(!attempt.valid)return securityJSON({error:'This code request expired or has been used. Request a new code.'},400);
   if(attempt.purpose!=='signin'&&request.headers.get('X-Seven-Profile')!==mainProfile(user))return securityJSON({error:'Use the main profile to change account security.'},403);

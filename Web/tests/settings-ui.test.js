@@ -34,7 +34,7 @@ test('confirmation dialogs are scoped, cancellable, keyboard accessible and requ
 test('settings assets are versioned and available in the offline app shell',()=>{
  const index=read('index.html'),sw=read('service-worker.js');
  for(const asset of ['settings-ui.js?v=1','settings-ui.css?v=1']){assert.ok(index.includes(asset));assert.ok(sw.includes(asset));}
- assert.ok(index.indexOf('settings-ui.js?v=1')<index.indexOf('app.js?v=380'));assert.match(sw,/seven-v380/);
+ assert.ok(index.indexOf('settings-ui.js?v=1')<index.indexOf('app.js?v=381'));assert.match(sw,/seven-v381/);
 });
 test('phone password confirmation stays above the fixed bottom navigation',()=>{
  assert.match(css,/password-success \{ z-index:10011/);assert.match(css,/password-success \{ bottom:calc\(82px \+ env\(safe-area-inset-bottom\)\)/);

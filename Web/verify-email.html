@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#080808">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <title>Verify your email · SEVEN</title><link rel="icon" href="icon.svg"><link rel="stylesheet" href="verify-email.css?v=1"><script src="verify-email.js?v=1" defer></script>
+</head>
+<body><main><a class="wordmark" href="./" aria-label="SEVEN home"><img src="assets/seven-wordmark-v2.png" width="126" alt="SEVEN"></a>
+  <section aria-labelledby="heading"><p class="eyebrow">YOUR SEVEN ACCOUNT</p><h1 id="heading">Verify your email.</h1><p id="message" role="status" aria-live="polite">Select the button below to confirm your email address.</p>
+  <button id="verify" class="primary" type="button" hidden>Verify email</button><a class="primary" id="signin" href="./?auth=login" hidden>Continue to sign in</a>
+  <form id="resend" hidden><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required><button type="submit" class="primary">Send a new email</button><p id="resend-status" role="status" aria-live="polite"></p></form>
+  <a class="subtle" id="signin-alternate" href="./?auth=login">Already verified? Sign in</a><p class="note">For your security, verification links work once. Requesting a new email replaces the previous link.</p></section>
+  <noscript>JavaScript is needed to confirm this link. You can also enter the code from your email in the SEVEN app.</noscript>
+</main></body></html>
