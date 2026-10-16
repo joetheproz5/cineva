@@ -12,6 +12,8 @@
   function translations() {
     if (translated) return;
     translated = true;
+    Object.assign(UI_STRINGS.French, { "This profile’s content settings hide the films in this collection.":"Les réglages de contenu de ce profil masquent les films de cette collection.", "Review profile settings":"Voir les réglages du profil" });
+    Object.assign(UI_STRINGS.Arabic, { "This profile’s content settings hide the films in this collection.":"إعدادات المحتوى لهذا الملف تخفي أفلام هذه المجموعة.", "Review profile settings":"مراجعة إعدادات الملف" });
     Object.assign(UI_STRINGS.French, {
       "THE COLLECTION":"LA COLLECTION", "Movie collection":"Collection de films", "films":"films", "watched":"vus", "Explore collection":"Voir la collection", "Release order":"Ordre de sortie", "More like this":"Titres similaires", "Watched":"Vu", "Unwatched":"Non vus", "All":"Tous", "Current title":"Titre actuel", "Resume from":"Reprendre à", "Date to be announced":"Date à venir", "Unannounced":"Non annoncé", "Show more":"Afficher plus", "Loading…":"Chargement…", "Collection couldn’t load.":"Impossible de charger la collection.", "Related titles couldn’t load.":"Impossible de charger les titres similaires.", "Some suggestions couldn’t load.":"Certaines suggestions n’ont pas pu être chargées.", "No related titles yet.":"Aucun titre similaire pour le moment.", "suggestions shown":"suggestions affichées", "released films watched":"films sortis vus", "Collection progress":"Progression de la collection", "CONTINUE THE COLLECTION":"POURSUIVRE LA COLLECTION", "NEXT UNWATCHED":"PROCHAIN FILM NON VU", "View title":"Voir le titre", "You’re caught up.":"Vous êtes à jour.", "Filter collection":"Filtrer la collection", "Order":"Ordre", "Collection order":"Ordre de la collection", "Newest first":"Plus récents", "No watched films yet.":"Aucun film vu pour le moment.", "No films to show.":"Aucun film à afficher.", "Release dates from TMDB. Playback availability depends on your source.":"Dates de sortie fournies par TMDB. La disponibilité dépend de la source."
     });
@@ -43,6 +45,7 @@
     return model().related(view.related.items, { type:view.item.type, id:view.item.id, collection:model().parts(view.collection), allowed });
   }
   function bind(container) {
+    container.querySelectorAll("[data-discovery-settings]").forEach(button => button.onclick = () => showAccount());
     container.querySelectorAll("[data-open]").forEach(button => button.onclick = () => {
       const [type, id] = button.dataset.open.split(":"); void openItem(type, Number(id));
     });
@@ -60,8 +63,9 @@
   function preview(view) {
     if (view.collectionLoading) return '<div class="franchise-preview-loading skeleton" aria-label="Loading collection"></div>';
     if (view.collectionError) return `<div class="discovery-notice"><span>${t("Collection couldn’t load.")}</span><button type="button" data-retry-collection>${t("Try again")}</button></div>`;
-    const parts = visibleParts(view.collection);
-    if (parts.length < 2) return "";
+    const allParts = model().parts(view.collection), parts = visibleParts(view.collection);
+    if (allParts.length < 2) return "";
+    if (!parts.length) return `<div class="franchise-unavailable"><small>${t("THE COLLECTION")}</small><strong>${escapeHTML(view.collection.name || t("Movie collection"))}</strong><p>${t("This profile’s content settings hide the films in this collection.")}</p>${state.user ? `<button type="button" data-discovery-settings>${t("Review profile settings")} ${chevron}</button>` : ""}</div>`;
     const summary = model().summary(parts, readProgress), covers = parts.filter(item => image(item.poster_path)).slice(0, 3);
     const art = image(view.collection.backdrop_path), years = parts.map(model().dateOf).filter(Boolean).map(date => date.slice(0, 4));
     return `<button type="button" class="franchise-preview" data-open-franchise${art ? ` style="--franchise-art:url('${art}')"` : ""}><span class="franchise-preview-copy"><small>${t("THE COLLECTION")}</small><strong>${escapeHTML(view.collection.name || t("Movie collection"))}</strong><span>${parts.length} ${t("films")}${years.length ? ` <i>·</i> ${years[0]}${years.at(-1) !== years[0] ? `–${years.at(-1)}` : ""}` : ""}${state.session && summary.released ? ` <i>·</i> ${summary.watched}/${summary.released} ${t("watched")}` : ""}</span><em>${t("Explore collection")} ${chevron}</em></span><span class="franchise-preview-posters" aria-hidden="true">${covers.map(item => `<img src="${image(item.poster_path, "w342")}" alt="" loading="lazy">`).join("")}</span></button>`;

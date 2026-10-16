@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const model = require("../title-discovery.js");
+const vm = require("node:vm");
 const movie = (id, release_date = "2020-01-01", extra = {}) => ({ id, title:`Film ${id}`, release_date, ...extra });
 
 test("collections use release order, stable ties, valid dates and unique movie identities", () => {
@@ -43,6 +44,19 @@ test("More like this excludes self, sequels, blocked titles, duplicates, other m
   const related = model.related(items, {type:"movie",id:1,collection:[movie(2)],allowed:item => item.id !== 3,today:"2026-10-16"});
   assert.deepEqual(related.map(item => item.id),[4]);
   assert.deepEqual(model.related([{id:3,name:"Show",first_air_date:"2020-01-01",type:"Scripted"}],{type:"tv",id:4}).map(item=>item.type),["tv"]);
+});
+test("profile-filtered collections explain restrictions instead of disappearing or exposing hidden posters", () => {
+  const source=fs.readFileSync(path.resolve(__dirname,"../title-discovery-ui.js"),"utf8");
+  const functionSource=source.slice(source.indexOf("function preview(view)"),source.indexOf("function paintPreview(view)"));
+  const collection={name:"Collection",parts:[movie(1),movie(2)]};
+  const context={model:()=>model,visibleParts:()=>[],state:{user:{id:"fixture"}},t:text=>text,escapeHTML:text=>text,chevron:"",image:()=>"",readProgress:()=>({})};
+  const preview=vm.runInNewContext(`(${functionSource.trim()})`,context);
+  const hidden=preview({collection});assert.match(hidden,/franchise-unavailable/);assert.match(hidden,/content settings hide/);assert.match(hidden,/data-discovery-settings/);
+  assert.doesNotMatch(hidden,/<img|data-open-franchise|Film 1|Film 2/);
+  context.visibleParts=()=>[collection.parts[0]];
+  assert.match(preview({collection}),/data-open-franchise/);
+  assert.doesNotMatch(preview({collection:{...collection,parts:[movie(1)]}}),/data-open-franchise/);
+  assert.match(source,/data-discovery-settings[^\n]*showAccount\(\)/);
 });
 test("public metadata requests coalesce, expire, isolate languages and retry failed requests", async () => {
   let calls=0,now=0,fail=false;
@@ -86,7 +100,7 @@ test("discovery hooks preserve title navigation, use profile-scoped progress and
   assert.match(app,/"titleDiscovery", "franchise"/);assert.match(app,/route === "franchise"\) return `\$\{route\}:\$\{state.franchise/);
   assert.match(ui,/view.scope === scope\(\)/);assert.match(ui,/state.titleDiscovery === view/);assert.match(ui,/savedProgress\(item\)/);
   assert.doesNotMatch(ui,/data-play|card-play|localStorage\.setItem/);
-  for(const asset of ["title-discovery.js?v=1","title-discovery-ui.js?v=1","title-discovery.css?v=1"]){assert.ok(index.includes(asset));assert.ok(worker.includes(asset));}
-  assert.ok(index.indexOf("title-discovery.js?v=1")<index.indexOf("title-discovery-ui.js?v=1"));
-  assert.ok(index.indexOf("title-discovery-ui.js?v=1")<index.indexOf("app.js?v=370"));
+  for(const asset of ["title-discovery.js?v=1","title-discovery-ui.js?v=2","title-discovery.css?v=2"]){assert.ok(index.includes(asset));assert.ok(worker.includes(asset));}
+  assert.ok(index.indexOf("title-discovery.js?v=1")<index.indexOf("title-discovery-ui.js?v=2"));
+  assert.ok(index.indexOf("title-discovery-ui.js?v=2")<index.indexOf("app.js?v=371"));
 });

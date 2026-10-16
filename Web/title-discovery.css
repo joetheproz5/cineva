@@ -20,6 +20,12 @@
 .franchise-preview-posters img:nth-child(2) { z-index: 2; }
 .franchise-preview-posters img:only-child { left: 25%; transform: none; }
 .franchise-preview-loading { min-height: 248px; border-radius: 16px; }
+.franchise-unavailable { padding: 26px 28px; border: 1px solid #ffffff20; border-radius: 12px; background: #121214; }
+.franchise-unavailable > small { display: block; color: #aaa4a5; font-size: 10px; font-weight: 650; letter-spacing: .18em; }
+.franchise-unavailable > strong { display: block; margin-top: 10px; color: #eee; font-size: clamp(21px,2.5vw,29px); letter-spacing: -.025em; }
+.franchise-unavailable > p { margin: 12px 0 0; color: #b1aeb4; font-size: 13px; line-height: 1.6; }
+.franchise-unavailable > button { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 18px; padding: 10px 14px; border: 1px solid #ffffff28; border-radius: 7px; color: #eee; background: #242426; font: inherit; font-size: 13px; }
+.franchise-unavailable > button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .discovery-heading { display: flex; align-items: center; margin-bottom: 22px; }
 .discovery-heading h2 { margin: 0; color: #f4f4f4; font-size: clamp(21px,2.2vw,29px); font-weight: 700; letter-spacing: -.025em; }
 .discovery-grid,.discovery-skeletons { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 28px 18px; }
@@ -103,6 +109,7 @@
   .franchise-preview-posters img:first-child { left: -14%; }
   .franchise-preview-posters img:last-child { left: 35%; }
   .franchise-preview-loading { min-height: 206px; }
+  .franchise-unavailable { padding: 22px 18px; }
   .discovery-grid,.discovery-skeletons { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px 14px; }
   .discovery-heading { margin-bottom: 18px; }
   .discovery-card-copy { margin-top: 10px; gap: 8px; }

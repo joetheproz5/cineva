@@ -1,7 +1,9 @@
 # Collections and related titles
 
 Movie details show a collection entry when TMDB supplies `belongs_to_collection`
-and at least two titles remain after the active profile's restrictions. Open it
+with at least two listed films. If profile filters hide all of them, the entry
+explains that restriction and links signed-in users to the existing parent-gated
+profile settings. No hidden film posters or cards are exposed. Open an eligible entry
 to browse the collection, filter watched/unwatched films, reverse release order,
 and open the next unwatched released film. Large collections show 20 films at a
 time. The original order numbers do not change when filtering or sorting.
@@ -47,7 +49,7 @@ unavailable results never prevent the title itself from opening.
   ratios, keyboard focus and reduced-motion support.
 - Both API proxies allow numeric `collection/{id}`, `movie/{id}/similar`, and
   `tv/{id}/similar`; arbitrary TMDB routes remain blocked.
-- Version 370 installs the new assets in the service-worker shell. No database
+- Version 371 installs the new assets in the service-worker shell. No database
   migration or native-wrapper rebuild is needed.
 
 Run `node --test Web/tests/*.test.js` from the repository root. Browser QA covers

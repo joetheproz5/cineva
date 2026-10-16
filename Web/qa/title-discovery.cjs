@@ -70,6 +70,17 @@ const server=http.createServer(async(req,res)=>{
   await page.evaluate(()=>{state.account.activeProfileId='other';state.watchlistProfileId='other';state.watchlist=[];render();});await page.waitForFunction(()=>!state.titleDiscovery.loading);
   await page.locator('[data-open-franchise]').click();assert.match(await page.locator('.franchise-progress-summary').innerText(),/0\/4/);
   assert.equal(await page.locator('.franchise-grid .card-watchlist.saved').count(),0);
+  // Family filtering must explain the missing collection, never bypass content or parent controls.
+  await page.evaluate(()=>{state.route='movie';state.movie=state.franchise.source;currentProfile().preferences={familySafe:true};render();});
+  await page.waitForFunction(()=>!state.titleDiscovery.loading&&!state.titleDiscovery.collectionLoading);
+  assert.equal(await page.locator('.franchise-unavailable').count(),1);assert.equal(await page.locator('.franchise-unavailable img').count(),0);
+  assert.equal(await page.locator('[data-open-franchise]').count(),0);
+  await page.evaluate(()=>{state.account.parentAccessEnabled=true;});await page.locator('[data-discovery-settings]').click();
+  assert.equal(await page.locator('.parent-unlock').count(),1);assert.equal(await page.evaluate(()=>state.route),'movie');
+  await page.locator('.parent-unlock [data-close]').click();await page.evaluate(()=>{state.account.parentAccessEnabled=false;});
+  await page.locator('[data-discovery-settings]').click();assert.equal(await page.evaluate(()=>state.route),'profile-settings');
+  await page.goBack();await page.waitForSelector('.franchise-unavailable');assert.equal(await page.evaluate(()=>currentPreferences().familySafe),true);
+  await page.evaluate(()=>{currentProfile().preferences.familySafe=false;render();});assert.equal(await page.locator('[data-open-franchise]').count(),1);
   // TV details get their own TV-only related results and no movie collection banner.
   await page.evaluate(()=>openItem('tv',1396));await page.waitForFunction(()=>state.route==='series'&&!state.titleDiscovery.loading);
   assert.equal(await page.locator('.franchise-preview').count(),0);assert.equal(await page.locator('.related-titles .discovery-card').count(),6);
