@@ -17,7 +17,7 @@ async function request(method, { token = "test-user-token", body, query = "", en
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (body !== undefined) headers.set("Content-Type", "application/json");
   const request = new Request(`https://seven.test/api/account/watchlist${query}`, { method, headers, ...(body !== undefined ? { body:JSON.stringify(body) } : {}) });
-  return (await route())({ request, params:{ path:"account/watchlist" }, env });
+  const original=global.fetch;global.fetch=require("./security-fixture.cjs").wrap(original);try{return await (await route())({ request, params:{ path:"account/watchlist" }, env });}finally{global.fetch=original;}
 }
 
 test("Watchlist rows are unique per profile with owner-only, permanent-account RLS", () => {

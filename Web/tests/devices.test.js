@@ -7,6 +7,7 @@ function fixture(){
  const calls=[],active=new Set([sid,other]);let badPassword=false,missing=false,broken=false;
  return {calls,active,setBad:value=>badPassword=value,setMissing:value=>missing=value,setBroken:value=>broken=value,fetch:async(url,options={})=>{
   const u=new URL(url),body=options.body?JSON.parse(options.body):null;calls.push({url:String(url),options,body});
+  if(u.pathname.endsWith('/rpc/seven_auth_rate_limit'))return Response.json({allowed:true});
   if(u.pathname==='/auth/v1/user')return Response.json({id:userId,email:'fixture@example.test',is_anonymous:false,user_metadata:{seven_account:{profiles:[{id:'main'},{id:'kids',kids:true}]}}});
   if(u.pathname.endsWith('/token'))return badPassword?Response.json({error:'Invalid password'},{status:400}):Response.json({access_token:jwt(temp),user:{id:userId}});
   if(u.pathname.endsWith('/logout'))return new Response(null,{status:204});

@@ -60,7 +60,7 @@ test('a classification-service outage does not leave hundreds of queued lookups 
 });
 test('both proxies allow numeric rating routes without exposing arbitrary TMDB paths',async()=>{
  const {onRequest}=await import(pathToFileURL(path.resolve(__dirname,'../../functions/api/[[path]].js')).href),original=global.fetch;
- const server=fs.readFileSync(path.resolve(__dirname,'../server.js'),'utf8'),allowed=Function(`return ${server.match(/const tmdbAllowed = (\/.*\/);/)[1]}`)();let calls=0;
+ const server=fs.readFileSync(path.resolve(__dirname,'../../functions/api/[[path]].js'),'utf8'),allowed=Function(`return ${server.match(/const tmdbAllowed = (\/.*\/);/)[1]}`)();let calls=0;
  global.fetch=async()=>{calls++;return Response.json({results:[]});};
  try{for(const endpoint of ['movie/1/release_dates','tv/2/content_ratings','movie/no/release_dates','tv/2/ratings','tv/2/release_dates','movie/1/content_ratings']){
   const valid=['movie/1/release_dates','tv/2/content_ratings'].includes(endpoint),response=await onRequest({request:new Request('https://seven.example/api/tmdb/'+endpoint),params:{path:'tmdb/'+endpoint},env:{TMDB_BEARER_TOKEN:'fixture'}});assert.equal(response.status,valid?200:400,endpoint);assert.equal(allowed.test(endpoint),valid,endpoint);
@@ -76,6 +76,6 @@ test('details, replay and party playback are gated before any iframe is created'
 test('new classification assets ship before app code in the refreshed PWA shell',()=>{
  const base=path.resolve(__dirname,'..'),index=fs.readFileSync(path.join(base,'index.html'),'utf8'),sw=fs.readFileSync(path.join(base,'service-worker.js'),'utf8');
  for(const name of ['age-ratings.js?v=1','age-ratings.css?v=1','series-tracker-ui.js?v=4']){assert.ok(index.includes(name));assert.ok(sw.includes(name));}
- assert.ok(index.indexOf('age-ratings.js?v=1')<index.indexOf('app.js?v=378'));assert.match(sw,/seven-v378/);
+ assert.ok(index.indexOf('age-ratings.js?v=1')<index.indexOf('app.js?v=379'));assert.match(sw,/seven-v379/);
  assert.match(sw,/release_dates\|content_ratings[^\n]*event.respondWith\(fetch\(event.request\)\)/);
 });

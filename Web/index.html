@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WGTLawsBXrzNJucswVMuU3+0Er3vdz4K6W9TLjs05LU=' 'sha256-7e3FVhhmmPMXLJzF4AkWS8i6q3CrQaq2EUPjOofB0dQ=' 'sha256-Spo54QhKspFQXV/Hddj0/K1p0OxDtWXc3gnMWsjOZew=' 'sha256-suTTT63C/JHysMp3pC+X0kkuRnDfZfxQt403jpmxzXU=' 'sha256-L3uis+Vqg/vdrgJ5HXZiim8afM/0wr80Ei1zO3sN7Oc=' 'sha256-QdXV7avcWYZm30X8NdkTeHduUjMMMEwrzzydwuDUPnU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://seven-release-alerts.trexghaoui.workers.dev https://*.supabase.co; frame-src https:; media-src 'self' blob: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'" />
     <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
     <meta name="description" content="SEVEN is a personal movie and series discovery app with rich details, trailers, watch progress, and tailored recommendations." />
     <meta name="keywords" content="SEVEN, movies, series, TV shows, film discovery, trailers, watch progress" />
@@ -56,6 +57,7 @@
     <link rel="stylesheet" href="undo-actions.css?v=1" />
     <link rel="stylesheet" href="settings-ui.css?v=1" />
     <link rel="stylesheet" href="settings-sync.css?v=1" />
+    <link rel="stylesheet" href="auth-security.css?v=1" />
     <title>SEVEN | Movies & Series</title>
   </head>
   <body>
@@ -70,15 +72,17 @@
     <script src="progress-tools.js?v=1"></script>
     <script src="series-tracker-ui.js?v=4"></script>
     <script src="progress-ui.js?v=2"></script>
-    <script src="devices.js?v=1"></script>
+    <script src="devices.js?v=2"></script>
     <script src="title-discovery.js?v=1"></script>
     <script src="title-discovery-ui.js?v=2"></script>
     <script src="hero-spotlight.js?v=1"></script>
     <script src="age-ratings.js?v=1"></script>
     <script src="settings-sync.js?v=1"></script>
-    <script src="settings-sync-ui.js?v=1"></script>
+    <script src="settings-sync-ui.js?v=2"></script>
     <script src="undo-actions.js?v=1"></script>
     <script src="settings-ui.js?v=1"></script>
-    <script src="app.js?v=378"></script>
+    <script src="password-policy.js?v=1"></script>
+    <script src="auth-security.js?v=1"></script>
+    <script src="app.js?v=379"></script>
   </body>
 </html>

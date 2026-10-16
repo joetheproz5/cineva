@@ -16,6 +16,7 @@ const downloadPage = fs.readFileSync(path.join(repository, "Web/download.html"),
 const functions = fs.readFileSync(path.join(repository, "functions/api/[[path]].js"), "utf8");
 
 let handleDashboardRequest;
+async function rateLimitedLogin(request,env){const original=global.fetch;global.fetch=require("./security-fixture.cjs").wrap(original);try{return await(await handler())(request,env);}finally{global.fetch=original;}}
 async function handler() {
   if (!handleDashboardRequest) handleDashboardRequest = (await import(pathToFileURL(path.join(repository, "shared/admin-dashboard.mjs")).href)).handleDashboardRequest;
   return handleDashboardRequest;
@@ -142,7 +143,7 @@ test("admin stats are server-authenticated and use only the service-side Supabas
   const unauthorized = await run(adminRequest("/api/admin/stats"), adminEnv());
   assert.equal(unauthorized.status, 401);
 
-  const login = await run(adminRequest("/api/admin/login", {
+  const login = await rateLimitedLogin(adminRequest("/api/admin/login", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({ username:"admin", password:"a purposely long test passphrase" })
@@ -196,7 +197,7 @@ test("private account summaries require the admin session and call only the serv
   const unauthorized = await run(adminRequest("/api/admin/accounts"), adminEnv());
   assert.equal(unauthorized.status, 401);
 
-  const login = await run(adminRequest("/api/admin/login", {
+  const login = await rateLimitedLogin(adminRequest("/api/admin/login", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body:JSON.stringify({ username:"admin", password:"a purposely long test passphrase" })

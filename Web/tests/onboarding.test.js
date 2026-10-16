@@ -5,7 +5,7 @@ const test = require("node:test");
 
 const web = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(web, "app.js"), "utf8");
-const server = fs.readFileSync(path.join(web, "server.js"), "utf8");
+const server = fs.readFileSync(path.join(web, "..", "shared", "auth-session.mjs"), "utf8");
 const styles = fs.readFileSync(path.join(web, "auth.css"), "utf8");
 const onboardingStart = app.indexOf("function renderOnboarding()");
 const onboardingEnd = app.indexOf("function accountNavItem(", onboardingStart);
@@ -15,7 +15,7 @@ const forYouEnd = app.indexOf("function renderForYou()", forYouStart);
 const forYou = app.slice(forYouStart, forYouEnd);
 
 test("new accounts enter profile-first onboarding and existing accounts keep the profile picker", () => {
-  assert.match(server, /seven_account:\{ onboardingComplete:false, onboardingStep:1 \}/);
+  assert.match(server, /seven_account:\{onboardingComplete:false,onboardingStep:1\}/);
   assert.match(app, /function needsFirstRunOnboarding\(\)[\s\S]*saved\.onboardingComplete === false[\s\S]*Date\.now\(\) - createdAt < 7 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(app, /if \(firstRun\) \{ beginOnboarding\(\); state\.route = "onboarding"; \}[\s\S]*else state\.route = "profiles"/);
   assert.match(app, /if \(state\.route === "onboarding" && state\.user\) return renderOnboarding\(\)/);

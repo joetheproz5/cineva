@@ -296,13 +296,15 @@ function migrateLegacyProgress() { const prefix = `seven-progress-${activeProfil
 function parentAccessConfigured() { return Boolean(state.account?.parentAccessEnabled || state.account?.parentPinHash); }
 async function refreshParentAccessStatus() { if (!state.session || !state.account) return; try { const data = await localAPI("/api/account/parent-access", { headers:authorizedHeaders() }); if (data.enabled) { const hadLegacyHash = Boolean(state.account.parentPinHash); state.account.parentAccessEnabled = true; delete state.account.parentPinHash; if (hadLegacyHash) await saveAccount(); } else if (!state.account.parentPinHash) state.account.parentAccessEnabled = false; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); } catch { /* Keep a legacy local verifier available until the user migrates it. */ } }
 async function saveAccount(remote = true, options = {}) { persistLocalAccount(); if (!remote || !state.session) return {saved:false,local:true}; if(!globalThis.window?.SEVENSettingsSync) return {saved:false,queued:true}; return window.SEVENSettingsSync.save(state.account,options); }
+let sessionAuthGeneration=0;
+function sessionCanRefresh(session=state.session){return !!(session?.cookie_session||session?.refresh_token);}
 function readStoredSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } }
 function sessionStartedAt(session) { const saved = Number(session?.seven_started_at); if (saved) return saved; const expiresAt = Number(session?.expires_at), expiresIn = Number(session?.expires_in); return expiresAt && expiresIn ? expiresAt * 1000 - expiresIn * 1000 : Date.now(); }
 function flushWatchTypeChange() { void flushWatchTime(); playbackWatch.sample = null; if (playbackWatch.buffered < 0.5) { clearTimeout(playbackWatch.timer); playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.timer = null; } }
 function persistSession(session, startedAt = sessionStartedAt(session)) {
-  const stored = readStoredSession(), sameUser = !stored?.user?.id || !session?.user?.id || stored.user.id === session.user.id;
   const owner = localStorage.getItem(ACCOUNT_OWNER_KEY), incomingUser = session?.user?.id;
   if (owner && incomingUser && owner !== incomingUser) {
+    sessionAuthGeneration++;
     void flushProfileWatchStats();
     clearTimeout(state.watchStatsSyncTimer); state.watchStatsSyncTimer = null; state.watchStatsSyncPending = false;
     Object.keys(localStorage).filter(key => key.startsWith("seven-progress-") || key.startsWith("cineva-progress-")).forEach(key => localStorage.removeItem(key));
@@ -318,14 +320,17 @@ function persistSession(session, startedAt = sessionStartedAt(session)) {
     state.watchlistLoading = false;
     state.watchlistPending.clear();
   }
-  if (sameUser && stored?.refresh_token && Number(stored.expires_at || 0) > Number(session?.expires_at || 0)) { session = stored; startedAt = sessionStartedAt(stored); }
   if (!state.session && session?.access_token) flushWatchTypeChange();
   state.session = { ...session, seven_started_at:startedAt };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
+  // Access tokens live in memory only; the renewable secret is an HttpOnly cookie.
+  const cachedUser=JSON.parse(JSON.stringify(session.user||state.user||null));
+  if(cachedUser){const scrub=value=>{if(value&&typeof value==="object")for(const key of Object.keys(value)){if(/token|password|secret/i.test(key))delete value[key];else scrub(value[key]);}};scrub(cachedUser);}
+  localStorage.setItem(SESSION_KEY, JSON.stringify({cookie_session:session.cookie_session===true,user:cachedUser,seven_started_at:startedAt,expires_at:session.expires_at}));
   reportAccountVisit();
   globalThis.window?.SEVENDevices?.start();
 }
 function clearSession() {
+  sessionAuthGeneration++;
   globalThis.window?.SEVENUndo?.clear();
   globalThis.window?.SEVENDevices?.stop();
   globalThis.window?.SEVENTrackerUI?.clear();
@@ -356,43 +361,55 @@ function clearSession() {
 }
 function signOut() { globalThis.window?.SEVENDevices?.logout(); clearSession(); resetAppNavigation(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
 function accessTokenExpiresSoon(session = state.session) { return !session?.access_token || !session.expires_at || Number(session.expires_at) * 1000 - Date.now() < 90 * 1000; }
-function scheduleSessionRefresh() { clearTimeout(sessionRefreshTimer); if (!state.session?.refresh_token) return; const delay = Math.max(30_000, Math.min(45 * 60 * 1000, Number(state.session.expires_at || 0) * 1000 - Date.now() - 90_000)); sessionRefreshTimer = setTimeout(async () => { try { await refreshSession(); } catch (error) { if ([400, 401, 403].includes(error.status)) clearSession(); } scheduleSessionRefresh(); }, delay); }
+function scheduleSessionRefresh() { clearTimeout(sessionRefreshTimer); if (!sessionCanRefresh()) return; const delay = Math.max(30_000, Math.min(45 * 60 * 1000, Number(state.session.expires_at || 0) * 1000 - Date.now() - 90_000)); sessionRefreshTimer = setTimeout(async () => { try { await refreshSession(); } catch (error) { if ([400, 401, 403].includes(error.status)) clearSession(); } scheduleSessionRefresh(); }, delay); }
 async function withSessionRefreshLock(callback) {
   if (navigator.locks?.request) return navigator.locks.request(SESSION_REFRESH_LOCK, { mode:"exclusive" }, callback);
   return callback();
 }
 async function refreshSession() {
   if (sessionRefreshPromise) return sessionRefreshPromise;
-  const observedRefreshToken = state.session?.refresh_token;
-  sessionRefreshPromise = withSessionRefreshLock(async () => {
-    const stored = readStoredSession(), storedIsNewer = stored?.refresh_token && Number(stored.expires_at || 0) > Number(state.session?.expires_at || 0);
-    if (storedIsNewer) { state.session = stored; state.user = stored.user || state.user; }
-    if (!state.session?.refresh_token) throw new Error("Your session has expired.");
-    // Another tab may have rotated the one-use refresh token while this tab waited for the lock.
-    if (observedRefreshToken && state.session.refresh_token !== observedRefreshToken && !accessTokenExpiresSoon()) return state.session;
-    const startedAt = sessionStartedAt(state.session), data = await localAPI("/api/auth/refresh", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ refresh_token:state.session.refresh_token }) });
-    if (!data.session?.access_token) throw new Error("Could not refresh your session.");
-    persistSession(data.session, startedAt);
-    state.user = data.user || data.session.user || state.user;
+  if(localStorage.getItem('seven.auth.logout.pending')){const error=Error('Finish signing out before continuing.');error.status=401;throw error;}
+  const generation=sessionAuthGeneration,startedAt=sessionStartedAt(state.session||readStoredSession());
+  sessionRefreshPromise=(async()=>{
+    const data=await withSessionRefreshLock(async()=>{
+      if(generation!==sessionAuthGeneration)throw Error("Account changed.");
+      const stored=readStoredSession(),legacy=state.session?.refresh_token||stored?.refresh_token;
+      if(!sessionCanRefresh()&&!stored?.cookie_session&&!legacy){const error=Error("Your session has expired.");error.status=401;throw error;}
+      return localAPI("/api/auth/refresh",{signal:AbortSignal.timeout(30000),method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(legacy?{refresh_token:legacy}:{})});
+    });
+    if(generation!==sessionAuthGeneration)throw Error("Account changed.");
+    if(!data.session?.access_token)throw Error("Could not refresh your session.");
+    const verified=await window.SEVENAuthSecurity.complete(data);
+    if(generation!==sessionAuthGeneration)throw Error("Account changed.");
+    persistSession(verified.session,verified.session.seven_started_at||startedAt);
+    state.user=verified.user||verified.session.user||state.user;
     return state.session;
-  }).finally(() => { sessionRefreshPromise = null; });
+  })().finally(()=>{sessionRefreshPromise=null;});
   return sessionRefreshPromise;
 }
 function refreshSessionIfNeeded() {
-  if (!state.session?.refresh_token || !accessTokenExpiresSoon()) return;
+  if (!sessionCanRefresh() || !accessTokenExpiresSoon()) return;
   void refreshSession().then(scheduleSessionRefresh).catch(error => { if ([400, 401, 403].includes(error.status)) clearSession(); else scheduleSessionRefresh(); });
 }
-window.addEventListener("storage", event => {
-  if (event.key !== SESSION_KEY || !event.newValue) return;
-  let incoming; try { incoming = JSON.parse(event.newValue); } catch { return; }
-  const sameUser = !state.session?.user?.id || !incoming?.user?.id || state.session.user.id === incoming.user.id;
-  if (incoming?.access_token && sameUser && Number(incoming.expires_at || 0) > Number(state.session?.expires_at || 0)) {
-    state.session = incoming;
-    state.user = incoming.user || state.user;
-    scheduleSessionRefresh();
-  }
+window.addEventListener("storage",event=>{
+  if(event.key!==SESSION_KEY)return;
+  if(!event.newValue){if(state.session){clearSession();state.route="home";render();}return;}
+  let incoming;try{incoming=JSON.parse(event.newValue);}catch{return;}
+  if(state.user?.id&&incoming?.user?.id&&state.user.id!==incoming.user.id){location.reload();return;}
+  if(incoming?.cookie_session&&(!state.session||accessTokenExpiresSoon()))void restoreSession();
 });
-async function restoreSession() { let stored; try { stored = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch {} if (!stored?.access_token) { hydrateAccount(); hydrateMyList(); hydrateWatchlist(); return; } persistSession(stored, sessionStartedAt(stored)); try { if (accessTokenExpiresSoon()) await refreshSession(); state.user = await localAPI("/api/auth/user", { headers:authorizedHeaders() }); } catch (error) { try { await refreshSession(); state.user = await localAPI("/api/auth/user", { headers:authorizedHeaders() }); } catch (refreshError) { if ([400, 401, 403].includes(refreshError.status) || [401, 403].includes(error.status)) clearSession(); else state.user = state.session?.user || null; } } hydrateAccount(); await refreshParentAccessStatus(); hydrateMyList(); hydrateWatchlist(); if (state.session) { await Promise.allSettled([loadCloudProgress(), loadMyList(), loadAccountWatchlist()]); migrateLegacyProgress(); scheduleSessionRefresh(); } }
+async function restoreSession() {
+  if(localStorage.getItem('seven.auth.logout.pending')){try{await window.SEVENDevices?.finishLogout();}catch{}hydrateAccount();hydrateMyList();hydrateWatchlist();return;}
+  const stored=readStoredSession();
+  if(!stored?.cookie_session&&!stored?.refresh_token&&!stored?.access_token){hydrateAccount();hydrateMyList();hydrateWatchlist();return;}
+  // The cached identity is for offline UI only. Every server operation verifies the real token.
+  state.session=stored.access_token?stored:{...stored,access_token:"seven-offline",expires_at:0};
+  state.user=stored.user||null;
+  try{await refreshSession();}
+  catch(error){if([400,401,403].includes(error.status)){clearSession();}else if(error.message==="Verification cancelled."){clearSession();void fetch("/api/auth/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}).catch(()=>{});}}
+  hydrateAccount();await refreshParentAccessStatus();hydrateMyList();hydrateWatchlist();
+  if(state.session){if(!accessTokenExpiresSoon())await Promise.allSettled([loadCloudProgress(),loadMyList(),loadAccountWatchlist()]);migrateLegacyProgress();scheduleSessionRefresh();}
+}
 function accountProgressRecord(row) { const duration = Number(row.duration_seconds) || 0, currentTime = Number(row.progress_seconds) || 0; return { key:row.content_key, currentTime, duration, progress:duration > 0 ? Math.min(100, currentTime / duration * 100) : 0, watched:Boolean(row.is_watched), type:row.content_type, id:Number(row.tmdb_id), season:Number(row.season) || null, episode:Number(row.episode) || null, title:row.title || "Untitled", posterPath:row.poster_path || null, lastWatchedAt:row.last_watched_at || new Date().toISOString() }; }
 function upsertAccountProgress(row) { if (!state.session || !row.content_key) return; const record = accountProgressRecord(row); state.accountProgress = [record, ...state.accountProgress.filter(item => item.key !== record.key)].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
 async function loadCloudProgress() { const rows = await localAPI("/api/account/progress", { headers:authorizedHeaders() }); state.accountProgress = (Array.isArray(rows) ? rows : []).map(accountProgressRecord).filter(row => row.key && row.type && row.id); state.accountProgress.forEach(row => localStorage.setItem(row.key, JSON.stringify(row))); }
@@ -2433,7 +2450,7 @@ async function removeHistoryItem(key) { localStorage.removeItem(key); forgetAcco
 function showAuth(mode = "login", message = "", email = "") {
   document.querySelector(".modal")?.remove();
   const create = mode === "signup";
-  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="${create ? "new-password" : "current-password"}" placeholder="At least 8 characters"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
+  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required ${create ? 'minlength="12" maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" placeholder="${create ? 'At least 12 characters' : 'Your password'}"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
   if (email) document.querySelector('#auth-form input[name="email"]').value = email;
   document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove();
   document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
@@ -2508,7 +2525,7 @@ window.addEventListener("storage", event => {
 });
 function showChangePassword() {
   document.querySelector(".modal")?.remove();
-  app.insertAdjacentHTML("beforeend", `<div class="modal password-change"><form class="auth-card" id="password-change-form"><button type="button" class="modal-close" data-close>×</button><span class="brand">ACCOUNT SECURITY</span><h2>Change password</h2><p>Confirm your current password to choose a new one.</p><label>Current password<input name="currentPassword" type="password" required autocomplete="current-password"></label><label>New password<input name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></label><label>Confirm new password<input name="confirmPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Repeat your new password"></label><p class="form-error" id="password-change-error"></p><button class="primary auth-submit" type="submit">Update password</button></form></div>`);
+  app.insertAdjacentHTML("beforeend", `<div class="modal password-change"><form class="auth-card" id="password-change-form"><button type="button" class="modal-close" data-close>×</button><span class="brand">ACCOUNT SECURITY</span><h2>Change password</h2><p>Confirm your current password to choose a new one.</p><label>Current password<input name="currentPassword" type="password" required autocomplete="current-password"></label><label>New password<input name="password" type="password" required minlength="12" maxlength="72" autocomplete="new-password" placeholder="At least 12 characters"></label><label>Confirm new password<input name="confirmPassword" type="password" required minlength="12" maxlength="72" autocomplete="new-password" placeholder="Repeat your new password"></label><p class="form-error" id="password-change-error"></p><button class="primary auth-submit" type="submit">Update password</button></form></div>`);
   document.querySelector(".password-change [data-close]").onclick = () => document.querySelector(".password-change")?.remove();
   document.querySelector("#password-change-form").onsubmit = async event => {
     event.preventDefault();
@@ -2516,6 +2533,7 @@ function showChangePassword() {
     message.textContent = "";
     if (password !== confirmation) return void (message.textContent = "New passwords do not match.");
     if (password === currentPassword) return void (message.textContent = "Choose a password different from your current password.");
+    const policyError=window.SEVENPasswordPolicy.error(password);if(policyError)return void(message.textContent=policyError);
     try {
       submit.disabled = true;
       await localAPI("/api/account/settings", { method:"PUT", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ currentPassword, password }) });
@@ -2538,7 +2556,10 @@ async function submitAuth(event, mode) {
   message.textContent = "";
   try {
     const payload = { email:values.get("email"), password:values.get("password"), displayName:values.get("displayName") };
-    const data = await localAPI(`/api/auth/${create ? "signup" : "login"}`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+    await window.SEVENDevices?.finishLogout();
+    if(create){const invalid=window.SEVENPasswordPolicy.error(payload.password);if(invalid)throw Error(invalid);}
+    let data = await withSessionRefreshLock(()=>localAPI(`/api/auth/${create ? "signup" : "login"}`, { signal:AbortSignal.timeout(35000),method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) }));
+    if(data.session?.access_token)data=await window.SEVENAuthSecurity.complete(data);
     if (create && !data.session?.access_token && data.user) {
       const pending = { email:String(payload.email || "").trim().toLowerCase(), createdAt:Date.now() };
       state.pendingEmailVerification = pending;
@@ -3171,7 +3192,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=378", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=379", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

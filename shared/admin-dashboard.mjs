@@ -1,3 +1,4 @@
+import {throttle} from './auth-security.mjs';
 const encoder = new TextEncoder();
 const COOKIE_NAME = "seven_admin";
 const SESSION_SECONDS = 6 * 60 * 60;
@@ -141,6 +142,7 @@ async function login(request, env) {
   catch { return json({ error:"Enter a valid username and password." }, 400); }
   const username = typeof body.username === "string" ? body.username.slice(0, 120) : "";
   const password = typeof body.password === "string" ? body.password.slice(0, 1024) : "";
+  const limited=await throttle(request,env,'admin-login',{identity:username,limit:5,ipLimit:10,seconds:900});if(limited)return limited;
   if (!constantTimeEqual(username, adminUsername(env)) || !constantTimeEqual(password, env.SEVEN_ADMIN_PASSWORD)) return json({ error:"That username or password didn’t work." }, 401);
 
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_SECONDS;

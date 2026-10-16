@@ -21,7 +21,7 @@
     engine?.stop();engine=null;accountOwner=id;generation++;view={phase:id?'saved':'local',conflicts:[]};
     if(!id)return null;
     const context=generation,guard=()=>{if(owner()!==id||generation!==context)throw Error('Account changed.');};
-    async function request(options){guard();if(accessTokenExpiresSoon()&&state.session?.refresh_token)try{await refreshSession();}catch{}guard();const send=()=>localAPI('/api/account/settings',{...options,signal:AbortSignal.timeout(12000),headers:{'Content-Type':'application/json',...authorizedHeaders()}});let result;try{result=await send();}catch(error){if(error.status!==401||error.code==='SEVEN_SESSION_REVOKED'||!state.session?.refresh_token)throw error;guard();await refreshSession();guard();result=await send();}guard();return result;}
+    async function request(options){guard();if(accessTokenExpiresSoon()&&sessionCanRefresh())try{await refreshSession();}catch{}guard();const send=()=>localAPI('/api/account/settings',{...options,signal:AbortSignal.timeout(12000),headers:{'Content-Type':'application/json',...authorizedHeaders()}});let result;try{result=await send();}catch(error){if(error.status!==401||error.code==='SEVEN_SESSION_REVOKED'||!sessionCanRefresh())throw error;guard();await refreshSession();guard();result=await send();}guard();return result;}
     engine=model().create({owner:id,storage:localStorage,uuid:()=>crypto.randomUUID(),normalize,mergeStats:root.SEVENProfileStats?.mergeWatchStats,online:()=>navigator.onLine,
       lock:task=>lock('seven-settings-queue:'+id,task),transport:task=>lock('seven-settings-send:'+id,task),
       read:()=>request({method:'GET'}),write:(account,revision)=>request({method:'PUT',body:JSON.stringify({protocol:1,account,revision})}),

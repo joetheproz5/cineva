@@ -17,11 +17,12 @@
     if(typeof state==='undefined'||checking||!state.session?.access_token||document.hidden||accessTokenExpiresSoon())return;
     const scope=sessionScope(),request=version;checking=true;
     try{await localAPI('/api/account/devices/status',{headers:authorizedHeaders()});}
-    catch(error){if(request===version&&scope===sessionScope()&&error.status===401&&error.code!=='SEVEN_SESSION_REVOKED'&&state.session?.refresh_token){try{await refreshSession();}catch(failure){if([400,401,403].includes(failure.status))rejected({code:'SEVEN_SESSION_REVOKED'});}}}
+    catch(error){if(request===version&&scope===sessionScope()&&error.status===401&&error.code!=='SEVEN_SESSION_REVOKED'&&sessionCanRefresh()){try{await refreshSession();}catch(failure){if([400,401,403].includes(failure.status))rejected({code:'SEVEN_SESSION_REVOKED'});}}}
     finally{checking=false;}
   }
   function start(){const scope=sessionScope();if(!state.session?.access_token)return;if(owner!==scope){clearInterval(timer);version++;owner=scope;unlocked=null;timer=setInterval(()=>void check(),60000);}void check();}
-  function logout(){const token=state.session?.access_token;if(!token)return;void fetch('/api/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${token}`},keepalive:true}).catch(()=>{});}
+  async function finishLogout(token){if(!localStorage.getItem('seven.auth.logout.pending'))return;return withSessionRefreshLock(async()=>{if(!localStorage.getItem('seven.auth.logout.pending'))return;const response=await fetch('/api/auth/logout',{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},body:'{}',keepalive:true});if(!response.ok)throw Error('Connect to finish signing out before signing in again.');localStorage.removeItem('seven.auth.logout.pending');});}
+  function logout(){const token=state.session?.access_token;localStorage.setItem('seven.auth.logout.pending',String(Date.now()));void finishLogout(token).catch(()=>{});}
   function bind(scope=document){
     if(!isMain()){unlocked=null;document.querySelector('.devices-modal')?.remove();}
     scope.querySelectorAll('[data-manage-devices]').forEach(button=>button.onclick=()=>void show());
@@ -62,5 +63,6 @@
   }
   root.addEventListener('focus',()=>void check());document.addEventListener('visibilitychange',()=>{if(!document.hidden)void check();});
   root.addEventListener('storage',event=>{if(typeof state!=='undefined'&&event.key==='cineva.supabase.session'&&!event.newValue&&state.session)rejected({code:'SEVEN_SESSION_REVOKED'});});
-  root.SEVENDevices={isMain,mainId,deviceName,activity,bind,show,start,stop,check,logout,rejected};
+  root.SEVENDevices={isMain,mainId,deviceName,activity,bind,show,start,stop,check,logout,rejected,finishLogout};
+  root.addEventListener('online',()=>void finishLogout().catch(()=>{}));
 })(window);

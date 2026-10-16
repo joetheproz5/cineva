@@ -1,3 +1,4 @@
+import {throttle} from './auth-security.mjs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const encoder=new TextEncoder(),reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 const identities=new Map();
@@ -56,6 +57,7 @@ export async function handleDevices(request,env,action=''){
     if(request.headers.get('X-Seven-Profile')!==profile)return reply({error:'Device management is only available from the main profile.'},403);
     if(!env.SEVEN_DASHBOARD_SECRET)return reply({error:'Account-security signing is not configured.'},503);
     if(action==='unlock'){
+      const limited=await throttle(request,env,'device-unlock',{identity:actor.user.id,limit:6,ipLimit:20});if(limited)return limited;
       const text=await request.text();if(text.length>4096)return reply({error:'Request is too large.'},400);const body=JSON.parse(text);
       if(typeof body.password!=='string'||!body.password||body.password.length>1024)return reply({error:'Enter your account password.'},400);
       const response=await upstream(`${env.SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:'POST',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json','User-Agent':'SEVEN security verification'},body:JSON.stringify({email:actor.user.email,password:body.password})});

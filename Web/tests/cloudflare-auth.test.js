@@ -8,15 +8,15 @@ const handlerURL = pathToFileURL(path.resolve(__dirname, "../../functions/api/[[
 async function signupWithMockResponse(upstreamBody) {
   const originalFetch = global.fetch;
   let upstreamRequest;
-  global.fetch = async (url, options) => {
+  global.fetch = require("./security-fixture.cjs").wrap(async (url, options) => {
     upstreamRequest = { url:String(url), options };
     return Response.json(upstreamBody);
-  };
+  });
   try {
     const { onRequest } = await import(handlerURL);
     const response = await onRequest({
       request:new Request("https://seven.example/api/auth/signup", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ email:"new@example.com", password:"not-a-real-password", displayName:"New viewer" }) }),
-      env:{ SUPABASE_URL:"https://project.example", SUPABASE_PUBLISHABLE_KEY:"public-key" },
+      env:{ SUPABASE_URL:"https://project.example", SUPABASE_PUBLISHABLE_KEY:"public-key",...require("./security-fixture.cjs").env },
       params:{ path:"auth/signup" }
     });
     return { upstreamRequest, body:await response.json() };

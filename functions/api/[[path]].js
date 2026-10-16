@@ -1,6 +1,9 @@
 import { handleDashboardRequest, handleDownloadRedirect } from "../../shared/admin-dashboard.mjs";
 import { handleProgressBatch } from "../../shared/progress-batch.mjs";
-import { guardDeviceSession, handleDevices, handleLogout } from "../../shared/devices.mjs";
+import { guardDeviceSession, handleDevices } from "../../shared/devices.mjs";
+import { handleAuthSession, secureLogout, requireMFA, cleanupVerification } from "../../shared/auth-session.mjs";
+import { handleMFA } from "../../shared/auth-mfa.mjs";
+import { sameOrigin, throttle, passwordSafety } from "../../shared/auth-security.mjs";
 
 const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos|recommendations|similar|release_dates))?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos|recommendations|similar|content_ratings))?)|collection\/\d+|person\/\d+(\/combined_credits)?|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
 
@@ -15,7 +18,7 @@ async function readJSON(request) {
 }
 
 async function upstream(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await fetch(url, {signal:AbortSignal.timeout(12000),...options});
   const text = await response.text();
   let data;
   try { data = text ? JSON.parse(text) : {}; }
@@ -30,16 +33,6 @@ function authorization(request) {
 
 function validProfileId(value) {
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(value);
-}
-
-function normalizeAuthResponse(action, data) {
-  if (!data || !["signup", "login", "refresh"].includes(action)) return data;
-  const session = data.session || (data.access_token ? data : null);
-  if (!session?.access_token) return data;
-  return {
-    session:{ ...session, expires_at:Number(session.expires_at) || Math.floor(Date.now() / 1000) + (Number(session.expires_in) || 3600) },
-    user:session.user || data.user || null
-  };
 }
 
 function supabase(env) {
@@ -61,33 +54,6 @@ async function tmdb(endpoint, requestURL, env) {
     const result = await upstream(`https://api.themoviedb.org/3/${endpoint}${requestURL.search}`, { headers:{ Authorization:`Bearer ${env.TMDB_BEARER_TOKEN}`, accept:"application/json" } });
     return json(result.data, result.status);
   } catch { return json({ error:"TMDB is temporarily unavailable." }, 502); }
-}
-
-async function auth(action, request, env) {
-  const settings = supabase(env);
-  if (!settings) return json({ error:"Supabase is not configured." }, 503);
-  try {
-    if (action === "user") {
-      const token = authorization(request);
-      if (!token) return json({ error:"Sign in required." }, 401);
-      const result = await upstream(`${settings.url}/auth/v1/user`, { headers:{ apikey:settings.publishableKey, Authorization:`Bearer ${token}` } });
-      return json(result.data, result.status);
-    }
-    const body = await readJSON(request);
-    let route = "";
-    let payload = body;
-    if (action === "signup") {
-      route = `/auth/v1/signup${settings.emailRedirectTo ? `?redirect_to=${encodeURIComponent(settings.emailRedirectTo)}` : ""}`;
-      payload = { email:body.email, password:body.password, data:{ display_name:body.displayName || "", seven_account:{ onboardingComplete:false, onboardingStep:1 } } };
-    }
-    if (action === "login") route = "/auth/v1/token?grant_type=password";
-    if (action === "refresh") route = "/auth/v1/token?grant_type=refresh_token";
-    if (!route) return json({ error:"Unknown auth action." }, 404);
-    const result = await upstream(`${settings.url}${route}`, { method:"POST", headers:{ apikey:settings.publishableKey, "Content-Type":"application/json", "User-Agent":(request.headers.get("User-Agent") || "SEVEN").slice(0,600) }, body:JSON.stringify(payload) });
-    result.data = normalizeAuthResponse(action, result.data);
-    if(action==="refresh"&&result.data.session?.access_token){const check=await guardDeviceSession(new Request(request.url,{headers:{Authorization:`Bearer ${result.data.session.access_token}`,"User-Agent":request.headers.get("User-Agent")||""}}),env);if(check)return check;}
-    return json(result.data, result.status);
-  } catch (error) { return json({ error:error.message || "Authentication request failed." }, 400); }
 }
 
 async function progress(request, requestURL, env) {
@@ -227,12 +193,15 @@ async function accountSettings(request, env) {
     const body=request.method==="GET"?{}:await readJSON(request);
     if(body.password) {
       if(!body.currentPassword)return json({error:"Enter your current password."},400);
+      const limited=await throttle(request,env,'password-change',{identity:token,limit:6,ipLimit:20});if(limited)return limited;
+      const safe=await passwordSafety(body.password);if(safe)return safe;
       const user=await upstream(`${settings.url}/auth/v1/user`,{headers});
       if(!user.data?.email)return json({error:"Your session has expired. Please sign in again."},401);
       const verification=await upstream(`${settings.url}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:settings.publishableKey,"Content-Type":"application/json"},body:JSON.stringify({email:user.data.email,password:body.currentPassword})});
-      if(!verification.data?.access_token)return json({error:"Your current password is not correct."},401);
+      await cleanupVerification(env,verification.data);
+      if(verification.status!==200||verification.data.user?.id!==user.data.id||!verification.data?.access_token)return json({error:"Your current password is not correct."},401);
       // Credential changes must never overwrite account metadata from an old form.
-      const result=await upstream(`${settings.url}/auth/v1/user`,{method:"PUT",headers,body:JSON.stringify({password:body.password})});
+      const result=await upstream(`${settings.url}/auth/v1/user`,{method:"PUT",headers,body:JSON.stringify({password:body.password,current_password:body.currentPassword})});
       return json(result.data,result.status);
     }
     if(request.method!=="GET"&&(body.protocol!==1||!Number.isSafeInteger(body.revision)||body.revision<0||!body.account||typeof body.account!=="object"||Array.isArray(body.account)))return json({error:"Update SEVEN before saving these settings.",code:"SETTINGS_CLIENT_UPDATE_REQUIRED"},409);
@@ -298,7 +267,12 @@ export async function onRequest(context) {
   const { request, env } = context;
   const requestURL = new URL(request.url);
   const path = Array.isArray(context.params.path) ? context.params.path.join("/") : context.params.path || "";
-  if (path === "auth/logout") return handleLogout(request,env);
+  if(!["GET","HEAD","OPTIONS"].includes(request.method)&&!sameOrigin(request))return json({error:"Request origin rejected."},403);
+  if (path === "auth/logout") return secureLogout(request,env);
+  if(path.startsWith('auth/mfa/')){const rejected=await guardDeviceSession(request,env);return rejected||handleMFA(path.slice('auth/mfa/'.length),request,env);}
+  if(path.startsWith('auth/')){if(path==='auth/user'){const rejected=await guardDeviceSession(request,env);if(rejected)return rejected;}return handleAuthSession(path.slice(5),request,env);}
+  if(path.startsWith('account/')){const rejected=await requireMFA(request,env);if(rejected)return rejected;}
+  if(path==='account/parent-access'&&request.method!=='GET'){const limited=await throttle(request,env,'parent-code',{identity:authorization(request),limit:10,ipLimit:30});if(limited)return limited;}
   if (path === "account/devices" || path.startsWith("account/devices/")) return handleDevices(request,env,path.slice("account/devices".length).replace(/^\//,""));
   if ((path.startsWith("account/") || path === "auth/user" || path === "party") && request.headers.get("Authorization")) { const rejected=await guardDeviceSession(request,env); if(rejected)return rejected; }
   if (path.startsWith("install/")) return handleDownloadRedirect(request, env, path.slice("install/".length));
@@ -306,10 +280,6 @@ export async function onRequest(context) {
   if (path === "account/watch-time") return watchTime(request, env);
   if (path === "config" && request.method === "GET") return config(env);
   if (path.startsWith("tmdb/")) return tmdb(path.slice(5), requestURL, env);
-  if (path === "auth/signup" && request.method === "POST") return auth("signup", request, env);
-  if (path === "auth/login" && request.method === "POST") return auth("login", request, env);
-  if (path === "auth/refresh" && request.method === "POST") return auth("refresh", request, env);
-  if (path === "auth/user" && request.method === "GET") return auth("user", request, env);
   if (path === "account/progress") return progress(request, requestURL, env);
   if (path === "account/progress/batch") return handleProgressBatch(request, env);
   if (path === "account/list") return myList(request, requestURL, env);
