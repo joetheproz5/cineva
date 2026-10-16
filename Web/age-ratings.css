@@ -1,0 +1,4 @@
+.age-restriction-page { min-height:55vh; max-width:680px; margin:0 auto; padding:100px 24px 64px; text-align:center; }
+.age-restriction-page h1 { font-size:clamp(26px,4vw,40px); line-height:1.15; }
+.age-restriction-page p { margin:20px 0 28px; color:#a7a7a7; line-height:1.6; }
+.age-restriction-page > div { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }

@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const source=fs.readFileSync(path.resolve(__dirname,'../app.js'),'utf8');
 const functionSource=name=>source.split(/\r?\n/).find(line=>line.startsWith(`function ${name}(`));
 function fixture(kids=false,maturity='Kids'){
- const profile={id:'main',kids,preferences:{maturity,familySafe:false,blockScary:false}},context={state:{account:{activeProfileId:'main',profiles:[profile],preferences:{maturity:'13+'}}},DEFAULT_PREFERENCES:{maturity:'18+',moviesEnabled:true,seriesEnabled:true},activeProfileId:()=>context.state.account.activeProfileId,isHiddenTitle:()=>false};
+ const profile={id:'main',kids,preferences:{maturity,familySafe:false,blockScary:false}},context={state:{account:{activeProfileId:'main',profiles:[profile],preferences:{maturity:'13+'}}},window:{SEVENAge:require('../age-ratings').createStore(async()=>({results:[]}))},DEFAULT_PREFERENCES:{maturity:'18+',moviesEnabled:true,seriesEnabled:true},activeProfileId:()=>context.state.account.activeProfileId,isHiddenTitle:()=>false};
  vm.createContext(context);vm.runInContext(['maturityForProfile','currentProfile','currentPreferences','updateCurrentPreferences','profileMaturity','contentType','restrictedTitles','contentGenreIds','contentAllowed'].map(functionSource).join('\n'),context);return context;
 }
 test('Kids-off profiles always use 18+ despite stale child ratings on the profile or account',()=>{
@@ -20,6 +20,16 @@ test('the new maturity default does not bypass explicit family, scary-title, or 
 test('unrelated preference saves cannot restore an old Kids maturity on a standard profile',()=>{
  const context=fixture();context.updateCurrentPreferences({language:'French',maturity:'Kids'});assert.equal(context.currentProfile().preferences.maturity,'18+');assert.equal(context.currentPreferences().language,'French');
  context.currentProfile().kids=true;context.updateCurrentPreferences({maturity:'18+'});assert.equal(context.currentProfile().preferences.maturity,'Kids');
+});
+
+test('restricted profiles keep valid parent-selected caps; classifications replace genre guesses',()=>{
+ const context=fixture(true,'13+'),ratings=context.window.SEVENAge;
+ assert.equal(context.profileMaturity(),'13+');context.updateCurrentPreferences({maturity:'16+'});assert.equal(context.profileMaturity(),'16+');
+ const film={id:1,type:'movie',genre_ids:[16],release_dates:{results:[{iso_3166_1:'US',release_dates:[{certification:'R'}]}]}};
+ ratings.remember(film);assert.equal(context.contentAllowed(film),false,'Adult animation is not child-safe');
+ film.release_dates.results[0].release_dates[0].certification='PG';ratings.remember(film);film.genre_ids=[80];assert.equal(context.contentAllowed(film),true,'A verified PG film is not blocked just for its genre');
+ context.currentProfile().preferences.blockScary=true;film.genre_ids=[27];assert.equal(context.contentAllowed(film),false,'Extra scary-title preferences still filter browsing');
+ film.release_dates.results[0].release_dates[0].certification='R';ratings.remember(film);assert.equal(context.contentAllowed(film,{directSearch:true}),false,'Direct search cannot bypass age classifications');
 });
 test('hydration normalizes legacy profiles locally and family saves reset Kids-off maturity',()=>{
  assert.match(source,/state.account.profiles.forEach\(profile => \{\s*profile.preferences = \{[^\n]*maturity:maturityForProfile\(profile\)/);

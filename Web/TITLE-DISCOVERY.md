@@ -21,7 +21,8 @@ unavailable results never prevent the title itself from opening.
 Maturity now follows Kids mode: standard profiles always use 18+, including when
 legacy settings stored Kids/13+/16+. Hydration normalizes old profile values
 locally, and later saves persist the effective value. The maturity control shows
-18+ and is disabled when Kids mode is off; toggling Kids on shows Kids. Separate
+18+ and is disabled when Kids mode is off; toggling Kids on starts at Kids, with
+parent-selected 13+/16+ caps supported by US classifications (see AGE-RATINGS.md). Separate
 family-safe, scary-title and explicit title restrictions remain in effect.
 Collection pages reserve scrollbar space so empty/populated filter views do not
 shift the centered layout horizontally. This CSS only applies on collection pages.
@@ -57,7 +58,7 @@ shift the centered layout horizontally. This CSS only applies on collection page
   ratios, keyboard focus and reduced-motion support.
 - Both API proxies allow numeric `collection/{id}`, `movie/{id}/similar`, and
   `tv/{id}/similar`; arbitrary TMDB routes remain blocked.
-- Version 373 installs the new assets in the service-worker shell. No database
+- Version 374 installs the new assets in the service-worker shell. No database
   migration or native-wrapper rebuild is needed.
 
 Run `node --test Web/tests/*.test.js` from the repository root. Browser QA covers

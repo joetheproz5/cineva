@@ -9,7 +9,7 @@ const continueLogic = source.match(/function continueWatching\(\) \{[\s\S]*?\n\}
 
 function getContinueWatching({ session, profileId = "main", records = [] }) {
   if (!continueLogic) throw new Error("Continue Watching logic was not found.");
-  const context = { state:{ session, accountProgress:records }, activeProfileId:() => profileId };
+  const context = { state:{ session, accountProgress:records }, activeProfileId:() => profileId, contentAllowed:()=>true };
   vm.createContext(context);
   vm.runInContext(continueLogic, context);
   return Array.from(context.continueWatching());

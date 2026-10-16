@@ -1,6 +1,6 @@
-const VERSION = "seven-v373";const DATA_CACHE = "seven-data-v1";
+const VERSION = "seven-v374";const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v1";
-const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=274", "ui.css?v=308", "player-security.js?v=246", "profile-stats.js?v=1", "catalog-browser.js?v=1", "search-engine.js?v=1", "recommendations.js?v=1", "series-tracker.js?v=1", "progress-tools.js?v=1", "series-tracker-ui.js?v=2", "progress-ui.js?v=1", "devices.js?v=1", "title-discovery.js?v=1", "title-discovery-ui.js?v=2", "title-discovery.css?v=3", "hero-spotlight.js?v=1", "hero-spotlight.css?v=1", "app.js?v=373", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png", "assets/poster-placeholder.svg", "assets/still-placeholder.svg", "assets/profile-placeholder.svg"];
+const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=274", "ui.css?v=308", "player-security.js?v=246", "profile-stats.js?v=1", "catalog-browser.js?v=1", "search-engine.js?v=1", "recommendations.js?v=1", "series-tracker.js?v=1", "progress-tools.js?v=1", "series-tracker-ui.js?v=3", "progress-ui.js?v=1", "devices.js?v=1", "title-discovery.js?v=1", "title-discovery-ui.js?v=2", "title-discovery.css?v=3", "hero-spotlight.js?v=1", "hero-spotlight.css?v=1", "age-ratings.js?v=1", "age-ratings.css?v=1", "app.js?v=374", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png", "assets/poster-placeholder.svg", "assets/still-placeholder.svg", "assets/profile-placeholder.svg"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("message", event => { if (event.data?.type === "SEVEN_SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => ![VERSION, DATA_CACHE, IMAGE_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
@@ -46,6 +46,8 @@ self.addEventListener("fetch", event => {
     return;
   }
   if (url.origin === location.origin && url.pathname.startsWith("/api/tmdb/")) {
+    // Never approve a restricted title using an indefinitely cached offline classification.
+    if (/\/(release_dates|content_ratings)$/.test(url.pathname)) { event.respondWith(fetch(event.request)); return; }
     event.respondWith(caches.open(DATA_CACHE).then(async cache => {
       try { const response = await fetch(event.request); if (response.ok) cache.put(event.request, response.clone()); return response; }
       catch { const cached = await cache.match(event.request); if (cached) return cached; throw new Error("No cached SEVEN data is available."); }

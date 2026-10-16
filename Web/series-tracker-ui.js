@@ -6,6 +6,7 @@
     if(!accountWatchlistUserId())return [];
     const saved=state.watchlistOwnerId===accountWatchlistUserId()&&state.watchlistProfileId===activeProfileId()?state.watchlist:[];
     const titles=new Map();[...saved,...listItems()].filter(item=>contentType(item)==="tv"&&Number(item.id)>0).forEach(item=>titles.set(Number(item.id),{...item,type:"tv"}));
+    // Fetch metadata for followed shows even when their classification isn't cached yet.
     return [...titles.values()];
   }
   async function cached(path,force=false){
@@ -78,7 +79,7 @@
     if(mode==="saved")return "";
     const items=follows();
     if(!items.length)return '<p class="tracker-empty">Save a series to Watchlist or Favourites to follow it here.</p>';
-    const usable=view?.scope===identity(),shows=usable?view.shows:[],loading=!usable||view.loading;
+    const usable=view?.scope===identity(),shows=usable?view.shows.filter(entry=>contentAllowed(entry.show)):[],loading=!usable||view.loading;
     const alerts=`<div class="tracker-heading"><h2>${mode==="calendar"?"Release calendar":"Your series"}</h2><button type="button" data-tracker-alerts>${currentPreferences().episodeAlerts&&alertScope===identity()?"Alerts on · Turn off":"Enable alerts"}</button></div>${alertError?`<p class="tracker-warning" role="status">${escapeHTML(alertError)}</p>`:""}`;
     const errors=(usable&&view.errors.length?`<p class="tracker-warning" role="status">${view.errors.length} series couldn’t load. <button type="button" data-tracker-refresh>Try again</button></p>`:"")+(usable&&view.progressError?`<p class="tracker-warning" role="status">${escapeHTML(view.progressError)} <button type="button" data-tracker-refresh>Try again</button></p>`:"");
     if(loading&&!shows.length)return alerts+'<p class="tracker-loading" role="status">Loading your series…</p>';
