@@ -22,7 +22,7 @@ try{for(const width of [1440,390,320]){
    else if(u.pathname.endsWith('/tv/71712'))data={id:71712,name:'Fixture',genres:[],videos:{results:[]}};
    return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
   });
-  await page.goto(origin);await page.waitForSelector('.spotlight-slide,.profile-settings-redesign,.profile-gate');await page.evaluate(user=>{document.querySelector('.seven-intro')?.remove();state.user=user;persistSession({access_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,user});hydrateAccount();showProfileEditor('main','home','profile');},user());return {page,context};
+  await page.goto(origin,{waitUntil:'domcontentloaded'});await page.waitForSelector('.spotlight-slide,.profile-settings-redesign,.profile-gate');await page.evaluate(user=>{document.querySelector('.seven-intro')?.remove();state.user=user;persistSession({access_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,user});hydrateAccount();showProfileEditor('main','home','profile');},user());return {page,context};
  }
  const a=await client(),b=await client();const phase=page=>page.evaluate(()=>window.SEVENSettingsSync.state().phase);
  async function saved(page){await page.waitForFunction(()=>window.SEVENSettingsSync.state().phase==='saved');assert.equal(await page.locator('[data-settings-sync-status]').textContent(),await page.evaluate(()=>t('Saved')));}
