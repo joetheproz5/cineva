@@ -13,7 +13,7 @@ const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || navigator.standalone === true;
 if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
-const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "searchView", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistView", "trackerWeek", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft"];
+const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "searchView", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistView", "trackerWeek", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft", "titleDiscovery", "franchise"];
 const appRouteSnapshots = new Map();
 let appNavigationIndex = 0, appNavigationReady = false, appNavigationRestoring = false, appNavigationIdentity = "";
 let searchRequest = 0;
@@ -704,7 +704,7 @@ function upcomingTitles(movieResults, seriesResults) {
 }
 function header() {
   const profile = currentProfile() || defaultAccount().profiles[0];
-  const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : state.route === "series" ? "shows" : state.route === "movie" ? "movies" : "";
+  const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : state.route === "series" ? "shows" : ["movie", "franchise"].includes(state.route) ? "movies" : "";
   const account = state.user ? `<button class="account signed-in" data-account title="Account">${profileAvatar(profile)}<i class="account-caret" aria-hidden="true">▾</i></button>` : `<button class="account account-guest" data-auth aria-label="Guest profile. Sign in or create an account" title="Guest profile"><svg class="account-guest-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.65-3.55 2.82-5.4 6.5-5.4s5.85 1.85 6.5 5.4"/></svg></button>`;
   const search = currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="Titles, actors, directors" autocomplete="off" enterkeyhint="search" maxlength="160" aria-label="Search titles, actors and directors"><div class="search-suggestions" hidden></div></div><button class="msearch-open" data-msearch aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>` : "";
   const homeLink = `<button class="nav-link ${activeNav === "home" ? "active" : ""}" data-home><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg><span>${t("Home")}</span></button>`;
@@ -712,7 +712,7 @@ function header() {
   const moviesLink = `<button class="nav-link ${activeNav === "movies" ? "active" : ""}" data-movies><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4Z M4 9h16 M8 5l3 4m2-4 3 4M8 20l3-4m2 4 3-4"/></svg><span>${t("Movies")}</span></button>`;
   const seriesLink = `<button class="nav-link ${activeNav === "shows" ? "active" : ""}" data-shows><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 2 5m11-3 3 3m-7 4 4 3-4 3Z"/></svg><span>${t("Series")}</span></button>`;
   const navigation = `<nav aria-label="Main navigation">${homeLink}${forYouLink}${moviesLink}${seriesLink}</nav>`;
-  const browseActive = ["catalog", "all-catalog", "movie", "series"].includes(state.route);
+  const browseActive = ["catalog", "all-catalog", "movie", "series", "franchise"].includes(state.route);
   const mobileNavigation = `<nav class="app-mobile-nav" aria-label="Mobile main navigation">${homeLink}${forYouLink}<button class="nav-link ${browseActive ? "active" : ""}" data-mobile-browse><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4Z M4 9h16 M8 5l3 4m2-4 3 4"/></svg><span>${t("Browse")}</span></button></nav>`;
   return `<header class="main-header app-header"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>${mobileNavigation}`;
 }
@@ -721,6 +721,7 @@ function appRouteIdentity() {
   const route = state.route;
   if (route === "movie") return `${route}:${state.movie?.id || ""}`;
   if (route === "series") return `${route}:${state.series?.id || ""}`;
+  if (route === "franchise") return `${route}:${state.franchise?.collection?.id || ""}`;
   if (route === "person") return `${route}:${state.person?.id || ""}`;
   if (route === "player") return `${route}:${state.player?.type || ""}:${state.player?.id || ""}:${state.player?.season || 0}:${state.player?.episode || 0}`;
   if (route === "catalog") return `${route}:${state.browse?.type || ""}:${state.browse?.genre || "all"}`;
@@ -828,6 +829,7 @@ function render() {
   if (state.route === "player") return renderPlayer();
   if (state.route === "movie") return renderMovie();
   if (state.route === "series") return renderSeries();
+  if (state.route === "franchise") return window.SEVENDiscoveryUI.renderFranchise();
   if (state.route === "person") return renderPerson();
   if (state.route === "search") return renderSearch();
   if (state.route === "for-you") return renderForYou();
@@ -2951,6 +2953,7 @@ function bindCommon() {
   document.querySelectorAll("[data-auth]").forEach(button => button.onclick = () => showAuth());
   document.querySelectorAll("[data-msearch]").forEach(button => button.onclick = openMobileSearch);
   document.querySelectorAll("[data-account]").forEach(button => button.onclick = showAccount);
+  window.SEVENDiscoveryUI?.mount();
 }
 let lastMobileHeaderY = window.scrollY || 0;
 function syncHeaderScroll() {
@@ -3038,7 +3041,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=369", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=370", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

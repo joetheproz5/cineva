@@ -1,0 +1,129 @@
+/* Scoped title discovery: no changes to shared home cards or startup layers. */
+.title-discovery { margin: 52px 0; }
+.title-discovery > section[hidden] { display: none; }
+.title-discovery > section + section { margin-top: 44px; }
+.franchise-preview { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 28px; isolation: isolate; overflow: hidden; width: 100%; min-height: 238px; padding: 32px 40px; border: 1px solid #ffffff19; border-radius: 16px; color: #f5f5f5; text-align: start; background: #141416; }
+.franchise-preview::before { position: absolute; z-index: -2; inset: 0; content: ""; background: var(--franchise-art, none) center 35% / cover; opacity: .36; transition: opacity .25s; }
+.franchise-preview::after { position: absolute; z-index: -1; inset: 0; content: ""; background: linear-gradient(100deg,#101012 12%,#101012dd 48%,#10101255); }
+.franchise-preview:hover::before { opacity: .5; }
+.franchise-preview-copy { min-width: 0; max-width: 70%; }
+.franchise-preview-copy > small,.franchise-eyebrow { display: block; color: #d4c5c5; font-size: 10px; font-weight: 750; letter-spacing: .22em; }
+.franchise-preview-copy > strong { display: block; margin: 10px 0 12px; font-size: clamp(24px,3vw,38px); font-weight: 750; line-height: 1.13; letter-spacing: -.035em; text-wrap: balance; }
+.franchise-preview-copy > span { display: block; color: #bbb8b8; font-size: 13px; }
+.franchise-preview-copy i,.franchise-meta i { margin: 0 8px; font-style: normal; color: #727075; }
+.franchise-preview-copy > em { display: flex; align-items: center; gap: 10px; margin-top: 24px; color: #f3f3f3; font-size: 13px; font-style: normal; font-weight: 650; }
+.franchise-preview svg,.franchise-next > svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.franchise-preview-posters { position: relative; flex: 0 0 230px; height: 182px; margin-inline-end: 10px; }
+.franchise-preview-posters img { position: absolute; top: 0; left: 30%; width: 120px; height: 180px; border: 1px solid #ffffff25; border-radius: 6px; object-fit: cover; box-shadow: 0 12px 28px #0008; }
+.franchise-preview-posters img:first-child { left: 0; transform: rotate(-9deg) translateY(8px); }
+.franchise-preview-posters img:last-child { left: 57%; transform: rotate(9deg) translateY(8px); }
+.franchise-preview-posters img:nth-child(2) { z-index: 2; }
+.franchise-preview-posters img:only-child { left: 25%; transform: none; }
+.franchise-preview-loading { min-height: 248px; border-radius: 16px; }
+.discovery-heading { display: flex; align-items: center; margin-bottom: 22px; }
+.discovery-heading h2 { margin: 0; color: #f4f4f4; font-size: clamp(21px,2.2vw,29px); font-weight: 700; letter-spacing: -.025em; }
+.discovery-grid,.discovery-skeletons { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 28px 18px; }
+.discovery-card { position: relative; min-width: 0; align-self: start; }
+.discovery-card-open { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; }
+.discovery-poster { position: relative; display: block; overflow: hidden; width: 100%; aspect-ratio: 2/3; border: 1px solid #ffffff17; border-radius: 10px; background: #151517; transition: border-color .2s,box-shadow .2s; }
+.discovery-poster > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.discovery-card-open:hover .discovery-poster { border-color: #ffffff70; box-shadow: 0 5px 22px #0006; }
+.discovery-card.is-current .discovery-poster { border-color: #c82530; }
+.discovery-card-copy { display: flex; gap: 10px; margin-top: 12px; }
+.discovery-card-copy > span:last-child { min-width: 0; }
+.discovery-card-copy b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: #e9e9e9; font-size: 14px; font-weight: 650; line-height: 1.4; }
+.discovery-card-copy small { display: block; margin-top: 5px; color: #929298; font-size: 12px; }
+.discovery-card-copy em { display: block; margin-top: 6px; color: #bdbdc3; font-size: 11px; font-style: normal; line-height: 1.5; }
+.discovery-order { flex: 0 0 auto; margin-top: 1px; color: #67676f; font-size: 17px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.discovery-watched { position: absolute; top: 10px; left: 10px; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #ffffff30; border-radius: 50%; background: #0a0a0be6; color: #fff; }
+.discovery-watched svg,.franchise-complete svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.discovery-current { position: absolute; bottom: 10px; left: 10px; max-width: calc(100% - 20px); padding: 5px 8px; border-radius: 4px; background: #0a0a0be6; color: #eee; font-size: 10px; }
+.discovery-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: #ffffff40; }
+.discovery-progress > i { display: block; height: 100%; background: #e31420; }
+.discovery-card .card-watchlist { top: 9px; right: 9px; bottom: auto; left: auto; width: 32px; height: 32px; min-width: 32px; min-height: 32px; padding: 7px; opacity: 1; transform: none; border-radius: 50%; }
+.discovery-card .card-watchlist svg { width: 16px; height: 16px; }
+.discovery-more { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 26px; }
+.discovery-more > span { color: #99999f; font-size: 12px; }
+.discovery-more button,.discovery-notice button { min-height: 44px; padding: 10px 24px; border: 1px solid #ffffff25; border-radius: 8px; color: #eee; background: #1b1b1e; font: inherit; font-size: 13px; font-weight: 600; }
+.discovery-more button:hover,.discovery-notice button:hover { background: #27272b; border-color: #ffffff50; }
+.discovery-more button:disabled { opacity: .5; cursor: wait; }
+.discovery-empty { margin: 16px 0; color: #a2a2aa; font-size: 14px; }
+.discovery-skeletons > span { display: block; aspect-ratio: 2/3; border-radius: 10px; }
+.discovery-notice { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px; border: 1px solid #ffffff15; border-radius: 12px; color: #aaa; font-size: 13px; }
+.discovery-sr { position: absolute; overflow: hidden; clip: rect(0,0,0,0); width: 1px; height: 1px; white-space: nowrap; }
+.franchise-page { margin: 0; }
+.franchise-hero { position: relative; isolation: isolate; min-height: 390px; overflow: hidden; background: #111113; }
+.franchise-hero-art { position: absolute; z-index: -1; inset: 0; background: linear-gradient(0deg,#08080a 0%,#08080a50 100%),linear-gradient(90deg,#08080af0 5%,#08080ac0 40%,#08080a40),var(--franchise-art, none) center 32%/cover; }
+.franchise-hero-content,.franchise-body { width: min(1280px,100%); margin: 0 auto; padding: 0 clamp(18px,4vw,56px); box-sizing: border-box; }
+.franchise-hero-content { padding-top: 22px; padding-bottom: 36px; }
+.franchise-back { display: block; margin-bottom: 38px; padding: 8px 0; color: #c7c7ca; background: transparent; font: inherit; font-size: 14px; }
+.franchise-hero h1 { max-width: 850px; margin: 14px 0 12px; color: #fafafa; font-size: clamp(33px,4.5vw,62px); line-height: 1.04; letter-spacing: -.045em; font-weight: 750; text-wrap: balance; }
+.franchise-meta { margin: 16px 0; color: #aaaab1; font-size: 13px; }
+.franchise-description { max-width: 620px; margin: 18px 0 0; color: #bdbdc4; font-size: 14px; line-height: 1.7; }
+.franchise-progress-summary { display: flex; flex-direction: column; gap: 10px; max-width: 300px; margin-top: 26px; color: #c8c8ce; font-size: 12px; }
+.franchise-progress-track { display: block; overflow: hidden; height: 3px; border-radius: 3px; background: #ffffff26; }
+.franchise-progress-track > i { display: block; height: 100%; background: #e11120; }
+.franchise-body { padding-top: 8px; padding-bottom: 56px; }
+.franchise-next { display: flex; align-items: center; gap: 16px; width: min(510px,100%); padding: 12px 18px 12px 12px; border: 1px solid #ffffff20; border-radius: 12px; color: #eee; background: linear-gradient(110deg,#1c1719,#141416); text-align: start; }
+.franchise-next:hover { border-color: #ffffff50; }
+.franchise-next > img { flex: 0 0 48px; width: 48px; height: 72px; border-radius: 4px; object-fit: cover; }
+.franchise-next > span { flex: 1; min-width: 0; }
+.franchise-next small { display: block; margin-bottom: 7px; color: #c9979b; font-size: 9px; letter-spacing: .16em; font-weight: 700; }
+.franchise-next strong { display: block; font-size: 16px; font-weight: 650; }
+.franchise-next em { display: block; margin-top: 6px; color: #aaa8af; font-size: 11px; font-style: normal; }
+.franchise-next > svg { flex: 0 0 18px; }
+.franchise-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin: 32px 0 26px; }
+.franchise-filters { display: flex; gap: 6px; padding: 4px; border: 1px solid #ffffff12; border-radius: 10px; background: #111113; }
+.franchise-filters button { min-height: 36px; padding: 8px 15px; border: 0; border-radius: 7px; color: #9c9ca4; background: transparent; font: inherit; font-size: 12px; font-weight: 600; }
+.franchise-filters button[aria-pressed="true"] { color: #fafafa; background: #303034; }
+.franchise-toolbar label { display: flex; align-items: center; gap: 10px; color: #9c9ca4; font-size: 12px; }
+.franchise-toolbar select { max-width: 180px; min-height: 40px; padding: 8px 28px 8px 10px; border: 1px solid #ffffff20; border-radius: 7px; color: #ddd; background: #121214; font: inherit; font-size: 13px; }
+.franchise-footnote { margin: 32px 0 0; color: #787880; font-size: 11px; line-height: 1.6; }
+.franchise-complete { display: flex; align-items: center; gap: 10px; padding: 16px 0; color: #c9c9d0; font-size: 14px; }
+.title-discovery button:focus-visible,.franchise-page button:focus-visible,.franchise-page select:focus-visible { outline: 2px solid #e53540; outline-offset: 4px; }
+[dir="rtl"] .discovery-watched { left: auto; right: 10px; }
+[dir="rtl"] .discovery-card .card-watchlist { right: auto; left: 9px; }
+[dir="rtl"] .discovery-current { left: auto; right: 10px; }
+[dir="rtl"] .franchise-preview svg,[dir="rtl"] .franchise-next > svg { transform: rotate(180deg); }
+@media (max-width: 1050px) {
+  .discovery-grid,.discovery-skeletons { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .franchise-preview { padding: 28px; }
+}
+@media (max-width: 650px) {
+  .title-discovery { margin: 34px 0; }
+  .title-discovery > section + section { margin-top: 30px; }
+  .franchise-preview { min-height: 206px; gap: 12px; padding: 22px 18px; border-radius: 12px; }
+  .franchise-preview-copy { max-width: 65%; }
+  .franchise-preview-copy > small { font-size: 8px; }
+  .franchise-preview-copy > strong { margin: 9px 0; font-size: 23px; }
+  .franchise-preview-copy > span { font-size: 11px; line-height: 1.7; }
+  .franchise-preview-copy > em { margin-top: 18px; gap: 5px; font-size: 11px; }
+  .franchise-preview-posters { flex-basis: 100px; height: 132px; margin-inline-end: 5px; }
+  .franchise-preview-posters img { width: 76px; height: 114px; left: 13%; }
+  .franchise-preview-posters img:first-child { left: -14%; }
+  .franchise-preview-posters img:last-child { left: 35%; }
+  .franchise-preview-loading { min-height: 206px; }
+  .discovery-grid,.discovery-skeletons { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px 14px; }
+  .discovery-heading { margin-bottom: 18px; }
+  .discovery-card-copy { margin-top: 10px; gap: 8px; }
+  .discovery-card-copy b { font-size: 13px; }
+  .discovery-card .card-watchlist { width: 36px; height: 36px; }
+  .discovery-poster { border-radius: 8px; }
+  .franchise-hero { min-height: 350px; }
+  .franchise-hero-content { padding-top: 8px; padding-bottom: 28px; }
+  .franchise-back { margin-bottom: 30px; }
+  .franchise-eyebrow { font-size: 9px; }
+  .franchise-hero h1 { font-size: 38px; }
+  .franchise-description { font-size: 13px; line-height: 1.6; }
+  .franchise-progress-summary { max-width: 230px; }
+  .franchise-toolbar { margin: 26px 0 22px; gap: 16px; }
+  .franchise-filters { width: 100%; }
+  .franchise-filters button { flex: 1; min-height: 40px; }
+  .franchise-toolbar label { margin-inline-start: auto; }
+  .franchise-toolbar select { font-size: 16px; }
+  .franchise-next { gap: 12px; }
+  .franchise-next strong { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .franchise-preview::before,.discovery-poster { transition: none; }
+}
