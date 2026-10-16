@@ -161,8 +161,9 @@ function animateScrollToTop() {
 
 async function localAPI(path, options = {}) { const response = await fetch(path, options); const data = await response.json().catch(() => ({})); if (!response.ok) { const error = new Error(data.error || data.msg || "Request failed."); error.status = response.status; error.code = data.code; error.account=data.account; error.revision=data.revision; if(data.code === "SEVEN_SESSION_REVOKED") globalThis.window?.SEVENDevices?.rejected(data,new Headers(options.headers).get("Authorization")?.replace(/^Bearer /,"")); throw error; } return data; }
 function authorizedHeaders() { return state.session?.access_token ? { Authorization:`Bearer ${state.session.access_token}` } : {}; }
-function analyticsAllowed() { return navigator.doNotTrack !== "1" && window.doNotTrack !== "1" && navigator.globalPrivacyControl !== true; }
+function analyticsAllowed() { return window.SevenPrivacy?.analyticsAllowed() === true; }
 function reportAccountVisit() { if (state.session?.access_token) window.SevenMetrics?.trackAccountVisit(state.session.access_token); }
+window.addEventListener('seven:privacy-change',()=>{resetPlaybackWatchTracking();if(analyticsAllowed())reportAccountVisit();});
 function resetPlaybackWatchTracking() { clearTimeout(playbackWatch.timer); playbackWatch.sample = null; playbackWatch.buffered = 0; playbackWatch.bufferType = null; playbackWatch.accessToken = null; playbackWatch.batch = null; playbackWatch.sending = false; playbackWatch.timer = null; }
 function recordProfileWatchTime(item, seconds) {
   const profile = currentProfile(), stats = window.SEVENProfileStats;
@@ -2458,6 +2459,7 @@ function showAuth(mode = "login", message = "", email = "") {
   const create = mode === "signup";
   app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required ${create ? 'minlength="12" maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" placeholder="${create ? 'At least 12 characters' : 'Your password'}"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
   if (email) document.querySelector('#auth-form input[name="email"]').value = email;
+  if(create)document.querySelector('#auth-message').insertAdjacentHTML('beforebegin','<p class="auth-privacy-note"><a href="privacy.html" data-privacy-settings>How SEVEN uses your data</a></p>');
   document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove();
   document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
   document.querySelector("#auth-form").onsubmit = event => submitAuth(event, mode);
@@ -2975,6 +2977,7 @@ function renderProfileSettings() {
   const detailHeading = category === "home" ? "" : `<header class="profile-settings-page-heading"><button class="profile-category-back" data-profile-category-back>‹ ${t("All settings")}</button><div class="profile-settings-heading-copy"><span class="brand">${t("PROFILE SETTINGS")}</span><h2>${t(titles[category])}</h2></div><p>${t(descriptions[category])}</p></header>`;
   app.innerHTML = `${header()}<main class="profile-settings-page profile-settings-mobile-first profile-settings-redesign"><div class="profile-settings-topbar"><button class="account-back" data-profile-settings-back>‹ ${t("Browse")}</button><button class="profile-settings-switch" data-switch-profile><span>${t("Switch profile")}</span><i aria-hidden="true">⇄</i></button></div>${category === "home" ? profileSettingsHome(profile, isNew) : `<div class="profile-settings-detail-page">${detailHeading}${profileSettingsDetail(profile, category, preferences, isNew)}</div>`}</main>`;
   if (category === "security") document.querySelector(".profile-settings-detail-page")?.insertAdjacentHTML("beforeend", iosDnsProtectionCard());
+  if(category==='security')document.querySelector('.profile-category-actions')?.insertAdjacentHTML('afterbegin',accountAction('◌','Privacy choices','Optional analytics and how SEVEN uses your data','data-privacy-settings','Manage'));
   document.querySelectorAll(".screen-time-rows input, .screen-time-rows select").forEach(field => { field.disabled = !profile.kids; });
   const initialFields=new Map([...document.querySelectorAll('#profile-settings-form input[name],#profile-settings-form select[name]')].map(field=>[field.name,field.type==='checkbox'?field.checked:field.value]));
   bindCommon();
@@ -3094,6 +3097,8 @@ function queueProgressSync(item, currentTime, duration, progress, immediate = fa
   }, 1200);
 }
 function bindCommon() {
+  const privacyLinks=document.querySelector('.footer-links');
+  if(privacyLinks&&!privacyLinks.querySelector('[data-privacy-settings]'))privacyLinks.insertAdjacentHTML('beforeend','<button type="button" data-privacy-settings>Privacy choices</button>');
   globalThis.window?.SEVENDevices?.bind();
   document.querySelectorAll("[data-home]").forEach(button => button.onclick = () => { state.route = "home"; render(); });
   document.querySelectorAll("[data-open]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, id); });
@@ -3206,7 +3211,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=382", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=383", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

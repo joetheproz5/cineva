@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 (async()=>{
  const origin='https://seven-9fm.pages.dev',send=(path,body,headers={})=>fetch(origin+'/api/'+path,{method:body===undefined?'GET':'POST',cache:'no-store',headers:{'Content-Type':'application/json',Origin:origin,...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});
- const page=await fetch(origin+'/',{cache:'no-store'});assert.match(page.headers.get('content-security-policy'),/script-src 'self'/);assert.equal(page.headers.get('x-content-type-options'),'nosniff');assert.equal(page.headers.get('x-frame-options'),'DENY');assert.ok((await page.text()).includes('app.js?v=382'));
+ const page=await fetch(origin+'/',{cache:'no-store'});assert.match(page.headers.get('content-security-policy'),/script-src 'self'/);assert.equal(page.headers.get('x-content-type-options'),'nosniff');assert.equal(page.headers.get('x-frame-options'),'DENY');assert.ok((await page.text()).includes('app.js?v=383'));
  assert.equal((await send('admin/stats',undefined,{'X-Admin':'true'})).status,401);assert.equal((await send('account/settings')).status,401);assert.equal((await send('auth/mfa/status')).status,401);
  const cross=await send('auth/login',{},{Origin:'https://example.invalid'});assert.equal(cross.status,403);
  const refresh=await send('auth/refresh',{});assert.equal(refresh.status,401);assert.match(refresh.headers.get('set-cookie'),/^__Host-seven_refresh=.*HttpOnly.*Secure/);

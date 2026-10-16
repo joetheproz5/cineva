@@ -17,9 +17,9 @@ function entry(overrides = {}) {
 }
 
 test("the recap tracker is included in the versioned online and offline app shell", () => {
-    assert.ok(indexPage.indexOf("profile-stats.js?v=1") < indexPage.indexOf("app.js?v=382"));
+    assert.ok(indexPage.indexOf("profile-stats.js?v=1") < indexPage.indexOf("app.js?v=383"));
   assert.match(serviceWorker, /"profile-stats\.js\?v=1"/);
-  assert.match(appSource, /service-worker\.js\?v=382/);
+  assert.match(appSource, /service-worker\.js\?v=383/);
 });
 
 test("first-time profile stats migrate saved positions without dropping existing history", () => {

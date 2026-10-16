@@ -10,6 +10,7 @@ const pagesRedirects = fs.existsSync(path.join(repository, "Web/_redirects")) ? 
 const dashboardHeaders = fs.readFileSync(path.join(repository, "Web/_headers"), "utf8");
 const localServer = fs.readFileSync(path.join(repository, "Web/server.js"), "utf8");
 const metricsClient = fs.readFileSync(path.join(repository, "Web/metrics.js"), "utf8");
+const privacyClient = fs.readFileSync(path.join(repository, "Web/privacy.js"), "utf8");
 const metricsSchema = fs.readFileSync(path.join(repository, "Web/supabase-dashboard.sql"), "utf8");
 const entryPage = fs.readFileSync(path.join(repository, "Web/index.html"), "utf8");
 const downloadPage = fs.readFileSync(path.join(repository, "Web/download.html"), "utf8");
@@ -35,6 +36,7 @@ function adminEnv(overrides = {}) {
 
 function adminRequest(pathname, options = {}) {
   const headers = new Headers(options.headers || {});
+  if(pathname==='/api/metrics/event'&&!headers.has('Cookie'))headers.set('Cookie','seven_optional_analytics=allow');
   if (options.method === "POST" && !headers.has("Origin")) headers.set("Origin", "https://seven.example");
   return new Request("https://seven.example" + pathname, { ...options, headers });
 }
@@ -88,12 +90,13 @@ test("dashboard pages are private and account data stays on the admin-only accou
   assert.match(dashboardPage, /@media\(max-width:600px\)/);
 });
 
-test("browser metrics are daily, anonymous, and respect privacy signals", () => {
-  assert.match(entryPage, /src="metrics\.js\?v=1"/);
+test("browser metrics are daily, opt-in, and respect privacy signals", () => {
+  assert.match(entryPage, /src="metrics\.js\?v=2"/);
   assert.match(downloadPage, /id="windowsBtn"[^>]*href="\/api\/install\/windows"/);
   assert.doesNotMatch(downloadPage, /trackDownload/);
-  assert.match(metricsClient, /navigator\.doNotTrack === "1"/);
-  assert.match(metricsClient, /navigator\.globalPrivacyControl === true/);
+  assert.match(privacyClient, /navigator\.doNotTrack==='1'/);
+  assert.match(privacyClient, /navigator\.globalPrivacyControl===true/);
+  assert.match(metricsClient, /SevenPrivacy\?\.analyticsAllowed\(\) === true/);
   assert.match(metricsClient, /saved\.day === today/);
   assert.match(metricsClient, /localStorage\.setItem\(storageKey/);
   assert.match(metricsClient, /keepalive:Boolean\(keepalive\)/);
@@ -256,7 +259,7 @@ test("platform install clicks are recorded server-side before redirects and stil
   const calls = [];
   global.fetch = async (url, options) => { calls.push({ url, payload:JSON.parse(options.body) }); return Response.json(true); };
   try {
-    const redirect = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
+    const redirect = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { headers:{ "Sec-Fetch-Site":"same-origin", Cookie:"seven_optional_analytics=allow" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
     assert.equal(redirect.status, 302);
     assert.equal(redirect.headers.get("location"), "https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-Setup-win-x64.exe");
     assert.equal(redirect.headers.get("cache-control"), "no-store");
@@ -265,16 +268,16 @@ test("platform install clicks are recorded server-side before redirects and stil
     const optedOut = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { headers:{ "Sec-Fetch-Site":"same-origin", "Sec-GPC":"1" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
     assert.equal(optedOut.status, 302);
     assert.equal(calls.length, 1);
-    const head = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { method:"HEAD", headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
+    const head = await route.onRequest({ request:new Request("https://seven.example/api/install/windows", { method:"HEAD", headers:{ "Sec-Fetch-Site":"same-origin", Cookie:"seven_optional_analytics=allow" } }), env:adminEnv(), params:{ path:["install", "windows"] } });
     assert.equal(head.status, 302);
     assert.equal(calls.length, 1, "link previews must not increment install clicks");
-    const android = await route.onRequest({ request:new Request("https://seven.example/api/install/android", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "android"] } });
+    const android = await route.onRequest({ request:new Request("https://seven.example/api/install/android", { headers:{ "Sec-Fetch-Site":"same-origin", Cookie:"seven_optional_analytics=allow" } }), env:adminEnv(), params:{ path:["install", "android"] } });
     assert.equal(android.headers.get("location"), "https://seven.example/downloads/seven.apk");
     assert.deepEqual(calls[1].payload, { p_platform:"android" });
-    const mac = await route.onRequest({ request:new Request("https://seven.example/api/install/mac", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "mac"] } });
+    const mac = await route.onRequest({ request:new Request("https://seven.example/api/install/mac", { headers:{ "Sec-Fetch-Site":"same-origin", Cookie:"seven_optional_analytics=allow" } }), env:adminEnv(), params:{ path:["install", "mac"] } });
     assert.equal(mac.headers.get("location"), "https://github.com/joetheproz5/cineva/releases/latest/download/SEVEN-macOS.dmg");
     assert.deepEqual(calls[2].payload, { p_platform:"mac" });
-    const ios = await route.onRequest({ request:new Request("https://seven.example/api/install/ios", { headers:{ "Sec-Fetch-Site":"same-origin" } }), env:adminEnv(), params:{ path:["install", "ios"] } });
+    const ios = await route.onRequest({ request:new Request("https://seven.example/api/install/ios", { headers:{ "Sec-Fetch-Site":"same-origin", Cookie:"seven_optional_analytics=allow" } }), env:adminEnv(), params:{ path:["install", "ios"] } });
     assert.equal(ios.headers.get("location"), "https://seven.example/");
     assert.deepEqual(calls[3].payload, { p_platform:"ios" });
     const unknown = await route.onRequest({ request:new Request("https://seven.example/api/install/nope"), env:adminEnv(), params:{ path:["install", "nope"] } });

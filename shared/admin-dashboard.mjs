@@ -1,4 +1,5 @@
 import {throttle} from './auth-security.mjs';
+import {optionalAnalyticsAllowed} from './privacy.mjs';
 const encoder = new TextEncoder();
 const COOKIE_NAME = "seven_admin";
 const SESSION_SECONDS = 6 * 60 * 60;
@@ -155,7 +156,7 @@ async function login(request, env) {
 async function recordMetric(request, env) {
   if (request.method !== "POST") return json({ error:"Method not allowed." }, 405, { Allow:"POST" });
   if (!originIsSame(request)) return json({ error:"Request origin rejected." }, 403);
-  if (request.headers.get("DNT") === "1" || request.headers.get("Sec-GPC") === "1") return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
+  if (!optionalAnalyticsAllowed(request)) return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
   if (!configuredSupabase(env)) return json({ error:"Analytics storage is not configured." }, 503);
 
   let body;
@@ -226,7 +227,7 @@ export async function handleDownloadRedirect(request, env = {}, platform) {
 
   const url = new URL(request.url);
   const destination = DOWNLOAD_TARGETS[platform] || new URL(platform === "ios" ? "/" : "/downloads/seven.apk", url.origin).href;
-  const optedOut = request.headers.get("DNT") === "1" || request.headers.get("Sec-GPC") === "1";
+  const optedOut = !optionalAnalyticsAllowed(request);
   if (request.method === "GET" && !optedOut && originIsSame(request) && configuredSupabase(env)) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1200);

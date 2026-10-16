@@ -5,6 +5,7 @@ import { handleAuthSession, secureLogout, requireMFA, cleanupVerification } from
 import { handleMFA } from "../../shared/auth-mfa.mjs";
 import { handleEmailSecurity } from "../../shared/auth-email.mjs";
 import { sameOrigin, throttle, passwordSafety } from "../../shared/auth-security.mjs";
+import { optionalAnalyticsAllowed } from "../../shared/privacy.mjs";
 
 const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos|recommendations|similar|release_dates))?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos|recommendations|similar|content_ratings))?)|collection\/\d+|person\/\d+(\/combined_credits)?|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
 
@@ -83,7 +84,7 @@ async function progress(request, requestURL, env) {
 
 async function watchTime(request, env) {
   if (request.method !== "POST") return json({ error:"Method not allowed." }, 405, { Allow:"POST" });
-  if (request.headers.get("DNT") === "1" || request.headers.get("Sec-GPC") === "1") return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
+  if (!optionalAnalyticsAllowed(request)) return new Response(null, { status:204, headers:{ "Cache-Control":"no-store" } });
   const settings = supabase(env);
   const token = authorization(request);
   if (!settings) return json({ error:"Supabase is not configured." }, 503);
