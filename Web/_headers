@@ -16,6 +16,11 @@
   Referrer-Policy: no-referrer
   X-Robots-Tag: noindex, nofollow, noarchive
 
+/verify-email
+  Cache-Control: no-store, no-cache, must-revalidate
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow, noarchive
+
 /download
   Cache-Control: no-store, no-cache, must-revalidate
 

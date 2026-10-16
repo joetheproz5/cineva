@@ -59,7 +59,7 @@ self.addEventListener("fetch", event => {
   const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, "");
   const appPath = url.pathname.slice(scopePath.length) || "/";
   // Verification pages must not be saved as navigations or replaced by stale app shells.
-  if (appPath === "/verify-email.html") { event.respondWith(fetch(event.request, { cache:"no-store" })); return; }
+  if (["/verify-email", "/verify-email.html"].includes(appPath)) { event.respondWith(fetch(event.request, { cache:"no-store" })); return; }
   const appShell = event.request.mode === "navigate" || ["/index.html", "/styles.css", "/auth.css", "/ui.css", "/app.js"].includes(appPath);
   if (appShell) event.respondWith(fetch(event.request, { cache:"reload" }).then(response => { const copy = response.clone(); caches.open(VERSION).then(cache => cache.put(event.request, copy)); return response; }).catch(() => caches.match(event.request, { ignoreSearch:true })));
   else event.respondWith(caches.match(event.request, { ignoreSearch:true }).then(cached => cached || fetch(event.request)));
