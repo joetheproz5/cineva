@@ -19,7 +19,7 @@ async function signupWithMockResponse(upstreamBody) {
       env:{ SUPABASE_URL:"https://project.example", SUPABASE_PUBLISHABLE_KEY:"public-key",...require("./security-fixture.cjs").env },
       params:{ path:"auth/signup" }
     });
-    return { upstreamRequest, body:await response.json() };
+    return { upstreamRequest, status:response.status, headers:response.headers, body:await response.json() };
   } finally { global.fetch = originalFetch; }
 }
 
@@ -44,4 +44,15 @@ test("the Pages signup handler does not invent a session when Auth requires conf
   const result = await signupWithMockResponse({ user });
   assert.deepEqual(result.body, { user });
   assert.equal(result.body.session, undefined);
+});
+
+test("the Pages signup handler wraps the raw GoTrue user response when confirmation is required", async () => {
+  // The REST /signup endpoint returns the user directly, unlike the Supabase JS SDK.
+  const user = { id:"pending-user", email:"pending@example.com", email_confirmed_at:null, confirmation_sent_at:"2026-10-16T12:00:00Z", identities:[] };
+  const result = await signupWithMockResponse(user);
+  assert.equal(result.status,200);
+  assert.deepEqual(result.body,{user});
+  assert.equal(result.headers.has('set-cookie'),false);
+  assert.equal(result.headers.get('cache-control'),'no-store');
+  assert.doesNotMatch(JSON.stringify(result.body),/access_token|refresh_token/);
 });

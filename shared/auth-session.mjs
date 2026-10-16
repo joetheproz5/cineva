@@ -84,6 +84,9 @@ export async function handleAuthSession(action,request,env){
     const payload=action==='login'?{email,password}:{email,password,data:{display_name:String(body.displayName||'').slice(0,50),seven_account:{onboardingComplete:false,onboardingStep:1}}};
     const result=await authUpstream(env,route,{method:'POST',body:payload});
     if(result.status>=400){if(action==='login'&&result.data.error_code==='email_not_confirmed')return securityJSON({error:'Verify your email before signing in.',code:'SEVEN_EMAIL_UNCONFIRMED'},403);return securityJSON({error:result.status===429?'Too many attempts. Please wait before trying again.':action==='login'?'That email or password didn’t work.':'Could not create this account. Try signing in or resetting your password.'},result.status);}
+    // GoTrue REST returns a raw user when signup needs confirmation; SDKs wrap it.
+    // Keep it unauthenticated, but expose the shape our pending-verification UI expects.
+    if(action==='signup'&&typeof result.data.id==='string'&&!result.data.access_token&&!result.data.session?.access_token)return securityJSON({user:result.data},result.status);
     return sessionReply(request,env,result.data,result.status);
   }catch(error){return securityJSON({error:[400,413].includes(error.status)?error.message:'Authentication is temporarily unavailable. Please try again.'},[400,413].includes(error.status)?error.status:503);}
 }
