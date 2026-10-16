@@ -2811,11 +2811,11 @@ async function restoreHiddenTitle(key) {
 }
 function currentPreferences() { return { ...DEFAULT_PREFERENCES, ...(state.account?.preferences || {}), ...(currentProfile()?.preferences || {}), maturity:maturityForProfile(currentProfile()) }; }
 function updateCurrentPreferences(values) { const profile = currentProfile(); if (profile) profile.preferences = { ...currentPreferences(), ...values, maturity:maturityForProfile({ ...profile, preferences:{ ...profile.preferences, ...values } }) }; }
-function profileAvatar(profile) { const hasAvatar = isProfileAvatar(profile?.avatar), avatar = hasAvatar ? `<img src="${escapeHTML(profile.avatar)}" alt="">` : escapeHTML(profile?.name?.slice(0, 1).toUpperCase() || "?"); return `<span class="profile-avatar ${hasAvatar ? "profile-avatar-image" : "profile-avatar-initial"}" style="--profile-color:${escapeHTML(profile?.color || "#d41520")}">${avatar}</span>`; }
-function profileGateAvatar(profile) {
-  if (isProfileAvatar(profile?.avatar)) return profileAvatar(profile);
-  return `<span class="profile-avatar profile-avatar-guest" aria-hidden="true"><img src="assets/profile-person.svg" alt=""></span>`;
+function profileAvatar(profile) {
+  if (!isProfileAvatar(profile?.avatar)) return `<span class="profile-avatar profile-avatar-guest" aria-hidden="true"><img src="assets/profile-person.svg" alt=""></span>`;
+  return `<span class="profile-avatar profile-avatar-image" style="--profile-color:#111214"><img src="${escapeHTML(profile.avatar)}" alt=""></span>`;
 }
+function profileGateAvatar(profile) { return profileAvatar(profile); }
 function accountNavItem(tab, icon, label, active) { return `<button class="account-nav-item ${tab === active ? "active" : ""}" data-account-tab="${tab}" aria-current="${tab === active ? "page" : "false"}"><i aria-hidden="true">${icon}</i><span>${label}</span></button>`; }
 function accountAction(icon, title, detail, action, value = "Open") { return `<button class="account-action-card" ${action}><i aria-hidden="true">${icon}</i><span><b>${t(title)}</b><small>${t(detail)}</small></span><em>${t(String(value))} ›</em></button>`; }
 function parentAccessCodeAction() { const hasCode = parentAccessConfigured(); return `<button type="button" class="account-action-card profile-parent-code-action" data-change-parent-code><i aria-hidden="true">⌘</i><span><b>${t(hasCode ? "Change parent access code" : "Set parent access code")}</b><small>${t(hasCode ? "Confirm your current code before changing or turning it off." : "Protect profile and account settings without locking the profile picker.")}</small></span><em>${hasCode ? "Change" : "Set"} ›</em></button>`; }
@@ -3106,7 +3106,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=374", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=375", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

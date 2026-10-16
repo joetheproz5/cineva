@@ -55,7 +55,7 @@ test("desktop profile picker keeps a restrained center spotlight and no mobile p
   assert.match(defaultProfileIcon, /class="bi bi-person-circle"/);
   assert.match(defaultProfileIcon, /fill="#ed1b27"/);
   assert.match(styles, /\.profile-gate \.profile-add-avatar \{[^}]*border: 1px solid #666a70/);
-  assert.match(app, /function profileGateAvatar\(profile\)[\s\S]*?profile-avatar-guest[\s\S]*?assets\/profile-person\.svg/);
+  assert.match(app, /function profileGateAvatar\(profile\) \{ return profileAvatar\(profile\); \}/);
 });
 
 test("mobile artwork is one uncropped-feeling poster at a time with a clean handoff", () => {
@@ -116,10 +116,10 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=274/);
-  assert.match(index, /app\.js\?v=374/);
-  assert.match(serviceWorker, /seven-v374/);
-  assert.match(serviceWorker, /auth\.css\?v=274/);
-  assert.match(serviceWorker, /app\.js\?v=374/);
+  assert.match(index, /auth\.css\?v=275/);
+  assert.match(index, /app\.js\?v=375/);
+  assert.match(serviceWorker, /seven-v375/);
+  assert.match(serviceWorker, /auth\.css\?v=275/);
+  assert.match(serviceWorker, /app\.js\?v=375/);
   assert.match(serviceWorker, /assets\/profile-person\.svg/);
 });

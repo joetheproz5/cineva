@@ -58,7 +58,7 @@ shift the centered layout horizontally. This CSS only applies on collection page
   ratios, keyboard focus and reduced-motion support.
 - Both API proxies allow numeric `collection/{id}`, `movie/{id}/similar`, and
   `tv/{id}/similar`; arbitrary TMDB routes remain blocked.
-- Version 374 installs the new assets in the service-worker shell. No database
+- Version 375 installs the new assets in the service-worker shell. No database
   migration or native-wrapper rebuild is needed.
 
 Run `node --test Web/tests/*.test.js` from the repository root. Browser QA covers

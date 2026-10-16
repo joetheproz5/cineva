@@ -88,5 +88,5 @@ References: [TMDB movie certifications](https://developer.themoviedb.org/referen
 [MPA guide](https://www.filmratings.com/ratings-guide/),
 [TV Parental Guidelines](https://tvguidelines.org/faqs.html).
 
-App/service worker version: **374**. The startup ident/profile animations and
+App/service worker version: **375**. The startup ident/profile animations and
 horizontal spotlight transition are unchanged.
