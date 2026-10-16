@@ -8,6 +8,7 @@ const collection=()=>({id:404609,name:'John Wick Collection',overview:'Every cha
 const api=async(req,url)=>{
  requests.push(url.pathname);if(heldRelated&&/\/(recommendations|similar)$/.test(url.pathname))await heldRelated;
  if(url.pathname==='/api/config')return {configured:true};
+ if(url.pathname==='/api/account/settings')return {id:'qa',email:'qa@example.test'};
  if(url.pathname==='/api/account/watchlist')return req.method==='GET'?[]:[];
  if(url.pathname.includes('/collection/')){if(failCollection)throw Error('Collection fixture offline');return collection();}
  if(/\/(recommendations|similar)$/.test(url.pathname)){
@@ -32,9 +33,11 @@ const server=http.createServer(async(req,res)=>{
  try{for(const width of [1440,768,390,320]){
   const context=await browser.newContext({viewport:{width,height:width<650?844:1000},serviceWorkers:'block'}),page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(15000);
-  await context.addInitScript(()=>localStorage.setItem('seven.account.settings',JSON.stringify({preferences:{introEnabled:false}})));
+  await context.addInitScript(()=>localStorage.setItem('seven.account.settings',JSON.stringify({activeProfileId:'main',profiles:[{id:'main',name:'Legacy profile',kids:false,preferences:{maturity:'Kids'}}],preferences:{introEnabled:false,maturity:'Kids'}})));
   if(process.env.SEVEN_LIVE)await page.route('**/api/**',async route=>{try{await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(await api({method:route.request().method()},new URL(route.request().url())))});}catch(error){await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:error.message})});}});
   await page.goto(origin+'/?title=movie:245891');await page.waitForSelector('.franchise-preview');await page.waitForFunction(()=>!state.titleDiscovery.loading&&!state.titleDiscovery.collectionLoading);
+  assert.equal(await page.evaluate(()=>currentPreferences().maturity),'18+');
+  assert.equal(await page.evaluate(()=>currentProfile().preferences.maturity),'18+');
   await page.evaluate(()=>document.querySelector('.seven-intro')?.remove());
   assert.equal(await page.locator('.discovery-grid .discovery-card').count(),6);
   assert.equal(await page.locator('.card-play').count(),0);
@@ -42,20 +45,24 @@ const server=http.createServer(async(req,res)=>{
   // Stage a test account in memory only; every account request is handled by the fixture server.
   await page.evaluate(()=>{
    state.user={id:'qa',email:'qa@example.test'};state.session={access_token:'fixture'};
-   state.account={activeProfileId:'main',profiles:[{id:'main',name:'QA'},{id:'other',name:'Other'}],preferences:{introEnabled:false}};
+   state.account={activeProfileId:'main',profiles:[{id:'main',name:'QA',kids:false,preferences:{maturity:'Kids'}},{id:'other',name:'Other'}],preferences:{introEnabled:false,maturity:'Kids'}};
    localStorage.setItem(watchKey({type:'movie',id:245891}),JSON.stringify({type:'movie',id:245891,watched:true,progress:100}));
    localStorage.setItem(watchKey({type:'movie',id:324552}),JSON.stringify({type:'movie',id:324552,currentTime:600,duration:7200,progress:8.33}));
    state.watchlistOwnerId='qa';state.watchlistProfileId='main';state.watchlist=[];render();
   });
   await page.waitForFunction(()=>!state.titleDiscovery.loading&&!state.titleDiscovery.collectionLoading);
+  assert.equal(await page.evaluate(()=>profileMaturity()),'18+');
   await page.locator('[data-open-franchise]').click();await page.waitForSelector('.franchise-page');
   assert.match(await page.locator('.franchise-progress-summary').innerText(),/1\/4/);
   assert.match(await page.locator('.franchise-next').innerText(),/Chapter 2/);
   assert.equal(await page.locator('.franchise-grid .discovery-card').count(),6);
   const ids=await page.locator('.franchise-grid .discovery-card-open').evaluateAll(elements=>elements.map(el=>el.dataset.open));assert.deepEqual(ids.slice(0,4),films.map(item=>'movie:'+item.id));
   assert.equal(await page.locator('.franchise-grid .discovery-watched').count(),1);
+  const anchor=await page.locator('.franchise-hero h1').boundingBox();
   await page.locator('[data-franchise-filter="watched"]').click();assert.equal(await page.locator('.franchise-grid .discovery-card').count(),1);
+  assert.ok(Math.abs((await page.locator('.franchise-hero h1').boundingBox()).x-anchor.x)<.5,'Watched filter must not shift the page horizontally');
   await page.locator('[data-franchise-filter="unwatched"]').click();assert.equal(await page.locator('.franchise-grid .discovery-card').count(),5);
+  assert.ok(Math.abs((await page.locator('.franchise-hero h1').boundingBox()).x-anchor.x)<.5,'Unwatched filter must not shift the page horizontally');
   await page.locator('[data-franchise-filter="all"]').click();await page.locator('[data-franchise-order]').selectOption('newest');
   assert.equal(await page.locator('.franchise-grid .discovery-order').nth(4).innerText(),'01');
   await page.locator('[data-franchise-order]').selectOption('release');
@@ -87,6 +94,12 @@ const server=http.createServer(async(req,res)=>{
   assert.ok((await page.locator('.related-titles [data-open]').evaluateAll(elements=>elements.map(el=>el.dataset.open))).every(id=>id.startsWith('tv:')));
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'No TV overflow '+width);
   if(width===390){
+   await page.evaluate(()=>{state.account.parentAccessEnabled=true;showProfileEditor('main','series','family');});
+   assert.equal(await page.locator('[name="maturity"]').isDisabled(),true);assert.equal(await page.locator('[name="maturity"]').inputValue(),'18+');
+   await page.locator('[name="kids"]').check();assert.equal(await page.locator('[name="maturity"]').inputValue(),'Kids');
+   await page.locator('[name="kids"]').uncheck();assert.equal(await page.locator('[name="maturity"]').isDisabled(),true);assert.equal(await page.locator('[name="maturity"]').inputValue(),'18+');
+   await page.locator('#profile-settings-form button[type="submit"]').click();await page.waitForFunction(()=>state.profileSettingsCategory==='home');
+   assert.equal(await page.evaluate(()=>state.account.profiles.find(item=>item.id==='main').preferences.maturity),'18+');
    await page.evaluate(()=>openItem('movie',245891));await page.waitForFunction(()=>!state.titleDiscovery.loading&&!state.titleDiscovery.collectionLoading);
    await page.locator('[data-open-franchise]').click();
    await page.evaluate(()=>{state.franchise.collection={...state.franchise.collection,parts:Array.from({length:53},(_,i)=>({...state.movie,id:800+i,title:'Chapter '+i,release_date:'2020-01-01'}))};render();});
@@ -95,7 +108,9 @@ const server=http.createServer(async(req,res)=>{
    assert.equal(await page.locator('.franchise-grid .card-watchlist.saved').count(),0);
    await page.locator('.franchise-grid .card-watchlist').nth(20).click();await page.waitForFunction(()=>state.watchlist.some(item=>item.id===820));
    await page.locator('[data-more-franchise]').click();assert.equal(await page.locator('.franchise-grid .discovery-card').count(),53);assert.equal(await page.locator('[data-more-franchise]').count(),0);
+   const populatedAnchor=await page.locator('.franchise-hero h1').boundingBox();
    await page.locator('[data-franchise-filter="watched"]').click();assert.equal(await page.locator('.discovery-empty').count(),1);
+   assert.ok(Math.abs((await page.locator('.franchise-hero h1').boundingBox()).x-populatedAnchor.x)<.5,'Empty and populated collections keep the same horizontal alignment');
    // Fully watched collections have no false next-film suggestion.
    await page.evaluate(()=>{for(const item of state.franchise.collection.parts)localStorage.setItem(watchKey(item),JSON.stringify({watched:true}));render();});
    assert.equal(await page.locator('.franchise-next').count(),0);assert.equal(await page.locator('.franchise-complete').count(),1);

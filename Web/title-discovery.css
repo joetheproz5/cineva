@@ -1,4 +1,8 @@
 /* Scoped title discovery: no changes to shared home cards or startup layers. */
+html.seven-collection-view { scrollbar-gutter: stable; }
+@supports not (scrollbar-gutter: stable) {
+  html.seven-collection-view { overflow-y: scroll; }
+}
 .title-discovery { margin: 52px 0; }
 .title-discovery > section[hidden] { display: none; }
 .title-discovery > section + section { margin-top: 44px; }

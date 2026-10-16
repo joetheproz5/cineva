@@ -21,7 +21,7 @@ function settingsContext() {
     hiddenTitles:() => []
   };
   vm.createContext(context);
-  vm.runInContext(`${homeSource}\n${detailSource}`, context);
+  vm.runInContext(`${source.match(/function maturityForProfile\(profile\) \{[^\n]+/)[0]}\n${homeSource}\n${detailSource}`, context);
   return context;
 }
 

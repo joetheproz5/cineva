@@ -18,6 +18,14 @@ unavailable results never prevent the title itself from opening.
 
 ## Boundaries
 
+Maturity now follows Kids mode: standard profiles always use 18+, including when
+legacy settings stored Kids/13+/16+. Hydration normalizes old profile values
+locally, and later saves persist the effective value. The maturity control shows
+18+ and is disabled when Kids mode is off; toggling Kids on shows Kids. Separate
+family-safe, scary-title and explicit title restrictions remain in effect.
+Collection pages reserve scrollbar space so empty/populated filter views do not
+shift the centered layout horizontally. This CSS only applies on collection pages.
+
 - Collection membership comes from TMDB, not title-name guessing. TMDB movie
   collections do not represent every shared universe or TV crossover. TV details
   get related shows, not invented movie/TV franchise groupings.
@@ -49,7 +57,7 @@ unavailable results never prevent the title itself from opening.
   ratios, keyboard focus and reduced-motion support.
 - Both API proxies allow numeric `collection/{id}`, `movie/{id}/similar`, and
   `tv/{id}/similar`; arbitrary TMDB routes remain blocked.
-- Version 371 installs the new assets in the service-worker shell. No database
+- Version 372 installs the new assets in the service-worker shell. No database
   migration or native-wrapper rebuild is needed.
 
 Run `node --test Web/tests/*.test.js` from the repository root. Browser QA covers
