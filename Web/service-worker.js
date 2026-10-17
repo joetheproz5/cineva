@@ -1,8 +1,8 @@
-const VERSION = "seven-v383";const DATA_CACHE = "seven-data-v1";
-const IMAGE_CACHE = "seven-images-v1";
+const VERSION = "seven-v384";const DATA_CACHE = "seven-data-v1";
+const IMAGE_CACHE = "seven-images-v2";
 const SECURITY_SHELL=["password-policy.js?v=1","auth-security.js?v=3","auth-security.css?v=2"];
 const PRIVACY_SHELL=["privacy.html","privacy.js?v=1","privacy.css?v=1","metrics.js?v=2"];
-const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=275", "ui.css?v=308", "player-security.js?v=246", "profile-stats.js?v=1", "catalog-browser.js?v=1", "search-engine.js?v=1", "recommendations.js?v=1", "series-tracker.js?v=1", "progress-tools.js?v=1", "series-tracker-ui.js?v=4", "progress-ui.js?v=2", "devices.js?v=2", "title-discovery.js?v=1", "title-discovery-ui.js?v=2", "title-discovery.css?v=3", "hero-spotlight.js?v=1", "hero-spotlight.css?v=1", "age-ratings.js?v=1", "age-ratings.css?v=1", "settings-sync.js?v=1", "settings-sync-ui.js?v=3", "settings-sync.css?v=1", "undo-actions.js?v=1", "undo-actions.css?v=1", "settings-ui.js?v=1", "settings-ui.css?v=1", "app.js?v=383", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png", "assets/poster-placeholder.svg", "assets/still-placeholder.svg", "assets/profile-placeholder.svg"];
+const SHELL = ["./", "index.html", "styles.css?v=235", "auth.css?v=275", "ui.css?v=308", "player-security.js?v=246", "profile-stats.js?v=1", "catalog-browser.js?v=1", "search-engine.js?v=1", "recommendations.js?v=1", "series-tracker.js?v=1", "progress-tools.js?v=1", "series-tracker-ui.js?v=4", "progress-ui.js?v=2", "devices.js?v=2", "title-discovery.js?v=1", "title-discovery-ui.js?v=2", "title-discovery.css?v=3", "hero-spotlight.js?v=1", "hero-spotlight.css?v=1", "age-ratings.js?v=1", "age-ratings.css?v=1", "settings-sync.js?v=1", "settings-sync-ui.js?v=3", "settings-sync.css?v=1", "undo-actions.js?v=1", "undo-actions.css?v=1", "settings-ui.js?v=1", "settings-ui.css?v=1", "app.js?v=384", "manifest.webmanifest", "icon.svg", "assets/seven-logo-red.png", "assets/seven-logo-red-download.webp", "assets/seven-wordmark-v2.png", "assets/profile-person.svg", "assets/avatars/red-panda.png", "assets/poster-placeholder.svg", "assets/still-placeholder.svg", "assets/profile-placeholder.svg"];
 self.addEventListener("install", event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll([...SHELL,...SECURITY_SHELL,...PRIVACY_SHELL])).then(() => self.skipWaiting())));
 self.addEventListener("message", event => { if (event.data?.type === "SEVEN_SKIP_WAITING") self.skipWaiting(); });
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => ![VERSION, DATA_CACHE, IMAGE_CACHE].includes(key)).map(key => caches.delete(key)))).then(() => self.clients.claim())));
@@ -38,13 +38,27 @@ self.addEventListener("fetch", event => {
   // Player proxy and live API routes must always hit the network — never answer from a cache.
   if (url.origin === location.origin && url.pathname.startsWith("/api/")) return;
   if (url.origin === "https://image.tmdb.org") {
-    event.respondWith(caches.open(IMAGE_CACHE).then(async cache => {
-      const cached = await cache.match(event.request);
-      if (cached) return cached;
+    event.respondWith((async () => {
+      let cache;
+      try {
+        cache = await caches.open(IMAGE_CACHE);
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+      } catch { /* Storage restrictions must not block artwork from the network. */ }
       const response = await fetch(event.request);
-      if (response.ok || response.type === "opaque") { await cache.put(event.request, response.clone()); const keys = await cache.keys(); await Promise.all(keys.slice(0, Math.max(0, keys.length - 120)).map(key => cache.delete(key))); }
+      if (cache && (response.ok || response.type === "opaque")) {
+        // Return the image immediately, even if the cache is full or unavailable.
+        const copy = response.clone();
+        event.waitUntil((async () => {
+          try {
+            await cache.put(event.request, copy);
+            const keys = await cache.keys();
+            await Promise.all(keys.slice(0, Math.max(0, keys.length - 120)).map(key => cache.delete(key)));
+          } catch { /* Caching is optional; loading artwork is not. */ }
+        })());
+      }
       return response;
-    }));
+    })());
     return;
   }
   if (url.origin === location.origin && url.pathname.startsWith("/api/tmdb/")) {
