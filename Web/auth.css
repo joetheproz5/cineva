@@ -1292,7 +1292,8 @@
 .onboarding-family-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .onboarding-family-choice { display: grid; min-height: 160px; grid-template-columns: 34px minmax(0,1fr) 16px; align-items: start; gap: 13px; padding: 19px; border: 1px solid #343434; border-radius: 9px; color: #ddd; background: linear-gradient(145deg,#151515,#101010); text-align: left; transition: border-color .18s,background .18s,transform .18s; }
 .onboarding-family-choice.selected { border-color: #d3131c; background: linear-gradient(120deg,#261214,#111 78%); }
-.onboarding-family-icon { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #3a3030; border-radius: 9px; color: #e62a34; background: #1c1213; font-size: 17px; }
+.onboarding-family-icon { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #3a3030; border-radius: 9px; color: #e62a34; background: #1c1213; }
+.onboarding-family-icon svg { width: 18px; height: 18px; }
 .onboarding-error { min-height: 18px; margin-top: 8px !important; color: #e38d91 !important; font-size: 12px !important; }
 .onboarding-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 23px; }
 .onboarding-actions-start { display: flex; min-width: 0; align-items: center; gap: 14px; }
