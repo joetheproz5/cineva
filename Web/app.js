@@ -2699,7 +2699,7 @@ function googleProfileSetupPending() {
   if (googleUser) {
     const profile = account?.profiles?.find(item => item.id === "main") || account?.profiles?.[0];
     const setupComplete = account?.onboardingComplete === true && Boolean(profile?.avatar);
-    const createdAt = Date.parse(state.user?.created_at || ""), recentlyCreated = Number.isFinite(createdAt) && Date.now() - createdAt < 15 * 60 * 1000;
+    const createdAt = Date.parse(state.user?.created_at || ""), recentlyCreated = Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
     return !setupComplete && (Boolean(account) || recentlyCreated);
   }
   return false;
@@ -3270,7 +3270,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=387", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=388", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
