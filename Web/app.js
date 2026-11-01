@@ -2495,16 +2495,61 @@ function renderWatchlist() {
 function openWatchlist() { state.watchlistReturn = state.route; state.route = "watchlist"; scrollToTop(); render(); }
 function openHistoryItem(key) { const saved = JSON.parse(localStorage.getItem(key) || "{}"), item = { type:saved.type, id:Number(saved.id), season:Number(saved.season) || undefined, episode:Number(saved.episode) || undefined, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(saved) }; if (!item.type || !item.id) return; state.player = item; state.route = "player"; render(); scrollToTop(); }
 async function removeHistoryItem(key) { localStorage.removeItem(key); forgetAccountProgress(key); if (state.session) try { await localAPI(`/api/account/progress?key=${encodeURIComponent(key)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderHistory(); }
+let authReturnFocus = null, authBodyOverflow = "", authRootOverflow = "", authScrollY = 0;
+function closeAuthModal() {
+  const modal = document.querySelector(".auth-modal");
+  if (!modal || document.querySelector("#auth-form")?.getAttribute("aria-busy") === "true") return;
+  document.removeEventListener("keydown", handleAuthModalKeydown, true);
+  modal.remove();
+  document.body.style.overflow = authBodyOverflow;
+  document.documentElement.style.overflow = authRootOverflow;
+  window.scrollTo(0, authScrollY);
+  const target = authReturnFocus;
+  authReturnFocus = null;
+  if (target?.isConnected) target.focus({preventScroll:true});
+}
+function handleAuthModalKeydown(event) {
+  const modal = document.querySelector(".auth-modal");
+  if (!modal) return;
+  if (event.key === "Escape") { event.preventDefault(); closeAuthModal(); return; }
+  if (event.key !== "Tab") return;
+  const focusable = [...modal.querySelectorAll("button:not(:disabled), input:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])")].filter(element => element.getClientRects().length && getComputedStyle(element).visibility !== "hidden");
+  if (!focusable.length) { event.preventDefault(); return; }
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+}
 function showAuth(mode = "login", message = "", email = "") {
-  document.querySelector(".modal")?.remove();
+  const existing = document.querySelector(".auth-modal");
+  existing?.remove();
+  if (!existing) {
+    document.querySelector(".modal")?.remove();
+    authReturnFocus = document.activeElement;
+    authBodyOverflow = document.body.style.overflow;
+    authRootOverflow = document.documentElement.style.overflow;
+    authScrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.addEventListener("keydown", handleAuthModalKeydown, true);
+  }
   const create = mode === "signup";
-  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p><button class="google-auth" type="button" data-google-auth>Continue with Google</button><div class="auth-divider"><span>or continue with email</span></div>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required ${create ? 'minlength="12" maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" placeholder="${create ? 'At least 12 characters' : 'Your password'}"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
-  if (email) document.querySelector('#auth-form input[name="email"]').value = email;
-  if(create)document.querySelector('#auth-message').insertAdjacentHTML('beforebegin','<p class="auth-privacy-note"><a href="privacy.html" data-privacy-settings>How SEVEN uses your data</a></p>');
-  document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove();
+  app.insertAdjacentHTML("beforeend", `<div class="modal auth-modal"><form class="auth-card auth-flow" id="auth-form" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-busy="false" novalidate><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close ${create ? "sign-up" : "sign-in"} dialog">×</button><img class="auth-wordmark" src="assets/seven-wordmark-v2.png" alt="SEVEN"><h2 id="auth-title">${create ? "Create your account" : "Welcome back"}</h2><p class="auth-subtitle">${create ? "Save your progress and preferences." : "Sign in to continue watching."}</p><button class="google-auth" type="button" data-google-auth><img src="assets/icons/google-g.svg" alt="" width="20" height="20"><span>Continue with Google</span></button><div class="auth-divider"><span>or</span></div><div class="auth-fields">${create ? `<div class="auth-field"><label for="auth-display-name">Display name <span class="auth-optional">(optional)</span></label><input id="auth-display-name" name="displayName" type="text" maxlength="50" autocomplete="name" aria-describedby="display-name-hint"><span id="display-name-hint" class="auth-field-hint">Shown on your profile.</span></div>` : ""}<div class="auth-field"><label for="auth-email">Email</label><input id="auth-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com" aria-describedby="email-error"><span class="auth-field-error" id="email-error" aria-live="polite"></span></div><div class="auth-field"><label for="auth-password">Password</label><div class="auth-password-wrap"><input id="auth-password" name="password" type="password" required ${create ? 'maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" aria-describedby="${create ? "password-hint " : ""}password-error auth-message"><button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button></div>${create ? '<span class="auth-field-hint" id="password-hint">Use at least 12 characters.</span>' : ""}<span class="auth-field-error" id="password-error" aria-live="polite"></span><span class="auth-field-error auth-server-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</span></div></div><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button>${create ? '<p class="auth-privacy-note">By creating an account, you agree to <a href="privacy.html" data-privacy-settings>how SEVEN uses your data</a>.</p>' : ""}<button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><img class="auth-wordmark" src="assets/seven-wordmark-v2.png" alt="SEVEN"><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
+  const modal = document.querySelector(".auth-modal"), form = modal.querySelector("#auth-form"), emailInput = form.elements.email, passwordInput = form.elements.password;
+  if (email) emailInput.value = email;
+  modal.addEventListener("click", event => { if (event.target === modal) closeAuthModal(); });
+  modal.querySelector("[data-close]").onclick = closeAuthModal;
   document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
   document.querySelector("[data-google-auth]").onclick = () => void startGoogleOAuth(mode);
-  document.querySelector("#auth-form").onsubmit = event => submitAuth(event, mode);
+  modal.querySelector("[data-password-toggle]").onclick = event => {
+    const button = event.currentTarget, visible = passwordInput.type === "password";
+    passwordInput.type = visible ? "text" : "password";
+    button.setAttribute("aria-pressed", String(visible));
+    button.setAttribute("aria-label", visible ? "Hide password" : "Show password");
+  };
+  emailInput.addEventListener("input", () => { form.querySelector("#email-error").textContent = ""; emailInput.removeAttribute("aria-invalid"); });
+  passwordInput.addEventListener("input", () => { form.querySelector("#password-error").textContent = ""; form.querySelector("#auth-message").textContent = ""; passwordInput.removeAttribute("aria-invalid"); });
+  form.onsubmit = event => submitAuth(event, mode);
+  requestAnimationFrame(() => modal.querySelector("[data-close]")?.focus({preventScroll:true}));
 }
 async function showAuthSuccess(form, title, description) {
   form.querySelector("[data-auth-success-title]").textContent = title;
@@ -2609,18 +2654,25 @@ function showChangePassword() {
 async function submitAuth(event, mode) {
   event.preventDefault();
   const formElement = event.currentTarget, values = new FormData(formElement), message = formElement.querySelector("#auth-message"), submit = formElement.querySelector("[type=submit]"), close = formElement.querySelector("[data-close]"), create = mode === "signup";
+  const emailInput = formElement.elements.email, passwordInput = formElement.elements.password, emailError = formElement.querySelector("#email-error"), passwordError = formElement.querySelector("#password-error");
+  message.textContent = ""; emailError.textContent = ""; passwordError.textContent = "";
+  if (!emailInput.value.trim() || !emailInput.validity.valid) {
+    emailError.textContent = emailInput.value.trim() ? "Enter a valid email address." : "Enter your email address.";
+    emailInput.setAttribute("aria-invalid", "true"); emailInput.focus(); return;
+  }
+  const invalidPassword = !passwordInput.value ? "Enter your password." : create ? window.SEVENPasswordPolicy.error(passwordInput.value) : "";
+  if (invalidPassword) { passwordError.textContent = invalidPassword; passwordInput.setAttribute("aria-invalid", "true"); passwordInput.focus(); return; }
   submit.disabled = true;
   submit.setAttribute("aria-busy", "true");
   submit.textContent = create ? "Creating account…" : "Signing in…";
   close.disabled = true;
-  formElement.querySelectorAll("input, [data-switch], [data-google-auth]").forEach(control => { control.disabled = true; });
+  formElement.querySelectorAll("input, [data-switch], [data-google-auth], [data-password-toggle]").forEach(control => { control.disabled = true; });
   formElement.classList.add("auth-submitting");
   formElement.setAttribute("aria-busy", "true");
   message.textContent = "";
   try {
     const payload = { email:values.get("email"), password:values.get("password"), displayName:values.get("displayName") };
     await window.SEVENDevices?.finishLogout();
-    if(create){const invalid=window.SEVENPasswordPolicy.error(payload.password);if(invalid)throw Error(invalid);}
     let data = await withSessionRefreshLock(()=>localAPI(`/api/auth/${create ? "signup" : "login"}`, { signal:AbortSignal.timeout(35000),method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) }));
     if(data.session?.access_token)data=await window.SEVENAuthSecurity.complete(data);
     if (create && !data.session?.access_token && data.user) {
@@ -2659,7 +2711,7 @@ async function submitAuth(event, mode) {
     if (formElement.isConnected && !formElement.classList.contains("auth-success")) {
       submit.textContent = create ? "Create account" : "Sign in";
       close.disabled = false;
-      formElement.querySelectorAll("input, [data-switch], [data-google-auth]").forEach(control => { control.disabled = false; });
+      formElement.querySelectorAll("input, [data-switch], [data-google-auth], [data-password-toggle]").forEach(control => { control.disabled = false; });
     }
   }
 }
