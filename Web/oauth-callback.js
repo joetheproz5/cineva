@@ -5,7 +5,7 @@
   history.replaceState(history.state, "", location.pathname);
   if (code || error) {
     try { sessionStorage.setItem("seven.google.oauth.callback", JSON.stringify({ code:code || "", error })); }
-    catch { location.replace("/?auth=login"); return; }
+    catch { location.replace(new URL("./?auth=login", location.href).href); return; }
   }
-  location.replace("/");
+  location.replace(new URL("./", location.href).href);
 })();

@@ -737,7 +737,7 @@ async function startGoogleOAuth(mode) {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
     const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
     sessionStorage.setItem(GOOGLE_OAUTH_VERIFIER_KEY, verifier);
-    const redirect = new URL("/oauth-callback.html", location.origin).href;
+    const redirect = new URL("oauth-callback.html", document.baseURI).href;
     const authorize = new URL("/auth/v1/authorize", supabaseUrl); authorize.searchParams.set("provider","google"); authorize.searchParams.set("redirect_to",redirect); authorize.searchParams.set("code_challenge",challenge); authorize.searchParams.set("code_challenge_method","s256");
     location.assign(authorize.href);
   } catch (error) { message.textContent = error.message || "Google sign-in is temporarily unavailable."; button.disabled = false; button.textContent = "Continue with Google"; }
@@ -3253,7 +3253,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=384", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=385", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
