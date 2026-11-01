@@ -704,17 +704,23 @@ async function refreshCatalogNow() {
 }
 function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; partyHostTitleChanged(); render(); scrollToTop(); }
 const GOOGLE_OAUTH_VERIFIER_KEY = "seven.google.oauth.verifier";
-const GOOGLE_OAUTH_CALLBACK_KEY = "seven.google.oauth.callback";
-async function consumeGoogleOAuthRedirect() {
+const DISCORD_OAUTH_VERIFIER_KEY = "seven.discord.oauth.verifier";
+const SOCIAL_OAUTH_CALLBACK_KEY = "seven.social.oauth.callback";
+function socialProviderLabel(provider) { return provider === "discord" ? "Discord" : "Google"; }
+async function consumeSocialOAuthRedirect() {
   let callback;
-  try { callback = JSON.parse(sessionStorage.getItem(GOOGLE_OAUTH_CALLBACK_KEY) || "null"); } catch { callback = null; }
+  try { callback = JSON.parse(sessionStorage.getItem(SOCIAL_OAUTH_CALLBACK_KEY) || sessionStorage.getItem("seven.google.oauth.callback") || "null"); } catch { callback = null; }
   if (!callback) return "";
-  sessionStorage.removeItem(GOOGLE_OAUTH_CALLBACK_KEY);
+  sessionStorage.removeItem(SOCIAL_OAUTH_CALLBACK_KEY);
+  sessionStorage.removeItem("seven.google.oauth.callback");
+  const provider = callback.provider === "discord" ? "discord" : "google", providerLabel = socialProviderLabel(provider);
   const code = typeof callback.code === "string" ? callback.code : "", providerError = callback.error === true;
-  const verifier = sessionStorage.getItem(GOOGLE_OAUTH_VERIFIER_KEY);
-  sessionStorage.removeItem(GOOGLE_OAUTH_VERIFIER_KEY);
-  if (providerError) return "Google sign-in was cancelled or could not be completed. Please try again.";
-  if (!code || !verifier) return "Google sign-in could not be completed. Please try again.";
+  const verifierKey = provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY;
+  const verifier = sessionStorage.getItem(verifierKey) || (provider === "google" ? sessionStorage.getItem(GOOGLE_OAUTH_VERIFIER_KEY) : "");
+  sessionStorage.removeItem(verifierKey);
+  if (provider === "google") sessionStorage.removeItem(GOOGLE_OAUTH_VERIFIER_KEY);
+  if (providerError) return `${providerLabel} sign-in was cancelled or could not be completed. Please try again.`;
+  if (!code || !verifier) return `${providerLabel} sign-in could not be completed. Please try again.`;
   try {
     const data = await localAPI("/api/auth/oauth-exchange", { signal:AbortSignal.timeout(25000), method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({code,codeVerifier:verifier}) });
     if (!data.session?.access_token) throw Error("No sign-in session was returned.");
@@ -722,30 +728,32 @@ async function consumeGoogleOAuthRedirect() {
     persistSession(verified.session, Date.now());
     state.user = verified.user || verified.session.user || null;
     return "";
-  } catch { return "Google sign-in could not be completed. Please try again."; }
+  } catch { return `${providerLabel} sign-in could not be completed. Please try again.`; }
 }
-async function startGoogleOAuth(mode) {
-  const button = document.querySelector("[data-google-auth]"), message = document.querySelector("#auth-message");
+async function startSocialOAuth(provider, mode) {
+  if (!['google','discord'].includes(provider)) return;
+  const button = document.querySelector(`[data-social-auth="${provider}"]`), label = button?.querySelector("[data-social-label]"), message = document.querySelector("#auth-message"), providerLabel = socialProviderLabel(provider);
   if (!button || button.disabled) return;
-  button.disabled = true; button.textContent = "Connecting to Google…"; message.textContent = "";
+  button.disabled = true; if (label) label.textContent = `Connecting to ${providerLabel}…`; message.textContent = "";
   try {
     const config = await localAPI("/api/config", {signal:AbortSignal.timeout(10000)});
-    if (!config.supabase?.url) throw Error("Google sign-in is not configured yet.");
+    if (!config.supabase?.url) throw Error(`${providerLabel} sign-in is not configured yet.`);
     const supabaseUrl = new URL(config.supabase.url);
-    if (supabaseUrl.protocol !== "https:" && supabaseUrl.hostname !== "localhost") throw Error("Google sign-in is not configured yet.");
+    if (supabaseUrl.protocol !== "https:" && supabaseUrl.hostname !== "localhost") throw Error(`${providerLabel} sign-in is not configured yet.`);
     const bytes = crypto.getRandomValues(new Uint8Array(32)), verifier = btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
     const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
-    sessionStorage.setItem(GOOGLE_OAUTH_VERIFIER_KEY, verifier);
+    sessionStorage.setItem(provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY, verifier);
+    sessionStorage.setItem("seven.oauth.provider", provider);
     const redirect = new URL("oauth-callback.html", document.baseURI).href;
-    const authorize = new URL("/auth/v1/authorize", supabaseUrl); authorize.searchParams.set("provider","google"); authorize.searchParams.set("redirect_to",redirect); authorize.searchParams.set("code_challenge",challenge); authorize.searchParams.set("code_challenge_method","s256");
+    const authorize = new URL("/auth/v1/authorize", supabaseUrl); authorize.searchParams.set("provider",provider); authorize.searchParams.set("redirect_to",redirect); authorize.searchParams.set("code_challenge",challenge); authorize.searchParams.set("code_challenge_method","s256");
     location.assign(authorize.href);
-  } catch (error) { message.textContent = error.message || "Google sign-in is temporarily unavailable."; button.disabled = false; button.textContent = "Continue with Google"; }
+  } catch (error) { message.textContent = error.message || `${providerLabel} sign-in is temporarily unavailable.`; button.disabled = false; if (label) label.textContent = `Continue with ${providerLabel}`; }
 }
 async function boot() {
   renderLoading();
   const verifiedEmail = await consumeEmailVerificationRedirect();
-  const googleAuthError = await consumeGoogleOAuthRedirect();
+  const socialAuthError = await consumeSocialOAuthRedirect();
   await restoreSession();
   applyLocale();
   const params = new URLSearchParams(location.search);
@@ -761,7 +769,7 @@ async function boot() {
   if (!navigator.onLine) return renderOfflineScreen();
   if (state.user) { state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles"; if (state.route === "onboarding") beginOnboarding(); render(); } else renderLoading();
   await loadStartupData();
-  if (googleAuthError) showAuth("login", googleAuthError);
+  if (socialAuthError) showAuth("login", socialAuthError);
   else if (verifiedEmail) await finishEmailVerification(verifiedEmail);
   else if (state.emailVerificationError) {
     const pendingVerification=readPendingEmailVerification();
@@ -2533,13 +2541,37 @@ function showAuth(mode = "login", message = "", email = "") {
     document.addEventListener("keydown", handleAuthModalKeydown, true);
   }
   const create = mode === "signup";
-  app.insertAdjacentHTML("beforeend", `<div class="modal auth-modal"><form class="auth-card auth-flow" id="auth-form" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-busy="false" novalidate><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close ${create ? "sign-up" : "sign-in"} dialog">×</button><img class="auth-wordmark" src="assets/seven-wordmark-v2.png" alt="SEVEN"><h2 id="auth-title">${create ? "Create your account" : "Welcome back"}</h2><p class="auth-subtitle">${create ? "Save your progress and preferences." : "Sign in to continue watching."}</p><button class="google-auth" type="button" data-google-auth><img src="assets/icons/google-g.svg" alt="" width="20" height="20"><span>Continue with Google</span></button><div class="auth-divider"><span>or</span></div><div class="auth-fields">${create ? `<div class="auth-field"><label for="auth-display-name">Display name <span class="auth-optional">(optional)</span></label><input id="auth-display-name" name="displayName" type="text" maxlength="50" autocomplete="name" aria-describedby="display-name-hint"><span id="display-name-hint" class="auth-field-hint">Shown on your profile.</span></div>` : ""}<div class="auth-field"><label for="auth-email">Email</label><input id="auth-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com" aria-describedby="email-error"><span class="auth-field-error" id="email-error" aria-live="polite"></span></div><div class="auth-field"><label for="auth-password">Password</label><div class="auth-password-wrap"><input id="auth-password" name="password" type="password" required ${create ? 'maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" aria-describedby="${create ? "password-hint " : ""}password-error auth-message"><button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button></div>${create ? '<span class="auth-field-hint" id="password-hint">Use at least 12 characters.</span>' : ""}<span class="auth-field-error" id="password-error" aria-live="polite"></span><span class="auth-field-error auth-server-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</span></div></div><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button>${create ? '<p class="auth-privacy-note">By creating an account, you agree to <a href="privacy.html" data-privacy-settings>how SEVEN uses your data</a>.</p>' : ""}<button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><img class="auth-wordmark" src="assets/seven-wordmark-v2.png" alt="SEVEN"><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
+  app.insertAdjacentHTML("beforeend", `
+    <div class="modal auth-modal">
+      <form class="auth-card auth-flow" id="auth-form" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-busy="false" novalidate>
+        <div class="auth-content">
+          <button type="button" class="modal-close" data-close aria-label="Close ${create ? "sign-up" : "sign-in"} dialog">×</button>
+          <img class="auth-wordmark" src="assets/seven-wordmark-v2.png" alt="SEVEN">
+          <h2 id="auth-title">${create ? "Create your account" : "Welcome back"}</h2>
+          <p class="auth-subtitle">${create ? "Save your progress and preferences." : "Sign in to continue watching."}</p>
+          <div class="auth-socials">
+            <button class="google-auth" type="button" data-social-auth="google" aria-label="Continue with Google"><img src="assets/icons/google-g.svg" alt="" width="20" height="20"><span data-social-label>Continue with Google</span></button>
+            <button class="google-auth discord-auth" type="button" data-social-auth="discord" aria-label="Continue with Discord"><img src="assets/icons/discord-symbol.svg" alt="" width="20" height="15"><span data-social-label>Continue with Discord</span></button>
+          </div>
+          <div class="auth-divider"><span>or</span></div>
+          <div class="auth-fields">
+            ${create ? `<div class="auth-field"><label for="auth-display-name">Display name <span class="auth-optional">(optional)</span></label><input id="auth-display-name" name="displayName" type="text" maxlength="50" autocomplete="name" aria-describedby="display-name-hint"><span id="display-name-hint" class="auth-field-hint">Shown on your profile.</span></div>` : ""}
+            <div class="auth-field"><label for="auth-email">Email</label><input id="auth-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com" aria-describedby="email-error"><span class="auth-field-error" id="email-error" aria-live="polite"></span></div>
+            <div class="auth-field"><label for="auth-password">Password</label><div class="auth-password-wrap"><input id="auth-password" name="password" type="password" required ${create ? 'maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" aria-describedby="${create ? "password-hint " : ""}password-error auth-message"><button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button></div>${create ? '<span class="auth-field-hint" id="password-hint">Use at least 12 characters.</span>' : ""}<span class="auth-field-error" id="password-error" aria-live="polite"></span><span class="auth-field-error auth-server-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</span></div>
+          </div>
+          <button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button>
+          ${create ? '<p class="auth-privacy-note">By creating an account, you agree to <a href="privacy.html" data-privacy-settings>how SEVEN uses your data</a>.</p>' : ""}
+          <button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button>
+        </div>
+        <section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><img class="auth-wordmark" src="assets/seven-wordmark-v2.png" alt="SEVEN"><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section>
+      </form>
+    </div>`);
   const modal = document.querySelector(".auth-modal"), form = modal.querySelector("#auth-form"), emailInput = form.elements.email, passwordInput = form.elements.password;
   if (email) emailInput.value = email;
   modal.addEventListener("click", event => { if (event.target === modal) closeAuthModal(); });
   modal.querySelector("[data-close]").onclick = closeAuthModal;
   document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
-  document.querySelector("[data-google-auth]").onclick = () => void startGoogleOAuth(mode);
+  modal.querySelectorAll("[data-social-auth]").forEach(button => button.onclick = () => void startSocialOAuth(button.dataset.socialAuth, mode));
   modal.querySelector("[data-password-toggle]").onclick = event => {
     const button = event.currentTarget, visible = passwordInput.type === "password";
     passwordInput.type = visible ? "text" : "password";
@@ -2666,7 +2698,7 @@ async function submitAuth(event, mode) {
   submit.setAttribute("aria-busy", "true");
   submit.textContent = create ? "Creating account…" : "Signing in…";
   close.disabled = true;
-  formElement.querySelectorAll("input, [data-switch], [data-google-auth], [data-password-toggle]").forEach(control => { control.disabled = true; });
+  formElement.querySelectorAll("input, [data-switch], [data-social-auth], [data-password-toggle]").forEach(control => { control.disabled = true; });
   formElement.classList.add("auth-submitting");
   formElement.setAttribute("aria-busy", "true");
   message.textContent = "";
@@ -2711,7 +2743,7 @@ async function submitAuth(event, mode) {
     if (formElement.isConnected && !formElement.classList.contains("auth-success")) {
       submit.textContent = create ? "Create account" : "Sign in";
       close.disabled = false;
-      formElement.querySelectorAll("input, [data-switch], [data-google-auth], [data-password-toggle]").forEach(control => { control.disabled = false; });
+      formElement.querySelectorAll("input, [data-switch], [data-social-auth], [data-password-toggle]").forEach(control => { control.disabled = false; });
     }
   }
 }
@@ -2744,13 +2776,16 @@ const ONBOARDING_GENRES = [[28,"Action",10759],[12,"Adventure",10759],[16,"Anima
 const FAMILY_FRIENDLY_GENRES = new Set([12,16,35,99,10751]);
 function isProfileAvatar(value) { return AVATAR_OPTIONS.some(([, path]) => path === value) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(value || "")); }
 function prepareUploadedAvatar(file) { return new Promise((resolve, reject) => { if (!file?.type?.startsWith("image/")) return reject(new Error("Choose an image file.")); if (file.size > 10 * 1024 * 1024) return reject(new Error("Choose an image smaller than 10 MB.")); const reader = new FileReader(); reader.onerror = () => reject(new Error("That image could not be read.")); reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("That image format is not supported.")); image.onload = () => { const edge = 120, canvas = document.createElement("canvas"), scale = Math.max(edge / image.naturalWidth, edge / image.naturalHeight), width = image.naturalWidth * scale, height = image.naturalHeight * scale; canvas.width = edge; canvas.height = edge; canvas.getContext("2d").drawImage(image, (edge - width) / 2, (edge - height) / 2, width, height); const avatar = canvas.toDataURL("image/jpeg", .78); if (avatar.length > 30000) return reject(new Error("Choose a simpler photo so it can sync with your profile.")); resolve(avatar); }; image.src = String(reader.result); }; reader.readAsDataURL(file); }); }
-function googleProfileSetupPending() {
+function isSocialOAuthUser() {
+  const provider = state.user?.app_metadata?.provider;
+  return ["google","discord"].includes(provider) || state.user?.identities?.some(identity => ["google","discord"].includes(identity.provider));
+}
+function socialProfileSetupPending() {
   const metadata = state.user?.user_metadata || {}, account = metadata.seven_account;
-  const googleUser = state.user?.app_metadata?.provider === "google" || state.user?.identities?.some(identity => identity.provider === "google");
-  if (account?.googleProfileSetupPending === true) return true;
-  if (googleUser) {
+  if (account?.socialProfileSetupPending === true || account?.googleProfileSetupPending === true) return true;
+  if (isSocialOAuthUser()) {
     const profile = account?.profiles?.find(item => item.id === "main") || account?.profiles?.[0];
-    const setupComplete = account?.onboardingComplete === true && Boolean(profile?.avatar);
+    const setupComplete = account?.onboardingComplete === true && Boolean(profile?.avatar) && Boolean(profile?.name?.trim());
     const createdAt = Date.parse(state.user?.created_at || ""), recentlyCreated = Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
     return !setupComplete && (Boolean(account) || recentlyCreated);
   }
@@ -2758,19 +2793,19 @@ function googleProfileSetupPending() {
 }
 function needsFirstRunOnboarding() {
   const saved = state.user?.user_metadata?.seven_account;
-  if (googleProfileSetupPending()) return true;
+  if (socialProfileSetupPending()) return true;
   if (saved && Object.hasOwn(saved, "onboardingComplete")) return saved.onboardingComplete === false;
   if (state.account?.onboardingComplete === false) return true;
   const createdAt = Date.parse(state.user?.created_at || "");
-  const isRecentGoogleSignup = Number.isFinite(createdAt) && Date.now() - createdAt < 15 * 60 * 1000 && (state.user?.app_metadata?.provider === "google" || state.user?.identities?.some(identity => identity.provider === "google"));
-  return isRecentGoogleSignup || Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
+  const isRecentSocialSignup = Number.isFinite(createdAt) && Date.now() - createdAt < 15 * 60 * 1000 && isSocialOAuthUser();
+  return isRecentSocialSignup || Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
 }
 function beginOnboarding() {
   const profile = currentProfile() || state.account?.profiles?.[0] || defaultAccount().profiles[0], preferences = currentPreferences();
   const savedStep = Number(state.account?.onboardingStep);
   state.onboardingStep = Number.isInteger(savedStep) && savedStep >= 2 && savedStep <= 4 ? savedStep : 1;
-  const googleNameRequired = googleProfileSetupPending();
-  state.onboardingDraft = { name:googleNameRequired ? "" : profile.name || "", avatar:profile.avatar || AVATAR_OPTIONS[0][1], favoriteGenres:(preferences.favoriteGenres || []).map(Number).filter(id => ONBOARDING_GENRES.some(([genreId]) => genreId === id)).slice(0,3), contentMix:preferences.contentMix || "both", familySafe:preferences.familySafe === true };
+  const socialNameRequired = socialProfileSetupPending();
+  state.onboardingDraft = { name:socialNameRequired ? "" : profile.name || "", avatar:profile.avatar || AVATAR_OPTIONS[0][1], favoriteGenres:(preferences.favoriteGenres || []).map(Number).filter(id => ONBOARDING_GENRES.some(([genreId]) => genreId === id)).slice(0,3), contentMix:preferences.contentMix || "both", familySafe:preferences.familySafe === true };
 }
 function renderOnboarding() {
   if (!state.onboardingDraft) beginOnboarding();
@@ -2781,8 +2816,8 @@ function renderOnboarding() {
   const mixChoices = [["both","Movies & series","A balanced mix of films and series."],["movies","Movies only","Keep your discovery focused on films."],["series","Series only","Find your next series to settle into."]].map(([value,label,detail]) => `<button type="button" class="onboarding-mix ${draft.contentMix === value ? "selected" : ""}" data-onboarding-mix="${value}" aria-pressed="${draft.contentMix === value}"><span><b>${label}</b><small>${detail}</small></span><i aria-hidden="true"></i></button>`).join("");
   const actions = (label, nextStep) => `<p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions"><div class="onboarding-actions-start"><button class="onboarding-back" type="button" data-onboarding-back>← Back</button></div><button class="primary" type="button" data-onboarding-continue data-next-step="${nextStep}">${label} <span aria-hidden="true">→</span></button></div>`;
   const defaultAction = (label, step) => `<button class="onboarding-default-action" type="button" data-onboarding-default="${step}" data-default-label="${escapeHTML(label)}"><span>${label}</span><i aria-hidden="true">→</i></button>`;
-  const googleNameRequired = googleProfileSetupPending();
-  const profileStep = `<section class="onboarding-panel"><div class="onboarding-kicker">01 / PROFILE</div><h1>Let’s make this profile yours.</h1><p>Choose a name and picture. You can change them later.</p><div class="onboarding-identity"><div class="onboarding-avatar-preview">${profileAvatar(profile)}</div><label class="onboarding-name">Profile name<input data-onboarding-name maxlength="24" required value="${escapeHTML(draft.name)}" placeholder="What should we call you?"></label></div><div class="onboarding-avatar-grid">${avatarChoices}<label class="onboarding-avatar-upload"><input type="file" accept="image/png,image/jpeg,image/webp" data-onboarding-upload><span>＋</span><b>Use a photo</b></label></div><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions onboarding-actions-profile"><div class="onboarding-actions-start"></div><button class="primary" type="button" data-onboarding-next>Continue <span aria-hidden="true">→</span></button></div>${googleNameRequired ? "" : defaultAction("Keep current profile", 1)}</section>`;
+  const socialNameRequired = socialProfileSetupPending();
+  const profileStep = `<section class="onboarding-panel"><div class="onboarding-kicker">01 / PROFILE</div><h1>Let’s make this profile yours.</h1><p>Choose a name and picture. You can change them later.</p><div class="onboarding-identity"><div class="onboarding-avatar-preview">${profileAvatar(profile)}</div><label class="onboarding-name">Profile name<input data-onboarding-name maxlength="24" required value="${escapeHTML(draft.name)}" placeholder="What should we call you?"></label></div><div class="onboarding-avatar-grid">${avatarChoices}<label class="onboarding-avatar-upload"><input type="file" accept="image/png,image/jpeg,image/webp" data-onboarding-upload><span>＋</span><b>Use a photo</b></label></div><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions onboarding-actions-profile"><div class="onboarding-actions-start"></div><button class="primary" type="button" data-onboarding-next>Continue <span aria-hidden="true">→</span></button></div>${socialNameRequired ? "" : defaultAction("Keep current profile", 1)}</section>`;
   const genresStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">02 / YOUR TASTE</div><h1>What do you like watching?</h1><p>Pick up to three genres. We’ll use them to shape your For You page.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Choose your favourites</b><span>${draft.favoriteGenres.length} of 3 selected</span></div><div class="onboarding-genre-grid">${genreChoices}</div></div>${actions("Continue", 3)}${defaultAction("No genre preference", 2)}</section>`;
   const mixStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">03 / YOUR MIX</div><h1>What would you like to browse?</h1><p>We’ll tune your movie and series rows around what you enjoy.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Your SEVEN mix</b><span>Choose one</span></div><div class="onboarding-mix-grid">${mixChoices}</div></div>${actions("Continue", 4)}</section>`;
   // Inline Lucide eye and shield-check icons; see Web/assets/icons/LUCIDE-LICENSE.txt.
@@ -2918,6 +2953,7 @@ async function finishOnboarding(submitButton = null) {
   state.account.onboardingComplete = true;
   delete state.account.onboardingStep;
   if (state.account.googleProfileSetupPending === true) delete state.account.googleProfileSetupPending;
+  if (state.account.socialProfileSetupPending === true) delete state.account.socialProfileSetupPending;
   try {
     await persistOnboardingAccount();
     state.catalogKey = null; state.catalogRequest = null; state.onboardingDraft = null;

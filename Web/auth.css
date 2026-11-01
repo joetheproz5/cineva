@@ -1348,6 +1348,10 @@
 .auth-modal .google-auth:hover { border-color: #c4c7c5; background: #202124; }
 .auth-modal .google-auth:focus-visible { outline: 2px solid #f1f3f4; outline-offset: 2px; }
 .auth-modal .google-auth:disabled { opacity: .6; }
+.auth-modal .auth-socials { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 0; }
+.auth-modal .auth-socials .google-auth { min-width: 0; padding: 0 5px; gap: 6px; font-size: 12px; white-space: normal; }
+.auth-modal .auth-socials .google-auth span { min-width: 0; line-height: 14px; text-align: left; }
+.auth-modal .auth-socials .discord-auth img { width: 20px; height: 15px; flex-basis: 20px; object-fit: contain; }
 .auth-modal .auth-divider { display: flex; margin: 12px 0 9px; align-items: center; gap: 12px; color: #a6a6a6; font-size: 12px; line-height: 16px; }
 .auth-modal .auth-divider::before,.auth-modal .auth-divider::after { height: 1px; flex: 1; background: #383838; content: ""; }
 .auth-modal .auth-field { min-width: 0; margin: 0 0 8px; }
@@ -1396,6 +1400,7 @@
   .auth-modal .auth-content h2 { font-size: 24px; }
   .auth-modal .auth-subtitle { margin-bottom: 9px; font-size: 13px; }
   .auth-modal .google-auth { height: 42px; min-height: 42px; }
+  .auth-modal .auth-socials .google-auth { height: 42px; min-height: 42px; }
   .auth-modal .auth-divider { margin: 6px 0 4px; }
   .auth-modal .auth-field { margin-bottom: 6px; }
   .auth-modal .auth-field input { height: 42px; }
