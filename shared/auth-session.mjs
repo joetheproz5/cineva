@@ -50,6 +50,13 @@ export async function handleAuthSession(action,request,env){
       const limited=await throttle(request,env,'oauth-exchange',{limit:10,ipLimit:40,seconds:900});if(limited)return limited;
       const result=await authUpstream(env,'/auth/v1/token?grant_type=pkce',{method:'POST',body:{auth_code:body.code,code_verifier:body.codeVerifier}});
       if(result.status!==200)return securityJSON({error:'Google sign-in could not be completed. Please try again.'},result.status>=500?503:400);
+      const session=result.data.session||result.data,user=session.user||result.data.user,createdAt=Date.parse(user?.created_at||''),newGoogleAccount=Number.isFinite(createdAt)&&Date.now()-createdAt<15*60*1000&&(user?.app_metadata?.provider==='google'||user?.identities?.some(identity=>identity.provider==='google'));
+      if(newGoogleAccount){
+        const metadata=user.user_metadata||{},rawAccount=metadata.seven_account,account=rawAccount&&typeof rawAccount==='object'&&!Array.isArray(rawAccount)?rawAccount:{},profiles=Array.isArray(account.profiles)?account.profiles:[],profile=profiles.find(item=>item.id==='main')||profiles[0],needsSetup=!account.googleProfileSetupPending&&account.onboardingComplete!==false&&(!account.onboardingComplete||!profile?.avatar);
+        if(needsSetup){const updated=await authUpstream(env,'/auth/v1/user',{token:session.access_token,method:'PUT',body:{data:{...metadata,seven_account:{...account,onboardingComplete:false,onboardingStep:1,googleProfileSetupPending:true}}}});
+        if(updated.status===200){session.user=updated.data;if(result.data.session)result.data.session=session;else result.data=session;}
+        }
+      }
       return sessionReply(request,env,result.data);
     }
     if(action==='refresh'){

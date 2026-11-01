@@ -2692,18 +2692,33 @@ const ONBOARDING_GENRES = [[28,"Action",10759],[12,"Adventure",10759],[16,"Anima
 const FAMILY_FRIENDLY_GENRES = new Set([12,16,35,99,10751]);
 function isProfileAvatar(value) { return AVATAR_OPTIONS.some(([, path]) => path === value) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(value || "")); }
 function prepareUploadedAvatar(file) { return new Promise((resolve, reject) => { if (!file?.type?.startsWith("image/")) return reject(new Error("Choose an image file.")); if (file.size > 10 * 1024 * 1024) return reject(new Error("Choose an image smaller than 10 MB.")); const reader = new FileReader(); reader.onerror = () => reject(new Error("That image could not be read.")); reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("That image format is not supported.")); image.onload = () => { const edge = 120, canvas = document.createElement("canvas"), scale = Math.max(edge / image.naturalWidth, edge / image.naturalHeight), width = image.naturalWidth * scale, height = image.naturalHeight * scale; canvas.width = edge; canvas.height = edge; canvas.getContext("2d").drawImage(image, (edge - width) / 2, (edge - height) / 2, width, height); const avatar = canvas.toDataURL("image/jpeg", .78); if (avatar.length > 30000) return reject(new Error("Choose a simpler photo so it can sync with your profile.")); resolve(avatar); }; image.src = String(reader.result); }; reader.readAsDataURL(file); }); }
+function googleProfileSetupPending() {
+  const metadata = state.user?.user_metadata || {}, account = metadata.seven_account;
+  const googleUser = state.user?.app_metadata?.provider === "google" || state.user?.identities?.some(identity => identity.provider === "google");
+  if (account?.googleProfileSetupPending === true) return true;
+  if (googleUser) {
+    const profile = account?.profiles?.find(item => item.id === "main") || account?.profiles?.[0];
+    const setupComplete = account?.onboardingComplete === true && Boolean(profile?.avatar);
+    const createdAt = Date.parse(state.user?.created_at || ""), recentlyCreated = Number.isFinite(createdAt) && Date.now() - createdAt < 15 * 60 * 1000;
+    return !setupComplete && (Boolean(account) || recentlyCreated);
+  }
+  return false;
+}
 function needsFirstRunOnboarding() {
   const saved = state.user?.user_metadata?.seven_account;
+  if (googleProfileSetupPending()) return true;
   if (saved && Object.hasOwn(saved, "onboardingComplete")) return saved.onboardingComplete === false;
   if (state.account?.onboardingComplete === false) return true;
   const createdAt = Date.parse(state.user?.created_at || "");
-  return Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
+  const isRecentGoogleSignup = Number.isFinite(createdAt) && Date.now() - createdAt < 15 * 60 * 1000 && (state.user?.app_metadata?.provider === "google" || state.user?.identities?.some(identity => identity.provider === "google"));
+  return isRecentGoogleSignup || Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
 }
 function beginOnboarding() {
   const profile = currentProfile() || state.account?.profiles?.[0] || defaultAccount().profiles[0], preferences = currentPreferences();
   const savedStep = Number(state.account?.onboardingStep);
   state.onboardingStep = Number.isInteger(savedStep) && savedStep >= 2 && savedStep <= 4 ? savedStep : 1;
-  state.onboardingDraft = { name:profile.name || "", avatar:profile.avatar || AVATAR_OPTIONS[0][1], favoriteGenres:(preferences.favoriteGenres || []).map(Number).filter(id => ONBOARDING_GENRES.some(([genreId]) => genreId === id)).slice(0,3), contentMix:preferences.contentMix || "both", familySafe:preferences.familySafe === true };
+  const googleNameRequired = googleProfileSetupPending();
+  state.onboardingDraft = { name:googleNameRequired ? "" : profile.name || "", avatar:profile.avatar || AVATAR_OPTIONS[0][1], favoriteGenres:(preferences.favoriteGenres || []).map(Number).filter(id => ONBOARDING_GENRES.some(([genreId]) => genreId === id)).slice(0,3), contentMix:preferences.contentMix || "both", familySafe:preferences.familySafe === true };
 }
 function renderOnboarding() {
   if (!state.onboardingDraft) beginOnboarding();
@@ -2714,7 +2729,8 @@ function renderOnboarding() {
   const mixChoices = [["both","Movies & series","A balanced mix of films and series."],["movies","Movies only","Keep your discovery focused on films."],["series","Series only","Find your next series to settle into."]].map(([value,label,detail]) => `<button type="button" class="onboarding-mix ${draft.contentMix === value ? "selected" : ""}" data-onboarding-mix="${value}" aria-pressed="${draft.contentMix === value}"><span><b>${label}</b><small>${detail}</small></span><i aria-hidden="true"></i></button>`).join("");
   const actions = (label, nextStep) => `<p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions"><div class="onboarding-actions-start"><button class="onboarding-back" type="button" data-onboarding-back>← Back</button></div><button class="primary" type="button" data-onboarding-continue data-next-step="${nextStep}">${label} <span aria-hidden="true">→</span></button></div>`;
   const defaultAction = (label, step) => `<button class="onboarding-default-action" type="button" data-onboarding-default="${step}" data-default-label="${escapeHTML(label)}"><span>${label}</span><i aria-hidden="true">→</i></button>`;
-  const profileStep = `<section class="onboarding-panel"><div class="onboarding-kicker">01 / PROFILE</div><h1>Let’s make this profile yours.</h1><p>Choose a name and picture. You can change them later.</p><div class="onboarding-identity"><div class="onboarding-avatar-preview">${profileAvatar(profile)}</div><label class="onboarding-name">Profile name<input data-onboarding-name maxlength="24" required value="${escapeHTML(draft.name)}" placeholder="What should we call you?"></label></div><div class="onboarding-avatar-grid">${avatarChoices}<label class="onboarding-avatar-upload"><input type="file" accept="image/png,image/jpeg,image/webp" data-onboarding-upload><span>＋</span><b>Use a photo</b></label></div><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions onboarding-actions-profile"><div class="onboarding-actions-start"></div><button class="primary" type="button" data-onboarding-next>Continue <span aria-hidden="true">→</span></button></div>${defaultAction("Keep current profile", 1)}</section>`;
+  const googleNameRequired = googleProfileSetupPending();
+  const profileStep = `<section class="onboarding-panel"><div class="onboarding-kicker">01 / PROFILE</div><h1>Let’s make this profile yours.</h1><p>Choose a name and picture. You can change them later.</p><div class="onboarding-identity"><div class="onboarding-avatar-preview">${profileAvatar(profile)}</div><label class="onboarding-name">Profile name<input data-onboarding-name maxlength="24" required value="${escapeHTML(draft.name)}" placeholder="What should we call you?"></label></div><div class="onboarding-avatar-grid">${avatarChoices}<label class="onboarding-avatar-upload"><input type="file" accept="image/png,image/jpeg,image/webp" data-onboarding-upload><span>＋</span><b>Use a photo</b></label></div><p class="onboarding-error" data-onboarding-error role="status" aria-live="polite"></p><div class="onboarding-actions onboarding-actions-profile"><div class="onboarding-actions-start"></div><button class="primary" type="button" data-onboarding-next>Continue <span aria-hidden="true">→</span></button></div>${googleNameRequired ? "" : defaultAction("Keep current profile", 1)}</section>`;
   const genresStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">02 / YOUR TASTE</div><h1>What do you like watching?</h1><p>Pick up to three genres. We’ll use them to shape your For You page.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Choose your favourites</b><span>${draft.favoriteGenres.length} of 3 selected</span></div><div class="onboarding-genre-grid">${genreChoices}</div></div>${actions("Continue", 3)}${defaultAction("No genre preference", 2)}</section>`;
   const mixStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">03 / YOUR MIX</div><h1>What would you like to browse?</h1><p>We’ll tune your movie and series rows around what you enjoy.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Your SEVEN mix</b><span>Choose one</span></div><div class="onboarding-mix-grid">${mixChoices}</div></div>${actions("Continue", 4)}</section>`;
   const familyStep = `<section class="onboarding-panel onboarding-panel-choices"><div class="onboarding-kicker">04 / CONTENT FILTER</div><h1>Who’s watching?</h1><p>Set the tone for browsing and recommendations. You can change this any time in profile settings.</p><div class="onboarding-choice-group"><div class="onboarding-choice-heading"><b>Content preferences</b><span>Choose one</span></div><div class="onboarding-family-grid"><button class="onboarding-family-choice ${!draft.familySafe ? "selected" : ""}" type="button" data-onboarding-safe="false" aria-pressed="${!draft.familySafe}"><span class="onboarding-family-icon" aria-hidden="true">◉</span><span><b>Show me everything</b><small>Keep the full SEVEN catalog in browsing and picks.</small></span><i aria-hidden="true"></i></button><button class="onboarding-family-choice ${draft.familySafe ? "selected" : ""}" type="button" data-onboarding-safe="true" aria-pressed="${draft.familySafe}"><span class="onboarding-family-icon" aria-hidden="true">✦</span><span><b>Keep it family-friendly</b><small>Favor age-friendly titles across browsing and recommendations.</small></span><i aria-hidden="true"></i></button></div></div>${actions("Start watching", 4)}</section>`;
@@ -2848,6 +2864,7 @@ async function finishOnboarding(submitButton = null) {
   state.account.activeProfileId = profile.id;
   state.account.onboardingComplete = true;
   delete state.account.onboardingStep;
+  if (state.account.googleProfileSetupPending === true) delete state.account.googleProfileSetupPending;
   try {
     await persistOnboardingAccount();
     state.catalogKey = null; state.catalogRequest = null; state.onboardingDraft = null;
@@ -3253,7 +3270,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=385", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=387", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
