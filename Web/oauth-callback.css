@@ -1,0 +1,5 @@
+html, body { min-height: 100%; margin: 0; background: #090909; color: #aaa; font: 14px system-ui, sans-serif; }
+body, main { display: grid; place-items: center; }
+main { gap: 14px; padding: 24px; }
+img { width: min(220px, 60vw); height: auto; }
+p { margin: 0; }

@@ -703,9 +703,49 @@ async function refreshCatalogNow() {
   void loadNewEpisodes();
 }
 function playMovieNow(movie, resume = false) { const key = { type:"movie", id:movie.id }; state.player = { ...key, title:titleOf(movie), overview:movie.overview, posterPath:movie.poster_path, genreIds:(movie.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; partyHostTitleChanged(); render(); scrollToTop(); }
+const GOOGLE_OAUTH_VERIFIER_KEY = "seven.google.oauth.verifier";
+const GOOGLE_OAUTH_CALLBACK_KEY = "seven.google.oauth.callback";
+async function consumeGoogleOAuthRedirect() {
+  let callback;
+  try { callback = JSON.parse(sessionStorage.getItem(GOOGLE_OAUTH_CALLBACK_KEY) || "null"); } catch { callback = null; }
+  if (!callback) return "";
+  sessionStorage.removeItem(GOOGLE_OAUTH_CALLBACK_KEY);
+  const code = typeof callback.code === "string" ? callback.code : "", providerError = callback.error === true;
+  const verifier = sessionStorage.getItem(GOOGLE_OAUTH_VERIFIER_KEY);
+  sessionStorage.removeItem(GOOGLE_OAUTH_VERIFIER_KEY);
+  if (providerError) return "Google sign-in was cancelled or could not be completed. Please try again.";
+  if (!code || !verifier) return "Google sign-in could not be completed. Please try again.";
+  try {
+    const data = await localAPI("/api/auth/oauth-exchange", { signal:AbortSignal.timeout(25000), method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({code,codeVerifier:verifier}) });
+    if (!data.session?.access_token) throw Error("No sign-in session was returned.");
+    const verified = await window.SEVENAuthSecurity.complete(data);
+    persistSession(verified.session, Date.now());
+    state.user = verified.user || verified.session.user || null;
+    return "";
+  } catch { return "Google sign-in could not be completed. Please try again."; }
+}
+async function startGoogleOAuth(mode) {
+  const button = document.querySelector("[data-google-auth]"), message = document.querySelector("#auth-message");
+  if (!button || button.disabled) return;
+  button.disabled = true; button.textContent = "Connecting to Google…"; message.textContent = "";
+  try {
+    const config = await localAPI("/api/config", {signal:AbortSignal.timeout(10000)});
+    if (!config.supabase?.url) throw Error("Google sign-in is not configured yet.");
+    const supabaseUrl = new URL(config.supabase.url);
+    if (supabaseUrl.protocol !== "https:" && supabaseUrl.hostname !== "localhost") throw Error("Google sign-in is not configured yet.");
+    const bytes = crypto.getRandomValues(new Uint8Array(32)), verifier = btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+    const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
+    sessionStorage.setItem(GOOGLE_OAUTH_VERIFIER_KEY, verifier);
+    const redirect = new URL("/oauth-callback.html", location.origin).href;
+    const authorize = new URL("/auth/v1/authorize", supabaseUrl); authorize.searchParams.set("provider","google"); authorize.searchParams.set("redirect_to",redirect); authorize.searchParams.set("code_challenge",challenge); authorize.searchParams.set("code_challenge_method","s256");
+    location.assign(authorize.href);
+  } catch (error) { message.textContent = error.message || "Google sign-in is temporarily unavailable."; button.disabled = false; button.textContent = "Continue with Google"; }
+}
 async function boot() {
   renderLoading();
   const verifiedEmail = await consumeEmailVerificationRedirect();
+  const googleAuthError = await consumeGoogleOAuthRedirect();
   await restoreSession();
   applyLocale();
   const params = new URLSearchParams(location.search);
@@ -721,7 +761,8 @@ async function boot() {
   if (!navigator.onLine) return renderOfflineScreen();
   if (state.user) { state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles"; if (state.route === "onboarding") beginOnboarding(); render(); } else renderLoading();
   await loadStartupData();
-  if (verifiedEmail) await finishEmailVerification(verifiedEmail);
+  if (googleAuthError) showAuth("login", googleAuthError);
+  else if (verifiedEmail) await finishEmailVerification(verifiedEmail);
   else if (state.emailVerificationError) {
     const pendingVerification=readPendingEmailVerification();
     if(pendingVerification){showAuthPending(pendingVerification.email);document.querySelector('[data-email-message]').textContent=state.emailVerificationError;}
@@ -2457,11 +2498,12 @@ async function removeHistoryItem(key) { localStorage.removeItem(key); forgetAcco
 function showAuth(mode = "login", message = "", email = "") {
   document.querySelector(".modal")?.remove();
   const create = mode === "signup";
-  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required ${create ? 'minlength="12" maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" placeholder="${create ? 'At least 12 characters' : 'Your password'}"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
+  app.insertAdjacentHTML("beforeend", `<div class="modal"><form class="auth-card auth-flow" id="auth-form" aria-busy="false"><div class="auth-content"><button type="button" class="modal-close" data-close aria-label="Close">×</button><span class="brand">SEVEN ACCOUNT</span><h2>${create ? "Create your account" : "Welcome back"}</h2><p>${create ? "Save your progress, watched titles, and settings across devices." : "Sign in to restore your SEVEN history."}</p><button class="google-auth" type="button" data-google-auth>Continue with Google</button><div class="auth-divider"><span>or continue with email</span></div>${create ? `<label>Display name<input name="displayName" maxlength="50" placeholder="Optional"></label>` : ""}<label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><label>Password<input name="password" type="password" required ${create ? 'minlength="12" maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" placeholder="${create ? 'At least 12 characters' : 'Your password'}"></label><p class="form-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</p><button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button><button class="auth-switch" type="button" data-switch>${create ? "Already have an account? Sign in" : "New to SEVEN? Create an account"}</button></div><section class="auth-success-stage" role="status" aria-live="polite" aria-atomic="true"><span class="brand">SEVEN ACCOUNT</span><h2 data-auth-success-title></h2><p data-auth-success-copy></p><button type="button" class="auth-pending-login" data-pending-login hidden>Continue to sign in</button></section></form></div>`);
   if (email) document.querySelector('#auth-form input[name="email"]').value = email;
   if(create)document.querySelector('#auth-message').insertAdjacentHTML('beforebegin','<p class="auth-privacy-note"><a href="privacy.html" data-privacy-settings>How SEVEN uses your data</a></p>');
   document.querySelector("[data-close]").onclick = () => document.querySelector(".modal")?.remove();
   document.querySelector("[data-switch]").onclick = () => showAuth(create ? "login" : "signup");
+  document.querySelector("[data-google-auth]").onclick = () => void startGoogleOAuth(mode);
   document.querySelector("#auth-form").onsubmit = event => submitAuth(event, mode);
 }
 async function showAuthSuccess(form, title, description) {
@@ -2571,7 +2613,7 @@ async function submitAuth(event, mode) {
   submit.setAttribute("aria-busy", "true");
   submit.textContent = create ? "Creating account…" : "Signing in…";
   close.disabled = true;
-  formElement.querySelectorAll("input, [data-switch]").forEach(control => { control.disabled = true; });
+  formElement.querySelectorAll("input, [data-switch], [data-google-auth]").forEach(control => { control.disabled = true; });
   formElement.classList.add("auth-submitting");
   formElement.setAttribute("aria-busy", "true");
   message.textContent = "";
@@ -2617,7 +2659,7 @@ async function submitAuth(event, mode) {
     if (formElement.isConnected && !formElement.classList.contains("auth-success")) {
       submit.textContent = create ? "Create account" : "Sign in";
       close.disabled = false;
-      formElement.querySelectorAll("input, [data-switch]").forEach(control => { control.disabled = false; });
+      formElement.querySelectorAll("input, [data-switch], [data-google-auth]").forEach(control => { control.disabled = false; });
     }
   }
 }

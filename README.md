@@ -79,8 +79,9 @@ The local config file is ignored by Git and the server keeps the token off the i
 2. Copy [supabase.config.example.json](Web/supabase.config.example.json) to `Web/supabase.local.json`.
 3. In Supabase **Settings → API Keys**, copy the Project URL and the **publishable/anon** key into that local file. Never use the `service_role` key.
 4. In **Authentication → Providers → Email**, enable Confirm email when you are ready to require email verification. If using a public HTTPS deployment, add its URL to the Supabase redirect allow-list and set `emailRedirectTo` in the local config.
+5. To enable Google sign-in, create a Google OAuth client in Google Cloud and set its authorized redirect URI to `https://<your-project-ref>.supabase.co/auth/v1/callback`. Add the client ID and secret under Supabase **Authentication → Providers → Google**, enable the provider, and add the app origin plus `https://<your-app-host>/oauth-callback.html` to Supabase **Authentication → URL Configuration → Redirect URLs**. The sign-in UI uses PKCE and exchanges the callback code through the server session handler.
 
-The account system supports email/password sign-up and sign-in. When the user is signed in, Cineva writes watch position, duration, completion state, title, and timestamp to Supabase and reloads them on the next signed-in session. The private `supabase.local.json` config is ignored by Git.
+The account system supports Google and email/password sign-up and sign-in. When the user is signed in, Cineva writes watch position, duration, completion state, title, and timestamp to Supabase and reloads them on the next signed-in session. The private `supabase.local.json` config is ignored by Git.
 
 ## SEVEN Studio dashboard
 

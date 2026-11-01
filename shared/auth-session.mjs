@@ -45,6 +45,13 @@ export async function handleAuthSession(action,request,env){
     if(action==='user'){const token=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');if(!token)return securityJSON({error:'Sign in required.'},401);const result=await authUpstream(env,'/auth/v1/user',{token});return securityJSON(result.data,result.status);}
     if(!(request.headers.get('Content-Type')||'').startsWith('application/json'))return securityJSON({error:'JSON is required.'},415);
     const body=await boundedJSON(request),email=typeof body.email==='string'?body.email.trim().toLowerCase():'',password=body.password;
+    if(action==='oauth-exchange'){
+      if(typeof body.code!=='string'||body.code.length<8||body.code.length>2048||typeof body.codeVerifier!=='string'||!/^[A-Za-z0-9._~-]{43,128}$/.test(body.codeVerifier))return securityJSON({error:'Google sign-in could not be completed. Please try again.'},400);
+      const limited=await throttle(request,env,'oauth-exchange',{limit:10,ipLimit:40,seconds:900});if(limited)return limited;
+      const result=await authUpstream(env,'/auth/v1/token?grant_type=pkce',{method:'POST',body:{auth_code:body.code,code_verifier:body.codeVerifier}});
+      if(result.status!==200)return securityJSON({error:'Google sign-in could not be completed. Please try again.'},result.status>=500?503:400);
+      return sessionReply(request,env,result.data);
+    }
     if(action==='refresh'){
       const stored=await storedRefresh(request,env),refresh=stored?.refresh||body.refresh_token;
       if(typeof refresh!=='string'||!refresh||refresh.length>1024)return securityJSON({error:'Sign in required.'},401,{'Set-Cookie':clearRefreshCookie(request)});

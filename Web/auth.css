@@ -61,6 +61,12 @@
   color: #aaa;
   line-height: 1.45;
 }
+.google-auth { display: flex; width: 100%; min-height: 44px; margin: 20px 0 0; align-items: center; justify-content: center; border: 1px solid #484848; border-radius: 6px; color: #f5f5f5; background: #fff; color: #171717; font-size: 14px; font-weight: 700; }
+.google-auth::before { content: "G"; margin-right: 10px; color: #4285f4; font-size: 17px; font-weight: 900; }
+.google-auth:hover { background: #eee; }
+.google-auth:disabled { opacity: .65; }
+.auth-divider { display: flex; margin: 16px 0 4px; align-items: center; gap: 12px; color: #858585; font-size: 11px; }
+.auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: #333; content: ""; }
 .auth-card label {
   display: block;
   margin: 16px 0 0;
