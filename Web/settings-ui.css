@@ -1,16 +1,4 @@
 /* Inner settings share the existing settings hub's quiet, single-column layout. */
-.profile-settings-redesign .profile-account-action { margin-top:34px; padding:24px 26px 8px; border:1px solid #29292c; border-radius:12px; background:linear-gradient(120deg,#151113,#101012 55%); }
-.profile-settings-redesign .profile-account-action > .brand { color:#9b9ba3; font-size:10px; letter-spacing:1.6px; }
-.profile-settings-redesign .profile-account-action h3 { margin:10px 0 5px; color:#eee; font-size:15px; font-weight:650; overflow-wrap:anywhere; }
-.profile-settings-redesign .profile-account-action > p { margin:0; color:#9b9ba3; font-size:12px; line-height:1.5; }
-.profile-settings-redesign .profile-account-action .account-action-card { display:grid; box-sizing:border-box; grid-template-columns:40px minmax(0,1fr) auto; align-items:center; gap:14px; width:100%; min-height:72px; margin-top:12px; padding:14px 4px; border:0; border-top:1px solid #29292c; border-radius:0; color:#eee; background:transparent; text-align:start; cursor:pointer; }
-.profile-settings-redesign .profile-account-action .account-action-card > i { display:grid; width:38px; height:38px; place-items:center; border:1px solid #48272b; border-radius:10px; color:#f18b92; background:#251416; font-style:normal; }
-.profile-settings-redesign .profile-account-action .account-action-card > span { display:block; min-width:0; }
-.profile-settings-redesign .profile-account-action .account-action-card b { color:#f18b92; font-size:14px; }
-.profile-settings-redesign .profile-account-action .account-action-card small { display:block; margin-top:5px; color:#9b9ba3; font-size:12px; }
-.profile-settings-redesign .profile-account-action .account-action-card em { color:#f18b92; font-size:12px; font-style:normal; white-space:nowrap; }
-.profile-settings-redesign .profile-account-action .account-action-card:hover { background:#ffffff04; }
-.profile-settings-redesign .profile-account-action .account-action-card:focus-visible { outline:2px solid #e8e8eb; outline-offset:3px; }
 .profile-settings-redesign .profile-mobile-row.profile-mobile-select { display:grid; grid-template-columns:minmax(0,1fr); grid-template-areas:"copy" "control"; gap:14px; align-items:start; padding-block:22px; }
 .profile-settings-redesign .profile-mobile-select > i { display:none; }
 .profile-settings-redesign .profile-mobile-select > span { grid-area:copy; min-width:0; }
@@ -93,11 +81,6 @@
  .profile-settings-redesign .settings-disclosure-card { padding:0 16px; }
  .profile-settings-redesign .settings-disclosure-body { padding:18px 0 20px; }
  .profile-settings-redesign .settings-disclosure-body .profile-settings-actions > button { width:auto; flex:1; }
- .profile-settings-redesign .profile-account-action { margin-top:26px; padding:21px 16px 6px; }
- .profile-settings-redesign .profile-account-action .account-action-card { grid-template-columns:34px minmax(0,1fr) auto; gap:10px; }
- .profile-settings-redesign .profile-account-action .account-action-card > i { width:32px; height:34px; }
- .profile-settings-redesign .profile-account-action .account-action-card b { font-size:13px; }
- .profile-settings-redesign .profile-account-action .account-action-card small { font-size:11px; }
  .settings-dialog { padding:16px; }
  .settings-dialog > .auth-card,.settings-dialog > .devices-panel,.settings-dialog > .settings-confirmation-panel { max-height:calc(100dvh - 32px); padding:28px 22px; border-radius:14px; }
  .settings-dialog h2 { font-size:23px; }
