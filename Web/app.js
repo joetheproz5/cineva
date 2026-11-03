@@ -2545,7 +2545,7 @@ function showAuth(mode = "login", message = "", email = "") {
   const authFeaturedTitle = state.featured ? titleOf(state.featured) : "";
   app.insertAdjacentHTML("beforeend", `
     <div class="modal auth-modal">
-      <form class="auth-card auth-flow" id="auth-form" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-busy="false" novalidate>
+      <form class="auth-card auth-flow ${create ? "auth-signup" : "auth-login"}" id="auth-form" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-busy="false" novalidate>
         <aside class="auth-visual" aria-hidden="true" ${authArtwork ? `style="--auth-art:url('${escapeHTML(authArtwork)}')"` : ""}>
           <img class="auth-visual-wordmark" src="assets/seven-wordmark-v2.png" alt="">
           <div class="auth-visual-caption"><span>SEVEN · YOUR ACCOUNT</span><h3>${escapeHTML(authFeaturedTitle || "Pick up where you left off.")}</h3><p>Keep your watchlist and viewing progress together.</p></div>
