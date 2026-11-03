@@ -2541,9 +2541,16 @@ function showAuth(mode = "login", message = "", email = "") {
     document.addEventListener("keydown", handleAuthModalKeydown, true);
   }
   const create = mode === "signup";
+  const authArtwork = state.featured?.backdrop_path ? `${TMDB_BACKDROP}${state.featured.backdrop_path}` : "";
+  const authFeaturedTitle = state.featured ? titleOf(state.featured) : "";
   app.insertAdjacentHTML("beforeend", `
     <div class="modal auth-modal">
       <form class="auth-card auth-flow" id="auth-form" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-busy="false" novalidate>
+        <aside class="auth-visual" aria-hidden="true" ${authArtwork ? `style="--auth-art:url('${escapeHTML(authArtwork)}')"` : ""}>
+          <img class="auth-visual-wordmark" src="assets/seven-wordmark-v2.png" alt="">
+          <div class="auth-visual-caption"><span>SEVEN · YOUR ACCOUNT</span><h3>${escapeHTML(authFeaturedTitle || "Pick up where you left off.")}</h3><p>Keep your watchlist and viewing progress together.</p></div>
+          <span class="auth-visual-footer">FILMS <i></i> SERIES <i></i> YOUR SEVEN</span>
+        </aside>
         <div class="auth-content">
           <button type="button" class="modal-close" data-close aria-label="Close ${create ? "sign-up" : "sign-in"} dialog">×</button>
           <img class="auth-wordmark" src="assets/seven-wordmark-v2.png" alt="SEVEN">
