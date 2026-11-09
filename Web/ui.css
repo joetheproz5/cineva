@@ -615,8 +615,8 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 .home-library .play-something-banner > em b { color: #ef2934; font-size: 22px; }
 
 @media (min-width: 651px) {
-  .home-library .cards,.home-library .ranked-rail .cards { grid-template-columns: repeat(4,minmax(0,1fr)); }
-  .home-library .cards > :nth-child(n + 5) { display: none; }
+  .home-library .cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: clamp(210px,16vw,280px); overflow-x: auto; padding: 4px 0 16px; scroll-padding-inline: 0; }
+  .home-library .cards > :nth-child(n + 5) { display: block; }
 }
 @media (max-width: 920px) {
   .home-hero-content { width: min(650px,70%); }
@@ -688,6 +688,12 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .home-library .card,.home-library .card img,.hero-arrow,.hero-actions button,.hero-actions svg { transition: none; }
   .home-hero-backdrop { animation: home-hero-image .75s cubic-bezier(.2,.7,.2,1) both !important; }
   .hero-word { animation-duration: .01s !important; animation-delay: 0s !important; }
+}
+
+/* Keep home poster rails edge-to-edge, like the featured artwork above them. */
+.home-library .rail .cards { width: 100vw; margin-left: calc(50% - 50vw); }
+@media (max-width: 650px) {
+  .home-library .rail .cards { padding-right: 0; padding-left: 0; }
 }
 @keyframes seven-wordmark-center-mobile { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
