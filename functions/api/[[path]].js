@@ -7,7 +7,7 @@ import { handleEmailSecurity } from "../../shared/auth-email.mjs";
 import { sameOrigin, throttle, passwordSafety } from "../../shared/auth-security.mjs";
 import { optionalAnalyticsAllowed } from "../../shared/privacy.mjs";
 
-const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos|recommendations|similar|release_dates|watch\/providers))?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos|recommendations|similar|content_ratings|watch\/providers))?)|watch\/providers\/(movie|tv)|collection\/\d+|person\/\d+(\/combined_credits)?|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
+const tmdbAllowed = /^(trending\/(all|movie|tv)\/(day|week)|movie\/(popular|now_playing|top_rated|upcoming|\d+(\/(videos|recommendations|similar|release_dates))?)|tv\/(popular|on_the_air|top_rated|airing_today|\d+(\/(season\/\d+|videos|recommendations|similar|content_ratings))?)|collection\/\d+|person\/\d+(\/combined_credits)?|search\/(multi|movie|tv)|discover\/(movie|tv))$/;
 
 function json(payload, status = 200) {
   if ([204, 205, 304].includes(status)) return new Response(null, { status, headers:{ "Cache-Control":"no-store" } });
