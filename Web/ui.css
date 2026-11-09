@@ -508,13 +508,13 @@ body:has(.home-page) {
 @keyframes home-profile-rail-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 body:has(.home-page) .app-header { margin-bottom: 0; }
 .home-page .hero {
-  position: relative; isolation: isolate; display: block; width: 100vw; min-height: clamp(590px, 76svh, 820px); margin-left: calc(50% - 50vw); overflow: hidden; padding: 0;
-  border: 0; border-radius: 0; background: #070809;
+  position: relative; isolation: isolate; display: block; width: 100%; min-height: clamp(590px, 76svh, 820px); margin: 0 auto; overflow: hidden; padding: 0;
+  border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: #070809;
   box-shadow: none;
 }
 .home-page .hero::before { position: absolute; z-index: 2; inset: 0; background: linear-gradient(90deg, #050607 0%, rgba(5,6,7,.93) 12%, rgba(5,6,7,.68) 33%, rgba(5,6,7,.12) 70%, rgba(5,6,7,.06) 100%), linear-gradient(0deg, #050607 0%, rgba(5,6,7,.72) 11%, rgba(5,6,7,.16) 31%, transparent 58%), linear-gradient(180deg, #050607 0%, rgba(5,6,7,.82) 9%, rgba(5,6,7,.38) 21%, transparent 36%); content: ""; pointer-events: none; }
 .home-page .hero::after { display: block; position: absolute; z-index: 1; right: 14%; bottom: -35%; width: 58%; height: 47%; border-radius: 50%; background: rgba(208,17,31,.1); filter: blur(120px); content: ""; pointer-events: none; }
-.home-hero-backdrop { position: absolute; z-index: -2; inset: -2%; background-position: center 24%; background-size: cover; animation: home-hero-image .75s cubic-bezier(.2,.7,.2,1) both, home-hero-drift 26s 1s ease-in-out infinite alternate; will-change: transform; }
+.home-hero-backdrop { position: absolute; z-index: -2; inset: -2%; background-position: center center; background-size: cover; animation: home-hero-image .75s cubic-bezier(.2,.7,.2,1) both, home-hero-drift 26s 1s ease-in-out infinite alternate; will-change: transform; }
 .home-hero-grade { position: absolute; z-index: -1; inset: 0; overflow: hidden; background: radial-gradient(56% 68% at 75% 28%, hsl(var(--hero-hue,352) 92% 58% / .2) 0%, transparent 72%), radial-gradient(46% 52% at 16% 78%, hsl(calc(var(--hero-hue,352) + 34) 88% 48% / .12) 0%, transparent 72%); animation: grade-in 1.1s ease both; pointer-events: none; }
 .home-hero-grade::before { position: absolute; inset: 0; background: radial-gradient(ellipse at 74% 34%, rgba(255,255,255,.09), transparent 39%); mix-blend-mode: screen; content: ""; }
 .home-hero-grade::after { position: absolute; top: -30%; bottom: -30%; left: -32%; width: 27%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.055), rgba(255,255,255,.13), transparent); opacity: 0; transform: skewX(-18deg); animation: hero-light-sweep 17s 2.5s ease-in-out infinite; content: ""; }
@@ -615,8 +615,8 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 .home-library .play-something-banner > em b { color: #ef2934; font-size: 22px; }
 
 @media (min-width: 651px) {
-  .home-library .cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: clamp(210px,16vw,280px); overflow-x: auto; padding: 4px 0 16px; scroll-padding-inline: 0; }
-  .home-library .cards > :nth-child(n + 5) { display: block; }
+  .home-library .cards,.home-library .ranked-rail .cards { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .home-library .cards > :nth-child(n + 5) { display: none; }
 }
 @media (max-width: 920px) {
   .home-hero-content { width: min(650px,70%); }
@@ -633,8 +633,7 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .app-header .search { display: none; }
   .app-header .msearch-open { margin-left: auto; }
   .app-mobile-nav { border-color: rgba(255,255,255,.11); border-radius: 17px; background: rgba(9,10,12,.9); box-shadow: 0 10px 38px #000b; }
-  .home-page .hero { width: 100vw; min-height: min(680px, 82svh); margin-left: calc(50% - 50vw); border-radius: 0; }
-  .home-hero-backdrop { background-position: 66% center; }
+  .home-page .hero { width: 100%; min-height: min(680px, 82svh); margin-left: 0; border-radius: 16px; }
   .home-hero-shade { background: linear-gradient(90deg,rgba(5,6,7,.82) 0%,rgba(5,6,7,.56) 38%,rgba(5,6,7,.1) 100%), linear-gradient(0deg,rgba(5,6,7,.97) 0%,rgba(5,6,7,.82) 26%,rgba(5,6,7,.16) 72%,rgba(5,6,7,.1) 100%); }
   .home-page .hero::before { background: linear-gradient(180deg,#050607 0%,rgba(5,6,7,.78) 12%,rgba(5,6,7,.3) 27%,transparent 42%), linear-gradient(0deg,rgba(5,6,7,.78) 0%,transparent 42%); }
   .home-hero-layout { width: 100%; padding: 0 22px 126px; }
@@ -690,11 +689,6 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
   .hero-word { animation-duration: .01s !important; animation-delay: 0s !important; }
 }
 
-/* Keep home poster rails edge-to-edge, like the featured artwork above them. */
-.home-library .rail .cards { width: 100vw; margin-left: calc(50% - 50vw); }
-@media (max-width: 650px) {
-  .home-library .rail .cards { padding-right: 0; padding-left: 0; }
-}
 @keyframes seven-wordmark-center-mobile { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 650px) {
