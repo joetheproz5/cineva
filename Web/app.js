@@ -793,8 +793,14 @@ async function boot() {
       render();
     }
     markStartupReady();
-  } else renderLoading();
-  await loadStartupData();
+    await loadStartupData();
+  } else {
+    state.route = "home";
+    const startupData = loadStartupData();
+    render();
+    markStartupReady();
+    await startupData;
+  }
   if (socialAuthError) showAuth("login", socialAuthError);
   else if (verifiedEmail) await finishEmailVerification(verifiedEmail);
   else if (state.emailVerificationError) {
@@ -1728,8 +1734,7 @@ function dismissIntro() {
     appScreen.style.removeProperty("pointer-events");
   }
   document.querySelector(".profile-gate")?.classList.replace("profile-gate-pending", "profile-gate-ready");
-  const firstControl = appScreen?.querySelector("a[href],button,input,select,textarea,[tabindex]:not([tabindex='-1'])");
-  (firstControl || appScreen)?.focus?.({ preventScroll: true });
+  appScreen?.focus?.({ preventScroll:true });
 }
 function maybeFinishIntro(skip = false) {
   if (!state.startupReady || !state.introAnimationComplete || state.introExitStarted) return;
@@ -3437,7 +3442,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=411", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=413", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

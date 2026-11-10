@@ -319,7 +319,8 @@
     }
     function pushScale(time) {
       if (actualVersion === "reducedMotion") return 1;
-      const p = cubicBezier(clamp01((time - timeline.push.start) / Math.max(1, timeline.push.end - timeline.push.start)), ...timeline.push.curve);
+      const curve = Array.isArray(timeline.push.curve) && timeline.push.curve.length === 4 ? timeline.push.curve : spec.full.push.curve;
+      const p = cubicBezier(clamp01((time - timeline.push.start) / Math.max(1, timeline.push.end - timeline.push.start)), ...curve);
       return lerp(timeline.push.from, timeline.push.to, p);
     }
     function recordLaunchStarted() {

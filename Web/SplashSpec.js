@@ -54,7 +54,7 @@
       streak: Object.freeze({ start: 0, peak: 350, full: 300, fade: 850, settle: 1400, finalAlpha: 0.15, startAlpha: 0.6 }),
       slices: Object.freeze({ start: 350, count: 7, duration: sliceReveal.durationMs, delay: sliceReveal.staggerMs }),
       glint: Object.freeze({ start: 900, duration: 400, widthFactor: 0.18, skewDegrees: -20 }),
-      push: Object.freeze({ start: 0, end: 1400, from: 1, to: 1.05 }),
+      push: Object.freeze({ start: 0, end: 1400, from: 1, to: 1.05, curve: Object.freeze([0.35, 0, 0.65, 1]) }),
       exit: Object.freeze({ duration: 400, toScale: 1.18, easing: "cubic-bezier(0.5,0,0.75,0)" }),
     }),
     reducedMotion: Object.freeze({ duration: 900, entryEnd: 700, fadeIn: 200, hold: 500, exit: 200 }),
