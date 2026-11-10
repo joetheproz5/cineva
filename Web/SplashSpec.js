@@ -3,8 +3,6 @@
   const accentRgb = "224,1,11";
   const bg0 = "#020203";
   const hot = "rgba(255,255,255,0.9)";
-  const sliceReveal = Object.freeze({ staggerMs: 55, durationMs: 380 });
-
   const spec = Object.freeze({
     version: 1,
     colors: Object.freeze({
@@ -31,16 +29,16 @@
       lineHeight: 2,
       streakWidthMax: 1.18,
     }),
-    sliceReveal,
     glintFadeFraction: 0.1,
     full: Object.freeze({
       duration: 2850,
       entryEnd: 2400,
       glow: Object.freeze({ start: 0, end: 400, baseAlpha: 0.24 }),
       glowPulse: Object.freeze({ start: 800, peak: 1000, end: 1500, amplitude: 0.25 }),
+      keySweep: Object.freeze({ start: 300, end: 1550 }),
+      reveal: Object.freeze({ start: 1000, duration: 545 }),
       line: Object.freeze({ start: 300, end: 700, growthEnd: 600, maxWidth: 0.12 }),
-      streak: Object.freeze({ start: 600, peak: 1000, full: 1100, fade: 1500, settle: 2000, finalAlpha: 0.15, startAlpha: 0.75 }),
-      slices: Object.freeze({ start: 1000, count: 7, duration: sliceReveal.durationMs, delay: sliceReveal.staggerMs }),
+      streak: Object.freeze({ start: 600, peak: 1000, full: 1100, fade: 1500, settle: 2000, finalAlpha: 0.05, startAlpha: 0.75 }),
       glint: Object.freeze({ start: 1450, duration: 550, widthFactor: 0.18, skewDegrees: -20 }),
       push: Object.freeze({ start: 0, end: 2400, from: 1, to: 1.05, curve: Object.freeze([0.35, 0, 0.65, 1]) }),
       exit: Object.freeze({ duration: 500, splashFadeDuration: 350, screenDelay: 150, screenFadeDuration: 350, fromScale: 1.05, toScale: 1.18, easing: "cubic-bezier(0.5,0,0.75,0)", screenEasing: "cubic-bezier(0.22,1,0.36,1)" }),
@@ -50,9 +48,10 @@
       entryEnd: 1400,
       glow: Object.freeze({ start: 0, end: 0, baseAlpha: 0.24, initialMultiplier: 0.6 }),
       glowPulse: Object.freeze({ start: 0, peak: 350, end: 850, amplitude: 0.25 }),
+      keySweep: Object.freeze({ start: 100, end: 950 }),
+      reveal: Object.freeze({ start: 350, duration: 545 }),
       line: Object.freeze({ start: 0, end: 0, growthEnd: 0, maxWidth: 0.12, initialAlpha: 0.6 }),
-      streak: Object.freeze({ start: 0, peak: 350, full: 300, fade: 850, settle: 1400, finalAlpha: 0.15, startAlpha: 0.6 }),
-      slices: Object.freeze({ start: 350, count: 7, duration: sliceReveal.durationMs, delay: sliceReveal.staggerMs }),
+      streak: Object.freeze({ start: 0, peak: 350, full: 300, fade: 850, settle: 1400, finalAlpha: 0.05, startAlpha: 0.6 }),
       glint: Object.freeze({ start: 900, duration: 400, widthFactor: 0.18, skewDegrees: -20 }),
       push: Object.freeze({ start: 0, end: 1400, from: 1, to: 1.05 }),
       exit: Object.freeze({ duration: 400, toScale: 1.18, easing: "cubic-bezier(0.5,0,0.75,0)" }),

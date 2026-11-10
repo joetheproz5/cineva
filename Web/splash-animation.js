@@ -100,8 +100,6 @@
       scale,
       reducedMotion: reducedMotionRequested(),
       debug,
-      sliceStaggerMs: debugNumber("splashSliceStagger", spec.sliceReveal.staggerMs),
-      sliceDurationMs: debugNumber("splashSliceDuration", spec.sliceReveal.durationMs),
       glintStartMs: debugNumber("splashGlintStart", spec[version].glint.start),
       glintDurationMs: debugNumber("splashGlintDuration", spec[version].glint.duration),
     };
@@ -121,22 +119,16 @@
     parent.appendChild(use);
     return use;
   }
-  function createOverlay({ version = "full", scale = 1, reducedMotion = false, debug = false, sliceStaggerMs, sliceDurationMs, glintStartMs, glintDurationMs } = {}, callbacks = {}) {
+  function createOverlay({ version = "full", scale = 1, reducedMotion = false, debug = false, glintStartMs, glintDurationMs } = {}, callbacks = {}) {
     const actualVersion = reducedMotion ? "reducedMotion" : validVersion(version);
     const timeline = actualVersion === "reducedMotion" ? spec.reducedMotion : spec[actualVersion];
-    const sliceSpec = timeline.slices ? {
-      ...timeline.slices,
-      delay: debug && Number.isFinite(Number(sliceStaggerMs)) ? Math.max(0, Number(sliceStaggerMs)) : timeline.slices.delay,
-      duration: debug && Number.isFinite(Number(sliceDurationMs)) ? Math.max(1, Number(sliceDurationMs)) : timeline.slices.duration,
-    } : null;
+    const revealSpec = timeline.reveal || null;
     const glintSpec = timeline.glint ? {
       ...timeline.glint,
       start: debug && Number.isFinite(Number(glintStartMs)) ? Math.max(0, Number(glintStartMs)) : timeline.glint.start,
       duration: debug && Number.isFinite(Number(glintDurationMs)) ? Math.max(1, Number(glintDurationMs)) : timeline.glint.duration,
     } : null;
-    const revealEnd = sliceSpec
-      ? sliceSpec.start + sliceSpec.duration + sliceSpec.delay * (sliceSpec.count - 1) / 2
-      : Infinity;
+    const revealEnd = revealSpec ? revealSpec.start + revealSpec.duration : Infinity;
     const exitSpec = timeline.exit || {};
     const defaultExitDuration = timeline.exit?.duration || spec.reducedMotion.exit;
     const exitPhases = {
@@ -163,6 +155,12 @@
     composition.className = "splash-composition";
     const glow = document.createElement("div");
     glow.className = "splash-glow";
+    const atmosphere = document.createElement("div");
+    atmosphere.className = "splash-atmosphere";
+    const reflection = document.createElement("div");
+    reflection.className = "splash-reflection";
+    const keySweep = document.createElement("div");
+    keySweep.className = "splash-key-sweep";
     const streak = document.createElement("div");
     streak.className = "splash-streak";
     const streakCore = document.createElement("div");
@@ -180,26 +178,38 @@
     addPathUse(markClip);
     defs.appendChild(markClip);
 
-    const sliceClips = [];
-    const sliceGroup = svgElement("g", { class: "splash-slices" });
-    if (actualVersion !== "reducedMotion") {
-      const sliceWidth = spec.layout.wordmarkViewBoxWidth / sliceSpec.count;
-      for (let index = 0; index < sliceSpec.count; index += 1) {
-        const clipId = `${sequenceId}-slice-${index}`;
-        const clip = svgElement("clipPath", { id: clipId, clipPathUnits: "userSpaceOnUse" });
-        const rect = svgElement("rect", { x: 0, y: 0, width: 0, height: 0 });
-        rect.style.display = "none";
-        clip.appendChild(rect);
-        defs.appendChild(clip);
-        const group = svgElement("g", { "clip-path": `url(#${clipId})` });
-        addPathUse(group, { fill: spec.colors.accent });
-        sliceGroup.appendChild(group);
-        sliceClips.push({ rect, index });
-      }
-    }
+    const faceGradientId = `${sequenceId}-face-gradient`;
+    const faceGradient = svgElement("linearGradient", {
+      id: faceGradientId,
+      x1: "0%",
+      y1: "0%",
+      x2: "100%",
+      y2: "100%",
+    });
+    faceGradient.append(
+      svgElement("stop", { offset: "0%", "stop-color": spec.colors.glint, "stop-opacity": 0.62 }),
+      svgElement("stop", { offset: "14%", "stop-color": spec.colors.accent, "stop-opacity": 0.98 }),
+      svgElement("stop", { offset: "100%", "stop-color": spec.colors.accent, "stop-opacity": 1 }),
+    );
+    defs.appendChild(faceGradient);
 
-    const settledMark = svgElement("g", { class: "splash-settled-wordmark", display: "none" });
-    addPathUse(settledMark, { fill: spec.colors.accent });
+    const settledMark = svgElement("g", { class: "splash-settled-wordmark", opacity: 0 });
+    const depth = svgElement("g", { class: "splash-depth" });
+    for (let step = 7; step >= 1; step -= 1) {
+      const offset = step * 3;
+      addPathUse(depth, {
+        fill: spec.colors.accent,
+        opacity: String(0.13 + (7 - step) * 0.018),
+        transform: `translate(${offset} ${offset * 0.66})`,
+      });
+    }
+    settledMark.appendChild(depth);
+    const face = svgElement("g", { class: "splash-face" });
+    addPathUse(face, { fill: `url(#${faceGradientId})` });
+    settledMark.appendChild(face);
+    const rim = svgElement("g", { class: "splash-rim", opacity: 0 });
+    addPathUse(rim, { fill: "none", stroke: spec.colors.hot, "stroke-width": 2.2, opacity: 0.42 });
+    settledMark.appendChild(rim);
 
     const reducedMark = svgElement("g", { class: "splash-reduced-wordmark", opacity: 0 });
     addPathUse(reducedMark, { fill: spec.colors.accent });
@@ -227,15 +237,16 @@
       width: glintWidth,
       height: spec.layout.wordmarkViewBoxHeight,
       fill: `url(#${glintGradientId})`,
+      opacity: 0,
       transform: `skewX(${glintSkew})`,
     });
     const glintClipGroup = svgElement("g", { class: "splash-glint-clip", "clip-path": `url(#${markClipId})` });
     glintClipGroup.appendChild(glint);
-    mark.append(defs, sliceGroup, settledMark, reducedMark, glintClipGroup);
+    mark.append(defs, settledMark, reducedMark, glintClipGroup);
     const content = document.createElement("div");
     content.className = "splash-content";
-    content.append(streak, streakCore, mark);
-    composition.append(glow, content);
+    content.append(keySweep, streak, streakCore, mark);
+    composition.append(glow, atmosphere, reflection, content);
     root.appendChild(composition);
 
     let startTimestamp = null;
@@ -273,6 +284,30 @@
       const widthStyle = `${width}px`;
       if (mark.style.width !== widthStyle) mark.style.width = widthStyle;
       if (actualVersion === "reducedMotion") return;
+      const viewport = measure();
+      const sweep = timeline.keySweep || { start: timeline.line.start, end: revealEnd };
+      const sweepProgress = cubicBezier(clamp01((time - sweep.start) / Math.max(1, sweep.end - sweep.start)), 0.32, 0, 0.22, 1);
+      const sweepX = lerp(-viewport.width * 0.78, viewport.width * 0.78, sweepProgress);
+      const sweepAlpha = Math.sin(Math.PI * clamp01((time - sweep.start) / Math.max(1, sweep.end - sweep.start))) * 0.86;
+      const sweepWidth = `${Math.max(220, width * 0.64)}px`;
+      const sweepHeight = `${Math.max(viewport.height * 1.25, width * 1.6)}px`;
+      if (keySweep.style.width !== sweepWidth) keySweep.style.width = sweepWidth;
+      if (keySweep.style.height !== sweepHeight) keySweep.style.height = sweepHeight;
+      keySweep.style.transform = `translate3d(${sweepX}px, 0, 0) rotate(-17deg)`;
+      keySweep.style.opacity = String(clamp01(sweepAlpha));
+      const revealStart = revealSpec?.start ?? timeline.line.start;
+      const revealProgress = cubicBezier(clamp01((time - revealStart) / Math.max(1, revealEnd - revealStart)), 0.22, 1, 0.36, 1);
+      const pitch = lerp(9, 0, revealProgress);
+      const yaw = lerp(-5, 0, revealProgress);
+      const settleScale = lerp(0.965, 1, revealProgress);
+      mark.style.transform = `perspective(1200px) rotateX(${pitch}deg) rotateY(${yaw}deg) scale(${settleScale}) translateZ(0)`;
+      const reflectionWidth = `${width * 1.28}px`;
+      const reflectionHeight = `${Math.max(18, width * 0.11)}px`;
+      const reflectionTop = `calc(50% + ${Math.max(25, width * 0.2)}px)`;
+      if (reflection.style.width !== reflectionWidth) reflection.style.width = reflectionWidth;
+      if (reflection.style.height !== reflectionHeight) reflection.style.height = reflectionHeight;
+      if (reflection.style.top !== reflectionTop) reflection.style.top = reflectionTop;
+      reflection.style.opacity = String(0.62 * revealProgress);
       let streakWidthRatio;
       if (actualVersion === "short") {
         const extension = clamp01(time / Math.max(1, timeline.streak.full));
@@ -324,35 +359,14 @@
       const p = cubicBezier(clamp01((time - timeline.push.start) / Math.max(1, timeline.push.end - timeline.push.start)), ...timeline.push.curve);
       return lerp(timeline.push.from, timeline.push.to, p);
     }
-    function updateSliceReveal(time, scaleFactor, cssWidth) {
-      if (!sliceSpec) return;
-      const settled = time >= revealEnd;
-      sliceGroup.style.display = settled ? "none" : "";
-      settledMark.style.display = settled ? "inline" : "none";
-      if (settled) return;
-
-      const viewWidth = spec.layout.wordmarkViewBoxWidth;
-      const viewHeight = spec.layout.wordmarkViewBoxHeight;
-      const pixelsPerUnit = cssWidth * scaleFactor * Math.max(0.25, window.devicePixelRatio || 1) / viewWidth;
-      const devicePixel = 1 / pixelsPerUnit;
-      const sliceWidth = viewWidth / sliceSpec.count;
-      for (const { rect, index } of sliceClips) {
-        const center = (sliceSpec.count - 1) / 2;
-        const delay = sliceSpec.delay * Math.abs(index - center);
-        const progress = clamp01((time - sliceSpec.start - delay) / sliceSpec.duration);
-        rect.style.display = progress > 0 ? "block" : "none";
-        if (progress <= 0) continue;
-
-        const height = viewHeight * cubicBezier(progress, 0.22, 1, 0.36, 1);
-        const leftEdge = Math.round(index * sliceWidth * pixelsPerUnit) / pixelsPerUnit;
-        const rightEdge = Math.round((index + 1) * sliceWidth * pixelsPerUnit) / pixelsPerUnit;
-        const top = Math.floor(((viewHeight - height) / 2) * pixelsPerUnit) / pixelsPerUnit;
-        const bottom = Math.ceil(((viewHeight + height) / 2) * pixelsPerUnit) / pixelsPerUnit;
-        rect.setAttribute("x", String(leftEdge - devicePixel));
-        rect.setAttribute("y", String(top));
-        rect.setAttribute("width", String(rightEdge - leftEdge + devicePixel * 2));
-        rect.setAttribute("height", String(bottom - top));
-      }
+    function updateWordmarkReveal(time) {
+      if (!revealSpec) return;
+      const revealProgress = cubicBezier(clamp01((time - revealSpec.start) / Math.max(1, revealEnd - revealSpec.start)), 0.22, 1, 0.36, 1);
+      settledMark.style.display = "inline";
+      settledMark.style.opacity = String(revealProgress);
+      settledMark.querySelector(".splash-rim")?.setAttribute("opacity", String(0.5 * revealProgress));
+      const lacquer = settledMark.querySelector(".splash-face");
+      if (lacquer) lacquer.setAttribute("opacity", String(0.3 + 0.7 * revealProgress));
     }
     function applyComposition(time, exitPreview = false) {
       let opacity = "1";
@@ -375,12 +389,12 @@
       currentTime = Math.max(0, exitPreview || exiting ? time : Math.min(time, timeline.entryEnd));
       if (debug) root.dataset.timelineMs = String(Math.round(currentTime));
       applyComposition(currentTime, exitPreview);
-      const cssWidth = wordmarkWidth();
       setGeometry(currentTime);
       glow.style.setProperty("--splash-glow-alpha", String(glowAlpha(currentTime)));
+      atmosphere.style.opacity = String(actualVersion === "reducedMotion" ? 0 : clamp01(glowAlpha(currentTime) * 1.7));
       streak.style.opacity = String(streakAlpha(currentTime));
       streakCore.style.opacity = String(streakAlpha(currentTime));
-      updateSliceReveal(currentTime, currentScale, cssWidth);
+      updateWordmarkReveal(currentTime);
 
       if (actualVersion === "reducedMotion") {
         reducedMark.setAttribute("opacity", String(clamp01(currentTime / spec.reducedMotion.fadeIn)));
@@ -497,9 +511,8 @@
     }
     function onResize() {
       if (destroyed) return;
-      const cssWidth = wordmarkWidth();
       setGeometry(currentTime);
-      updateSliceReveal(currentTime, currentScale, cssWidth);
+      updateWordmarkReveal(currentTime);
     }
     const onPointer = () => trySkip();
     const onKey = event => { if (!event.defaultPrevented && !event.repeat) trySkip(); };
@@ -527,11 +540,9 @@
     const panel = document.createElement("aside");
     panel.className = "splash-debug";
     panel.setAttribute("aria-label", "SEVEN splash preview controls");
-    panel.innerHTML = `<label>Version <select data-splash-version aria-label="Splash version"><option value="full">Full</option><option value="short">Short</option></select></label><label>Speed <select data-splash-scale aria-label="Splash speed"><option value="1">1×</option><option value="0.25">0.25×</option></select></label><label>Stagger ms <input data-splash-stagger aria-label="Slice stagger in milliseconds" type="number" min="0" max="300" step="5"></label><label>Slice ms <input data-splash-slice-duration aria-label="Slice duration in milliseconds" type="number" min="1" max="900" step="10"></label><label>Glint start ms <input data-splash-glint-start aria-label="Glint start in milliseconds" type="number" min="0" max="5000" step="25"></label><label>Glint duration ms <input data-splash-glint-duration aria-label="Glint duration in milliseconds" type="number" min="1" max="2000" step="25"></label><button type="button" data-splash-replay>Replay</button>`;
+    panel.innerHTML = `<label>Version <select data-splash-version aria-label="Splash version"><option value="full">Full</option><option value="short">Short</option></select></label><label>Speed <select data-splash-scale aria-label="Splash speed"><option value="1">1×</option><option value="0.25">0.25×</option></select></label><label>Glint start ms <input data-splash-glint-start aria-label="Glint start in milliseconds" type="number" min="0" max="5000" step="25"></label><label>Glint duration ms <input data-splash-glint-duration aria-label="Glint duration in milliseconds" type="number" min="1" max="2000" step="25"></label><button type="button" data-splash-replay>Replay</button>`;
     panel.querySelector("[data-splash-version]").value = validVersion(new URLSearchParams(window.location.search).get("splashVersion"));
     panel.querySelector("[data-splash-scale]").value = Number(new URLSearchParams(window.location.search).get("splashScale")) === 0.25 ? "0.25" : "1";
-    panel.querySelector("[data-splash-stagger]").value = Number(new URLSearchParams(window.location.search).get("splashSliceStagger")) || spec.sliceReveal.staggerMs;
-    panel.querySelector("[data-splash-slice-duration]").value = Number(new URLSearchParams(window.location.search).get("splashSliceDuration")) || spec.sliceReveal.durationMs;
     panel.querySelector("[data-splash-glint-start]").value = Number(new URLSearchParams(window.location.search).get("splashGlintStart")) || spec.full.glint.start;
     panel.querySelector("[data-splash-glint-duration]").value = Number(new URLSearchParams(window.location.search).get("splashGlintDuration")) || spec.full.glint.duration;
     panel.querySelector("[data-splash-version]").addEventListener("change", event => {
@@ -543,8 +554,6 @@
       onReplay?.({
         version: panel.querySelector("[data-splash-version]").value,
         scale: Number(panel.querySelector("[data-splash-scale]").value) || 1,
-        sliceStaggerMs: Math.max(0, Number(panel.querySelector("[data-splash-stagger]").value) || 0),
-        sliceDurationMs: Math.max(1, Number(panel.querySelector("[data-splash-slice-duration]").value) || 1),
         glintStartMs: Math.max(0, Number(panel.querySelector("[data-splash-glint-start]").value) || 0),
         glintDurationMs: Math.max(1, Number(panel.querySelector("[data-splash-glint-duration]").value) || 1),
       });

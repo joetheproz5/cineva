@@ -1778,10 +1778,10 @@ function renderLaunchIntro(override = null) {
     }, window.SplashSpec.readyTimeout);
   }
   if (!document.querySelector(".splash-debug")) {
-    window.SEVENSplash.mountDebugControls(({ version, scale, sliceStaggerMs, sliceDurationMs, glintStartMs, glintDurationMs }) => {
+    window.SEVENSplash.mountDebugControls(({ version, scale, glintStartMs, glintDurationMs }) => {
       dismissIntro();
       state.startupReady = true;
-      renderLaunchIntro({ version, scale, sliceStaggerMs, sliceDurationMs, glintStartMs, glintDurationMs, reducedMotion: window.SEVENSplash.reducedMotionRequested(), debug: true });
+      renderLaunchIntro({ version, scale, glintStartMs, glintDurationMs, reducedMotion: window.SEVENSplash.reducedMotionRequested(), debug: true });
     });
   }
 }
