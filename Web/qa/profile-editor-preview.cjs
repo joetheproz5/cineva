@@ -52,7 +52,7 @@ async function main() {
           const profile = { id:edit ? "existing" : "draft", name, kids:false, ...(avatar ? { avatar } : {}) };
           state.user = { id:"profile-editor-qa", email:"qa@example.test" };
           state.session = { access_token:"fixture", expires_at:Math.floor(Date.now()/1000)+3600, user:state.user };
-          state.account = { activeProfileId:null, profiles:[{ id:"main", name:"Main", kids:false }, profile], preferences:{ ...DEFAULT_PREFERENCES } };
+          state.account = { activeProfileId:null, profiles:[{ id:"main", name:"Main", kids:false, avatar:"assets/avatars/red-panda.png" }, profile], preferences:{ ...DEFAULT_PREFERENCES } };
           state.profileDraft = { ...profile };
           state.profileSettingsReturn = "profiles";
           state.profileSettingsCategory = "profile";
@@ -68,16 +68,33 @@ async function main() {
         await page.screenshot({ path:pathName });
         const metrics = await page.locator("[data-profile-editor]").evaluate(el => ({
           title:el.querySelector("h1")?.textContent,
+          isNew:state.profileEditorIsNew,
           button:el.querySelector("[type=submit] .profile-editor-submit-label")?.textContent,
           nameValue:el.querySelector("#profile-editor-name")?.value,
           nameStyle:(() => { const style=getComputedStyle(el.querySelector("#profile-editor-name")); return {color:style.color,textFill:style.webkitTextFillColor,opacity:style.opacity,visibility:style.visibility,fontSize:style.fontSize,textAlign:style.textAlign}; })(),
           width:el.getBoundingClientRect().width,
+          columnWidth:el.querySelector(".profile-editor-column")?.getBoundingClientRect().width,
           scrollWidth:el.scrollWidth,
           clientWidth:el.clientWidth,
+          avatarChoiceCount:el.querySelectorAll(".profile-editor-avatar-choice").length,
+          initialChoiceCount:el.querySelectorAll('[data-avatar-choice="initial"]').length,
+          selectedAvatar:el.querySelector('.profile-editor-avatar-choice[aria-checked="true"]')?.dataset.avatarChoice || null,
+          previewImage:el.querySelector("[data-avatar-preview] img")?.getAttribute("src") || null,
+          previewLeft:el.querySelector("[data-avatar-preview]")?.getBoundingClientRect().left,
+          pickerLeft:el.querySelector(".profile-editor-avatar-picker")?.getBoundingClientRect().left,
+          gridColumns:getComputedStyle(el.querySelector(".profile-editor-avatar-grid")).gridTemplateColumns,
           submitBottom:el.querySelector("[type=submit]").getBoundingClientRect().bottom,
           viewportHeight:innerHeight
         }));
         assert.equal(metrics.scrollWidth <= metrics.clientWidth, true, `horizontal overflow: ${stateName} ${viewport.label}`);
+        assert.equal(metrics.avatarChoiceCount, 6, `picker should contain six preset avatars: ${stateName} ${viewport.label}`);
+        assert.equal(metrics.initialChoiceCount, 0, `picker should not contain the blank initial tile: ${stateName} ${viewport.label}`);
+        assert.equal(metrics.selectedAvatar, metrics.isNew ? "preset-1" : "preset-0", `profile should select the first unused avatar or preserve its existing selection: ${stateName} ${viewport.label}`);
+        assert.equal(metrics.previewImage, metrics.isNew ? "assets/avatars/black-cat.webp" : "assets/avatars/red-panda.webp", `preview should show the selected avatar immediately: ${stateName} ${viewport.label}`);
+        if (viewport.width >= 700) {
+          assert.ok(metrics.columnWidth > 600, `desktop editor should use the wide layout: ${stateName} ${viewport.label}`);
+          assert.ok(metrics.pickerLeft > metrics.previewLeft, `desktop picker should sit beside the profile preview: ${stateName} ${viewport.label}`);
+        }
         return { file:pathName, metrics };
       }
 
@@ -105,6 +122,8 @@ async function main() {
         captures.push(await capture(`edit-${viewport.label}`));
       } else {
         captures.push(await capture(`empty-${viewport.label}`));
+        await editor({ name:"Jamie", edit:true });
+        captures.push(await capture(`edit-${viewport.label}`));
       }
       if (viewport.width === 390) {
         await page.locator("#profile-editor-name").focus();
@@ -125,13 +144,18 @@ async function main() {
         const textScaleMetrics = await page.evaluate(() => {
           const baseRootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
           document.documentElement.style.fontSize = `${baseRootFontSize * 1.3}px`;
+          window.dispatchEvent(new Event("resize"));
           const input = document.querySelector("#profile-editor-name"), style = getComputedStyle(input), canvas = document.createElement("canvas"), context = canvas.getContext("2d");
           context.font = style.font;
           return { baseRootFontSize, rootFontSize:parseFloat(getComputedStyle(document.documentElement).fontSize), inputFontSize:parseFloat(style.fontSize), inputWidth:input.clientWidth, nameTextWidth:context.measureText(input.value).width, scrollWidth:document.querySelector("[data-profile-editor]").scrollWidth, clientWidth:document.querySelector("[data-profile-editor]").clientWidth };
         });
         assert.ok(textScaleMetrics.scrollWidth <= textScaleMetrics.clientWidth, "profile editor should not overflow horizontally at 1.3x font scale");
-        assert.ok(Math.abs(textScaleMetrics.inputFontSize / (textScaleMetrics.baseRootFontSize * 1.6) - 1.3) < 0.01, "profile name input should honor 1.3x scaling of its 24sp size");
+        assert.ok(textScaleMetrics.inputFontSize / textScaleMetrics.baseRootFontSize >= 1.2, "profile name input should remain accessible at 1.3x font scale");
+        assert.ok(textScaleMetrics.nameTextWidth <= textScaleMetrics.inputWidth, "long profile names should fit at 1.3x font scale");
         console.log(JSON.stringify({ fontScale:textScaleMetrics }));
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.waitForTimeout(160);
+        captures.push(await capture(`font-1.3-${viewport.label}`));
       }
       assert.deepEqual(errors, [], `browser errors at ${viewport.label}`);
       console.log(JSON.stringify({ viewport:viewport.label, captures }));

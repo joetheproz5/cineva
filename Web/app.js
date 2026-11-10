@@ -3230,25 +3230,25 @@ function iosDnsProtectionCard() {
   return `<section class="profile-pin-card dns-filtering-card"><span class="brand">OPTIONAL · IPHONE-WIDE</span><h2>Block known ad domains</h2><p>SEVEN blocks many player pop-ups. For broader filtering, use AdGuard’s free public DNS profile on iPhone. It can reduce requests to known ad and tracker domains, but cannot catch every ad.</p><a class="dns-filtering-link" href="https://adguard-dns.io/en/public-dns.html" target="_blank" rel="noopener noreferrer">View iPhone DNS setup <span aria-hidden="true">↗</span></a><small>On the official page, choose the Default server and download its iOS profile. Then review and install it in Settings. This changes DNS for the whole iPhone, not just SEVEN, and may affect playback.</small></section>`;
 }
 function profileEditorInitial(name) {
-  const letter = Array.from(String(name || "").trim())[0] || "";
-  return { letter, tone:letter ? (letter.codePointAt(0) % 6) + 1 : 1 };
+  const value = String(name || "").trim(), letter = Array.from(value)[0] || "?";
+  return { letter, tone:profileGateInitial({ name:value || "?" }).tone };
 }
 function profileEditorFaceMarkup(avatar, name) {
-  if (isProfileAvatar(avatar)) return `<span class="profile-editor-avatar-image"><img src="${escapeHTML(avatar)}" width="512" height="512" alt="" decoding="async"></span>`;
+  if (isProfileAvatar(avatar)) return `<span class="profile-editor-avatar-image"><img src="${escapeHTML(profileAvatarSource(avatar))}" width="512" height="512" alt="" decoding="async"></span>`;
   const initial = profileEditorInitial(name);
   return `<span class="profile-editor-avatar-initial" style="--profile-avatar-tone:var(--profile-avatar-tone-${initial.tone})"><span class="profile-editor-initial-letter" data-profile-initial>${escapeHTML(initial.letter)}</span></span>`;
 }
+function profileEditorInitialSelection(profile, isNew) {
+  if (!isNew) return isProfileAvatar(profile?.avatar) ? profile.avatar : null;
+  const used = new Set((state.account?.profiles || []).filter(item => item.id !== profile?.id).map(item => item.avatar).filter(isProfileAvatar));
+  return AVATAR_OPTIONS.find(([, avatar]) => !used.has(avatar))?.[1] || AVATAR_OPTIONS[0]?.[1] || null;
+}
 function profileEditorFormMarkup(profile, isNew, canRemove) {
-  const isPreset = AVATAR_OPTIONS.some(([, path]) => path === profile.avatar), customAvatar = !isNew && isProfileAvatar(profile.avatar) && !isPreset;
-  const selected = avatar => profile.avatar === avatar;
-  const initialSelected = !isProfileAvatar(profile.avatar);
-  const avatarTiles = [
-    `<button type="button" role="radio" class="profile-editor-avatar-choice ${initialSelected ? "selected" : ""}" data-avatar-choice="initial" aria-label="Initial avatar" aria-checked="${initialSelected}"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(null, profile.name)}</span></button>`,
-    ...AVATAR_OPTIONS.map(([name, path], index) => `<button type="button" role="radio" class="profile-editor-avatar-choice ${selected(path) ? "selected" : ""}" data-avatar-choice="preset-${index}" aria-label="Avatar ${index + 1}" aria-checked="${selected(path)}"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(path, profile.name)}</span></button>`),
-    ...(customAvatar ? [`<button type="button" role="radio" class="profile-editor-avatar-choice selected" data-avatar-choice="current" aria-label="Avatar ${AVATAR_OPTIONS.length + 1}" aria-checked="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(profile.avatar, profile.name)}</span></button>`] : [])
-  ].join("");
+  const selectedAvatar = profileEditorInitialSelection(profile, isNew), isPreset = AVATAR_OPTIONS.some(([, path]) => path === profile.avatar), customAvatar = !isNew && isProfileAvatar(profile.avatar) && !isPreset;
+  const avatarTiles = AVATAR_OPTIONS.map(([, path], index) => `<button type="button" role="radio" class="profile-editor-avatar-choice ${selectedAvatar === path ? "selected" : ""}" data-avatar-choice="preset-${index}" aria-label="Avatar ${index + 1}" aria-checked="${selectedAvatar === path}"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(path, profile.name)}</span></button>`).join("")
+    + (customAvatar ? `<button type="button" role="radio" class="profile-editor-avatar-choice selected" data-avatar-choice="current" aria-label="Avatar ${AVATAR_OPTIONS.length + 1}" aria-checked="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(profile.avatar, profile.name)}</span></button>` : "");
   const counterVisible = String(profile.name || "").length >= 19;
-  return `<main class="profile-editor-route profile-settings-redesign" data-profile-editor><div class="profile-editor-column"><header class="profile-editor-topbar"><button type="button" class="profile-editor-cancel" data-profile-form-cancel>Cancel</button><h1>${isNew ? "New profile" : "Edit profile"}</h1></header><form id="profile-settings-form" class="profile-editor-form" novalidate><div class="profile-editor-content"><div class="profile-editor-preview" data-avatar-preview aria-hidden="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(profile.avatar, profile.name)}</span></div><div class="profile-editor-name"><label class="profile-editor-visually-hidden" for="profile-editor-name">Profile name</label><input id="profile-editor-name" name="name" type="text" required maxlength="24" value="${escapeHTML(profile.name)}" placeholder="Profile name" aria-label="Profile name" aria-describedby="profile-editor-field-error profile-editor-counter" autocapitalize="words" autocomplete="off" enterkeyhint="done"><span class="profile-editor-underline" aria-hidden="true"></span><div class="profile-editor-field-meta"><p id="profile-editor-field-error" class="profile-editor-field-error" role="status" aria-live="polite"></p><span id="profile-editor-counter" class="profile-editor-counter" ${counterVisible ? "" : "hidden"}>${String(profile.name || "").length} / 24</span></div></div><section class="profile-editor-avatar-picker" aria-labelledby="profile-editor-avatar-title"><h2 id="profile-editor-avatar-title">Choose an avatar</h2><div class="profile-editor-avatar-grid" role="radiogroup" aria-labelledby="profile-editor-avatar-title">${avatarTiles}</div></section>${canRemove ? `<button type="button" class="profile-editor-delete" data-remove-profile>Delete profile</button>` : ""}</div><div class="profile-editor-actions"><p class="profile-editor-save-error" role="status" aria-live="polite"></p><button type="submit" class="primary profile-editor-submit" disabled><span class="profile-editor-submit-label">${isNew ? "Create profile" : "Save changes"}</span><i class="profile-editor-submit-progress" aria-hidden="true"></i></button></div></form></div></main>`;
+  return `<main class="profile-editor-route profile-settings-redesign" data-profile-editor><div class="profile-editor-column"><header class="profile-editor-topbar"><button type="button" class="profile-editor-cancel" data-profile-form-cancel>Cancel</button><h1>${isNew ? "New profile" : "Edit profile"}</h1></header><form id="profile-settings-form" class="profile-editor-form" novalidate><div class="profile-editor-content"><div class="profile-editor-preview" data-avatar-preview aria-hidden="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(selectedAvatar, profile.name)}</span></div><div class="profile-editor-name"><label class="profile-editor-visually-hidden" for="profile-editor-name">Profile name</label><input id="profile-editor-name" name="name" type="text" required maxlength="24" value="${escapeHTML(profile.name)}" placeholder="Profile name" aria-label="Profile name" aria-describedby="profile-editor-field-error profile-editor-counter" autocapitalize="words" autocomplete="off" enterkeyhint="done"><span class="profile-editor-underline" aria-hidden="true"></span><div class="profile-editor-field-meta"><p id="profile-editor-field-error" class="profile-editor-field-error" role="status" aria-live="polite"></p><span id="profile-editor-counter" class="profile-editor-counter" ${counterVisible ? "" : "hidden"}>${String(profile.name || "").length} / 24</span></div></div><section class="profile-editor-avatar-picker" aria-labelledby="profile-editor-avatar-title"><h2 id="profile-editor-avatar-title">Choose an avatar</h2><div class="profile-editor-avatar-grid" role="radiogroup" aria-labelledby="profile-editor-avatar-title">${avatarTiles}</div></section>${canRemove ? `<button type="button" class="profile-editor-delete" data-remove-profile>Delete profile</button>` : ""}</div><div class="profile-editor-actions"><p class="profile-editor-save-error" role="status" aria-live="polite"></p><button type="submit" class="primary profile-editor-submit" disabled><span class="profile-editor-submit-label">${isNew ? "Create profile" : "Save changes"}</span><i class="profile-editor-submit-progress" aria-hidden="true"></i></button></div></form></div></main>`;
 }
 function profileSettingsDetail(profile, category, preferences, isNew) {
   preferences = { ...preferences, maturity:maturityForProfile(profile) };
@@ -3294,30 +3294,25 @@ async function requestProfileEditorCancel() {
 function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
   const form = document.querySelector("#profile-settings-form"), input = form?.elements.name, preview = document.querySelector("[data-avatar-preview]"), fieldError = document.querySelector("#profile-editor-field-error"), counter = document.querySelector("#profile-editor-counter"), saveError = document.querySelector(".profile-editor-save-error"), submit = form?.querySelector("[type=submit]"), group = form?.querySelector("[role=radiogroup]");
   if (!form || !input || !submit || !group) return;
-  const initialName = String(profile.name || ""), originalAvatar = profile.avatar || null, avatarKey = value => {
-    if (!isProfileAvatar(value)) return "initial";
+  const initialName = String(profile.name || ""), originalAvatar = profile.avatar || null, initialAvatar = profileEditorInitialSelection(profile, isNew), avatarKey = value => {
+    if (!isProfileAvatar(value)) return null;
     const preset = AVATAR_OPTIONS.findIndex(([, path]) => path === value);
     return preset >= 0 ? `preset-${preset}` : "current";
   };
-  let selectedAvatar = originalAvatar, previewKey = isProfileAvatar(originalAvatar) ? String(originalAvatar) : (() => { const initial = profileEditorInitial(initialName); return `initial:${initial.letter}:${initial.tone}`; })(), saving = false;
+  let selectedAvatar = initialAvatar, previewKey = isProfileAvatar(initialAvatar) ? String(initialAvatar) : (() => { const initial = profileEditorInitial(initialName); return `initial:${initial.letter}:${initial.tone}`; })(), saving = false;
   const normalizedName = () => input.value.trim().replace(/\s+/g, " ");
-  const dirty = () => input.value !== initialName || avatarKey(selectedAvatar) !== avatarKey(originalAvatar);
+  const nameMeasure = document.createElement("canvas").getContext("2d");
+  const fitNameInput = () => {
+    input.style.removeProperty("--profile-editor-name-fit-scale");
+    if (!nameMeasure) return;
+    const style = getComputedStyle(input), text = input.value || input.placeholder;
+    nameMeasure.font = style.font;
+    const width = nameMeasure.measureText(text).width, available = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    if (width > available && width > 0 && available > 0) input.style.setProperty("--profile-editor-name-fit-scale", String(Math.max(.8, available / width)));
+  };
+  const dirty = () => input.value !== initialName || avatarKey(selectedAvatar) !== avatarKey(isNew ? initialAvatar : originalAvatar);
   state.profileEditorDirtyCheck = dirty;
   state.profileEditorSaving = false;
-  const currentInitialMarkup = () => {
-    const initial = profileEditorInitial(input.value);
-    group.querySelectorAll("[data-avatar-choice=initial] .profile-editor-avatar-initial").forEach(face => {
-      face.style.setProperty("--profile-avatar-tone", `var(--profile-avatar-tone-${initial.tone})`);
-      const glyphs = [...face.querySelectorAll("[data-profile-initial]")], glyph = glyphs.at(-1);
-      if (!glyph || glyph.textContent === initial.letter) return;
-      glyphs.slice(0, -1).forEach(node => node.remove());
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { glyph.textContent = initial.letter; return; }
-      const next = document.createElement("span"); next.className = "profile-editor-initial-letter is-entering"; next.dataset.profileInitial = ""; next.textContent = initial.letter;
-      glyph.classList.add("is-leaving"); face.append(next);
-      requestAnimationFrame(() => next.classList.remove("is-entering"));
-      setTimeout(() => glyph.remove(), 150);
-    });
-  };
   const updatePreview = () => {
     const initial = profileEditorInitial(input.value), key = isProfileAvatar(selectedAvatar) ? String(selectedAvatar) : `initial:${initial.letter}:${initial.tone}`;
     if (key === previewKey) return;
@@ -3329,12 +3324,13 @@ function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
     setTimeout(() => prior.forEach(face => face.remove()), 170);
   };
   const updateSelection = () => {
-    group.querySelectorAll("[role=radio]").forEach(button => {
-      const selected = button.dataset.avatarChoice === avatarKey(selectedAvatar);
-      button.classList.toggle("selected", selected); button.setAttribute("aria-checked", String(selected)); button.tabIndex = selected ? 0 : -1;
+    const buttons = [...group.querySelectorAll("[role=radio]")], selectedKey = avatarKey(selectedAvatar), hasSelection = selectedKey !== null;
+    buttons.forEach((button, index) => {
+      const selected = hasSelection && button.dataset.avatarChoice === selectedKey;
+      button.classList.toggle("selected", selected); button.setAttribute("aria-checked", String(selected)); button.tabIndex = selected || (!hasSelection && index === 0) ? 0 : -1;
     });
     profile.avatar = selectedAvatar;
-    currentInitialMarkup(); updatePreview(); updateState();
+    updatePreview(); updateState();
   };
   const updateState = ({ showError = false } = {}) => {
     const name = normalizedName(), valid = name.length > 0 && input.value.length <= input.maxLength;
@@ -3346,12 +3342,12 @@ function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
     if (!saving && submit.getAttribute("aria-busy") === "true") submit.removeAttribute("aria-busy");
   };
   const setAvatar = value => { selectedAvatar = value || null; saveError.textContent = ""; updateSelection(); };
-  group.querySelectorAll("[role=radio]").forEach(button => {
-    button.tabIndex = button.getAttribute("aria-checked") === "true" ? 0 : -1;
+  const radioButtons = [...group.querySelectorAll("[role=radio]")], hasSelectedRadio = radioButtons.some(button => button.getAttribute("aria-checked") === "true");
+  radioButtons.forEach((button, index) => {
+    button.tabIndex = button.getAttribute("aria-checked") === "true" || (!hasSelectedRadio && index === 0) ? 0 : -1;
     button.addEventListener("click", () => {
       const key = button.dataset.avatarChoice;
-      if (key === "initial") setAvatar(null);
-      else if (key === "current") setAvatar(originalAvatar);
+      if (key === "current") setAvatar(originalAvatar);
       else setAvatar(AVATAR_OPTIONS[Number(key.slice("preset-".length))]?.[1] || null);
     });
     button.addEventListener("keydown", event => {
@@ -3361,10 +3357,10 @@ function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
       event.preventDefault(); next.focus(); next.click();
     });
   });
-  input.addEventListener("input", () => { saveError.textContent = ""; currentInitialMarkup(); updatePreview(); updateState(); });
+  input.addEventListener("input", () => { saveError.textContent = ""; fitNameInput(); updatePreview(); updateState(); });
   input.addEventListener("blur", () => { input.dataset.touched = "true"; updateState(); });
   input.addEventListener("focus", () => { setTimeout(() => input.scrollIntoView({ block:"center", behavior:"auto" }), 80); });
-  updateState(); currentInitialMarkup(); updatePreview();
+  fitNameInput(); updateState(); updatePreview();
   document.querySelector("[data-profile-form-cancel]").addEventListener("click", () => { void requestProfileEditorCancel(); });
   document.addEventListener("keydown", state.profileEditorEscapeHandler = event => {
     if (event.key === "Escape" && state.route === "profile-settings" && state.profileSettingsCategory === "profile") { event.preventDefault(); void requestProfileEditorCancel(); }
@@ -3372,6 +3368,7 @@ function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
   const viewport = window.visualViewport, syncViewport = () => {
     const offset = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
     document.querySelector(".profile-editor-route")?.style.setProperty("--profile-keyboard-offset", `${offset}px`);
+    fitNameInput();
     if (document.activeElement === input && viewport) input.scrollIntoView({ block:"center", behavior:"auto" });
   };
   state.profileEditorViewportCleanup?.();
