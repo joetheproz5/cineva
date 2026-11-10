@@ -752,14 +752,27 @@ async function startSocialOAuth(provider, mode) {
 }
 async function boot() {
   renderLoading();
-  markStartupReady();
   const verifiedEmail = await consumeEmailVerificationRedirect();
   const socialAuthError = await consumeSocialOAuthRedirect();
-  await restoreSession();
-  applyLocale();
   const params = new URLSearchParams(location.search);
   state.pendingWatch = params.get("watch") || null;
   const deep = (params.get("title") || "").match(/^(movie|tv):(\d+)(?::(\d+):(\d+))?$/);
+  const restoring = restoreSession();
+  let initialAccountRender = null;
+  // The saved identity and profiles are safe to show locally while the renewable
+  // session is checked. This keeps a slow refresh from exposing the splash's
+  // final logo frame before the profile selector has even been rendered.
+  if (state.user && !deep && navigator.onLine) {
+    applyLocale();
+    hydrateAccount();
+    state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles";
+    if (state.route === "onboarding") beginOnboarding();
+    render();
+    initialAccountRender = { userId:state.user.id, route:state.route, account:JSON.stringify(state.account) };
+    markStartupReady();
+  }
+  await restoring;
+  applyLocale();
   if (state.pendingWatch && deep) {
     if (deep[1] === "movie") { await openItem("movie", Number(deep[2])); if (state.movie) playMovieNow(state.movie); return; }
     await openItem("tv", Number(deep[2]));
@@ -768,7 +781,19 @@ async function boot() {
   }
   if (deep) { await openItem(deep[1], Number(deep[2])); return; }
   if (!navigator.onLine) return renderOfflineScreen();
-  if (state.user) { state.route = needsFirstRunOnboarding() ? "onboarding" : "profiles"; if (state.route === "onboarding") beginOnboarding(); render(); } else renderLoading();
+  if (state.user) {
+    const nextRoute = needsFirstRunOnboarding() ? "onboarding" : "profiles";
+    state.route = nextRoute;
+    const accountChanged = !initialAccountRender
+      || initialAccountRender.userId !== state.user.id
+      || initialAccountRender.route !== state.route
+      || initialAccountRender.account !== JSON.stringify(state.account);
+    if (accountChanged) {
+      if (state.route === "onboarding") beginOnboarding();
+      render();
+    }
+    markStartupReady();
+  } else renderLoading();
   await loadStartupData();
   if (socialAuthError) showAuth("login", socialAuthError);
   else if (verifiedEmail) await finishEmailVerification(verifiedEmail);
@@ -3402,7 +3427,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=406", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=408", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

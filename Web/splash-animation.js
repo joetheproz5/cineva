@@ -75,10 +75,6 @@
     const params = new URLSearchParams(window.location.search);
     const debug = params.get("splashDebug") === "1";
     if (!debug && !enabled) return null;
-    if (!debug) {
-      const navigation = performance.getEntriesByType?.("navigation")?.[0];
-      if (navigation?.type === "back_forward" || document.visibilityState === "hidden" || document.wasDiscarded) return null;
-    }
     let version;
     if (debug) {
       version = validVersion(params.get("splashVersion"));
@@ -86,7 +82,6 @@
       let previous = null;
       try { previous = JSON.parse(localStorage.getItem(spec.storageKey) || "null"); } catch { /* Treat unavailable storage as a first launch. */ }
       version = previous?.date === currentDateKey() ? "short" : "full";
-      try { localStorage.setItem(spec.storageKey, JSON.stringify({ date: currentDateKey(), version })); } catch { /* The splash remains usable when storage is unavailable. */ }
     }
     const requestedScale = debug ? Number(params.get("splashScale")) : 1;
     const scale = requestedScale === 0.25 ? 0.25 : 1;
@@ -100,6 +95,7 @@
       scale,
       reducedMotion: reducedMotionRequested(),
       debug,
+      recordLaunch: !debug,
       sliceStaggerMs: debugNumber("splashSliceStagger", spec.sliceReveal.staggerMs),
       sliceDurationMs: debugNumber("splashSliceDuration", spec.sliceReveal.durationMs),
       glintStartMs: debugNumber("splashGlintStart", spec[version].glint.start),
@@ -121,7 +117,7 @@
     parent.appendChild(use);
     return use;
   }
-  function createOverlay({ version = "full", scale = 1, reducedMotion = false, debug = false, sliceStaggerMs, sliceDurationMs, glintStartMs, glintDurationMs } = {}, callbacks = {}) {
+  function createOverlay({ version = "full", scale = 1, reducedMotion = false, debug = false, recordLaunch = false, sliceStaggerMs, sliceDurationMs, glintStartMs, glintDurationMs } = {}, callbacks = {}) {
     const actualVersion = reducedMotion ? "reducedMotion" : validVersion(version);
     const timeline = actualVersion === "reducedMotion" ? spec.reducedMotion : spec[actualVersion];
     const sliceSpec = timeline.slices ? {
@@ -244,6 +240,8 @@
     let exiting = false;
     let destroyed = false;
     let firstFrameAudioNotified = false;
+    let launchRecorded = false;
+    let pausedAt = null;
     let currentTime = 0;
     let currentScale = 1;
     let exitStartTime = 0;
@@ -323,6 +321,31 @@
       if (actualVersion === "reducedMotion") return 1;
       const p = cubicBezier(clamp01((time - timeline.push.start) / Math.max(1, timeline.push.end - timeline.push.start)), ...timeline.push.curve);
       return lerp(timeline.push.from, timeline.push.to, p);
+    }
+    function recordLaunchStarted() {
+      if (!recordLaunch || launchRecorded) return;
+      launchRecorded = true;
+      try { localStorage.setItem(spec.storageKey, JSON.stringify({ date: currentDateKey(), version: validVersion(version) })); }
+      catch { /* The splash remains usable when browser storage is unavailable. */ }
+    }
+    function pauseClock() {
+      if (destroyed || pausedAt !== null) return;
+      pausedAt = performance.now();
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    function resumeClock() {
+      if (destroyed || pausedAt === null) return;
+      const resumedAt = performance.now();
+      const pausedDuration = resumedAt - pausedAt;
+      if (startTimestamp !== null) startTimestamp = startTimestamp > pausedAt ? resumedAt : startTimestamp + pausedDuration;
+      if (exiting) exitStartTime = exitStartTime > pausedAt ? resumedAt : exitStartTime + pausedDuration;
+      pausedAt = null;
+      if (!document.hidden && (exiting || !entryComplete) && !raf) raf = requestAnimationFrame(tick);
+    }
+    function onVisibilityChange() {
+      if (document.hidden) pauseClock();
+      else resumeClock();
     }
     function updateSliceReveal(time, scaleFactor, cssWidth) {
       if (!sliceSpec) return;
@@ -418,7 +441,12 @@
       render(frameTime);
       if (!firstFrameAudioNotified) {
         firstFrameAudioNotified = true;
-        requestAnimationFrame(() => { if (!destroyed) notifyNativeStartupSound(); });
+        requestAnimationFrame(() => {
+          if (destroyed) return;
+          recordLaunchStarted();
+          callbacks.onStarted?.();
+          notifyNativeStartupSound();
+        });
       }
       if (!exiting && elapsed >= timeline.entryEnd && !entryComplete) {
         entryComplete = true;
@@ -436,6 +464,10 @@
     }
     function start() {
       if (destroyed || raf || startTimestamp !== null) return;
+      if (document.hidden) {
+        if (pausedAt === null) pausedAt = performance.now();
+        return;
+      }
       raf = requestAnimationFrame(tick);
     }
     function finish() {
@@ -471,7 +503,7 @@
         screenDelayWallMs: activeExitPhases.screenDelay / Math.max(0.01, scale),
         screenFadeWallMs: activeExitPhases.screenFadeDuration / Math.max(0.01, scale),
       });
-      raf = requestAnimationFrame(tick);
+      if (!document.hidden) raf = requestAnimationFrame(tick);
     }
     function debugSeek(time) {
       if (!debug || destroyed) return false;
@@ -506,6 +538,9 @@
     root.addEventListener("pointerdown", onPointer, { passive: true });
     root.addEventListener("click", onPointer, { passive: true });
     document.addEventListener("keydown", onKey, true);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", pauseClock);
+    window.addEventListener("pageshow", resumeClock);
     window.addEventListener("resize", onResize, { passive: true });
     window.visualViewport?.addEventListener("resize", onResize, { passive: true });
     function destroy() {
@@ -515,6 +550,9 @@
       root.removeEventListener("pointerdown", onPointer);
       root.removeEventListener("click", onPointer);
       document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", pauseClock);
+      window.removeEventListener("pageshow", resumeClock);
       window.removeEventListener("resize", onResize);
       window.visualViewport?.removeEventListener("resize", onResize);
       root.remove();

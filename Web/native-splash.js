@@ -32,6 +32,9 @@
   }
 
   handle = splash.createOverlay(options, {
+    onStarted() {
+      postNative({ type: "started" });
+    },
     onEntryComplete() {
       timelineReady = true;
       exitIfReady();
@@ -62,9 +65,7 @@
       exitIfReady();
     },
   });
-  setTimeout(() => {
-    window.__SEVEN_SPLASH_READY__ = true;
-    exitIfReady();
-  }, spec.readyTimeout);
+  // The SwiftUI screen is already mounted behind this local splash web view.
+  window.__SEVEN_SPLASH_READY__ = true;
   handle.start();
 })();

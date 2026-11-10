@@ -5,20 +5,24 @@ import WebKit
 
 enum SEVENStartupSplashSpec {
     static let background = Color(red: 2.0 / 255, green: 2.0 / 255, blue: 3.0 / 255)
-    static let dateKey = "seven.startup.splash.v1.date"
+    static let dateKey = "seven.startup.splash.v2.date"
     static let soundKey = "seven.startup.sound.enabled"
 
-    static func launchVersion() -> String {
+    private static func todayKey() -> String {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd"
-        let today = formatter.string(from: Date())
-        let defaults = UserDefaults.standard
-        let version = defaults.string(forKey: dateKey) == today ? "short" : "full"
-        defaults.set(today, forKey: dateKey)
-        return version
+        return formatter.string(from: Date())
+    }
+
+    static func launchVersion() -> String {
+        UserDefaults.standard.string(forKey: dateKey) == todayKey() ? "short" : "full"
+    }
+
+    static func markLaunchedToday() {
+        UserDefaults.standard.set(todayKey(), forKey: dateKey)
     }
 }
 
@@ -89,6 +93,8 @@ struct SEVENStartupSplashView: UIViewRepresentable {
             }
             guard let payload = message.body as? [String: Any], let type = payload["type"] as? String else { return }
             switch type {
+            case "started":
+                SEVENStartupSplashSpec.markLaunchedToday()
             case "exitStart":
                 let delay = (payload["screenDelayWallMs"] as? NSNumber)?.doubleValue ?? 150
                 let duration = (payload["screenFadeWallMs"] as? NSNumber)?.doubleValue ?? 350

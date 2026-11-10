@@ -61,7 +61,7 @@
     skipAfter: 600,
     skipExitFactor: 0.6,
     readyTimeout: 5000,
-    storageKey: "seven.startup.splash.v1",
+    storageKey: "seven.startup.splash.v2",
     soundStorageKey: "seven.startup.sound",
     soundAssetUrl: "assets/splash_sting.mp3",
     pathUrl: window.SEVEN_SPLASH_PATH || "assets/seven-wordmark.svg#seven-wordmark-shape",
