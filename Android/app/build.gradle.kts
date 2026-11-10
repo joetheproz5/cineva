@@ -46,7 +46,7 @@ android {
 }
 
 dependencies {
-    implementation("androidx.activity:activity:1.13.0")
-    implementation("androidx.browser:browser:1.10.0")
+    implementation("androidx.activity:activity:1.10.1")
+    implementation("androidx.browser:browser:1.9.0")
     testImplementation("junit:junit:4.13.2")
 }
