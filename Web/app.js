@@ -895,7 +895,7 @@ async function startSocialOAuth(provider, mode) {
     nativeBridge = nativeOAuthBridge();
     // iOS standalone PWAs do not reliably support OAuth popups. Redirect this same
     // PWA tab to the provider and back so sessionStorage keeps the PKCE verifier.
-    if (!nativeBridge && isInstalledPWA() && !isIOSInstalledPWA) {
+    if (!nativeBridge && isInstalledPWA && !isIOSInstalledPWA) {
       try { sessionStorage.setItem("seven.oauth.provider", provider); } catch { }
       try { pwaPopup = window.open("about:blank", "_blank", "popup,width=520,height=700"); } catch { pwaPopup = null; }
       if (pwaPopup) pendingPwaOAuthWindow = pwaPopup;
