@@ -7,6 +7,14 @@ import WebKit
 private let sevenHomeURL = URL(string: "https://seven-9fm.pages.dev/")!
 private let sevenHost = "seven-9fm.pages.dev"
 
+private final class SevenScriptMessageHandlerProxy: NSObject, WKScriptMessageHandler {
+    weak var delegate: WKScriptMessageHandler?
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        delegate?.userContentController(userContentController, didReceive: message)
+    }
+}
+
 @MainActor
 private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     let webView: WKWebView
@@ -16,9 +24,10 @@ private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelega
     private var splashPlayer: AVAudioPlayer?
 
     override init() {
+        let messageProxy = SevenScriptMessageHandlerProxy()
         let configuration = WKWebViewConfiguration()
         let userContent = WKUserContentController()
-        userContent.add(self, name: "sevenSplashAudio")
+        userContent.add(messageProxy, name: "sevenSplashAudio")
         configuration.userContentController = userContent
         configuration.websiteDataStore = .default()
         configuration.allowsAirPlayForMediaPlayback = true
@@ -27,6 +36,7 @@ private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelega
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
+        messageProxy.delegate = self
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
