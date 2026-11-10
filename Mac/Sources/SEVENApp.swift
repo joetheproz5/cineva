@@ -134,7 +134,7 @@ private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelega
             return
         }
 
-        let session = ASWebAuthenticationSession(url: url, callback: .customScheme("tv.seven.app")) { [weak self] callbackURL, error in
+        let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "tv.seven.app") { [weak self] callbackURL, error in
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.oauthSession = nil

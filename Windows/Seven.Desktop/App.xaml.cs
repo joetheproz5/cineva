@@ -1,3 +1,4 @@
+using System.IO;
 using System.IO.Pipes;
 using System.Text;
 
@@ -11,7 +12,7 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
-        var callback = e.Args.FirstOrDefault(MainWindow.IsNativeOAuthCallback);
+        var callback = e.Args.FirstOrDefault(Seven.Desktop.MainWindow.IsNativeOAuthCallback);
         if (callback is not null && TrySendOAuthCallback(callback))
         {
             Shutdown();
@@ -61,7 +62,7 @@ public partial class App : System.Windows.Application
                 await server.WaitForConnectionAsync(cancellationToken);
                 using var reader = new StreamReader(server, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true);
                 var callback = await reader.ReadLineAsync(cancellationToken);
-                if (callback is not null && MainWindow.IsNativeOAuthCallback(callback))
+                if (callback is not null && Seven.Desktop.MainWindow.IsNativeOAuthCallback(callback))
                     await window.Dispatcher.InvokeAsync(() => window.ReceiveNativeOAuthCallback(callback));
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
