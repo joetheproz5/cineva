@@ -1,7 +1,6 @@
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP = "https://image.tmdb.org/t/p/original";
 const TMDB_STILL = "https://image.tmdb.org/t/p/w780";
-const TMDB_PROFILE_POSTER = "https://image.tmdb.org/t/p/w780";
 const POSTER_FALLBACK = "/assets/poster-placeholder.svg";
 const STILL_FALLBACK = "/assets/still-placeholder.svg";
 const PROFILE_FALLBACK = "/assets/profile-placeholder.svg";
@@ -23,9 +22,8 @@ let coverflowViewportWidth = window.innerWidth;
 let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
-let profileGatePosterTimer = null, profileGatePosterGeneration = 0;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -838,7 +836,6 @@ async function loadStartupData() {
     state.catalog = {};
     state.error = error.message;
   }
-  if (state.user && state.route === "profiles") { startProfileGateLayout(); startProfileGatePosterRotation(); }
   if (!state.user || state.route !== "profiles") render();
 }
 function renderOfflineScreen() {
@@ -1017,7 +1014,6 @@ function render() {
   syncAppRouteHistory();
   document.documentElement.classList.toggle("seven-collection-view", state.route === "franchise");
   if (state.route !== "home") window.SEVENHero?.cancel();
-  if (state.route !== "profiles") { stopProfileGateLayout(); stopProfileGatePosterRotation(); }
   state.watchlistTargets = new Map();
   if (state.route !== "player") stopPlayerProgressPolling();
   if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave();
@@ -1140,7 +1136,6 @@ function exitProfileGate(then) {
 }
 async function activateProfile(id, { handoff = false } = {}) {
   globalThis.window?.SEVENTrackerUI?.clear(); state.watchlistView = "saved"; state.trackerWeek = 0;
-  stopProfileGateLayout();
   const catalogStale = state.catalogKey !== id;
   state.account.activeProfileId = id;
   searchRequest++; state.searchView = null; state.searchResults = []; state.search = ""; state.mSearch = null;
@@ -1170,119 +1165,48 @@ function beginProfileGateSelection(id) {
   const startX = rect ? Math.round(rect.left + rect.width / 2 - window.innerWidth / 2) : 0;
   const startY = rect ? Math.round(rect.top + rect.height / 2 - window.innerHeight * centerY) : 0;
   const startScale = rect ? rect.width / (mobile ? 86 : 156) : 1;
-  stopProfileGatePosterRotation();
   gate.classList.add("profile-gate-selecting");
   button?.classList.add("profile-choice-selected");
   gate.querySelectorAll("button").forEach(item => { item.disabled = true; });
-  gate.insertAdjacentHTML("beforeend", `<div class="profile-gate-handoff" role="status" aria-live="polite"><div class="profile-gate-handoff-avatar" style="--handoff-x:${startX}px;--handoff-y:${startY}px;--handoff-scale:${startScale}">${profileGateAvatar(profile)}</div><div class="profile-gate-handoff-loading"><span class="profile-gate-spinner" aria-hidden="true"></span><span>${t("Loading your profile…")}</span></div></div>`);
+  gate.insertAdjacentHTML("beforeend", '<div class="profile-gate-handoff" aria-hidden="true"><div class="profile-gate-handoff-avatar" style="--handoff-x:' + startX + 'px;--handoff-y:' + startY + 'px;--handoff-scale:' + startScale + '">' + profileGateAvatar(profile) + '</div></div>');
   void activateProfile(id, { handoff:true });
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
 function profileGateDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
-function profileGateShowcaseMarkup() {
-  return `<div class="profile-gate-showcase" aria-hidden="true"><img class="profile-gate-poster" alt="" decoding="async" fetchpriority="high"><img class="profile-gate-poster" alt="" decoding="async"></div>`;
-}
-function profileGatePosterCandidates() {
-  const today = profileGateDateKey(), upcoming = state.catalog["Coming soon"] || [];
-  const eligible = upcoming.filter(item => item.poster_path && String(item.release_date || item.first_air_date || "") >= today);
-  const fallback = eligible.length ? eligible : [...state.featuredPool, state.featured].filter(Boolean);
-  const seen = new Set();
-  return fallback.filter(item => {
-    if (!item.poster_path || !String(item.poster_path).startsWith("/") || seen.has(item.poster_path)) return false;
-    seen.add(item.poster_path);
-    return true;
-  }).slice(0, 6);
-}
-function stopProfileGatePosterRotation() {
-  profileGatePosterGeneration += 1;
-  clearTimeout(profileGatePosterTimer);
-  profileGatePosterTimer = null;
-}
-function loadProfileGatePoster(image, item) {
-  return new Promise(resolve => {
-    const src = `${TMDB_PROFILE_POSTER}${item.poster_path}`;
-    if (image.dataset.posterSrc === src && image.complete) { resolve(image.naturalWidth > 0); return; }
-    image.onload = () => { image.onload = image.onerror = null; resolve(true); };
-    image.onerror = () => { image.onload = image.onerror = null; resolve(false); };
-    image.dataset.posterSrc = src;
-    image.src = src;
-  });
-}
-function startProfileGatePosterRotation() {
-  stopProfileGatePosterRotation();
-  const gate = document.querySelector(".profile-gate"), images = [...(gate?.querySelectorAll(".profile-gate-poster") || [])];
-  if (!gate || images.length < 2 || !window.matchMedia("(max-width: 650px)").matches) return;
-  const items = profileGatePosterCandidates();
-  if (!items.length) return;
-  const generation = profileGatePosterGeneration;
-  let activeImage = 0, activeItem = 0;
-  const setNext = async () => {
-    if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
-    for (let offset = 1; offset < items.length; offset += 1) {
-      const nextItem = (activeItem + offset) % items.length, nextImage = 1 - activeImage;
-      if (!await loadProfileGatePoster(images[nextImage], items[nextItem])) continue;
-      if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
-      images[nextImage].classList.add("is-visible");
-      images[activeImage].classList.remove("is-visible");
-      activeImage = nextImage;
-      activeItem = nextItem;
-      break;
-    }
-    if (generation === profileGatePosterGeneration && items.length > 1) profileGatePosterTimer = setTimeout(setNext, 7600);
-  };
-  const showFirstAvailable = async () => {
-    for (let index = 0; index < items.length; index += 1) {
-      if (!await loadProfileGatePoster(images[activeImage], items[index])) continue;
-      if (generation !== profileGatePosterGeneration || !gate.isConnected || gate.classList.contains("profile-gate-selecting")) return;
-      activeItem = index;
-      images[activeImage].classList.add("is-visible");
-      if (items.length > 1) profileGatePosterTimer = setTimeout(setNext, 7600);
-      return;
-    }
-  };
-  void showFirstAvailable();
-}
-function stopProfileGateLayout() {
-  if (state.profileGateResize) window.removeEventListener("resize", state.profileGateResize);
-  state.profileGateResizeObserver?.disconnect();
-  state.profileGateResizeObserver = null;
-  state.profileGateResize = null;
-}
-function syncProfileGateLayout() {
-  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet"), showcase = gate?.querySelector(".profile-gate-showcase");
-  if (!gate || !sheet || !showcase) return;
-  if (window.matchMedia("(max-width: 650px)").matches) {
-    showcase.style.height = `${gate.clientHeight}px`;
-  } else showcase.style.removeProperty("height");
-}
-function startProfileGateLayout() {
-  stopProfileGateLayout();
-  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet");
-  state.profileGateResize = syncProfileGateLayout;
-  window.addEventListener('resize', state.profileGateResize, { passive:true });
-  if (typeof ResizeObserver === "function" && gate && sheet) {
-    state.profileGateResizeObserver = new ResizeObserver(syncProfileGateLayout);
-    state.profileGateResizeObserver.observe(gate);
-    state.profileGateResizeObserver.observe(sheet);
-  }
-  syncProfileGateLayout();
-}
 function renderProfileGate() {
   const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro"));
-  stopProfileGateLayout();
-  const profiles = account.profiles.map((profile, index) => `<button class="profile-choice" data-watch-profile="${escapeHTML(profile.id)}" style="--profile-index:${index}">${profileGateAvatar(profile)}<b>${escapeHTML(profile.name)}</b></button>`).join("");
-  const addProfile = account.profiles.length < 5 ? `<button class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:${account.profiles.length}" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>` : "";
-  app.innerHTML = `<main class="profile-gate ${hasIntro ? "profile-gate-pending" : "profile-gate-ready"} ${account.profiles.length >= 3 ? "profile-gate-multirow" : ""} ${account.profiles.length >= 5 ? "profile-gate-at-cap" : ""}">${profileGateShowcaseMarkup()}<section class="profile-gate-sheet"><h1>${t("Who’s watching?")}</h1><div class="profile-chooser">${profiles}${addProfile}</div></section></main>`;
-  const gate = document.querySelector(".profile-gate"), sheet = gate?.querySelector(".profile-gate-sheet");
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) gate?.classList.add("profile-gate-art-ready");
-  else sheet?.addEventListener("animationend", event => {
-    if (event.target !== sheet || !["profile-gate-sheet-rise", "profile-gate-desktop-rise"].includes(event.animationName)) return;
-    gate.classList.add("profile-gate-art-ready");
-  });
+  const profileTiles = account.profiles.map((profile, index) => '<button type="button" class="profile-choice" data-watch-profile="' + escapeHTML(profile.id) + '" aria-label="Profile ' + escapeHTML(profile.name) + '" style="--profile-index:' + index + '">' + profileGateAvatar(profile) + '<b title="' + escapeHTML(profile.name) + '">' + escapeHTML(profile.name) + '</b></button>').join("");
+  const addIndex = account.profiles.length;
+  const addProfile = account.profiles.length < 5 ? '<button type="button" class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:' + addIndex + '" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>' : "";
+  const scrollable = account.profiles.length + (addProfile ? 1 : 0) > 6 ? "profile-gate-scrollable" : "";
+  app.innerHTML = '<main class="profile-gate ' + (hasIntro ? "profile-gate-pending" : "profile-gate-ready") + ' ' + scrollable + '"><div class="profile-gate-glow" aria-hidden="true"></div><header class="profile-gate-top"><img src="assets/seven-wordmark.svg" alt="SEVEN" width="1544" height="407"><button type="button" class="profile-gate-manage" data-profile-gate-manage>Manage</button></header><section class="profile-gate-content" aria-labelledby="profile-gate-title"><h1 id="profile-gate-title">' + t("Who’s watching?") + '</h1><div class="profile-chooser" aria-label="Profiles">' + profileTiles + addProfile + '</div></section></main>';
+  const gate = document.querySelector(".profile-gate");
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) gate?.classList.replace("profile-gate-pending", "profile-gate-ready");
+  bindProfileGateAvatarLoads(gate);
+  document.querySelector("[data-profile-gate-manage]")?.addEventListener("click", () => { state.accountReturn = "profiles"; showAccount(); });
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
   document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
-  startProfileGateLayout();
-  startProfileGatePosterRotation();
+  gate?.querySelectorAll(".profile-choice").forEach(button => button.addEventListener("keydown", event => {
+    const direction = { ArrowLeft:"left", ArrowRight:"right", ArrowUp:"up", ArrowDown:"down" }[event.key];
+    if (!direction) return;
+    const tiles = [...gate.querySelectorAll(".profile-choice:not(:disabled)")], current = button.getBoundingClientRect();
+    const cx = current.left + current.width / 2, cy = current.top + current.height / 2;
+    const candidates = tiles.filter(tile => tile !== button).map(tile => {
+      const rect = tile.getBoundingClientRect(), dx = rect.left + rect.width / 2 - cx, dy = rect.top + rect.height / 2 - cy;
+      const primary = direction === "left" ? -dx : direction === "right" ? dx : direction === "up" ? -dy : dy;
+      const cross = direction === "left" || direction === "right" ? Math.abs(dy) : Math.abs(dx);
+      return { tile, primary, score:primary * primary + cross * cross * 2 };
+    }).filter(item => item.primary > 0).sort((a, b) => a.score - b.score);
+    event.preventDefault();
+    candidates[0]?.tile.focus();
+  }));
+}
+function bindProfileGateAvatarLoads(gate) {
+  gate?.querySelectorAll("[data-profile-gate-avatar]").forEach(image => {
+    const markLoaded = () => image.closest(".profile-avatar")?.classList.add("is-loaded");
+    image.addEventListener("load", markLoaded, { once:true });
+    if (image.complete && image.naturalWidth) markLoaded();
+  });
 }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
@@ -3160,7 +3084,26 @@ function profileAvatar(profile) {
   if (!isProfileAvatar(profile?.avatar)) return `<span class="profile-avatar profile-avatar-guest" aria-hidden="true"><img src="assets/profile-person.svg" alt=""></span>`;
   return `<span class="profile-avatar profile-avatar-image" style="--profile-color:#111214"><img src="${escapeHTML(profile.avatar)}" alt=""></span>`;
 }
-function profileGateAvatar(profile) { return profileAvatar(profile); }
+function profileGateInitial(profile) {
+  const value = String(profile?.id || profile?.name || "?");
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619) >>> 0;
+  return { tone:(hash % 6) + 1, letter:Array.from(String(profile?.name || "?").trim())[0] || "?" };
+}
+function profileGateAvatar(profile) {
+  const builtins = {
+    "assets/avatars/red-panda.png":"assets/avatars/red-panda.webp",
+    "assets/avatars/black-cat.png":"assets/avatars/black-cat.webp",
+    "assets/avatars/astronaut.png":"assets/avatars/astronaut.webp",
+    "assets/avatars/dino.png":"assets/avatars/dino.webp",
+    "assets/avatars/duck.png":"assets/avatars/duck.webp",
+    "assets/avatars/robot.png":"assets/avatars/robot.webp"
+  };
+  const initial = profileGateInitial(profile);
+  if (!isProfileAvatar(profile?.avatar)) return '<span class="profile-avatar profile-gate-initial" style="--profile-avatar-tone:var(--profile-avatar-tone-' + initial.tone + ')" aria-hidden="true">' + escapeHTML(initial.letter) + '</span>';
+  const src = builtins[profile.avatar] || profile.avatar;
+  return '<span class="profile-avatar profile-avatar-image" style="--profile-avatar-tone:var(--profile-avatar-tone-' + initial.tone + ')" aria-hidden="true"><span class="profile-gate-avatar-fallback">' + escapeHTML(initial.letter) + '</span><img data-profile-gate-avatar src="' + escapeHTML(src) + '" alt="" width="512" height="512" decoding="async" loading="eager" fetchpriority="high"></span>';
+}
 function accountNavItem(tab, icon, label, active) { return `<button class="account-nav-item ${tab === active ? "active" : ""}" data-account-tab="${tab}" aria-current="${tab === active ? "page" : "false"}"><i aria-hidden="true">${icon}</i><span>${label}</span></button>`; }
 function accountAction(icon, title, detail, action, value = "Open") { return `<button class="account-action-card" ${action}><i aria-hidden="true">${icon}</i><span><b>${t(title)}</b><small>${t(detail)}</small></span><em>${t(String(value))} ›</em></button>`; }
 function parentAccessCodeAction() { const hasCode = parentAccessConfigured(); return `<button type="button" class="account-action-card profile-parent-code-action" data-change-parent-code><i aria-hidden="true">⌘</i><span><b>${t(hasCode ? "Change parent access code" : "Set parent access code")}</b><small>${t(hasCode ? "Confirm your current code before changing or turning it off." : "Protect profile and account settings without locking the profile picker.")}</small></span><em>${hasCode ? "Change" : "Set"} ›</em></button>`; }
@@ -3470,7 +3413,7 @@ if ("serviceWorker" in navigator) {
     updateReloaded = true;
     location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=416", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=417", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
