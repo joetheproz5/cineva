@@ -1147,12 +1147,11 @@ async function activateProfile(id, { handoff = false } = {}) {
   if (catalogStale) state.catalogRequest = null;
   try { await loadMyList(); await refreshCatalogForLanguage(); } catch {}
   if (handoff) {
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    if (state.route === "profiles") {
-      document.querySelector(".profile-gate")?.classList.add("profile-gate-handoff-exit");
-      await new Promise(resolve => setTimeout(resolve, 340));
-      if (state.route === "profiles") enterHome();
-    }
+    await new Promise(resolve => setTimeout(resolve, 200));
+    if (state.route !== "profiles") return;
+    document.querySelector(".profile-gate")?.classList.add("profile-gate-selection-exit");
+    await new Promise(resolve => setTimeout(resolve, 200));
+    if (state.route === "profiles") enterHome();
   } else if (state.route === "home") render();
 }
 function beginProfileGateSelection(id) {
@@ -1160,15 +1159,10 @@ function beginProfileGateSelection(id) {
   if (!profile) return;
   if (!gate) { void activateProfile(id); return; }
   if (gate.classList.contains("profile-gate-selecting")) return;
-  const button = [...gate.querySelectorAll("[data-watch-profile]")].find(item => item.dataset.watchProfile === id), avatar = button?.querySelector(".profile-avatar"), rect = avatar?.getBoundingClientRect();
-  const mobile = window.matchMedia("(max-width: 650px)").matches, centerY = mobile ? .46 : .5;
-  const startX = rect ? Math.round(rect.left + rect.width / 2 - window.innerWidth / 2) : 0;
-  const startY = rect ? Math.round(rect.top + rect.height / 2 - window.innerHeight * centerY) : 0;
-  const startScale = rect ? rect.width / (mobile ? 86 : 156) : 1;
+  const button = [...gate.querySelectorAll("[data-watch-profile]")].find(item => item.dataset.watchProfile === id);
   gate.classList.add("profile-gate-selecting");
   button?.classList.add("profile-choice-selected");
   gate.querySelectorAll("button").forEach(item => { item.disabled = true; });
-  gate.insertAdjacentHTML("beforeend", '<div class="profile-gate-handoff" aria-hidden="true"><div class="profile-gate-handoff-avatar" style="--handoff-x:' + startX + 'px;--handoff-y:' + startY + 'px;--handoff-scale:' + startScale + '">' + profileGateAvatar(profile) + '</div></div>');
   void activateProfile(id, { handoff:true });
 }
 function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div class="modal profile-unlock"><form class="auth-card" id="profile-unlock-form"><button class="modal-close" type="button" data-close>×</button><span class="brand">PROFILE LOCKED</span>${profileAvatar(profile)}<h2>${escapeHTML(profile.name)}</h2><p>Enter this profile’s PIN to keep watching.</p><label>Profile PIN<input name="pin" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4–8 digits"></label><p class="form-error" id="profile-pin-error"></p><button class="primary auth-submit" type="submit">Continue</button></form></div>`); document.querySelector(".profile-unlock [data-close]").onclick = () => document.querySelector(".profile-unlock")?.remove(); document.querySelector("#profile-unlock-form").onsubmit = async event => { event.preventDefault(); const pin = new FormData(event.currentTarget).get("pin"), error = document.querySelector("#profile-pin-error"); try { if (await profileSecret(pin) !== profile.pinHash) { error.textContent = "That PIN is not correct."; return; } document.querySelector(".profile-unlock")?.remove(); beginProfileGateSelection(profile.id); } catch (failure) { error.textContent = failure.message; } }; }
@@ -1179,11 +1173,10 @@ function renderProfileGate() {
   const addIndex = account.profiles.length;
   const addProfile = account.profiles.length < 5 ? '<button type="button" class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:' + addIndex + '" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>' : "";
   const scrollable = account.profiles.length + (addProfile ? 1 : 0) > 6 ? "profile-gate-scrollable" : "";
-  app.innerHTML = '<main class="profile-gate ' + (hasIntro ? "profile-gate-pending" : "profile-gate-ready") + ' ' + scrollable + '"><div class="profile-gate-glow" aria-hidden="true"></div><header class="profile-gate-top"><img src="assets/seven-wordmark.svg" alt="SEVEN" width="1544" height="407"><button type="button" class="profile-gate-manage" data-profile-gate-manage>Manage</button></header><section class="profile-gate-content" aria-labelledby="profile-gate-title"><h1 id="profile-gate-title">' + t("Who’s watching?") + '</h1><div class="profile-chooser" aria-label="Profiles">' + profileTiles + addProfile + '</div></section></main>';
+  app.innerHTML = '<main class="profile-gate ' + (hasIntro ? "profile-gate-pending" : "profile-gate-ready") + ' ' + scrollable + '"><div class="profile-gate-glow" aria-hidden="true"></div><header class="profile-gate-top"><img src="assets/seven-wordmark.svg" alt="SEVEN" width="1544" height="407"></header><section class="profile-gate-content" aria-labelledby="profile-gate-title"><h1 id="profile-gate-title">' + t("Who’s watching?") + '</h1><div class="profile-chooser" aria-label="Profiles">' + profileTiles + addProfile + '</div></section></main>';
   const gate = document.querySelector(".profile-gate");
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) gate?.classList.replace("profile-gate-pending", "profile-gate-ready");
   bindProfileGateAvatarLoads(gate);
-  document.querySelector("[data-profile-gate-manage]")?.addEventListener("click", () => { state.accountReturn = "profiles"; showAccount(); });
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
   document.querySelector("[data-add-profile-gate]")?.addEventListener("click", () => showProfileEditor("", "profiles", "profile"));
   gate?.querySelectorAll(".profile-choice").forEach(button => button.addEventListener("keydown", event => {
@@ -3413,7 +3406,7 @@ if ("serviceWorker" in navigator) {
     updateReloaded = true;
     location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=417", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=418", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
