@@ -17,8 +17,8 @@ android {
         applicationId = "com.example.cineva"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.3.4"
+        versionCode = 10
+        versionName = "1.3.5"
     }
     signingConfigs {
         if (keystoreProperties.containsKey("storeFile")) {
@@ -46,5 +46,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.activity:activity:1.13.0")
+    implementation("androidx.browser:browser:1.10.0")
     testImplementation("junit:junit:4.13.2")
 }

@@ -10,8 +10,6 @@ const RELEASE_DEVICE_TOKEN_KEY = "seven.release-alerts.device-token";
 const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || window.matchMedia?.("(display-mode: fullscreen)").matches
   || navigator.standalone === true;
-const isIOSInstalledPWA = navigator.standalone === true || (isInstalledPWA
-  && (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)));
 if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
 const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "searchView", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistView", "trackerWeek", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft", "titleDiscovery", "franchise"];
@@ -756,9 +754,10 @@ function playMovieNow(movie, resume = false) { const key = { type:"movie", id:mo
 const GOOGLE_OAUTH_VERIFIER_KEY = "seven.google.oauth.verifier";
 const DISCORD_OAUTH_VERIFIER_KEY = "seven.discord.oauth.verifier";
 const SOCIAL_OAUTH_CALLBACK_KEY = "seven.social.oauth.callback";
+const SOCIAL_OAUTH_CHANNEL_NAME = "seven.social.oauth";
 const NATIVE_OAUTH_TRANSACTION_KEY = "seven.native.oauth.transaction";
 let nativeOAuthBooted = false, queuedNativeOAuthCallback = "";
-let pendingPwaOAuthWindow = null, pendingPwaOAuthTimer = 0, socialOAuthTimeout = 0;
+let pendingPwaOAuthWindow = null, pendingPwaOAuthChannel = null, pendingPwaOAuthProvider = "", pendingPwaOAuthTimer = 0, socialOAuthTimeout = 0;
 function socialProviderLabel(provider) { return provider === "discord" ? "Discord" : "Google"; }
 function nativeOAuthBridge() {
   if (window.SEVENNative) {
@@ -833,6 +832,9 @@ async function consumeSocialOAuthRedirect(nativeCallbackUrl = "") {
 }
 async function finishSocialOAuth(callbackURL = "") {
   clearTimeout(socialOAuthTimeout); socialOAuthTimeout = 0;
+  clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0;
+  try { pendingPwaOAuthChannel?.close(); } catch { }
+  pendingPwaOAuthChannel = null; pendingPwaOAuthWindow = null; pendingPwaOAuthProvider = "";
   const error = await consumeSocialOAuthRedirect(callbackURL);
   if (error) {
     resetSocialOAuthButtons();
@@ -869,20 +871,28 @@ window.SEVENNativeAuthCancelled = () => {
   clearTimeout(socialOAuthTimeout); socialOAuthTimeout = 0;
   localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY);
   sessionStorage.removeItem(GOOGLE_OAUTH_VERIFIER_KEY); sessionStorage.removeItem(DISCORD_OAUTH_VERIFIER_KEY); sessionStorage.removeItem("seven.oauth.provider");
-  clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0; pendingPwaOAuthWindow = null;
+  clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0;
+  try { pendingPwaOAuthWindow?.close(); } catch { }
+  try { pendingPwaOAuthChannel?.close(); } catch { }
+  pendingPwaOAuthWindow = null; pendingPwaOAuthChannel = null; pendingPwaOAuthProvider = "";
   resetSocialOAuthButtons();
   const message = document.querySelector("#auth-message");
   if (message) message.textContent = "Sign-in cancelled. You can try again.";
 };
-window.addEventListener("message", event => {
-  const callback = event.data;
-  if (event.origin !== location.origin || event.source !== pendingPwaOAuthWindow
-      || callback?.type !== "seven-social-oauth-callback"
-      || !["google", "discord"].includes(callback.provider)
+function receivePopupOAuthCallback(callback) {
+  if (!pendingPwaOAuthWindow || callback?.type !== "seven-social-oauth-callback"
+      || !["google", "discord"].includes(callback.provider) || callback.provider !== pendingPwaOAuthProvider
       || typeof callback.code !== "string" || callback.code.length > 2048) return;
+  const popup = pendingPwaOAuthWindow;
   clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0; pendingPwaOAuthWindow = null;
+  try { popup.close(); } catch { }
+  try { pendingPwaOAuthChannel?.close(); } catch { }
+  pendingPwaOAuthChannel = null; pendingPwaOAuthProvider = "";
   sessionStorage.setItem(SOCIAL_OAUTH_CALLBACK_KEY, JSON.stringify({ provider:callback.provider, code:callback.code, error:callback.error === true }));
   void finishSocialOAuth();
+}
+window.addEventListener("message", event => {
+  if (event.origin === location.origin && event.source === pendingPwaOAuthWindow) receivePopupOAuthCallback(event.data);
 });
 async function startSocialOAuth(provider, mode) {
   if (!['google','discord'].includes(provider)) return;
@@ -893,12 +903,15 @@ async function startSocialOAuth(provider, mode) {
   let pwaPopup = null;
   try {
     nativeBridge = nativeOAuthBridge();
-    // iOS standalone PWAs do not reliably support OAuth popups. Redirect this same
-    // PWA tab to the provider and back so sessionStorage keeps the PKCE verifier.
-    if (!nativeBridge && isInstalledPWA && !isIOSInstalledPWA) {
-      try { sessionStorage.setItem("seven.oauth.provider", provider); } catch { }
+    if (!nativeBridge) {
       try { pwaPopup = window.open("about:blank", "_blank", "popup,width=520,height=700"); } catch { pwaPopup = null; }
-      if (pwaPopup) pendingPwaOAuthWindow = pwaPopup;
+      if (!pwaPopup) throw Error("Your browser blocked the sign-in pop-up. Allow pop-ups for SEVEN, then try again.");
+      pendingPwaOAuthWindow = pwaPopup;
+      pendingPwaOAuthProvider = provider;
+      if ("BroadcastChannel" in window) {
+        pendingPwaOAuthChannel = new BroadcastChannel(SOCIAL_OAUTH_CHANNEL_NAME);
+        pendingPwaOAuthChannel.onmessage = event => receivePopupOAuthCallback(event.data);
+      }
     }
     const config = await localAPI("/api/config", {signal:AbortSignal.timeout(10000)});
     if (!config.supabase?.url) throw Error(`${providerLabel} sign-in is not configured yet.`);
@@ -921,23 +934,27 @@ async function startSocialOAuth(provider, mode) {
     const redirect = nativeBridge ? "tv.seven.app://oauth/callback" : new URL("oauth-callback.html", document.baseURI).href;
     const authorize = new URL("/auth/v1/authorize", supabaseUrl); authorize.searchParams.set("provider",provider); authorize.searchParams.set("redirect_to",redirect); authorize.searchParams.set("code_challenge",challenge); authorize.searchParams.set("code_challenge_method","s256");
     if (nativeBridge) await nativeBridge.start(authorize.href);
-    else if (pwaPopup) {
+    else {
       pwaPopup.location.replace(authorize.href);
       clearInterval(pendingPwaOAuthTimer);
       pendingPwaOAuthTimer = setInterval(() => {
         if (pendingPwaOAuthWindow !== pwaPopup || !pwaPopup.closed) return;
         clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0; pendingPwaOAuthWindow = null;
+        try { pendingPwaOAuthChannel?.close(); } catch { }
+        pendingPwaOAuthChannel = null; pendingPwaOAuthProvider = "";
         sessionStorage.removeItem(provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY);
         sessionStorage.removeItem("seven.oauth.provider");
         button.disabled = false; if (label) label.textContent = `Continue with ${providerLabel}`;
-        message.textContent = `${providerLabel} sign-in window was closed. Try again when you’re ready.`;
+        if (message) message.textContent = `${providerLabel} sign-in window was closed. Try again when you’re ready.`;
       }, 500);
-    } else location.assign(authorize.href);
+    }
     if (nativeBridge || pwaPopup) socialOAuthTimeout = setTimeout(() => window.SEVENNativeAuthCancelled?.(), 9 * 60 * 1000);
   } catch (error) {
     try { pwaPopup?.close(); } catch { }
     if (pendingPwaOAuthWindow === pwaPopup) pendingPwaOAuthWindow = null;
     clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0;
+    try { pendingPwaOAuthChannel?.close(); } catch { }
+    pendingPwaOAuthChannel = null; pendingPwaOAuthProvider = "";
     clearTimeout(socialOAuthTimeout); socialOAuthTimeout = 0;
     const bridgeDidNotConfirm = error.code === "oauth-bridge-timeout";
     if (!bridgeDidNotConfirm) try { localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY); } catch { }

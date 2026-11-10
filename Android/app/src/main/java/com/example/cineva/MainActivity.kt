@@ -2,7 +2,6 @@ package com.example.cineva
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Intent
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -23,6 +22,11 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import androidx.activity.ComponentActivity
+import androidx.browser.auth.AuthTabColorSchemeParams
+import androidx.browser.auth.AuthTabIntent
+import androidx.browser.customtabs.CustomTabsClient
+import androidx.browser.customtabs.CustomTabsIntent
 import java.net.URI
 import java.net.URLDecoder
 
@@ -77,7 +81,7 @@ internal fun supportedAppLink(rawUrl: String?): String? {
     return uri.toString()
 }
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private lateinit var web: WebView
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
@@ -88,6 +92,19 @@ class MainActivity : Activity() {
     private var pageReady = false
     private var pendingNativeOAuthCallback: String? = null
     private var awaitingOAuthReturn = false
+    private val authTabLauncher = AuthTabIntent.registerActivityResultLauncher(this) { result ->
+        awaitingOAuthReturn = false
+        val callback = result.resultUri?.toString()
+        if (result.resultCode == AuthTabIntent.RESULT_OK && isNativeOAuthCallback(callback)) {
+            pendingNativeOAuthCallback = callback
+            deliverPendingNativeOAuthCallback()
+        } else if (result.resultCode == AuthTabIntent.RESULT_CANCELED) {
+            web.evaluateJavascript("window.SEVENNativeAuthCancelled?.()", null)
+        } else {
+            pendingNativeOAuthCallback = "tv.seven.app://oauth/callback?error=auth_tab_failed"
+            deliverPendingNativeOAuthCallback()
+        }
+    }
 
     private inner class SevenNativeBridge {
         @JavascriptInterface
@@ -102,9 +119,29 @@ class MainActivity : Activity() {
         fun startOAuth(rawUrl: String): Boolean {
             if (!isNativeOAuthAuthorize(rawUrl)) return false
             runOnUiThread {
-                awaitingOAuthReturn = true
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(rawUrl)).addCategory(Intent.CATEGORY_BROWSABLE)
-                runCatching { startActivity(intent) }
+                val authUri = Uri.parse(rawUrl)
+                val provider = CustomTabsClient.getPackageName(this@MainActivity)
+                runCatching {
+                    if (provider != null && CustomTabsClient.isAuthTabSupported(this@MainActivity, provider)) {
+                        val toolbar = AuthTabColorSchemeParams.Builder()
+                            .setToolbarColor(Color.rgb(2, 2, 3))
+                            .setNavigationBarColor(Color.rgb(2, 2, 3))
+                            .build()
+                        val authTab = AuthTabIntent.Builder()
+                            .setColorScheme(CustomTabsIntent.COLOR_SCHEME_DARK)
+                            .setDefaultColorSchemeParams(toolbar)
+                            .build()
+                        awaitingOAuthReturn = false
+                        authTab.launch(authTabLauncher, authUri, "tv.seven.app")
+                    } else {
+                        awaitingOAuthReturn = true
+                        CustomTabsIntent.Builder()
+                            .setShowTitle(false)
+                            .setToolbarColor(Color.rgb(2, 2, 3))
+                            .build()
+                            .launchUrl(this@MainActivity, authUri)
+                    }
+                }
                     .onFailure {
                         awaitingOAuthReturn = false
                         web.evaluateJavascript("window.SEVENNativeAuthCallback?.('tv.seven.app://oauth/callback?error=launch_failed')", null)
