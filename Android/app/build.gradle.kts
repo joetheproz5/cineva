@@ -12,7 +12,7 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.example.cineva"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.example.cineva"
         minSdk = 26
