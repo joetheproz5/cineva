@@ -17,6 +17,7 @@ const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "p
 const appRouteSnapshots = new Map();
 let appNavigationIndex = 0, appNavigationReady = false, appNavigationRestoring = false, appNavigationIdentity = "";
 let searchRequest = 0;
+let catalogRecoveryScheduled = false;
 let coverflowResizeTimer;
 let coverflowViewportWidth = window.innerWidth;
 let sessionRefreshTimer;
@@ -641,7 +642,13 @@ async function toggleMyList(item,{undoable=true}={}) {
 async function api(path, params = {}) {
   const query = new URLSearchParams(params); if (!query.has("language")) query.set("language", DISPLAY_LANGUAGES[currentPreferences().language] || DISPLAY_LANGUAGES.English);
   if (/^(movie|tv)\/\d+$/.test(path)) query.set("append_to_response", [...new Set([...(query.get("append_to_response") || "").split(",").filter(Boolean), path.startsWith("movie/") ? "release_dates" : "content_ratings"])].join(","));
-  const response = await fetch(`/api/tmdb/${path}?${query}`);
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 12000);
+  let response;
+  try { response = await fetch(`/api/tmdb/${path}?${query}`, { signal:controller.signal }); }
+  catch (error) {
+    if (controller.signal.aborted) { const timeoutError = new Error("TMDB took too long to respond."); timeoutError.status = 504; throw timeoutError; }
+    throw error;
+  } finally { clearTimeout(timeout); }
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "TMDB is not configured");
   const payload = await response.json();
   return window.SEVENAge.prepare(payload, path, currentProfile()?.kids === true);
@@ -653,7 +660,12 @@ async function refreshCatalogForLanguage() {
   state.catalogRequestScope = scope;
   const request = refreshCatalogNow().then(() => { if (scope === catalogPolicyScope()) state.catalogKey = activeProfileId(); });
   state.catalogRequest = request;
-  try { await request; } finally { if (state.catalogRequest === request) state.catalogRequest = null; }
+  let scopeChanged = false;
+  try { await request; scopeChanged = scope !== catalogPolicyScope(); }
+  finally { if (state.catalogRequest === request) state.catalogRequest = null; }
+  // A profile or content preference can change while the parallel catalog calls
+  // are in flight. Never leave Home empty after discarding that stale response.
+  if (scopeChanged) return refreshCatalogForLanguage();
 }
 function catalogPolicyScope() { const preferences = currentPreferences(); return JSON.stringify([state.user?.id || "guest",activeProfileId(),currentProfile()?.kids,["maturity","familySafe","blockScary","moviesEnabled","seriesEnabled","language"].map(key => preferences[key])]); }
 async function refreshCatalogNow() {
@@ -1276,12 +1288,20 @@ function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-o
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function renderHome() {
   clearInterval(state.heroTimer);
+  if (!Object.keys(state.catalog || {}).length && !state.catalogRequest && !state.error && navigator.onLine && !catalogRecoveryScheduled) {
+    catalogRecoveryScheduled = true;
+    setTimeout(() => {
+      catalogRecoveryScheduled = false;
+      if (state.route !== "home" || state.catalogRequest || Object.keys(state.catalog || {}).length || state.error || !navigator.onLine) return;
+      void loadStartupData().catch(error => { state.error = error?.message || "Catalog could not load."; if (state.route === "home") render(); });
+    }, 0);
+  }
   const animateProfileEntry = Boolean(state.profileGateHomeEntry);
   state.profileGateHomeEntry = false;
   state.featuredPool = state.featuredPool.filter(contentAllowed);
   if (!contentAllowed(state.featured)) state.featured = state.featuredPool[0] || null;
   state.featuredIndex = Math.max(0,state.featuredPool.findIndex(item => contentType(item) === contentType(state.featured || {}) && item.id === state.featured?.id));
-  const f = state.featured, loadingCatalog = Boolean(state.catalogRequest) && !Object.keys(state.catalog || {}).length;
+  const f = state.featured, loadingCatalog = !Object.keys(state.catalog || {}).length && !state.error;
   const continuing = continueWatching();
   const newEpisodes = (state.newEpisodes || []).filter(contentAllowed);
   const otherCatalog = Object.entries(state.catalog).filter(([name]) => name !== "Coming soon");
@@ -3442,7 +3462,15 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=415", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  const hadController = Boolean(navigator.serviceWorker.controller), updateKey = "seven.sw.home-refresh.v416";
+  let updateReloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || updateReloaded || state.route !== "home") return;
+    try { if (sessionStorage.getItem(updateKey)) return; sessionStorage.setItem(updateKey, "1"); } catch { /* Reload once from memory if storage is unavailable. */ }
+    updateReloaded = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register("service-worker.js?v=416", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
