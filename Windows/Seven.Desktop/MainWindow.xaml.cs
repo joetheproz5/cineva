@@ -275,17 +275,38 @@ public partial class MainWindow : Window
                     PlaySplashStingIfAvailable();
                     break;
                 case "startOAuth":
-                    if (message.RootElement.TryGetProperty("url", out var url)
+                {
+                    var requestId = message.RootElement.TryGetProperty("requestId", out var id)
+                        && id.ValueKind == JsonValueKind.String
+                        ? id.GetString()
+                        : null;
+                    var authorizeUrl = message.RootElement.TryGetProperty("url", out var url)
                         && url.ValueKind == JsonValueKind.String
-                        && IsNativeOAuthAuthorizeUrl(url.GetString()))
+                        ? url.GetString()
+                        : null;
+                    var launchSucceeded = authorizeUrl is not null
+                        && IsNativeOAuthAuthorizeUrl(authorizeUrl)
+                        && OpenExternal(new Uri(authorizeUrl));
+                    var launchError = launchSucceeded
+                        ? null
+                        : "Could not open the sign-in window. Check that a default browser is installed, then try again.";
+                    if (requestId is { Length: > 0 and <= 100 } && _webViewCore is { } webViewCore)
                     {
-                        if (!OpenExternal(new Uri(url.GetString()!)))
+                        webViewCore.PostWebMessageAsJson(JsonSerializer.Serialize(new
                         {
-                            var callback = JsonSerializer.Serialize("tv.seven.app://oauth/callback?error=launch_failed");
-                            _ = _webViewCore?.ExecuteScriptAsync($"window.SEVENNativeAuthCallback?.({callback});");
-                        }
+                            type = "oauthLaunchResult",
+                            requestId,
+                            success = launchSucceeded,
+                            error = launchError,
+                        }));
+                    }
+                    else if (!launchSucceeded)
+                    {
+                        var callback = JsonSerializer.Serialize("tv.seven.app://oauth/callback?error=launch_failed");
+                        _ = _webViewCore?.ExecuteScriptAsync($"window.SEVENNativeAuthCallback?.({callback});");
                     }
                     break;
+                }
             }
         }
         catch (JsonException)
@@ -381,7 +402,8 @@ public partial class MainWindow : Window
 
         try
         {
-            return Process.Start(new ProcessStartInfo(target.AbsoluteUri) { UseShellExecute = true }) is not null;
+            Process.Start(new ProcessStartInfo(target.AbsoluteUri) { UseShellExecute = true });
+            return true;
         }
         catch
         {

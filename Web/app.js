@@ -761,7 +761,31 @@ function socialProviderLabel(provider) { return provider === "discord" ? "Discor
 function nativeOAuthBridge() {
   if (typeof window.SEVENNative?.startOAuth === "function") return { start:url => { if (!window.SEVENNative.startOAuth(url)) throw Error("Could not open sign-in."); } };
   if (window.webkit?.messageHandlers?.sevenNativeAuth) return { start:url => window.webkit.messageHandlers.sevenNativeAuth.postMessage({ type:"startOAuth", url }) };
-  if (window.chrome?.webview) return { start:url => window.chrome.webview.postMessage({ type:"startOAuth", url }) };
+  if (window.chrome?.webview) return { start:url => new Promise((resolve, reject) => {
+    const webview = window.chrome.webview;
+    const requestId = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      webview.removeEventListener("message", onMessage);
+      callback(value);
+    };
+    const onMessage = event => {
+      if (event.data?.type !== "oauthLaunchResult" || event.data.requestId !== requestId) return;
+      if (event.data.success === true) finish(resolve);
+      else finish(reject, Error(event.data.error || "SEVEN could not open the sign-in window."));
+    };
+    const timeout = setTimeout(() => {
+      const error = Error("The SEVEN desktop app did not confirm the sign-in window. If your browser did not open, update and restart the app, then try again.");
+      error.code = "oauth-bridge-timeout";
+      finish(reject, error);
+    }, 2500);
+    webview.addEventListener("message", onMessage);
+    try { webview.postMessage({ type:"startOAuth", requestId, url }); }
+    catch (error) { finish(reject, Error(error?.message || "SEVEN could not open the sign-in window.")); }
+  }) };
   return null;
 }
 async function consumeSocialOAuthRedirect(nativeCallbackUrl = "") {
@@ -859,15 +883,16 @@ async function startSocialOAuth(provider, mode) {
   if (!['google','discord'].includes(provider)) return;
   const button = document.querySelector(`[data-social-auth="${provider}"]`), label = button?.querySelector("[data-social-label]"), message = document.querySelector("#auth-message"), providerLabel = socialProviderLabel(provider);
   if (!button || button.disabled || document.querySelector("[data-social-auth]:disabled")) return;
-  button.disabled = true; if (label) label.textContent = `Connecting to ${providerLabel}…`; message.textContent = "";
-  const nativeBridge = nativeOAuthBridge();
+  button.disabled = true; if (label) label.textContent = `Connecting to ${providerLabel}…`; if (message) message.textContent = "";
+  let nativeBridge = null;
   let pwaPopup = null;
-  if (!nativeBridge && isInstalledPWA()) {
-    sessionStorage.setItem("seven.oauth.provider", provider);
-    try { pwaPopup = window.open("about:blank", "_blank", "popup,width=520,height=700"); } catch { pwaPopup = null; }
-    if (pwaPopup) pendingPwaOAuthWindow = pwaPopup;
-  }
   try {
+    nativeBridge = nativeOAuthBridge();
+    if (!nativeBridge && isInstalledPWA()) {
+      try { sessionStorage.setItem("seven.oauth.provider", provider); } catch { }
+      try { pwaPopup = window.open("about:blank", "_blank", "popup,width=520,height=700"); } catch { pwaPopup = null; }
+      if (pwaPopup) pendingPwaOAuthWindow = pwaPopup;
+    }
     const config = await localAPI("/api/config", {signal:AbortSignal.timeout(10000)});
     if (!config.supabase?.url) throw Error(`${providerLabel} sign-in is not configured yet.`);
     const supabaseUrl = new URL(config.supabase.url);
@@ -888,7 +913,7 @@ async function startSocialOAuth(provider, mode) {
     }
     const redirect = nativeBridge ? "tv.seven.app://oauth/callback" : new URL("oauth-callback.html", document.baseURI).href;
     const authorize = new URL("/auth/v1/authorize", supabaseUrl); authorize.searchParams.set("provider",provider); authorize.searchParams.set("redirect_to",redirect); authorize.searchParams.set("code_challenge",challenge); authorize.searchParams.set("code_challenge_method","s256");
-    if (nativeBridge) nativeBridge.start(authorize.href);
+    if (nativeBridge) await nativeBridge.start(authorize.href);
     else if (pwaPopup) {
       pwaPopup.location.replace(authorize.href);
       clearInterval(pendingPwaOAuthTimer);
@@ -907,9 +932,12 @@ async function startSocialOAuth(provider, mode) {
     if (pendingPwaOAuthWindow === pwaPopup) pendingPwaOAuthWindow = null;
     clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0;
     clearTimeout(socialOAuthTimeout); socialOAuthTimeout = 0;
-    localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY);
-    message.textContent = error.message || `${providerLabel} sign-in is temporarily unavailable.`;
+    const bridgeDidNotConfirm = error.code === "oauth-bridge-timeout";
+    if (!bridgeDidNotConfirm) try { localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY); } catch { }
+    try { sessionStorage.removeItem(provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY); sessionStorage.removeItem("seven.oauth.provider"); } catch { }
+    if (message) message.textContent = error.message || `${providerLabel} sign-in is temporarily unavailable.`;
     button.disabled = false; if (label) label.textContent = `Continue with ${providerLabel}`;
+    if (bridgeDidNotConfirm) socialOAuthTimeout = setTimeout(() => window.SEVENNativeAuthCancelled?.(), 9 * 60 * 1000);
   }
 }
 async function boot() {
