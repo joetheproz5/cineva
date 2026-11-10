@@ -135,9 +135,17 @@ class MainActivity : ComponentActivity() {
                         authTab.launch(authTabLauncher, authUri, "tv.seven.app")
                     } else {
                         awaitingOAuthReturn = true
+                        val display = resources.displayMetrics
                         CustomTabsIntent.Builder()
                             .setShowTitle(false)
                             .setToolbarColor(Color.rgb(2, 2, 3))
+                            .setToolbarCornerRadiusDp(24)
+                            .setActivitySideSheetBreakpointDp(600)
+                            .setInitialActivityHeightPx(
+                                (display.heightPixels * 0.84f).toInt(),
+                                CustomTabsIntent.ACTIVITY_HEIGHT_ADJUSTABLE
+                            )
+                            .setInitialActivityWidthPx((display.widthPixels * 0.72f).toInt())
                             .build()
                             .launchUrl(this@MainActivity, authUri)
                     }
