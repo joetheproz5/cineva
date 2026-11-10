@@ -24,7 +24,7 @@ let sessionRefreshPromise;
 let deferredInstallPrompt;
 let profileGatePosterTimer = null, profileGatePosterGeneration = 0;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -1736,7 +1736,7 @@ function maybeFinishIntro(skip = false) {
   if (!state.introHandle) return;
   state.introExitStarted = true;
   clearTimeout(state.introSafetyTimer);
-  state.introHandle.exit({ skip });
+  state.introHandle.exit({ skip:skip || state.introSkipRequested });
 }
 function beginSplashExit(phases) {
   const appScreen = document.getElementById("app");
@@ -1761,12 +1761,14 @@ function beginSplashExit(phases) {
   }, phases.screenDelayWallMs);
 }
 function renderLaunchIntro(override = null) {
-  const options = override || window.SEVENSplash?.resolveLaunchOptions({ enabled: launchIntroEnabled() });
+  const bootstrap = override ? null : window.SEVENSplashBootstrap;
+  const options = override || bootstrap?.options || window.SEVENSplash?.resolveLaunchOptions({ enabled: launchIntroEnabled() });
   if (!options || !window.SEVENSplash) {
     state.introAnimationComplete = true;
     return;
   }
   if (options.debug) state.startupReady = true;
+  state.introSkipRequested = false;
   state.introExitStarted = false;
   state.introAnimationComplete = false;
   const appScreen = document.getElementById("app");
@@ -1778,27 +1780,35 @@ function renderLaunchIntro(override = null) {
     appScreen.style.pointerEvents = "none";
     appScreen.style.transition = "none";
   }
-  state.introHandle = window.SEVENSplash.createOverlay(options, {
+  const callbacks = {
     onEntryComplete() {
       state.introAnimationComplete = true;
       maybeFinishIntro();
     },
     onSkip() {
-      state.startupReady = true;
+      state.introSkipRequested = true;
       state.introAnimationComplete = true;
       clearTimeout(state.introSafetyTimer);
+      markStartupReady();
       maybeFinishIntro(true);
     },
     onExitStart: beginSplashExit,
     onExitComplete: dismissIntro,
-  });
-  document.body.appendChild(state.introHandle.element);
-  state.introHandle.start();
+  };
+  if (bootstrap?.handle && !options.debug) {
+    state.introHandle = bootstrap.handle;
+    state.introAnimationComplete = bootstrap.entryComplete;
+    bootstrap.attach(callbacks);
+  } else {
+    state.introHandle = window.SEVENSplash.createOverlay(options, callbacks);
+    document.body.appendChild(state.introHandle.element);
+    state.introHandle.start();
+  }
   if (!options.debug) {
     state.introSafetyTimer = setTimeout(() => {
-      state.startupReady = true;
       state.introAnimationComplete = true;
       state.introHandle?.finish();
+      markStartupReady();
       maybeFinishIntro();
     }, window.SplashSpec.readyTimeout);
   }
@@ -3427,7 +3437,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=408", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=411", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
@@ -3498,8 +3508,12 @@ window.addEventListener("focus", refreshSessionIfNeeded);
 window.addEventListener("visibilitychange", () => { if (!document.hidden) { tickScreenTime(); refreshSessionIfNeeded(); } });
 window.addEventListener("pagehide", () => { void flushWatchTime(); });
 setInterval(tickScreenTime, 60000);
+const markStartupReady = () => {
+  const ready = () => requestAnimationFrame(() => { state.startupReady = true; maybeFinishIntro(); });
+  if (window.SEVENStylesReady) void window.SEVENStylesReady.then(ready, ready);
+  else ready();
+};
 renderLaunchIntro();
-const markStartupReady = () => { state.startupReady = true; maybeFinishIntro(); };
 void boot().then(markStartupReady, error => {
   state.error = error?.message || "Startup failed";
   renderOfflineScreen();

@@ -7,9 +7,8 @@
     <meta name="description" content="SEVEN is a personal movie and series discovery app with rich details, trailers, watch progress, and tailored recommendations." />
     <meta name="keywords" content="SEVEN, movies, series, TV shows, film discovery, trailers, watch progress" />
     <meta name="robots" content="index,follow" />
-    <style id="splash-critical">:root{color-scheme:dark;--splash-bg0:#020203;--splash-accent:#e0010b}html,body{background-color:#020203}</style>
+    <style id="splash-critical">:root{color-scheme:dark;--splash-bg0:#020203;--splash-accent:#e0010b}html,body{background-color:#020203}#app{visibility:hidden}html.seven-styles-ready #app{visibility:visible}.seven-intro{position:fixed;z-index:400;inset:0;overflow:hidden;background:#020203;isolation:isolate;cursor:default;touch-action:none}.splash-composition{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;background:#020203;transform:scale(1);transform-origin:center;will-change:transform,opacity;contain:layout paint}.splash-glow{position:absolute;z-index:0;inset:-2%;background:radial-gradient(ellipse at var(--splash-glow-x,50%) var(--splash-glow-y,48%),rgba(var(--splash-accent-rgb,224,1,11),var(--splash-glow-alpha,0)),transparent var(--splash-glow-radius,48%));pointer-events:none}.splash-content{position:absolute;z-index:1;inset:0;display:grid;place-items:center;pointer-events:none}.splash-streak{position:absolute;z-index:1;top:50%;left:50%;height:24px;opacity:0;transform:translate(-50%,-50%) scaleX(0);transform-origin:center}.splash-streak-core{position:absolute;z-index:2;top:calc(50% - 1px);left:50%;width:0;height:2px;opacity:0;transform:translate(-50%,-50%) scaleX(0);transform-origin:center}.splash-wordmark{position:relative;z-index:3;grid-area:1/1;display:block;width:220px;height:auto;max-width:none;overflow:visible;fill:#e0010b;shape-rendering:geometricPrecision;transform:translateZ(0);will-change:transform}.splash-slices,.splash-reduced-wordmark{fill:#e0010b}</style>
     <meta name="theme-color" content="#020203" />
-    <script src="SplashSpec.js?v=4"></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SEVEN" />
@@ -50,44 +49,47 @@
     <link rel="apple-touch-startup-image" media="(device-width: 1194px) and (device-height: 834px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="assets/splash/2388x1668.png" />
     <link rel="apple-touch-startup-image" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="assets/splash/1536x2048.png" />
     <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 768px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="assets/splash/2048x1536.png" />
-    <link rel="stylesheet" href="styles.css?v=235" />
-    <link rel="stylesheet" href="auth.css?v=284" />
-    <link rel="stylesheet" href="ui.css?v=313" />
-    <link rel="stylesheet" href="title-discovery.css?v=3" />
-    <link rel="stylesheet" href="hero-spotlight.css?v=1" />
-    <link rel="stylesheet" href="age-ratings.css?v=1" />
-    <link rel="stylesheet" href="undo-actions.css?v=1" />
-    <link rel="stylesheet" href="settings-ui.css?v=3" />
-    <link rel="stylesheet" href="settings-sync.css?v=1" />
-    <link rel="stylesheet" href="auth-security.css?v=2" />
-    <link rel="stylesheet" href="privacy.css?v=1" />
+    <link rel="stylesheet" href="styles.css?v=235" media="print" data-seven-style />
+    <link rel="stylesheet" href="auth.css?v=284" media="print" data-seven-style />
+    <link rel="stylesheet" href="ui.css?v=313" media="print" data-seven-style />
+    <link rel="stylesheet" href="title-discovery.css?v=3" media="print" data-seven-style />
+    <link rel="stylesheet" href="hero-spotlight.css?v=1" media="print" data-seven-style />
+    <link rel="stylesheet" href="age-ratings.css?v=1" media="print" data-seven-style />
+    <link rel="stylesheet" href="undo-actions.css?v=1" media="print" data-seven-style />
+    <link rel="stylesheet" href="settings-ui.css?v=3" media="print" data-seven-style />
+    <link rel="stylesheet" href="settings-sync.css?v=1" media="print" data-seven-style />
+    <link rel="stylesheet" href="auth-security.css?v=2" media="print" data-seven-style />
+    <link rel="stylesheet" href="privacy.css?v=1" media="print" data-seven-style />
+    <script defer src="SplashSpec.js?v=4"></script>
+    <script defer src="splash-animation.js?v=5"></script>
+    <script defer src="splash-boot.js?v=1"></script>
+    <script defer src="startup-styles.js?v=1"></script>
     <title>SEVEN | Movies & Series</title>
   </head>
   <body>
     <main id="app"></main>
-    <script src="privacy.js?v=1"></script>
-    <script src="metrics.js?v=2"></script>
-    <script src="player-security.js?v=246"></script>
-    <script src="profile-stats.js?v=1"></script>
-    <script src="catalog-browser.js?v=1"></script>
-    <script src="search-engine.js?v=1"></script>
-    <script src="recommendations.js?v=1"></script>
-    <script src="series-tracker.js?v=1"></script>
-    <script src="progress-tools.js?v=1"></script>
-    <script src="series-tracker-ui.js?v=4"></script>
-    <script src="progress-ui.js?v=2"></script>
-    <script src="devices.js?v=2"></script>
-    <script src="title-discovery.js?v=1"></script>
-    <script src="title-discovery-ui.js?v=2"></script>
-    <script src="hero-spotlight.js?v=1"></script>
-    <script src="age-ratings.js?v=1"></script>
-    <script src="settings-sync.js?v=1"></script>
-    <script src="settings-sync-ui.js?v=3"></script>
-    <script src="undo-actions.js?v=1"></script>
-    <script src="settings-ui.js?v=3"></script>
-    <script src="password-policy.js?v=1"></script>
-    <script src="auth-security.js?v=3"></script>
-    <script src="splash-animation.js?v=4"></script>
-    <script src="app.js?v=408"></script>
+    <script defer src="privacy.js?v=1"></script>
+    <script defer src="metrics.js?v=2"></script>
+    <script defer src="player-security.js?v=246"></script>
+    <script defer src="profile-stats.js?v=1"></script>
+    <script defer src="catalog-browser.js?v=1"></script>
+    <script defer src="search-engine.js?v=1"></script>
+    <script defer src="recommendations.js?v=1"></script>
+    <script defer src="series-tracker.js?v=1"></script>
+    <script defer src="progress-tools.js?v=1"></script>
+    <script defer src="series-tracker-ui.js?v=4"></script>
+    <script defer src="progress-ui.js?v=2"></script>
+    <script defer src="devices.js?v=2"></script>
+    <script defer src="title-discovery.js?v=1"></script>
+    <script defer src="title-discovery-ui.js?v=2"></script>
+    <script defer src="hero-spotlight.js?v=1"></script>
+    <script defer src="age-ratings.js?v=1"></script>
+    <script defer src="settings-sync.js?v=1"></script>
+    <script defer src="settings-sync-ui.js?v=3"></script>
+    <script defer src="undo-actions.js?v=1"></script>
+    <script defer src="settings-ui.js?v=3"></script>
+    <script defer src="password-policy.js?v=1"></script>
+    <script defer src="auth-security.js?v=3"></script>
+    <script defer src="app.js?v=411"></script>
   </body>
 </html>
