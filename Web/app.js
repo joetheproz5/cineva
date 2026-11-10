@@ -1147,10 +1147,14 @@ async function activateProfile(id, { handoff = false } = {}) {
   if (catalogStale) state.catalogRequest = null;
   try { await loadMyList(); await refreshCatalogForLanguage(); } catch {}
   if (handoff) {
-    await new Promise(resolve => setTimeout(resolve, 200));
+    const gate = document.querySelector(".profile-gate");
+    const startedAt = Number(gate?.dataset.selectionStartedAt) || performance.now();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const minimumSequence = reducedMotion ? 360 : 760;
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, minimumSequence - (performance.now() - startedAt))));
     if (state.route !== "profiles") return;
-    document.querySelector(".profile-gate")?.classList.add("profile-gate-selection-exit");
-    await new Promise(resolve => setTimeout(resolve, 200));
+    gate?.classList.add("profile-gate-selection-exit");
+    await new Promise(resolve => setTimeout(resolve, reducedMotion ? 0 : 280));
     if (state.route === "profiles") enterHome();
   } else if (state.route === "home") render();
 }
@@ -1160,6 +1164,19 @@ function beginProfileGateSelection(id) {
   if (!gate) { void activateProfile(id); return; }
   if (gate.classList.contains("profile-gate-selecting")) return;
   const button = [...gate.querySelectorAll("[data-watch-profile]")].find(item => item.dataset.watchProfile === id);
+  const avatar = button?.querySelector(".profile-avatar"), rect = avatar?.getBoundingClientRect() || button?.getBoundingClientRect();
+  const gateRect = gate.getBoundingClientRect(), centerX = gateRect.left + gateRect.width / 2, centerY = gateRect.top + gateRect.height / 2;
+  const handoffSize = window.matchMedia("(max-width: 599px)").matches ? 132 : 176;
+  if (rect) {
+    gate.style.setProperty("--handoff-x", `${rect.left + rect.width / 2 - centerX}px`);
+    gate.style.setProperty("--handoff-y", `${rect.top + rect.height / 2 - centerY}px`);
+    gate.style.setProperty("--handoff-scale", String(rect.width / handoffSize));
+    gate.style.setProperty("--handoff-size", `${handoffSize}px`);
+    gate.style.setProperty("--handoff-label-offset", `${handoffSize / 2 + 27}px`);
+    gate.insertAdjacentHTML("beforeend", '<div class="profile-gate-handoff-layer" aria-hidden="true"><div class="profile-gate-handoff-avatar">' + profileGateAvatar(profile) + '</div></div><div class="profile-gate-loading" role="status" aria-live="polite"><i aria-hidden="true"></i><span>' + escapeHTML(t("Loading your profile")) + '</span></div>');
+    bindProfileGateAvatarLoads(gate);
+  }
+  gate.dataset.selectionStartedAt = String(performance.now());
   gate.classList.add("profile-gate-selecting");
   button?.classList.add("profile-choice-selected");
   gate.querySelectorAll("button").forEach(item => { item.disabled = true; });
