@@ -9,7 +9,6 @@ const styles = fs.readFileSync(path.join(web, "auth.css"), "utf8");
 const uiStyles = fs.readFileSync(path.join(web, "ui.css"), "utf8");
 const index = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const serviceWorker = fs.readFileSync(path.join(web, "service-worker.js"), "utf8");
-const defaultProfileIcon = fs.readFileSync(path.join(web, "assets/profile-person.svg"), "utf8");
 const gateStart = app.indexOf("function profileGateShowcaseMarkup()");
 const gateEnd = app.indexOf("function renderLoading()", gateStart);
 const gate = app.slice(gateStart, gateEnd);
@@ -49,13 +48,11 @@ test("desktop profile picker keeps a restrained center spotlight and no mobile p
   assert.match(styles, /\.profile-gate-showcase::before \{[^}]*background: radial-gradient\(ellipse at center, #6a202944/);
   assert.match(styles, /@keyframes profile-stage-glow/);
   assert.match(styles, /\.profile-gate \.profile-chooser \{ display: flex; flex-wrap: wrap;[\s\S]*?gap: 22px/);
-  assert.match(styles, /\.profile-gate \.profile-choice \.profile-avatar-guest \{[^}]*background: radial-gradient\(circle at 50% 35%, #16090b/);
-  assert.match(styles, /\.profile-gate \.profile-avatar-guest img \{[^}]*width: 58%/);
-  assert.match(app, /profile-avatar-guest[^>]*><img src="assets\/profile-person\.svg"/);
-  assert.match(defaultProfileIcon, /class="bi bi-person-circle"/);
-  assert.match(defaultProfileIcon, /fill="#ed1b27"/);
+  assert.match(styles, /\.profile-gate \.profile-gate-initial \{ background:var\(--profile-avatar-tone\); \}/);
+  assert.match(app, /profile-avatar-initial profile-gate-initial/);
+  assert.doesNotMatch(app, /profile-avatar-guest|profile-person\.svg/);
   assert.match(styles, /\.profile-gate \.profile-add-avatar \{[^}]*border: 1px solid #666a70/);
-  assert.match(app, /function profileGateAvatar\(profile\) \{ return profileAvatar\(profile\); \}/);
+  assert.match(app, /function profileGateAvatar\(profile\) \{[\s\S]*?profileAvatarSource\(profile\.avatar\)/);
 });
 
 test("mobile artwork is one uncropped-feeling poster at a time with a clean handoff", () => {
@@ -116,10 +113,10 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=275/);
-  assert.match(index, /app\.js\?v=384/);
-  assert.match(serviceWorker, /seven-v384/);
-  assert.match(serviceWorker, /auth\.css\?v=275/);
-  assert.match(serviceWorker, /app\.js\?v=384/);
-  assert.match(serviceWorker, /assets\/profile-person\.svg/);
+  assert.match(index, /auth\.css\?v=291/);
+  assert.match(index, /app\.js\?v=423/);
+  assert.match(serviceWorker, /seven-v423/);
+  assert.match(serviceWorker, /auth\.css\?v=291/);
+  assert.match(serviceWorker, /app\.js\?v=423/);
+  assert.doesNotMatch(serviceWorker, /assets\/profile-person\.svg/);
 });

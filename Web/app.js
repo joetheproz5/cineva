@@ -3155,8 +3155,9 @@ async function restoreHiddenTitle(key) {
 function currentPreferences() { return { ...DEFAULT_PREFERENCES, ...(state.account?.preferences || {}), ...(currentProfile()?.preferences || {}), maturity:maturityForProfile(currentProfile()) }; }
 function updateCurrentPreferences(values) { const profile = currentProfile(); if (profile) profile.preferences = { ...currentPreferences(), ...values, maturity:maturityForProfile({ ...profile, preferences:{ ...profile.preferences, ...values } }) }; }
 function profileAvatar(profile) {
-  if (!isProfileAvatar(profile?.avatar)) return `<span class="profile-avatar profile-avatar-guest" aria-hidden="true"><img src="assets/profile-person.svg" alt=""></span>`;
-  return `<span class="profile-avatar profile-avatar-image" style="--profile-color:#111214"><img src="${escapeHTML(profile.avatar)}" alt=""></span>`;
+  const initial = profileGateInitial(profile);
+  if (!isProfileAvatar(profile?.avatar)) return `<span class="profile-avatar profile-avatar-initial" style="--profile-avatar-tone:var(--profile-avatar-tone-${initial.tone})" aria-hidden="true">${escapeHTML(initial.letter)}</span>`;
+  return `<span class="profile-avatar profile-avatar-image" style="--profile-avatar-tone:var(--profile-avatar-tone-${initial.tone})"><img src="${escapeHTML(profileAvatarSource(profile.avatar))}" alt=""></span>`;
 }
 function profileGateInitial(profile) {
   const value = String(profile?.id || profile?.name || "?");
@@ -3164,7 +3165,7 @@ function profileGateInitial(profile) {
   for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619) >>> 0;
   return { tone:(hash % 6) + 1, letter:Array.from(String(profile?.name || "?").trim())[0] || "?" };
 }
-function profileGateAvatar(profile) {
+function profileAvatarSource(avatar) {
   const builtins = {
     "assets/avatars/red-panda.png":"assets/avatars/red-panda.webp",
     "assets/avatars/black-cat.png":"assets/avatars/black-cat.webp",
@@ -3173,9 +3174,12 @@ function profileGateAvatar(profile) {
     "assets/avatars/duck.png":"assets/avatars/duck.webp",
     "assets/avatars/robot.png":"assets/avatars/robot.webp"
   };
+  return builtins[avatar] || avatar;
+}
+function profileGateAvatar(profile) {
   const initial = profileGateInitial(profile);
-  if (!isProfileAvatar(profile?.avatar)) return '<span class="profile-avatar profile-gate-initial" style="--profile-avatar-tone:var(--profile-avatar-tone-' + initial.tone + ')" aria-hidden="true">' + escapeHTML(initial.letter) + '</span>';
-  const src = builtins[profile.avatar] || profile.avatar;
+  if (!isProfileAvatar(profile?.avatar)) return '<span class="profile-avatar profile-avatar-initial profile-gate-initial" style="--profile-avatar-tone:var(--profile-avatar-tone-' + initial.tone + ')" aria-hidden="true">' + escapeHTML(initial.letter) + '</span>';
+  const src = profileAvatarSource(profile.avatar);
   return '<span class="profile-avatar profile-avatar-image" style="--profile-avatar-tone:var(--profile-avatar-tone-' + initial.tone + ')" aria-hidden="true"><span class="profile-gate-avatar-fallback">' + escapeHTML(initial.letter) + '</span><img data-profile-gate-avatar src="' + escapeHTML(src) + '" alt="" width="512" height="512" decoding="async" loading="eager" fetchpriority="high"></span>';
 }
 function accountNavItem(tab, icon, label, active) { return `<button class="account-nav-item ${tab === active ? "active" : ""}" data-account-tab="${tab}" aria-current="${tab === active ? "page" : "false"}"><i aria-hidden="true">${icon}</i><span>${label}</span></button>`; }
