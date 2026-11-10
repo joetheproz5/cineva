@@ -14,6 +14,7 @@ let package = Package(
             resources: [.copy("Resources")],
             linkerSettings: [
                 .linkedFramework("AppKit"),
+                .linkedFramework("AuthenticationServices"),
                 .linkedFramework("AVFoundation"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("WebKit")

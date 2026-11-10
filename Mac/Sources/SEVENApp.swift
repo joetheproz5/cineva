@@ -1,4 +1,5 @@
 import AppKit
+import AuthenticationServices
 import AVFoundation
 import Combine
 import SwiftUI
@@ -16,18 +17,20 @@ private final class SevenScriptMessageHandlerProxy: NSObject, WKScriptMessageHan
 }
 
 @MainActor
-private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, ASWebAuthenticationPresentationContextProviding {
     let webView: WKWebView
 
     @Published private(set) var canGoBack = false
     @Published private(set) var canGoForward = false
     private var splashPlayer: AVAudioPlayer?
+    private var oauthSession: ASWebAuthenticationSession?
 
     override init() {
         let messageProxy = SevenScriptMessageHandlerProxy()
         let configuration = WKWebViewConfiguration()
         let userContent = WKUserContentController()
         userContent.add(messageProxy, name: "sevenSplashAudio")
+        userContent.add(messageProxy, name: "sevenNativeAuth")
         configuration.userContentController = userContent
         configuration.websiteDataStore = .default()
         configuration.allowsAirPlayForMediaPlayback = true
@@ -94,18 +97,67 @@ private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelega
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "sevenSplashAudio",
-              (message.body as? String) == "play",
-              message.frameInfo.securityOrigin.host == sevenHost,
+        guard message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.host == sevenHost else { return }
+        if message.name == "sevenNativeAuth",
+           let body = message.body as? [String: Any],
+           body["type"] as? String == "startOAuth",
+           let rawURL = body["url"] as? String {
+            startNativeOAuth(rawURL)
+            return
+        }
+        guard message.name == "sevenSplashAudio", (message.body as? String) == "play",
               let url = Bundle.module.url(forResource: "splash_sting", withExtension: "wav", subdirectory: "Resources/audio") else { return }
         do {
             splashPlayer = try AVAudioPlayer(contentsOf: url)
             splashPlayer?.volume = 0.251
             splashPlayer?.prepareToPlay()
             splashPlayer?.play()
-        } catch {
-            splashPlayer = nil
+        } catch { splashPlayer = nil }
+    }
+
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        webView.window ?? NSApp.keyWindow ?? NSWindow()
+    }
+
+    private func startNativeOAuth(_ rawURL: String) {
+        guard let url = URL(string: rawURL),
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              url.scheme?.lowercased() == "https",
+              url.host?.lowercased().hasSuffix(".supabase.co") == true,
+              url.path == "/auth/v1/authorize",
+              let provider = components.queryItems?.first(where: { $0.name == "provider" })?.value,
+              ["google", "discord"].contains(provider),
+              let rawRedirect = components.queryItems?.first(where: { $0.name == "redirect_to" })?.value,
+              let redirect = URLComponents(string: rawRedirect),
+              redirect.scheme == "tv.seven.app", redirect.host == "oauth", redirect.path == "/callback" else {
+            deliverNativeOAuthCallback(URL(string: "tv.seven.app://oauth/callback?error=launch_failed")!)
+            return
         }
+
+        let session = ASWebAuthenticationSession(url: url, callback: .customScheme("tv.seven.app")) { [weak self] callbackURL, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.oauthSession = nil
+                if let callbackURL, callbackURL.scheme == "tv.seven.app", callbackURL.host == "oauth", callbackURL.path == "/callback" {
+                    self.deliverNativeOAuthCallback(callbackURL)
+                } else if error != nil {
+                    self.deliverNativeOAuthCallback(URL(string: "tv.seven.app://oauth/callback?error=cancelled")!)
+                }
+            }
+        }
+        session.presentationContextProvider = self
+        session.prefersEphemeralWebBrowserSession = false
+        oauthSession = session
+        if !session.start() {
+            oauthSession = nil
+            deliverNativeOAuthCallback(URL(string: "tv.seven.app://oauth/callback?error=launch_failed")!)
+        }
+    }
+
+    private func deliverNativeOAuthCallback(_ url: URL) {
+        guard let data = try? JSONSerialization.data(withJSONObject: url.absoluteString, options: [.fragmentsAllowed]),
+              let serialized = String(data: data, encoding: .utf8) else { return }
+        webView.evaluateJavaScript("window.SEVENNativeAuthCallback?.(\(serialized))")
     }
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {

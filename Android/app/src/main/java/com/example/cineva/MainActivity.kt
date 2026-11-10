@@ -31,6 +31,23 @@ private const val APP_HOST = "seven-9fm.pages.dev"
 
 private fun isTrustedAppURL(uri: Uri): Boolean = uri.scheme == "https" && uri.host == APP_HOST
 
+private fun isNativeOAuthCallback(rawUrl: String?): Boolean {
+    val uri = rawUrl?.let { Uri.parse(it) } ?: return false
+    if (uri.scheme != "tv.seven.app" || uri.host != "oauth" || uri.path != "/callback") return false
+    return (uri.getQueryParameter("code")?.length ?: 0) in 8..2048
+        || uri.getQueryParameter("error") != null
+        || uri.getQueryParameter("error_code") != null
+}
+
+private fun isNativeOAuthAuthorize(rawUrl: String): Boolean = runCatching {
+    val uri = Uri.parse(rawUrl)
+    val callback = Uri.parse(uri.getQueryParameter("redirect_to") ?: "")
+    uri.scheme == "https" && uri.host.orEmpty().lowercase().endsWith(".supabase.co")
+        && (uri.port == -1 || uri.port == 443)
+        && uri.path == "/auth/v1/authorize" && uri.getQueryParameter("provider") in setOf("google", "discord")
+        && callback.scheme == "tv.seven.app" && callback.host == "oauth" && callback.path == "/callback"
+}.getOrDefault(false)
+
 internal fun supportedAppLink(rawUrl: String?): String? {
     val uri = rawUrl?.let { runCatching { URI(it) }.getOrNull() } ?: return null
     if (!uri.scheme.equals("https", ignoreCase = true)
@@ -68,6 +85,9 @@ class MainActivity : Activity() {
     private var fullScreenContainer: FrameLayout? = null
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var splashPlayer: MediaPlayer? = null
+    private var pageReady = false
+    private var pendingNativeOAuthCallback: String? = null
+    private var awaitingOAuthReturn = false
 
     private inner class SevenNativeBridge {
         @JavascriptInterface
@@ -76,6 +96,20 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun playSplashSting() {
             runOnUiThread { playSplashStingIfAvailable() }
+        }
+
+        @JavascriptInterface
+        fun startOAuth(rawUrl: String): Boolean {
+            if (!isNativeOAuthAuthorize(rawUrl)) return false
+            runOnUiThread {
+                awaitingOAuthReturn = true
+                runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rawUrl))) }
+                    .onFailure {
+                        awaitingOAuthReturn = false
+                        web.evaluateJavascript("window.SEVENNativeAuthCallback?.('tv.seven.app://oauth/callback?error=launch_failed')", null)
+                    }
+            }
+            return true
         }
     }
 
@@ -121,6 +155,12 @@ class MainActivity : Activity() {
                         view.loadUrl("file:///android_asset/offline.html")
                     }
                 }
+                override fun onPageFinished(view: WebView, url: String) {
+                    if (isTrustedAppURL(Uri.parse(url))) {
+                        pageReady = true
+                        deliverPendingNativeOAuthCallback()
+                    }
+                }
             }
             webChromeClient = object : WebChromeClient() {
                 override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
@@ -151,6 +191,7 @@ class MainActivity : Activity() {
                     return runCatching { startActivityForResult(params.createIntent(), 1001); true }.getOrDefault(false)
                 }
             }
+            pendingNativeOAuthCallback = intent?.dataString?.takeIf(::isNativeOAuthCallback)
             loadUrl(supportedAppLink(intent?.dataString) ?: APP_URL)
         }
 
@@ -161,7 +202,31 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        supportedAppLink(intent.dataString)?.let { web.loadUrl(it) }
+        val callback = intent.dataString?.takeIf(::isNativeOAuthCallback)
+        if (callback != null) {
+            awaitingOAuthReturn = false
+            pendingNativeOAuthCallback = callback
+            deliverPendingNativeOAuthCallback()
+        } else {
+            supportedAppLink(intent.dataString)?.let { web.loadUrl(it) }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (awaitingOAuthReturn) {
+            awaitingOAuthReturn = false
+            if (pendingNativeOAuthCallback == null && ::web.isInitialized) {
+                web.evaluateJavascript("window.SEVENNativeAuthCancelled?.()", null)
+            }
+        }
+    }
+
+    private fun deliverPendingNativeOAuthCallback() {
+        if (!pageReady) return
+        val callback = pendingNativeOAuthCallback ?: return
+        pendingNativeOAuthCallback = null
+        web.evaluateJavascript("window.SEVENNativeAuthCallback?.(${org.json.JSONObject.quote(callback)})", null)
     }
 
     private fun exitFullscreen() {

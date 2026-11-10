@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SEVEN</AssemblyName>
     <Product>SEVEN Desktop</Product>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <ApplicationIcon>Assets\seven.ico</ApplicationIcon>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <ApplicationManifest>app.manifest</ApplicationManifest>

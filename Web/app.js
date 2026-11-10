@@ -754,17 +754,41 @@ function playMovieNow(movie, resume = false) { const key = { type:"movie", id:mo
 const GOOGLE_OAUTH_VERIFIER_KEY = "seven.google.oauth.verifier";
 const DISCORD_OAUTH_VERIFIER_KEY = "seven.discord.oauth.verifier";
 const SOCIAL_OAUTH_CALLBACK_KEY = "seven.social.oauth.callback";
+const NATIVE_OAUTH_TRANSACTION_KEY = "seven.native.oauth.transaction";
+let nativeOAuthBooted = false, queuedNativeOAuthCallback = "";
+let pendingPwaOAuthWindow = null, pendingPwaOAuthTimer = 0, socialOAuthTimeout = 0;
 function socialProviderLabel(provider) { return provider === "discord" ? "Discord" : "Google"; }
-async function consumeSocialOAuthRedirect() {
+function nativeOAuthBridge() {
+  if (typeof window.SEVENNative?.startOAuth === "function") return { start:url => { if (!window.SEVENNative.startOAuth(url)) throw Error("Could not open sign-in."); } };
+  if (window.webkit?.messageHandlers?.sevenNativeAuth) return { start:url => window.webkit.messageHandlers.sevenNativeAuth.postMessage({ type:"startOAuth", url }) };
+  if (window.chrome?.webview) return { start:url => window.chrome.webview.postMessage({ type:"startOAuth", url }) };
+  return null;
+}
+async function consumeSocialOAuthRedirect(nativeCallbackUrl = "") {
   let callback;
-  try { callback = JSON.parse(sessionStorage.getItem(SOCIAL_OAUTH_CALLBACK_KEY) || sessionStorage.getItem("seven.google.oauth.callback") || "null"); } catch { callback = null; }
+  let nativeTransaction = null;
+  if (nativeCallbackUrl) {
+    try {
+      const callbackURL = new URL(nativeCallbackUrl), params = callbackURL.searchParams;
+      if (callbackURL.protocol !== "tv.seven.app:" || callbackURL.hostname !== "oauth" || callbackURL.pathname !== "/callback") throw Error();
+      nativeTransaction = JSON.parse(localStorage.getItem(NATIVE_OAUTH_TRANSACTION_KEY) || "null");
+      if (!nativeTransaction || !["google", "discord"].includes(nativeTransaction.provider) || typeof nativeTransaction.verifier !== "string" || !Number.isFinite(nativeTransaction.createdAt) || Date.now() - nativeTransaction.createdAt > 10 * 60 * 1000) throw Error();
+      localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY);
+      callback = { provider:nativeTransaction.provider, code:params.get("code") || "", error:params.has("error") || params.has("error_code") || params.has("error_description") };
+    } catch {
+      localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY);
+      return "Social sign-in could not be completed. Please try again.";
+    }
+  } else {
+    try { callback = JSON.parse(sessionStorage.getItem(SOCIAL_OAUTH_CALLBACK_KEY) || sessionStorage.getItem("seven.google.oauth.callback") || "null"); } catch { callback = null; }
+  }
   if (!callback) return "";
   sessionStorage.removeItem(SOCIAL_OAUTH_CALLBACK_KEY);
   sessionStorage.removeItem("seven.google.oauth.callback");
   const provider = callback.provider === "discord" ? "discord" : "google", providerLabel = socialProviderLabel(provider);
   const code = typeof callback.code === "string" ? callback.code : "", providerError = callback.error === true;
   const verifierKey = provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY;
-  const verifier = sessionStorage.getItem(verifierKey) || (provider === "google" ? sessionStorage.getItem(GOOGLE_OAUTH_VERIFIER_KEY) : "");
+  const verifier = nativeTransaction?.verifier || sessionStorage.getItem(verifierKey) || (provider === "google" ? sessionStorage.getItem(GOOGLE_OAUTH_VERIFIER_KEY) : "");
   sessionStorage.removeItem(verifierKey);
   if (provider === "google") sessionStorage.removeItem(GOOGLE_OAUTH_VERIFIER_KEY);
   if (providerError) return `${providerLabel} sign-in was cancelled or could not be completed. Please try again.`;
@@ -778,11 +802,71 @@ async function consumeSocialOAuthRedirect() {
     return "";
   } catch { return `${providerLabel} sign-in could not be completed. Please try again.`; }
 }
+async function finishSocialOAuth(callbackURL = "") {
+  clearTimeout(socialOAuthTimeout); socialOAuthTimeout = 0;
+  const error = await consumeSocialOAuthRedirect(callbackURL);
+  if (error) {
+    resetSocialOAuthButtons();
+    if (document.querySelector("#auth-message")) document.querySelector("#auth-message").textContent = error;
+    else showAuth("login", error);
+    return;
+  }
+  if (!state.user?.id) { showAuth("login", "Social sign-in could not be completed. Please try again."); return; }
+  hydrateAccount();
+  await refreshParentAccessStatus();
+  hydrateMyList();
+  hydrateWatchlist();
+  await Promise.allSettled([loadCloudProgress(), loadMyList(), loadAccountWatchlist()]);
+  migrateLegacyProgress();
+  scheduleSessionRefresh();
+  const firstRun = needsFirstRunOnboarding();
+  if (firstRun) beginOnboarding();
+  state.route = firstRun ? "onboarding" : "profiles";
+  render();
+}
+function resetSocialOAuthButtons() {
+  document.querySelectorAll("[data-social-auth]").forEach(button => {
+    button.disabled = false;
+    const label = button.querySelector("[data-social-label]");
+    if (label) label.textContent = `Continue with ${button.dataset.socialAuth === "discord" ? "Discord" : "Google"}`;
+  });
+}
+window.SEVENNativeAuthCallback = callbackURL => {
+  if (typeof callbackURL !== "string" || callbackURL.length > 4096) return;
+  if (!nativeOAuthBooted) { queuedNativeOAuthCallback = callbackURL; return; }
+  void finishSocialOAuth(callbackURL);
+};
+window.SEVENNativeAuthCancelled = () => {
+  clearTimeout(socialOAuthTimeout); socialOAuthTimeout = 0;
+  localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY);
+  sessionStorage.removeItem(GOOGLE_OAUTH_VERIFIER_KEY); sessionStorage.removeItem(DISCORD_OAUTH_VERIFIER_KEY); sessionStorage.removeItem("seven.oauth.provider");
+  clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0; pendingPwaOAuthWindow = null;
+  resetSocialOAuthButtons();
+  const message = document.querySelector("#auth-message");
+  if (message) message.textContent = "Sign-in cancelled. You can try again.";
+};
+window.addEventListener("message", event => {
+  const callback = event.data;
+  if (event.origin !== location.origin || event.source !== pendingPwaOAuthWindow
+      || callback?.type !== "seven-social-oauth-callback"
+      || !["google", "discord"].includes(callback.provider)
+      || typeof callback.code !== "string" || callback.code.length > 2048) return;
+  clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0; pendingPwaOAuthWindow = null;
+  sessionStorage.setItem(SOCIAL_OAUTH_CALLBACK_KEY, JSON.stringify({ provider:callback.provider, code:callback.code, error:callback.error === true }));
+  void finishSocialOAuth();
+});
 async function startSocialOAuth(provider, mode) {
   if (!['google','discord'].includes(provider)) return;
   const button = document.querySelector(`[data-social-auth="${provider}"]`), label = button?.querySelector("[data-social-label]"), message = document.querySelector("#auth-message"), providerLabel = socialProviderLabel(provider);
-  if (!button || button.disabled) return;
+  if (!button || button.disabled || document.querySelector("[data-social-auth]:disabled")) return;
   button.disabled = true; if (label) label.textContent = `Connecting to ${providerLabel}…`; message.textContent = "";
+  const nativeBridge = nativeOAuthBridge();
+  let pwaPopup = null;
+  if (!nativeBridge && isInstalledPWA()) {
+    sessionStorage.setItem("seven.oauth.provider", provider);
+    try { pwaPopup = window.open("about:blank", "_blank", "popup,width=520,height=700"); } catch { pwaPopup = null; }
+    if (pwaPopup) pendingPwaOAuthWindow = pwaPopup;
+  }
   try {
     const config = await localAPI("/api/config", {signal:AbortSignal.timeout(10000)});
     if (!config.supabase?.url) throw Error(`${providerLabel} sign-in is not configured yet.`);
@@ -791,12 +875,42 @@ async function startSocialOAuth(provider, mode) {
     const bytes = crypto.getRandomValues(new Uint8Array(32)), verifier = btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
     const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
-    sessionStorage.setItem(provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY, verifier);
-    sessionStorage.setItem("seven.oauth.provider", provider);
-    const redirect = new URL("oauth-callback.html", document.baseURI).href;
+    if (nativeBridge) localStorage.setItem(NATIVE_OAUTH_TRANSACTION_KEY, JSON.stringify({ provider, verifier, createdAt:Date.now() }));
+    else {
+      sessionStorage.setItem(provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY, verifier);
+      sessionStorage.setItem("seven.oauth.provider", provider);
+      try {
+        if (pwaPopup) {
+          pwaPopup.sessionStorage.setItem(provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY, verifier);
+          pwaPopup.sessionStorage.setItem("seven.oauth.provider", provider);
+        }
+      } catch { /* Keep the installed PWA transaction available in the opener. */ }
+    }
+    const redirect = nativeBridge ? "tv.seven.app://oauth/callback" : new URL("oauth-callback.html", document.baseURI).href;
     const authorize = new URL("/auth/v1/authorize", supabaseUrl); authorize.searchParams.set("provider",provider); authorize.searchParams.set("redirect_to",redirect); authorize.searchParams.set("code_challenge",challenge); authorize.searchParams.set("code_challenge_method","s256");
-    location.assign(authorize.href);
-  } catch (error) { message.textContent = error.message || `${providerLabel} sign-in is temporarily unavailable.`; button.disabled = false; if (label) label.textContent = `Continue with ${providerLabel}`; }
+    if (nativeBridge) nativeBridge.start(authorize.href);
+    else if (pwaPopup) {
+      pwaPopup.location.replace(authorize.href);
+      clearInterval(pendingPwaOAuthTimer);
+      pendingPwaOAuthTimer = setInterval(() => {
+        if (pendingPwaOAuthWindow !== pwaPopup || !pwaPopup.closed) return;
+        clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0; pendingPwaOAuthWindow = null;
+        sessionStorage.removeItem(provider === "discord" ? DISCORD_OAUTH_VERIFIER_KEY : GOOGLE_OAUTH_VERIFIER_KEY);
+        sessionStorage.removeItem("seven.oauth.provider");
+        button.disabled = false; if (label) label.textContent = `Continue with ${providerLabel}`;
+        message.textContent = `${providerLabel} sign-in window was closed. Try again when you’re ready.`;
+      }, 500);
+    } else location.assign(authorize.href);
+    if (nativeBridge || pwaPopup) socialOAuthTimeout = setTimeout(() => window.SEVENNativeAuthCancelled?.(), 9 * 60 * 1000);
+  } catch (error) {
+    try { pwaPopup?.close(); } catch { }
+    if (pendingPwaOAuthWindow === pwaPopup) pendingPwaOAuthWindow = null;
+    clearInterval(pendingPwaOAuthTimer); pendingPwaOAuthTimer = 0;
+    clearTimeout(socialOAuthTimeout); socialOAuthTimeout = 0;
+    localStorage.removeItem(NATIVE_OAUTH_TRANSACTION_KEY);
+    message.textContent = error.message || `${providerLabel} sign-in is temporarily unavailable.`;
+    button.disabled = false; if (label) label.textContent = `Continue with ${providerLabel}`;
+  }
 }
 async function boot() {
   renderLoading();
@@ -3750,7 +3864,13 @@ const markStartupReady = () => {
   else ready();
 };
 renderLaunchIntro();
-void boot().then(markStartupReady, error => {
+void boot().then(async () => {
+  nativeOAuthBooted = true;
+  const callbackURL = queuedNativeOAuthCallback;
+  queuedNativeOAuthCallback = "";
+  if (callbackURL) await finishSocialOAuth(callbackURL);
+  markStartupReady();
+}, error => {
   state.error = error?.message || "Startup failed";
   renderOfflineScreen();
   markStartupReady();

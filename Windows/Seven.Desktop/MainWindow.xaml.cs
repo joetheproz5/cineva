@@ -40,6 +40,9 @@ public partial class MainWindow : Window
     private CoreWebView2BrowserExtension? _contentBlockerExtension;
     private CoreWebView2? _webViewCore;
     private MediaPlayer? _splashPlayer;
+    private string? _startupOAuthCallback;
+    private string? _pendingOAuthCallback;
+    private bool _webPageReady;
     private string? _contentBlockerVersion;
     private string? _contentBlockerError;
     private bool _browserExtensionsAvailable;
@@ -66,8 +69,9 @@ public partial class MainWindow : Window
     private WindowState _fullscreenRestoreState;
     private bool _fullscreenRestoreTopmost;
 
-    public MainWindow()
+    public MainWindow(string? startupOAuthCallback = null)
     {
+        _startupOAuthCallback = startupOAuthCallback;
         InitializeComponent();
         _adBlockingMenuItem.Click += AdBlockingMenuItem_Click;
         _adBlockingRetryMenuItem.Click += AdBlockingRetryMenuItem_Click;
@@ -83,6 +87,33 @@ public partial class MainWindow : Window
         _restoringPlacement = false;
         LocationChanged += (_, _) => ScheduleWindowPlacementSave();
         SizeChanged += (_, _) => ScheduleWindowPlacementSave();
+    }
+
+    internal static bool IsNativeOAuthCallback(string? raw)
+    {
+        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)
+            || !uri.Scheme.Equals("tv.seven.app", StringComparison.OrdinalIgnoreCase)
+            || !uri.IdnHost.Equals("oauth", StringComparison.OrdinalIgnoreCase)
+            || !uri.AbsolutePath.Equals("/callback", StringComparison.Ordinal)) return false;
+        return uri.Query.Contains("code=", StringComparison.OrdinalIgnoreCase)
+            || uri.Query.Contains("error=", StringComparison.OrdinalIgnoreCase)
+            || uri.Query.Contains("error_code=", StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal async void ReceiveNativeOAuthCallback(string callback)
+    {
+        if (!IsNativeOAuthCallback(callback)) return;
+        var core = _webViewCore;
+        if (core is null || !_webPageReady)
+        {
+            _pendingOAuthCallback = callback;
+            return;
+        }
+        var serialized = JsonSerializer.Serialize(callback);
+        try { await core.ExecuteScriptAsync($"window.SEVENNativeAuthCallback?.({serialized});"); }
+        catch { _pendingOAuthCallback = callback; return; }
+        WindowState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+        Activate();
     }
 
     private void RestoreWindowPlacement()
@@ -190,8 +221,25 @@ public partial class MainWindow : Window
             var reduceMotion = (!SystemParameters.ClientAreaAnimation).ToString().ToLowerInvariant();
             await core.AddScriptToExecuteOnDocumentCreatedAsync($"window.SEVEN_REDUCED_MOTION = {reduceMotion};");
             core.NavigationStarting += Browser_NavigationStarting;
+            core.NavigationCompleted += async (_, args) =>
+            {
+                if (!args.IsSuccess) return;
+                _webPageReady = true;
+                if (_pendingOAuthCallback is { } pending)
+                {
+                    _pendingOAuthCallback = null;
+                    await core.ExecuteScriptAsync($"window.SEVENNativeAuthCallback?.({JsonSerializer.Serialize(pending)});");
+                    WindowState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+                    Activate();
+                }
+            };
             core.WebMessageReceived += Browser_WebMessageReceived;
             core.NewWindowRequested += Browser_NewWindowRequested;
+            if (_startupOAuthCallback is not null)
+            {
+                var callbackScript = $"window.addEventListener('DOMContentLoaded',()=>window.SEVENNativeAuthCallback?.({JsonSerializer.Serialize(_startupOAuthCallback)}),{{once:true}});";
+                await core.AddScriptToExecuteOnDocumentCreatedAsync(callbackScript);
+            }
             core.ContainsFullScreenElementChanged += (_, _) =>
             {
                 var containsFullscreenElement = core.ContainsFullScreenElement;
@@ -215,17 +263,64 @@ public partial class MainWindow : Window
     private void Browser_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         if (!Uri.TryCreate(e.Source, UriKind.Absolute, out var source)
+            || !source.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
             || !source.IdnHost.Equals(AppHost, StringComparison.OrdinalIgnoreCase)) return;
         try
         {
             using var message = JsonDocument.Parse(e.WebMessageAsJson);
-            if (message.RootElement.TryGetProperty("type", out var type) && type.GetString() == "playSplashSting")
-                PlaySplashStingIfAvailable();
+            if (!message.RootElement.TryGetProperty("type", out var type)) return;
+            switch (type.GetString())
+            {
+                case "playSplashSting":
+                    PlaySplashStingIfAvailable();
+                    break;
+                case "startOAuth":
+                    if (message.RootElement.TryGetProperty("url", out var url)
+                        && url.ValueKind == JsonValueKind.String
+                        && IsNativeOAuthAuthorizeUrl(url.GetString()))
+                    {
+                        if (!OpenExternal(new Uri(url.GetString()!)))
+                        {
+                            var callback = JsonSerializer.Serialize("tv.seven.app://oauth/callback?error=launch_failed");
+                            _ = _webViewCore?.ExecuteScriptAsync($"window.SEVENNativeAuthCallback?.({callback});");
+                        }
+                    }
+                    break;
+            }
         }
         catch (JsonException)
         {
             // Ignore messages from the page that do not use the splash bridge format.
         }
+    }
+
+    private static bool IsNativeOAuthAuthorizeUrl(string? raw)
+    {
+        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)
+            || !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            || !uri.IdnHost.EndsWith(".supabase.co", StringComparison.OrdinalIgnoreCase)
+            || !uri.AbsolutePath.Equals("/auth/v1/authorize", StringComparison.Ordinal)) return false;
+        var values = ParseQuery(uri.Query);
+        if (!values.TryGetValue("provider", out var provider)
+            || provider is not ("google" or "discord")
+            || !values.TryGetValue("redirect_to", out var redirectRaw)
+            || !Uri.TryCreate(redirectRaw, UriKind.Absolute, out var redirect)) return false;
+        return redirect.Scheme.Equals("tv.seven.app", StringComparison.OrdinalIgnoreCase)
+            && redirect.IdnHost.Equals("oauth", StringComparison.OrdinalIgnoreCase)
+            && redirect.AbsolutePath.Equals("/callback", StringComparison.Ordinal);
+    }
+
+    private static Dictionary<string, string> ParseQuery(string query)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            var key = Uri.UnescapeDataString(parts[0].Replace('+', ' '));
+            var value = parts.Length == 2 ? Uri.UnescapeDataString(parts[1].Replace('+', ' ')) : string.Empty;
+            result.TryAdd(key, value);
+        }
+        return result;
     }
 
     private void PlaySplashStingIfAvailable()
@@ -277,20 +372,21 @@ public partial class MainWindow : Window
         OpenExternal(target);
     }
 
-    private static void OpenExternal(Uri target)
+    private static bool OpenExternal(Uri target)
     {
         if (target.Scheme is not ("http" or "https"))
         {
-            return;
+            return false;
         }
 
         try
         {
-            Process.Start(new ProcessStartInfo(target.AbsoluteUri) { UseShellExecute = true });
+            return Process.Start(new ProcessStartInfo(target.AbsoluteUri) { UseShellExecute = true }) is not null;
         }
         catch
         {
             // A missing browser association should not bring down the desktop shell.
+            return false;
         }
     }
 

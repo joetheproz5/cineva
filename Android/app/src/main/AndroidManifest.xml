@@ -13,6 +13,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="seven-9fm.pages.dev" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tv.seven.app" android:host="oauth" android:path="/callback" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>

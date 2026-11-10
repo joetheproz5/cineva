@@ -1,5 +1,5 @@
 #define AppName "SEVEN"
-#define AppVersion "1.0.1"
+#define AppVersion "1.0.2"
 #define AppExecutable "SEVEN.exe"
 
 [Setup]
@@ -23,6 +23,12 @@ WizardStyle=modern
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\tv.seven.app"; ValueType: string; ValueName: ""; ValueData: "URL:SEVEN sign-in"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\tv.seven.app"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\tv.seven.app\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExecutable},0"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\tv.seven.app\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExecutable}"" ""%1"""; Flags: uninsdeletekey
 
 [Files]
 Source: "..\..\dist\windows\{#AppExecutable}"; DestDir: "{app}"; Flags: ignoreversion
