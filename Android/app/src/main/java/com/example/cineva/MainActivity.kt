@@ -103,7 +103,8 @@ class MainActivity : Activity() {
             if (!isNativeOAuthAuthorize(rawUrl)) return false
             runOnUiThread {
                 awaitingOAuthReturn = true
-                runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rawUrl))) }
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(rawUrl)).addCategory(Intent.CATEGORY_BROWSABLE)
+                runCatching { startActivity(intent) }
                     .onFailure {
                         awaitingOAuthReturn = false
                         web.evaluateJavascript("window.SEVENNativeAuthCallback?.('tv.seven.app://oauth/callback?error=launch_failed')", null)

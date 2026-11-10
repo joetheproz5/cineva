@@ -10,6 +10,8 @@ const RELEASE_DEVICE_TOKEN_KEY = "seven.release-alerts.device-token";
 const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || window.matchMedia?.("(display-mode: fullscreen)").matches
   || navigator.standalone === true;
+const isIOSInstalledPWA = navigator.standalone === true || (isInstalledPWA
+  && (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)));
 if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
 const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "searchView", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistView", "trackerWeek", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft", "titleDiscovery", "franchise"];
@@ -759,7 +761,10 @@ let nativeOAuthBooted = false, queuedNativeOAuthCallback = "";
 let pendingPwaOAuthWindow = null, pendingPwaOAuthTimer = 0, socialOAuthTimeout = 0;
 function socialProviderLabel(provider) { return provider === "discord" ? "Discord" : "Google"; }
 function nativeOAuthBridge() {
-  if (typeof window.SEVENNative?.startOAuth === "function") return { start:url => { if (!window.SEVENNative.startOAuth(url)) throw Error("Could not open sign-in."); } };
+  if (window.SEVENNative) {
+    if (typeof window.SEVENNative.startOAuth === "function") return { start:url => { if (!window.SEVENNative.startOAuth(url)) throw Error("The Android app could not open the sign-in page. Update SEVEN and try again."); } };
+    return { start:() => { throw Error("This Android app version does not support Google or Discord sign-in. Install the latest SEVEN app, then try again."); } };
+  }
   if (window.webkit?.messageHandlers?.sevenNativeAuth) return { start:url => window.webkit.messageHandlers.sevenNativeAuth.postMessage({ type:"startOAuth", url }) };
   if (window.chrome?.webview) return { start:url => new Promise((resolve, reject) => {
     const webview = window.chrome.webview;
@@ -888,7 +893,9 @@ async function startSocialOAuth(provider, mode) {
   let pwaPopup = null;
   try {
     nativeBridge = nativeOAuthBridge();
-    if (!nativeBridge && isInstalledPWA()) {
+    // iOS standalone PWAs do not reliably support OAuth popups. Redirect this same
+    // PWA tab to the provider and back so sessionStorage keeps the PKCE verifier.
+    if (!nativeBridge && isInstalledPWA() && !isIOSInstalledPWA) {
       try { sessionStorage.setItem("seven.oauth.provider", provider); } catch { }
       try { pwaPopup = window.open("about:blank", "_blank", "popup,width=520,height=700"); } catch { pwaPopup = null; }
       if (pwaPopup) pendingPwaOAuthWindow = pwaPopup;
@@ -2791,11 +2798,12 @@ function showAuth(mode = "login", message = "", email = "") {
             <button class="google-auth" type="button" data-social-auth="google" aria-label="Continue with Google"><img src="assets/icons/google-g.svg" alt="" width="20" height="20"><span data-social-label>Continue with Google</span></button>
             <button class="google-auth discord-auth" type="button" data-social-auth="discord" aria-label="Continue with Discord"><img src="assets/icons/discord-symbol.svg" alt="" width="20" height="15"><span data-social-label>Continue with Discord</span></button>
           </div>
+          <span class="auth-field-error auth-server-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</span>
           <div class="auth-divider"><span>or</span></div>
           <div class="auth-fields">
             ${create ? `<div class="auth-field"><label for="auth-display-name">Display name <span class="auth-optional">(optional)</span></label><input id="auth-display-name" name="displayName" type="text" maxlength="50" autocomplete="name" aria-describedby="display-name-hint"><span id="display-name-hint" class="auth-field-hint">Shown on your profile.</span></div>` : ""}
             <div class="auth-field"><label for="auth-email">Email</label><input id="auth-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com" aria-describedby="email-error"><span class="auth-field-error" id="email-error" aria-live="polite"></span></div>
-            <div class="auth-field"><label for="auth-password">Password</label><div class="auth-password-wrap"><input id="auth-password" name="password" type="password" required ${create ? 'maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" aria-describedby="${create ? "password-hint " : ""}password-error auth-message"><button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button></div>${create ? '<span class="auth-field-hint" id="password-hint">Use at least 12 characters.</span>' : ""}<span class="auth-field-error" id="password-error" aria-live="polite"></span><span class="auth-field-error auth-server-error" id="auth-message" role="status" aria-live="polite">${escapeHTML(message)}</span></div>
+            <div class="auth-field"><label for="auth-password">Password</label><div class="auth-password-wrap"><input id="auth-password" name="password" type="password" required ${create ? 'maxlength="72"' : ''} autocomplete="${create ? "new-password" : "current-password"}" aria-describedby="${create ? "password-hint " : ""}password-error auth-message"><button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button></div>${create ? '<span class="auth-field-hint" id="password-hint">Use at least 12 characters.</span>' : ""}<span class="auth-field-error" id="password-error" aria-live="polite"></span></div>
           </div>
           <button class="primary auth-submit" type="submit">${create ? "Create account" : "Sign in"}</button>
           ${create ? '<p class="auth-privacy-note">By creating an account, you agree to <a href="privacy.html" data-privacy-settings>how SEVEN uses your data</a>.</p>' : ""}
