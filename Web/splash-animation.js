@@ -180,18 +180,16 @@
     const sliceGroup = svgElement("g", { class: "splash-slices" });
     if (actualVersion !== "reducedMotion") {
       const sliceWidth = spec.layout.wordmarkViewBoxWidth / sliceSpec.count;
+      const sliceClipId = `${sequenceId}-slices`;
+      const sliceClip = svgElement("clipPath", { id:sliceClipId, clipPathUnits:"userSpaceOnUse" });
+      sliceGroup.setAttribute("clip-path", `url(#${sliceClipId})`);
+      addPathUse(sliceGroup, { fill:spec.colors.accent });
       for (let index = 0; index < sliceSpec.count; index += 1) {
-        const clipId = `${sequenceId}-slice-${index}`;
-        const clip = svgElement("clipPath", { id: clipId, clipPathUnits: "userSpaceOnUse" });
-        const rect = svgElement("rect", { x: 0, y: 0, width: 0, height: 0 });
-        rect.style.display = "none";
-        clip.appendChild(rect);
-        defs.appendChild(clip);
-        const group = svgElement("g", { "clip-path": `url(#${clipId})` });
-        addPathUse(group, { fill: spec.colors.accent });
-        sliceGroup.appendChild(group);
-        sliceClips.push({ rect, index });
+        const rect = svgElement("rect", { x:0, y:0, width:0, height:0 });
+        sliceClip.appendChild(rect);
+        sliceClips.push({ rect, index, geometry:"0,0,0,0" });
       }
+      defs.appendChild(sliceClip);
     }
 
     const settledMark = svgElement("g", { class: "splash-settled-wordmark", display: "none" });
@@ -244,6 +242,8 @@
     let pausedAt = null;
     let currentTime = 0;
     let currentScale = 1;
+    let slicesSettled = false;
+    let previousStreakWidth = "";
     let exitStartTime = 0;
     let exitStartTimeline = 0;
     let exitStartScale = 1;
@@ -284,17 +284,23 @@
       const viewportWidth = measure().width;
       const maxStreakWidth = viewportWidth * spec.layout.streakWidthMax;
       const streakScale = Math.max(0, streakWidthRatio / spec.layout.streakWidthMax);
-      streak.style.width = `${maxStreakWidth}px`;
-      streakCore.style.width = `${maxStreakWidth}px`;
+      const streakWidth = `${maxStreakWidth}px`;
+      if (streakWidth !== previousStreakWidth) {
+        streak.style.width = streakWidth;
+        streakCore.style.width = streakWidth;
+        previousStreakWidth = streakWidth;
+      }
       const streakTransform = `translate(-50%, -50%) scaleX(${streakScale})`;
       streak.style.transform = streakTransform;
       streakCore.style.transform = streakTransform;
       if (glintSpec) {
         const linearProgress = clamp01((time - glintSpec.start) / Math.max(1, glintSpec.duration));
-        const progress = cubicBezier(linearProgress, 0.45, 0, 0.2, 1);
-        const alpha = Math.min(1, progress / spec.glintFadeFraction, (1 - progress) / spec.glintFadeFraction);
-        glint.setAttribute("transform", `translate(${progress * glintTravel} 0) skewX(${glintSkew})`);
-        glint.setAttribute("opacity", String(clamp01(alpha)));
+        if (linearProgress > 0 && linearProgress < 1) {
+          const progress = cubicBezier(linearProgress, 0.45, 0, 0.2, 1);
+          const alpha = Math.min(1, progress / spec.glintFadeFraction, (1 - progress) / spec.glintFadeFraction);
+          glint.setAttribute("transform", `translate(${progress * glintTravel} 0) skewX(${glintSkew})`);
+          glint.setAttribute("opacity", String(clamp01(alpha)));
+        } else if (glint.getAttribute("opacity") !== "0") glint.setAttribute("opacity", "0");
       }
     }
     function glowAlpha(time) {
@@ -351,8 +357,11 @@
     function updateSliceReveal(time, scaleFactor, cssWidth) {
       if (!sliceSpec) return;
       const settled = time >= revealEnd;
-      sliceGroup.style.display = settled ? "none" : "";
-      settledMark.style.display = settled ? "inline" : "none";
+      if (settled !== slicesSettled) {
+        sliceGroup.style.display = settled ? "none" : "";
+        settledMark.style.display = settled ? "inline" : "none";
+        slicesSettled = settled;
+      }
       if (settled) return;
 
       const viewWidth = spec.layout.wordmarkViewBoxWidth;
@@ -360,22 +369,32 @@
       const pixelsPerUnit = cssWidth * scaleFactor * Math.max(0.25, window.devicePixelRatio || 1) / viewWidth;
       const devicePixel = 1 / pixelsPerUnit;
       const sliceWidth = viewWidth / sliceSpec.count;
-      for (const { rect, index } of sliceClips) {
+      for (const slice of sliceClips) {
+        const { rect, index } = slice;
         const center = (sliceSpec.count - 1) / 2;
         const delay = sliceSpec.delay * Math.abs(index - center);
         const progress = clamp01((time - sliceSpec.start - delay) / sliceSpec.duration);
-        rect.style.display = progress > 0 ? "block" : "none";
-        if (progress <= 0) continue;
+        if (progress <= 0) {
+          if (slice.geometry !== "0,0,0,0") {
+            rect.setAttribute("x", "0"); rect.setAttribute("y", "0"); rect.setAttribute("width", "0"); rect.setAttribute("height", "0");
+            slice.geometry = "0,0,0,0";
+          }
+          continue;
+        }
 
         const height = viewHeight * cubicBezier(progress, 0.22, 1, 0.36, 1);
         const leftEdge = Math.round(index * sliceWidth * pixelsPerUnit) / pixelsPerUnit;
         const rightEdge = Math.round((index + 1) * sliceWidth * pixelsPerUnit) / pixelsPerUnit;
         const top = Math.floor(((viewHeight - height) / 2) * pixelsPerUnit) / pixelsPerUnit;
         const bottom = Math.ceil(((viewHeight + height) / 2) * pixelsPerUnit) / pixelsPerUnit;
-        rect.setAttribute("x", String(leftEdge - devicePixel));
-        rect.setAttribute("y", String(top));
-        rect.setAttribute("width", String(rightEdge - leftEdge + devicePixel * 2));
-        rect.setAttribute("height", String(bottom - top));
+        const geometry = `${leftEdge - devicePixel},${top},${rightEdge - leftEdge + devicePixel * 2},${bottom - top}`;
+        if (geometry !== slice.geometry) {
+          rect.setAttribute("x", String(leftEdge - devicePixel));
+          rect.setAttribute("y", String(top));
+          rect.setAttribute("width", String(rightEdge - leftEdge + devicePixel * 2));
+          rect.setAttribute("height", String(bottom - top));
+          slice.geometry = geometry;
+        }
       }
     }
     function applyComposition(time, exitPreview = false) {
@@ -401,7 +420,7 @@
       applyComposition(currentTime, exitPreview);
       const cssWidth = wordmarkWidth();
       setGeometry(currentTime);
-      glow.style.setProperty("--splash-glow-alpha", String(glowAlpha(currentTime)));
+      glow.style.opacity = String(glowAlpha(currentTime));
       streak.style.opacity = String(streakAlpha(currentTime));
       streakCore.style.opacity = String(streakAlpha(currentTime));
       updateSliceReveal(currentTime, currentScale, cssWidth);
