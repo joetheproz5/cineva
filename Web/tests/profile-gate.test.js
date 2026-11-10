@@ -37,7 +37,7 @@ test("profile picker has a working add-profile tile and does not exceed five pro
   assert.match(gate, /account\.profiles\.length >= 3 \? "profile-gate-multirow"/);
   assert.match(gate, /account\.profiles\.length >= 5 \? "profile-gate-at-cap"/);
   assert.match(gate, /data-add-profile-gate[\s\S]*?showProfileEditor\("", "profiles", "profile"\)/);
-  assert.match(app, /function showProfileEditor\(id = "", returnRoute = "account", initialCategory = "home"\)/);
+  assert.match(app, /function showProfileEditor\(id = "", returnRoute = "account", initialCategory = "profile"\)/);
   assert.match(app, /if \(!existing && state\.account\.profiles\.length >= 5\) return/);
   assert.match(app, /isNew && state\.profileSettingsReturn === "profiles"[\s\S]*?state\.route = "profiles"/);
 });

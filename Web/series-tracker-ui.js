@@ -3,7 +3,7 @@
   const identity=()=>`${accountWatchlistUserId()||""}:${activeProfileId()}`;
   const tracker=()=>root.SEVENSeriesTracker;
   function follows(){
-    if(!accountWatchlistUserId())return [];
+    if(!activeProfileId()||!accountWatchlistUserId())return [];
     const saved=state.watchlistOwnerId===accountWatchlistUserId()&&state.watchlistProfileId===activeProfileId()?state.watchlist:[];
     const titles=new Map();[...saved,...listItems()].filter(item=>contentType(item)==="tv"&&Number(item.id)>0).forEach(item=>titles.set(Number(item.id),{...item,type:"tv"}));
     // Fetch metadata for followed shows even when their classification isn't cached yet.
@@ -22,7 +22,7 @@
   function signature(){return JSON.stringify([identity(),tracker().todayKey(),follows().map(item=>item.id).sort((a,b)=>a-b),currentPreferences(),restrictedTitles(),hiddenTitles(),progressEntries().filter(item=>item.type==="tv").map(item=>[item.id,item.season,item.episode,item.watched,item.progress,item.currentTime,item.lastWatchedAt])]);}
   async function cloudProgress(){
     const scope=identity(),profile=activeProfileId();
-    if(!state.session)return;
+    if(!state.session||!profile)return;
     const rows=await localAPI("/api/account/progress",{headers:authorizedHeaders()});
     if(identity()!==scope||!Array.isArray(rows))return;
     for(const row of rows){
@@ -33,7 +33,7 @@
     }
   }
   async function refresh({force=false}={}){
-    if(!accountWatchlistUserId())return null;
+    if(!activeProfileId()||!accountWatchlistUserId())return null;
     const scope=identity(),key=signature(),previous=state.seriesTracker;
     if(!force&&previous?.scope===scope&&previous.signature===key&&Date.now()-previous.updatedAt<15*60000)return previous.promise||previous;
     const items=follows(),ids=new Set(items.map(item=>Number(item.id))),version=++generation;
@@ -127,6 +127,7 @@
   }
   function matchesStatus(key,record){try{const current=JSON.parse(localStorage.getItem(key)||"null");return !!current&&Date.parse(current.lastWatchedAt)===Date.parse(record.lastWatchedAt)&&Number(current.currentTime)===Number(record.currentTime)&&Number(current.duration)===Number(record.duration)&&(!!current.watched||Number(current.progress)>=90)===(!!record.watched||Number(record.progress)>=90);}catch{return false;}}
   async function saveStatus(show,season,episode,value,{allowGuest=false}={}){
+    const profile=activeProfileId();if(!profile){state.route="profiles";render();return;}
     const signedIn=!!state.session&&!!accountWatchlistUserId();
     if(!signedIn&&!allowGuest)throw Error("Sign in to save episode progress.");
     if(tracker().validDate(episode.air_date)&&episode.air_date>tracker().todayKey())throw Error("This episode has not reached its listed release date.");
@@ -134,7 +135,7 @@
     if(bulkPending.has(scope))throw Error("A history change is saving. Please wait.");
     if(pendingStatus.has(pending))return;pendingStatus.add(pending);
     const before=localStorage.getItem(key);let saved={},hasBefore=false;try{const parsed=before?JSON.parse(before):null;if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed)){saved=parsed;hasBefore=true;}}catch{}
-    const ticket=root.SEVENUndo?.begin("progress:"+key),profile=activeProfileId(),headers=authorizedHeaders();
+    const ticket=root.SEVENUndo?.begin("progress:"+key),headers=authorizedHeaders();
     if(state.pendingProgress?.content_key===key){clearTimeout(state.progressTimer);state.pendingProgress=null;}
     const record={...saved,...item,currentTime:value?Math.max(1,Number(saved.currentTime)||0):0,duration:Math.max(1,Number(saved.duration)||0),progress:value?100:0,watched:value,lastWatchedAt:new Date().toISOString()};
     const payload={content_key:key,content_type:"tv",tmdb_id:item.id,season:item.season,episode:item.episode,title:item.title,poster_path:item.posterPath,progress_seconds:record.currentTime,duration_seconds:record.duration,is_watched:value,last_watched_at:record.lastWatchedAt};
@@ -160,6 +161,7 @@
   function batchRequest(body,headers=authorizedHeaders()){return localAPI("/api/account/progress/batch",{method:"POST",headers:{"Content-Type":"application/json",...headers},body:JSON.stringify(body)});}
   function statusChanged(){state.seriesNext=null;if(state.seriesTracker)state.seriesTracker.signature="";root.SEVENProgressUI?.updateUndo();void newEpisodes();void refresh();}
   async function saveBatch(changes){
+    if(!activeProfileId()){state.route="profiles";render();throw Error("Choose a profile before changing viewing history.");}
     if(!state.session||!accountWatchlistUserId())throw Error("Sign in to save viewing history.");
     const scope=identity(),profile=activeProfileId(),headers=authorizedHeaders();
     if(bulkPending.has(scope)||[...pendingStatus].some(key=>key.startsWith(scope+":")))throw Error("Wait for the current episode change to finish.");

@@ -23,7 +23,7 @@ let sessionRefreshTimer;
 let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, activeProfileSource:null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -31,6 +31,7 @@ const PENDING_EMAIL_VERIFICATION_KEY = "seven.auth.pending-email-verification";
 const VERIFIED_EMAIL_KEY = "seven.auth.email-verified";
 const ACCOUNT_KEY = "seven.account.settings";
 const ACCOUNT_OWNER_KEY = "seven.account.owner";
+const ACTIVE_PROFILE_CHOICE_PREFIX = "seven.active-profile-choice.";
 const MY_LIST_KEY = "seven.my-list";
 const WATCHLIST_STORAGE_PREFIX = "seven.account.watchlist.";
 const PROFILE_WATCHLIST_STORAGE_PREFIX = "seven.profile.watchlist.";
@@ -115,8 +116,42 @@ function selectedPlayerProvider() { const activeParty = typeof party === "undefi
 function playbackProgressPercent(record = {}) { const duration = Number(record.duration), currentTime = Number(record.currentTime), savedProgress = Number(record.progress); if (Number.isFinite(duration) && duration > 0 && Number.isFinite(currentTime) && currentTime >= 0) return Math.min(100, currentTime / duration * 100); return Number.isFinite(savedProgress) ? Math.min(100, Math.max(0, savedProgress)) : 0; }
 function isDirectNextEpisode(previous, current) { return previous?.type === "tv" && current?.type === "tv" && Number(previous.id) === Number(current.id) && Number(previous.season) === Number(current.season) && Number(current.episode) === Number(previous.episode) + 1; }
 function shouldConfirmPreviousEpisode(previous, current, previousRecord, currentProgress) { return isDirectNextEpisode(previous, current) && playbackProgressPercent(previousRecord) >= PREVIOUS_EPISODE_WATCHED_PERCENT && Number(currentProgress) >= NEXT_EPISODE_CONFIRMATION_PERCENT; }
-const activeProfileId = () => state.account?.activeProfileId || "main";
-const watchKey = item => `seven-progress-${activeProfileId()}-${item.type}-${item.id}-${item.season || 0}-${item.episode || 0}`;
+const activeProfileId = () => {
+  const id = state.account?.activeProfileId;
+  return id && state.account?.profiles?.some(profile => profile.id === id) ? id : null;
+};
+const profileOwnerKey = () => state.user?.id || state.session?.user?.id || "guest";
+const activeProfileChoiceKey = () => `${ACTIVE_PROFILE_CHOICE_PREFIX}${profileOwnerKey()}`;
+function profileSelectionDebugBuild() { return window.__SEVEN_DEBUG__ === true || ["localhost", "127.0.0.1", "::1"].includes(location.hostname); }
+function logActiveProfileSource(source) { if (profileSelectionDebugBuild()) console.info(`[SEVEN] Active profile: ${source}`); }
+function setActiveProfile(id, source, { persistChoice = true } = {}) {
+  const allowedSources = new Set(["explicit tap", "restored from storage"]);
+  console.assert(allowedSources.has(source), "Active profile can only be set by an explicit picker tap or a valid local restore.");
+  if (!allowedSources.has(source)) throw new Error("Invalid active profile source.");
+  if (!state.account?.profiles?.some(profile => profile.id === id)) return false;
+  state.account.activeProfileId = id;
+  state.activeProfileSource = source;
+  if (persistChoice && source === "explicit tap") try { localStorage.setItem(activeProfileChoiceKey(), id); } catch {}
+  logActiveProfileSource(source);
+  return true;
+}
+function clearActiveProfileChoice() {
+  if (state.account) state.account.activeProfileId = null;
+  state.activeProfileSource = null;
+  try { localStorage.removeItem(activeProfileChoiceKey()); } catch {}
+  logActiveProfileSource("none");
+}
+function restoreActiveProfileSelection() {
+  if (state.account) state.account.activeProfileId = null;
+  state.activeProfileSource = null;
+  let savedId = "";
+  try { savedId = localStorage.getItem(activeProfileChoiceKey()) || ""; } catch {}
+  if (savedId && setActiveProfile(savedId, "restored from storage", { persistChoice:false })) return savedId;
+  if (savedId) try { localStorage.removeItem(activeProfileChoiceKey()); } catch {}
+  logActiveProfileSource("none");
+  return null;
+}
+const watchKey = item => activeProfileId() ? `seven-progress-${activeProfileId()}-${item.type}-${item.id}-${item.season || 0}-${item.episode || 0}` : null;
 const titleOf = item => item.title || item.name || item.original_title || item.original_name || "Untitled";
 const yearOf = item => (item.release_date || item.first_air_date || "").slice(0, 4);
 const posterOf = item => item.poster_path ? `${TMDB_IMAGE}${item.poster_path}` : POSTER_FALLBACK;
@@ -179,6 +214,7 @@ function persistLocalAccount() {
   if (owner) localStorage.setItem(ACCOUNT_OWNER_KEY, owner);
 }
 async function clearProfilePlaybackStats(profileId = activeProfileId()) {
+  if (!profileId) return;
   if (state.watchStatsSyncPromise) await state.watchStatsSyncPromise;
   const profile = state.account?.profiles?.find(item => item.id === profileId);
   if (profile && window.SEVENProfileStats) window.SEVENProfileStats.clearWatchStats(profile);
@@ -259,7 +295,7 @@ function samplePlaybackWatchTime(currentTime) {
 window.addEventListener("pagehide", () => { void flushWatchTime(); void flushProfileWatchStats(true); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushWatchTime(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushProfileWatchStats(true); });
-function defaultAccount() { const name = state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile"; return { activeProfileId:"main", onboardingComplete:true, onboardingStep:1, profiles:[{ id:"main", name, color:"#d3131c", kids:false }], preferences:{ ...DEFAULT_PREFERENCES } }; }
+function defaultAccount() { const name = state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile"; return { activeProfileId:null, onboardingComplete:true, onboardingStep:1, profiles:[{ id:"main", name, color:"#d3131c", kids:false }], preferences:{ ...DEFAULT_PREFERENCES } }; }
 const EMPTY_SECRET_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 function hydrateAccount() {
   let local = null;
@@ -268,12 +304,14 @@ function hydrateAccount() {
     if ((!state.user?.id && !owner) || (state.user?.id && owner === state.user.id)) local = candidate;
   } catch {}
   const remote = state.user?.user_metadata?.seven_account, saved = remote || local || {}, fallback = defaultAccount();
-  state.account = { ...fallback, ...saved, activeProfileId:local?.activeProfileId || saved.activeProfileId || fallback.activeProfileId, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } };
+  state.account = { ...fallback, ...saved, activeProfileId:null, parentAccessEnabled:saved.parentAccessEnabled === true, profiles:Array.isArray(saved.profiles) && saved.profiles.length ? saved.profiles : fallback.profiles, preferences:{ ...fallback.preferences, ...(saved.preferences || {}) } };
+  state.accountProgress=[]; state.myList=[]; state.watchlist=[]; state.watchlistOwnerId=null; state.watchlistProfileId=null; state.watchlistLoaded=false; state.watchlistLoadSequence++;
+  restoreActiveProfileSelection();
   let migratedKidsPin = false, cleanedEmptyPin = false, mergedLocalStats = false;
   state.account.profiles.forEach(profile => {
     profile.preferences = { ...(profile.preferences || {}), maturity:maturityForProfile(profile) };
     const deviceProfile = local?.profiles?.find(item => item.id === profile.id);
-    if (remote && deviceProfile?.watchStats && window.SEVENProfileStats) {
+    if (remote && state.account.activeProfileId === profile.id && deviceProfile?.watchStats && window.SEVENProfileStats) {
       const merged = window.SEVENProfileStats.mergeWatchStats(profile.watchStats, deviceProfile.watchStats);
       if (merged && JSON.stringify(merged) !== JSON.stringify(profile.watchStats || null)) mergedLocalStats = true;
       if (merged) profile.watchStats = merged;
@@ -284,7 +322,6 @@ function hydrateAccount() {
     delete profile.pinHash;
     migratedKidsPin = true;
   });
-  if (!state.account.profiles.some(profile => profile.id === state.account.activeProfileId)) state.account.activeProfileId = state.account.profiles[0].id;
   if (["cinepro", "vidlink", "vidking"].includes(state.account.preferences.playerProvider)) state.account.preferences.playerProvider = "cinesrc";
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account));
   if (state.user?.id) localStorage.setItem(ACCOUNT_OWNER_KEY, state.user.id);
@@ -292,7 +329,7 @@ function hydrateAccount() {
   globalThis.window?.SEVENSettingsSync?.attach();
   if ((migratedKidsPin || cleanedEmptyPin) && state.session) void saveAccount();
 }
-function migrateLegacyProgress() { const prefix = `seven-progress-${activeProfileId()}-`; Object.keys(localStorage).filter(key => key.startsWith("cineva-progress-")).forEach(key => { const next = key.replace("cineva-progress-", prefix); if (!localStorage.getItem(next)) localStorage.setItem(next, localStorage.getItem(key)); }); }
+function migrateLegacyProgress() { const profileId = activeProfileId(); if (profileId !== "main") return; const prefix = `seven-progress-${profileId}-`; Object.keys(localStorage).filter(key => key.startsWith("cineva-progress-")).forEach(key => { const next = key.replace("cineva-progress-", prefix); if (!localStorage.getItem(next)) localStorage.setItem(next, localStorage.getItem(key)); }); }
 function parentAccessConfigured() { return Boolean(state.account?.parentAccessEnabled || state.account?.parentPinHash); }
 async function refreshParentAccessStatus() { if (!state.session || !state.account) return; try { const data = await localAPI("/api/account/parent-access", { headers:authorizedHeaders() }); if (data.enabled) { const hadLegacyHash = Boolean(state.account.parentPinHash); state.account.parentAccessEnabled = true; delete state.account.parentPinHash; if (hadLegacyHash) await saveAccount(); } else if (!state.account.parentPinHash) state.account.parentAccessEnabled = false; localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state.account)); } catch { /* Keep a legacy local verifier available until the user migrates it. */ } }
 async function saveAccount(remote = true, options = {}) { persistLocalAccount(); if (!remote || !state.session) return {saved:false,local:true}; if(!globalThis.window?.SEVENSettingsSync) return {saved:false,queued:true}; return window.SEVENSettingsSync.save(state.account,options); }
@@ -411,27 +448,27 @@ async function restoreSession() {
   if(state.session){if(!accessTokenExpiresSoon())await Promise.allSettled([loadCloudProgress(),loadMyList(),loadAccountWatchlist()]);migrateLegacyProgress();scheduleSessionRefresh();}
 }
 function accountProgressRecord(row) { const duration = Number(row.duration_seconds) || 0, currentTime = Number(row.progress_seconds) || 0; return { key:row.content_key, currentTime, duration, progress:duration > 0 ? Math.min(100, currentTime / duration * 100) : 0, watched:Boolean(row.is_watched), type:row.content_type, id:Number(row.tmdb_id), season:Number(row.season) || null, episode:Number(row.episode) || null, title:row.title || "Untitled", posterPath:row.poster_path || null, lastWatchedAt:row.last_watched_at || new Date().toISOString() }; }
-function upsertAccountProgress(row) { if (!state.session || !row.content_key) return; const record = accountProgressRecord(row); state.accountProgress = [record, ...state.accountProgress.filter(item => item.key !== record.key)].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
-async function loadCloudProgress() { const rows = await localAPI("/api/account/progress", { headers:authorizedHeaders() }); state.accountProgress = (Array.isArray(rows) ? rows : []).map(accountProgressRecord).filter(row => row.key && row.type && row.id); state.accountProgress.forEach(row => localStorage.setItem(row.key, JSON.stringify(row))); }
+function upsertAccountProgress(row) { const profileId = activeProfileId(); if (!state.session || !profileId || !row.content_key?.startsWith(`seven-progress-${profileId}-`)) return; const record = accountProgressRecord(row); state.accountProgress = [record, ...state.accountProgress.filter(item => item.key !== record.key)].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
+async function loadCloudProgress() { const profileId = activeProfileId(); if (!profileId) return []; const prefix = `seven-progress-${profileId}-`, rows = await localAPI("/api/account/progress", { headers:authorizedHeaders() }); state.accountProgress = (Array.isArray(rows) ? rows : []).map(accountProgressRecord).filter(row => row.key?.startsWith(prefix) && row.type && row.id); state.accountProgress.forEach(row => localStorage.setItem(row.key, JSON.stringify(row))); return state.accountProgress; }
 function listKey(item) { return `${item.profileId}:${item.type}:${item.id}`; }
 function listRecord(row) { return { profileId:row.profileId || row.profile_id || "main", type:row.type || row.content_type, id:Number(row.id || row.tmdb_id), title:row.title || "Untitled", poster_path:row.poster_path || row.posterPath || null, backdrop_path:row.backdrop_path || row.backdropPath || null, release_date:row.release_date || row.releaseDate || null, vote_average:Number(row.vote_average || row.voteAverage) || 0, addedAt:row.addedAt || row.added_at || new Date().toISOString() }; }
-function hydrateMyList() { const owner = localStorage.getItem(ACCOUNT_OWNER_KEY); if (owner && (!state.user?.id || owner !== state.user.id)) { state.myList = []; return; } try { state.myList = JSON.parse(localStorage.getItem(MY_LIST_KEY) || "[]").map(listRecord).filter(item => item.type && item.id); } catch { state.myList = []; } }
-function persistMyList() { localStorage.setItem(MY_LIST_KEY, JSON.stringify(state.myList)); const owner = state.user?.id || state.session?.user?.id; if (owner) localStorage.setItem(ACCOUNT_OWNER_KEY, owner); }
-function listItems() { return state.myList.filter(item => item.profileId === activeProfileId()).sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)); }
+function hydrateMyList() { if (!activeProfileId()) { state.myList = []; return; } const owner = localStorage.getItem(ACCOUNT_OWNER_KEY); if (owner && (!state.user?.id || owner !== state.user.id)) { state.myList = []; return; } try { state.myList = JSON.parse(localStorage.getItem(MY_LIST_KEY) || "[]").map(listRecord).filter(item => item.type && item.id); } catch { state.myList = []; } }
+function persistMyList() { if (!activeProfileId()) return; localStorage.setItem(MY_LIST_KEY, JSON.stringify(state.myList)); const owner = state.user?.id || state.session?.user?.id; if (owner) localStorage.setItem(ACCOUNT_OWNER_KEY, owner); }
+function listItems() { const profileId = activeProfileId(); return profileId ? state.myList.filter(item => item.profileId === profileId).sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)) : []; }
 function savedTitleIdentity(item) { return { type:item.type || item.content_type || item.media_type || contentType(item), id:Number(item.id ?? item.tmdb_id) }; }
-function isInMyList(item) { return state.myList.some(entry => entry.profileId === activeProfileId() && entry.type === item.type && Number(entry.id) === Number(item.id)); }
-async function loadMyList() { if (!state.session) return; const rows = await localAPI("/api/account/list", { headers:authorizedHeaders() }); const merged = new Map(state.myList.map(item => [listKey(item), item])); rows.map(listRecord).forEach(item => merged.set(listKey(item), item)); state.myList = [...merged.values()]; persistMyList(); }
+function isInMyList(item) { const profileId = activeProfileId(); return Boolean(profileId && state.myList.some(entry => entry.profileId === profileId && entry.type === item.type && Number(entry.id) === Number(item.id))); }
+async function loadMyList() { if (!state.session || !activeProfileId()) return []; const rows = await localAPI("/api/account/list", { headers:authorizedHeaders() }); const merged = new Map(state.myList.map(item => [listKey(item), item])); rows.map(listRecord).forEach(item => merged.set(listKey(item), item)); state.myList = [...merged.values()]; persistMyList(); return state.myList; }
 function accountWatchlistUserId() { if (!state.session?.access_token || state.user?.is_anonymous || state.session?.user?.is_anonymous) return null; return state.session?.user?.id || state.user?.id || null; }
-function watchlistStorageKey(userId = accountWatchlistUserId(), profileId = activeProfileId()) { return userId ? `${PROFILE_WATCHLIST_STORAGE_PREFIX}${userId}.${profileId}` : null; }
+function watchlistStorageKey(userId = accountWatchlistUserId(), profileId = activeProfileId()) { return userId && profileId ? `${PROFILE_WATCHLIST_STORAGE_PREFIX}${userId}.${profileId}` : null; }
 function clearWatchlistCache(userId, profileId = null) { if (!userId) return; const profilePrefix = `${PROFILE_WATCHLIST_STORAGE_PREFIX}${userId}.`; Object.keys(localStorage).filter(key => key === `${WATCHLIST_STORAGE_PREFIX}${userId}` || key.startsWith(profilePrefix) && (!profileId || key === watchlistStorageKey(userId, profileId))).forEach(key => localStorage.removeItem(key)); }
 function watchlistKey(item) { return `${item.type}:${Number(item.id)}`; }
 function watchlistRecord(row) { return { type:row.type || row.content_type, id:Number(row.id ?? row.tmdb_id), title:String(row.title || "Untitled"), poster_path:row.poster_path || row.posterPath || null, backdrop_path:row.backdrop_path || row.backdropPath || null, release_date:row.release_date || row.releaseDate || null, vote_average:Number(row.vote_average ?? row.voteAverage) || 0, addedAt:row.addedAt || row.added_at || new Date().toISOString() }; }
-function hydrateWatchlist() { const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); state.watchlistOwnerId = ownerId; state.watchlistProfileId = ownerId ? profileId : null; state.watchlistLoaded = false; state.watchlistError = null; state.watchlistLoadSequence++; if (!ownerId) { state.watchlist = []; return; } try { const cached = JSON.parse(localStorage.getItem(watchlistStorageKey(ownerId, profileId)) || "[]"); state.watchlist = Array.isArray(cached) ? cached.map(watchlistRecord).filter(item => ["movie", "tv"].includes(item.type) && Number.isSafeInteger(item.id) && item.id > 0) : []; } catch { state.watchlist = []; } }
-function persistWatchlist() { const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); if (!ownerId || state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== profileId) return; localStorage.setItem(watchlistStorageKey(ownerId, profileId), JSON.stringify(state.watchlist)); }
+function hydrateWatchlist() { const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); state.watchlistOwnerId = ownerId; state.watchlistProfileId = ownerId && profileId ? profileId : null; state.watchlistLoaded = false; state.watchlistError = null; state.watchlistLoadSequence++; if (!ownerId || !profileId) { state.watchlist = []; return; } try { state.watchlist = JSON.parse(localStorage.getItem(watchlistStorageKey(ownerId, profileId)) || "[]").map(watchlistRecord).filter(item => ["movie", "tv"].includes(item.type) && Number.isSafeInteger(item.id) && item.id > 0); } catch { state.watchlist = []; } }
+function persistWatchlist() { const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); if (!ownerId || !profileId || state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== profileId) return; localStorage.setItem(watchlistStorageKey(ownerId, profileId), JSON.stringify(state.watchlist)); }
 function isInWatchlist(item) { const { type, id } = savedTitleIdentity(item); return state.watchlistOwnerId === accountWatchlistUserId() && state.watchlistProfileId === activeProfileId() && state.watchlist.some(entry => entry.type === type && Number(entry.id) === id); }
 function watchlistAction(item, variant = "detail") { const { type, id } = savedTitleIdentity(item), key = watchlistKey({ type, id }), saved = isInWatchlist({ type, id }), pending = state.watchlistPending.has(`${accountWatchlistUserId()}:${activeProfileId()}:${key}`); state.watchlistTargets.set(key, { ...item, type, id }); return variant === "card" ? `<button type="button" class="card-watchlist ${saved ? "saved" : ""}" data-toggle-watchlist="${escapeHTML(key)}" aria-label="${saved ? "Remove" : "Add"} ${escapeHTML(titleOf(item))} ${saved ? "from" : "to"} Watchlist" aria-pressed="${saved}" title="${saved ? "Remove from" : "Add to"} Watchlist" ${pending ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-3.8-6 3.8z"/></svg></button>` : `<button type="button" class="secondary watchlist-action ${saved ? "saved" : ""}" data-toggle-watchlist="${escapeHTML(key)}" aria-label="${saved ? "Remove from" : "Add to"} Watchlist" title="${saved ? "Remove from" : "Add to"} Watchlist" aria-pressed="${saved}" ${pending ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-3.8-6 3.8z"/></svg><span>${pending ? "Saving" : saved ? "Saved" : "Watchlist"}</span></button>`; }
 async function loadAccountWatchlist(refreshView = false) {
-  const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); if (!ownerId) { state.watchlist = []; state.watchlistOwnerId = null; state.watchlistProfileId = null; state.watchlistLoaded = true; return; }
+  const ownerId = accountWatchlistUserId(), profileId = activeProfileId(); if (!profileId || !ownerId) { state.watchlist = []; state.watchlistOwnerId = null; state.watchlistProfileId = null; state.watchlistLoaded = true; return; }
   if (state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== profileId) hydrateWatchlist();
   const sequence = ++state.watchlistLoadSequence, mutationVersion = state.watchlistMutationVersion;
   state.watchlistLoading = true; state.watchlistError = null;
@@ -470,6 +507,7 @@ async function toggleWatchlist(item, {undoable=true} = {}) {
   const ownerId = accountWatchlistUserId();
   if (!ownerId) { showAuth("login", "Sign in to save titles to your profile’s Watchlist."); return; }
   const profileId = activeProfileId();
+  if (!profileId) { state.route = "profiles"; render(); return; }
   if (state.watchlistOwnerId !== ownerId || state.watchlistProfileId !== profileId) hydrateWatchlist();
   const { type, id } = savedTitleIdentity(item), key = watchlistKey({ type, id });
   const pendingKey = `${ownerId}:${profileId}:${key}`;
@@ -619,7 +657,7 @@ async function refreshUndoView() {
 }
 const favouriteMutations=new Set();
 async function toggleMyList(item,{undoable=true}={}) {
-  const profileId=activeProfileId(),scope=undoActionScope(),identity=savedTitleIdentity(item),key=listKey({profileId,...identity}),pending=scope+":"+key;
+  const profileId=activeProfileId();if(!profileId){state.route="profiles";render();return false;}const scope=undoActionScope(),identity=savedTitleIdentity(item),key=listKey({profileId,...identity}),pending=scope+":"+key;
   if(favouriteMutations.has(pending))return false;
   const previous=state.myList.find(entry=>listKey(entry)===key),entry=previous||listRecord({profileId,...identity,title:titleOf(item),poster_path:item.poster_path,backdrop_path:item.backdrop_path,release_date:item.release_date||item.first_air_date,vote_average:item.vote_average,addedAt:item.addedAt||new Date().toISOString()}),ticket=undoable?globalThis.window?.SEVENUndo?.begin("favourite:"+key):null;
   favouriteMutations.add(pending);state.myList=state.myList.filter(value=>listKey(value)!==key);if(!previous)state.myList.unshift(entry);persistMyList();
@@ -902,9 +940,9 @@ function upcomingTitles(movieResults, seriesResults) {
   return [...unique.values()].sort((a, b) => releaseDateOf(a).localeCompare(releaseDateOf(b)) || (Number(b.popularity) || 0) - (Number(a.popularity) || 0)).slice(0, 20);
 }
 function header() {
-  const profile = currentProfile() || defaultAccount().profiles[0];
+  const profile = currentProfile();
   const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : state.route === "series" ? "shows" : ["movie", "franchise"].includes(state.route) ? "movies" : "";
-  const account = state.user ? `<button class="account signed-in" data-account title="Account">${profileAvatar(profile)}<i class="account-caret" aria-hidden="true">▾</i></button>` : `<button class="account account-guest" data-auth aria-label="Guest profile. Sign in or create an account" title="Guest profile"><svg class="account-guest-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.65-3.55 2.82-5.4 6.5-5.4s5.85 1.85 6.5 5.4"/></svg></button>`;
+  const account = state.user ? `<button class="account signed-in" data-account title="Account" aria-label="Account">${profile ? `${profileAvatar(profile)}<i class="account-caret" aria-hidden="true">▾</i>` : "Account"}</button>` : `<button class="account account-guest" data-auth aria-label="Guest profile. Sign in or create an account" title="Guest profile"><svg class="account-guest-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.65-3.55 2.82-5.4 6.5-5.4s5.85 1.85 6.5 5.4"/></svg></button>`;
   const search = currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="Titles, actors, directors" autocomplete="off" enterkeyhint="search" maxlength="160" aria-label="Search titles, actors and directors"><div class="search-suggestions" hidden></div></div><button class="msearch-open" data-msearch aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>` : "";
   const homeLink = `<button class="nav-link ${activeNav === "home" ? "active" : ""}" data-home><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg><span>${t("Home")}</span></button>`;
   const forYouLink = `<button class="nav-link ${activeNav === "for-you" ? "active" : ""}" data-for-you><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></svg><span>${t("For You")}</span></button>`;
@@ -982,8 +1020,23 @@ document.addEventListener("click", event => {
 }, true);
 function restoreAppNavigation(event) {
   const index = event.state?.sevenNavigation?.index;
+  if (Number.isInteger(state.profileHistoryRepairIndex)) {
+    const expected = state.profileHistoryRepairIndex; state.profileHistoryRepairIndex = null;
+    if (index === expected) return;
+  }
+  if (state.profileDiscardConfirmed) { state.profileDiscardConfirmed = false; state.profileDiscardPending = false; }
+  else if (state.route === "profile-settings" && state.profileSettingsCategory === "profile" && state.profileEditorDirtyCheck?.() && Number.isInteger(index) && index < appNavigationIndex) {
+    state.profileHistoryRepairIndex = appNavigationIndex;
+    history.forward();
+    if (!state.profileDiscardPending) {
+      state.profileDiscardPending = true;
+      void confirmProfileEditorDiscard().then(discard => { state.profileDiscardPending = false; if (discard) { state.profileDiscardConfirmed = true; history.back(); } });
+    }
+    return;
+  }
   if (!Number.isInteger(index) || index === appNavigationIndex) return;
   const snapshot = appRouteSnapshots.get(index);
+  if (state.route === "profile-settings" && state.profileSettingsCategory === "profile" && !(snapshot?.route === "profile-settings" && snapshot.values.profileSettingsCategory === "profile")) cleanupProfileEditorListeners();
   if (!snapshot) {
     appNavigationIndex = 0;
     state.route = state.user ? "profiles" : "home";
@@ -1008,6 +1061,10 @@ function restoreAppNavigation(event) {
 window.addEventListener("popstate", restoreAppNavigation);
 function render() {
   primeSavedAgeRatings();
+  const profileEditorWithoutActive = state.route === "profile-settings" && state.profileSettingsCategory === "profile" && Boolean(state.profileDraft);
+  if (state.account && !activeProfileId() && state.route !== "profiles" && state.route !== "onboarding" && !profileEditorWithoutActive) {
+    state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = "profiles";
+  }
   if (state.route === "account" && state.user && currentProfile()) {
     state.profileDraft = { ...currentProfile() }; state.profileEditorIsNew = false; state.profileSettingsCategory = null; state.profileSettingsReturn = state.accountReturn || "home"; state.route = "profile-settings";
   }
@@ -1019,7 +1076,7 @@ function render() {
   if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave();
   if (state.route !== "msearch" && !document.querySelector(".seven-intro") && document.documentElement.style.overflow === "hidden") document.documentElement.style.overflow = "";
   if (state.route === "onboarding" && state.user) return renderOnboarding();
-  if (state.route === "profiles" && state.user) return renderProfileGate();
+  if (state.route === "profiles" && state.account) return renderProfileGate();
   if (state.route === "account" && state.user) return renderAccount();
   if (state.route === "profile-settings" && state.user) return renderProfileSettings();
   if (state.route === "my-list") return renderMyList();
@@ -1136,16 +1193,15 @@ function exitProfileGate(then) {
 }
 async function activateProfile(id, { handoff = false } = {}) {
   globalThis.window?.SEVENTrackerUI?.clear(); state.watchlistView = "saved"; state.trackerWeek = 0;
+  if (!setActiveProfile(id, "explicit tap")) return;
   const catalogStale = state.catalogKey !== id;
-  state.account.activeProfileId = id;
   searchRequest++; state.searchView = null; state.searchResults = []; state.search = ""; state.mSearch = null;
-  hydrateWatchlist();
-  void loadAccountWatchlist();
+  hydrateMyList(); hydrateWatchlist();
   void saveAccount();
   const enterHome = () => { state.route = "home"; if (handoff) state.profileGateHomeEntry = true; scrollToTop(); render(); tickScreenTime(); };
   if (!handoff) exitProfileGate(enterHome);
   if (catalogStale) state.catalogRequest = null;
-  try { await loadMyList(); await refreshCatalogForLanguage(); } catch {}
+  try { migrateLegacyProgress(); await Promise.allSettled([loadCloudProgress(), loadMyList(), loadAccountWatchlist()]); await refreshCatalogForLanguage(); } catch {}
   if (handoff) {
     const gate = document.querySelector(".profile-gate");
     const startedAt = Number(gate?.dataset.selectionStartedAt) || performance.now();
@@ -1286,10 +1342,10 @@ function rail(name, items) { const visible = items.filter(contentAllowed); if (!
 function newEpisodeRail(items) { return `<section class="rail new-episode-rail"><div class="rail-title">${railTitle("New episodes")}<span>From followed series</span></div><div class="cards">${items.map(item => `<button class="card" data-open="tv:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>NEW EPISODE</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>S${item.episode.season_number} · E${item.episode.episode_number} · ${escapeHTML(item.episode.name || "New episode")}</small></button>`).join("")}</div></section>`; }
 function card(item, rank = 0) { if (!contentAllowed(item)) return ""; return `<article class="card ${rank ? "ranked-card" : ""}"><button class="card-open" data-open="${item.type}:${item.id}" aria-label="More about ${escapeHTML(titleOf(item))}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><span class="card-shade"></span><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em class="card-score">★ ${item.vote_average.toFixed(1)}</em>` : ""}<strong class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></strong></span><span class="card-copy ${rank ? "ranked-copy" : ""}">${rank ? `<em class="card-rank" aria-label="Rank ${rank}">${String(rank).padStart(2, "0")}</em>` : ""}<b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>${watchlistAction(item, "card")}</article>`; }
 function mobileSearchCard(item) { return `<button class="msearch-card" data-open="${item.type}:${item.id}"><span class="msearch-poster"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em>★ ${item.vote_average.toFixed(1)}</em>` : ""}</span><span class="msearch-copy"><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`; }
-function progressEntries() { return Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).map(key => { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return null; } }).filter(Boolean); }
-function historyEntries() { return Object.keys(localStorage).filter(key => key.startsWith(`seven-progress-${activeProfileId()}-`)).map(key => { try { return { ...JSON.parse(localStorage.getItem(key) || "{}"), key }; } catch { return null; } }).filter(item => item?.title).sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
+function progressEntries() { const profileId = activeProfileId(); if (!profileId) return []; const prefix = `seven-progress-${profileId}-`; return Object.keys(localStorage).filter(key => key.startsWith(prefix)).map(key => { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return null; } }).filter(Boolean); }
+function historyEntries() { const profileId = activeProfileId(); if (!profileId) return []; const prefix = `seven-progress-${profileId}-`; return Object.keys(localStorage).filter(key => key.startsWith(prefix)).map(key => { try { return { ...JSON.parse(localStorage.getItem(key) || "{}"), key }; } catch { return null; } }).filter(item => item?.title).sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
 function forgetAccountProgress(key) { state.accountProgress = state.accountProgress.filter(item => item.key !== key); }
-function forgetProfileProgress(profileId = activeProfileId()) { const prefix = `seven-progress-${profileId}-`; state.accountProgress = state.accountProgress.filter(item => !item.key?.startsWith(prefix)); }
+function forgetProfileProgress(profileId = activeProfileId()) { if (!profileId) return; const prefix = `seven-progress-${profileId}-`; state.accountProgress = state.accountProgress.filter(item => !item.key?.startsWith(prefix)); }
 function historyDate(value) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? "Watched recently" : `Watched ${date.toLocaleDateString(undefined, { month:"short", day:"numeric" })}`; }
 function watchDuration(entry) { const duration = Number(entry.duration) || 0, current = Number(entry.currentTime) || 0; return Math.max(0, Math.min(current, duration || current)); }
 function watchTimeLabel(seconds) { const hours = Math.floor(seconds / 3600), minutes = Math.floor(seconds % 3600 / 60); return hours ? `${hours}h ${minutes}m` : `${minutes}m`; }
@@ -1305,20 +1361,21 @@ function profileStats() {
   }
   return { ...summary, genres:summary.genres.map(id => GENRES[Number(id)]).filter(Boolean).slice(0, 4) };
 }
-function savedProgress(item) { try { return JSON.parse(localStorage.getItem(watchKey(item)) || "{}"); } catch { return {}; } }
+function savedProgress(item) { const key = watchKey(item); if (!key) return {}; try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; } }
 function isWatched(item) { const saved = savedProgress(item); return Boolean(saved.watched) || Number(saved.progress) >= 90; }
 function seriesTracking(series) { const entries = progressEntries().filter(item => item.type === "tv" && Number(item.id) === Number(series.id)), watched = entries.filter(item => item.watched || Number(item.progress) >= 90), latest = [...entries].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0))[0], resume = latest && !latest.watched && Number(latest.progress) < 90 && Number(latest.duration) > 0 && Number(latest.currentTime) > 0 ? latest : null; return { watched:watched.length, total:Number(series.number_of_episodes) || 0, latest, resume }; }
 function nextEpisodeInSeason(series) { const tracking = seriesTracking(series), episodes = state.episodes?.episodes || []; if (tracking.resume && Number(tracking.resume.season) === Number(state.selectedSeason)) { const index = episodes.findIndex(episode => Number(episode.episode_number) === Number(tracking.resume.episode)); return episodes.slice(index + 1).find(episode => !isWatched({ type:"tv", id:series.id, season:state.selectedSeason, episode:episode.episode_number })) || null; } return episodes.find(episode => !isWatched({ type:"tv", id:series.id, season:state.selectedSeason, episode:episode.episode_number })) || null; }
 async function loadSeriesNext() { const series = state.series; if (!series) return null; try { const tracking = seriesTracking(series), seasons = (series.seasons || []).filter(season => season.season_number > 0).sort((a, b) => a.season_number - b.season_number), startSeason = Number(tracking.resume?.season || tracking.latest?.season || state.selectedSeason || seasons[0]?.season_number || 1), queue = seasons.filter(season => season.season_number >= startSeason); for (const season of queue) { const data = Number(season.season_number) === Number(state.selectedSeason) ? state.episodes : await api(`tv/${series.id}/season/${season.season_number}`), episodes = data?.episodes || [], resumeIndex = tracking.resume && Number(tracking.resume.season) === Number(season.season_number) ? episodes.findIndex(item => Number(item.episode_number) === Number(tracking.resume.episode)) : -1, pool = resumeIndex >= 0 ? episodes.slice(resumeIndex + 1) : episodes, episode = pool.find(item => !isWatched({ type:"tv", id:series.id, season:season.season_number, episode:item.episode_number })); if (episode) { const resumeAt = savedStart({ type:"tv", id:series.id, season:season.season_number, episode:episode.episode_number }); return state.seriesNext = { season:Number(season.season_number), episode, resume:resumeAt > 0 }; } } } catch { /* Fall back to the current season when episode metadata is unavailable. */ } return state.seriesNext = null; }
 async function setEpisodeStatus(episode, watched) {
+  if (!activeProfileId()) { state.route="profiles"; render(); return; }
   const series=state.series,season=state.selectedSeason,profile=activeProfileId();
   try { await window.SEVENTrackerUI.saveStatus(series,season,episode,watched,{allowGuest:true}); if(state.route==="series"&&Number(state.series?.id)===Number(series.id)&&activeProfileId()===profile){await loadSeriesNext();renderSeries();} }
   catch(error){showToast(error.message||"Episode progress could not be saved.");}
 }
 async function resumeSeries(record) { state.selectedSeason = Number(record.season) || 1; await loadEpisodes(); playEpisode(Number(record.episode), true); }
 function continueWatching() {
-  if (!state.session) return [];
-  const prefix = `seven-progress-${activeProfileId()}-`, latest = new Map();
+  const profileId = activeProfileId(); if (!state.session || !profileId) return [];
+  const prefix = `seven-progress-${profileId}-`, latest = new Map();
   state.accountProgress.filter(item => item.key?.startsWith(prefix) && item.type && item.id && item.title).sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)).forEach(item => { const key = `${item.type}:${item.id}`; if (!latest.has(key)) latest.set(key, item); });
   return [...latest.values()].filter(item => contentAllowed(item) && Number(item.duration) > 0 && Number(item.duration) - Number(item.currentTime) >= 600 && !item.watched).slice(0, 16);
 }
@@ -1339,6 +1396,7 @@ async function repairContinuePosters(items) {
 }
 function continueRail(items) { return `<section class="rail continue-rail"><div class="rail-title">${railTitle("Continue watching")}<span>Pick up where you left off</span></div><div class="cards">${items.map(item => `<div class="continue-item"><button class="card continue-card" data-continue="${escapeHTML(`${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`)}"><span class="poster-wrap"><img src="${item.posterPath ? TMDB_IMAGE + item.posterPath : POSTER_FALLBACK}" alt="" loading="lazy"><i>${item.type === "tv" ? `S${item.season} · E${item.episode}` : "MOVIE"}</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(item.title)}</b><small>Resume from ${timeLabel(Math.floor(item.currentTime || 0))}</small><em class="continue-progress"><i style="width:${Math.min(100, Number(item.progress) || 0)}%"></i></em></button><button class="continue-remove" data-remove-continue="${escapeHTML(`${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`)}" aria-label="Remove ${escapeHTML(item.title)} from Continue watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>`).join("")}</div></section>`; }
 async function openItem(type, id) {
+  if (!activeProfileId()) { state.route = "profiles"; render(); return; }
   const scope = `${state.user?.id || "guest"}:${activeProfileId()}:${profileMaturity()}`, request = state.titleOpenRequest = (state.titleOpenRequest || 0) + 1;
   try {
     const item = normalize(await api(`${type}/${id}`, { append_to_response:"credits,keywords,videos" }), type);
@@ -1426,11 +1484,11 @@ function renderSeries() {
   document.querySelectorAll("[data-play-episode]").forEach(button => button.onclick = () => playEpisode(Number(button.dataset.playEpisode), false)); document.querySelectorAll("[data-toggle-episode]").forEach(button => button.onclick = () => { const episode = (state.episodes?.episodes || []).find(item => Number(item.episode_number) === Number(button.dataset.toggleEpisode)); if (episode) setEpisodeStatus(episode, !isWatched({ type:"tv", id:s.id, season:state.selectedSeason, episode:episode.episode_number })); });
 }
 function showTrailer() { if (!state.trailer?.key) return; app.insertAdjacentHTML("beforeend", `<div class="modal trailer-modal"><section class="trailer-card"><button class="modal-close" data-close>×</button><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(state.trailer.key)}?autoplay=1&rel=0" title="${escapeHTML(state.trailer.name || "Trailer")}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></section></div>`); document.querySelector(".trailer-modal [data-close]").onclick = () => document.querySelector(".trailer-modal")?.remove(); }
-function savedStart(item) { try { const saved = JSON.parse(localStorage.getItem(watchKey(item)) || "{}"), time = Math.floor(Number(saved.currentTime) || 0), duration = Number(saved.duration) || 0; return time >= 5 && (!duration || time < duration - 5) ? time : 0; } catch { return 0; } }
+function savedStart(item) { const key=watchKey(item);if(!key)return 0;try { const saved = JSON.parse(localStorage.getItem(key) || "{}"), time = Math.floor(Number(saved.currentTime) || 0), duration = Number(saved.duration) || 0; return time >= 5 && (!duration || time < duration - 5) ? time : 0; } catch { return 0; } }
 function timeLabel(seconds) { const minutes = Math.floor(seconds / 60), remainder = String(seconds % 60).padStart(2, "0"); return `${minutes}:${remainder}`; }
 function resumeAction(item, attribute) { const seconds = savedStart(item); return seconds ? `<button class="secondary resume-action" ${attribute}><b>↻</b> Resume from ${timeLabel(seconds)}</button>` : ""; }
 async function playSeriesEpisode(season, episode, resume = false) { if (Number(state.selectedSeason) !== Number(season)) { state.selectedSeason = Number(season); await loadEpisodes(); } playEpisode(Number(episode), resume); }
-function playEpisode(number, resume = false) { const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }, previous = state.player; state.pendingEpisodeCompletion = isDirectNextEpisode(previous, key) && playbackProgressPercent(savedProgress(previous)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? { ...previous } : null; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; partyHostTitleChanged(); render(); scrollToTop(); }
+function playEpisode(number, resume = false) { if (!activeProfileId()) { state.route="profiles"; render(); return; } const episode = (state.episodes.episodes || []).find(x => x.episode_number === number) || {}, key = { type:"tv", id:state.series.id, season:state.selectedSeason, episode:number }, previous = state.player; state.pendingEpisodeCompletion = isDirectNextEpisode(previous, key) && playbackProgressPercent(savedProgress(previous)) >= PREVIOUS_EPISODE_WATCHED_PERCENT ? { ...previous } : null; state.player = { ...key, title:episode.name || titleOf(state.series), overview:episode.overview || state.series.overview, posterPath:state.series.poster_path || episode.still_path, genreIds:(state.series.genres || []).map(genre => genre.id), startAt:resume ? savedStart(key) : 0 }; state.route = "player"; partyHostTitleChanged(); render(); scrollToTop(); }
 function playerURL(item, progress = 0) {
   const provider = selectedPlayerProvider();
   const season = item.season || 1, episode = item.episode || 1, start = Math.max(0, Math.floor(progress) || 0);
@@ -1670,7 +1728,7 @@ async function syncNativePlayerEpisode(change) {
   catch { /* Keep the counter in sync even if episode metadata is temporarily unavailable. */ }
 }
 function startupSoundEnabled() { try { return localStorage.getItem(window.SplashSpec?.soundStorageKey || "seven.startup.sound") !== "false"; } catch { return true; } }
-function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"), profile = cached?.profiles?.find(item => item.id === cached.activeProfileId), enabled = profile?.preferences?.introEnabled ?? cached?.preferences?.introEnabled; return enabled !== false; } catch { return true; } }
+function launchIntroEnabled() { try { const cached=JSON.parse(localStorage.getItem(ACCOUNT_KEY)||"null"),storedSession=JSON.parse(localStorage.getItem(SESSION_KEY)||"null"),storedOwner=localStorage.getItem(ACCOUNT_OWNER_KEY),owner=storedSession?.user?.id||storedOwner||"guest",expectedOwner=storedSession?.user?.id||"guest",choice=localStorage.getItem(`${ACTIVE_PROFILE_CHOICE_PREFIX}${owner}`),profile=owner===expectedOwner?cached?.profiles?.find(item=>item.id===choice):null,enabled=profile?.preferences?.introEnabled??cached?.preferences?.introEnabled;return enabled!==false; } catch { return true; } }
 function dismissIntro() {
   clearTimeout(state.introSafetyTimer);
   state.introSafetyTimer = null;
@@ -2310,6 +2368,7 @@ function forYouSignature() {
   return JSON.stringify([activeProfileId(),currentProfile()?.kids,restrictedTitles(),["favoriteGenres","contentMix","maturity","familySafe","blockScary","moviesEnabled","seriesEnabled"].map(key=>preferences[key]),likedTitles(),hiddenTitles(),historyEntries().map(item=>[item.type,item.id,item.season,item.episode,item.currentTime,item.duration,item.watched,item.genreIds,item.lastWatchedAt])]);
 }
 async function openForYou() {
+  if (!activeProfileId()) { state.route = "profiles"; render(); return; }
   state.route = "for-you";
   const profileId = activeProfileId(), view = state.forYou = { loading:true, profileId, signature:forYouSignature(), rails:{}, sources:{} };
   render();
@@ -2532,8 +2591,8 @@ function renderWatchlist() {
   if ((state.watchlistView || "saved") !== "saved") void window.SEVENTrackerUI.refresh();
 }
 function openWatchlist() { state.watchlistReturn = state.route; state.route = "watchlist"; scrollToTop(); render(); }
-function openHistoryItem(key) { const saved = JSON.parse(localStorage.getItem(key) || "{}"), item = { type:saved.type, id:Number(saved.id), season:Number(saved.season) || undefined, episode:Number(saved.episode) || undefined, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(saved) }; if (!item.type || !item.id) return; state.player = item; state.route = "player"; render(); scrollToTop(); }
-async function removeHistoryItem(key) { localStorage.removeItem(key); forgetAccountProgress(key); if (state.session) try { await localAPI(`/api/account/progress?key=${encodeURIComponent(key)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderHistory(); }
+function openHistoryItem(key) { const profileId=activeProfileId();if(!profileId||!String(key).startsWith(`seven-progress-${profileId}-`)){if(!profileId){state.route="profiles";render();}return;}const saved = JSON.parse(localStorage.getItem(key) || "{}"), item = { type:saved.type, id:Number(saved.id), season:Number(saved.season) || undefined, episode:Number(saved.episode) || undefined, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(saved) }; if (!item.type || !item.id) return; state.player = item; state.route = "player"; render(); scrollToTop(); }
+async function removeHistoryItem(key) { const profileId=activeProfileId();if(!profileId||!String(key).startsWith(`seven-progress-${profileId}-`)){if(!profileId){state.route="profiles";render();}return;}localStorage.removeItem(key); forgetAccountProgress(key); if (state.session) try { await localAPI(`/api/account/progress?key=${encodeURIComponent(key)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} renderHistory(); }
 let authReturnFocus = null, authBodyOverflow = "", authRootOverflow = "", authScrollY = 0;
 function closeAuthModal() {
   const modal = document.querySelector(".auth-modal");
@@ -2838,12 +2897,14 @@ function needsFirstRunOnboarding() {
   return isRecentSocialSignup || Number.isFinite(createdAt) && Date.now() - createdAt < 7 * 24 * 60 * 60 * 1000;
 }
 function beginOnboarding() {
-  const profile = currentProfile() || state.account?.profiles?.[0] || defaultAccount().profiles[0], preferences = currentPreferences();
+  const profile = onboardingProfile() || defaultAccount().profiles[0], preferences = onboardingPreferences(profile);
   const savedStep = Number(state.account?.onboardingStep);
   state.onboardingStep = Number.isInteger(savedStep) && savedStep >= 2 && savedStep <= 4 ? savedStep : 1;
   const socialNameRequired = socialProfileSetupPending();
   state.onboardingDraft = { name:socialNameRequired ? "" : profile.name || "", avatar:profile.avatar || AVATAR_OPTIONS[0][1], favoriteGenres:(preferences.favoriteGenres || []).map(Number).filter(id => ONBOARDING_GENRES.some(([genreId]) => genreId === id)).slice(0,3), contentMix:preferences.contentMix || "both", familySafe:preferences.familySafe === true };
 }
+function onboardingProfile() { return state.account?.profiles?.find(profile => profile.id === "main") || state.account?.profiles?.[0] || null; }
+function onboardingPreferences(profile = onboardingProfile()) { return { ...DEFAULT_PREFERENCES, ...(state.account?.preferences || {}), ...(profile?.preferences || {}) }; }
 function renderOnboarding() {
   if (!state.onboardingDraft) beginOnboarding();
   syncAppRouteHistory();
@@ -2930,7 +2991,7 @@ function bindOnboarding() {
   document.querySelector("[data-onboarding-default]")?.addEventListener("click", event => {
     const button = event.currentTarget, step = Number(button.dataset.onboardingDefault);
     if (step === 1) {
-      const profile = currentProfile();
+      const profile = onboardingProfile();
       draft.name = profile?.name || state.user?.user_metadata?.display_name || state.user?.email?.split("@")[0] || "Main profile";
       draft.avatar = profile?.avatar || AVATAR_OPTIONS[0][1];
       void saveOnboardingProfile(button);
@@ -2948,7 +3009,7 @@ async function persistOnboardingAccount() {
   await window.SEVENSettingsSync.save(state.account,{strict:true});
 }
 async function saveOnboardingProfile(submitButton = null) {
-  const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = submitButton || document.querySelector("[data-onboarding-next]");
+  const draft = state.onboardingDraft, profile = onboardingProfile(), error = document.querySelector("[data-onboarding-error]"), button = submitButton || document.querySelector("[data-onboarding-next]");
   if (!draft || !profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
   if (button) { button.disabled = true; button.textContent = submitButton ? "Keeping profile…" : "Saving profile…"; }
   profile.name = String(draft.name).trim().slice(0,24);
@@ -2963,10 +3024,10 @@ async function saveOnboardingProfile(submitButton = null) {
   }
 }
 async function saveOnboardingChoices(nextStep, submitButton = null) {
-  const draft = state.onboardingDraft, profile = currentProfile(), error = document.querySelector("[data-onboarding-error]"), button = submitButton || document.querySelector("[data-onboarding-continue]");
+  const draft = state.onboardingDraft, profile = onboardingProfile(), error = document.querySelector("[data-onboarding-error]"), button = submitButton || document.querySelector("[data-onboarding-continue]");
   if (!draft || !profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
   if (button) { button.disabled = true; button.textContent = submitButton ? "Saving…" : "Saving your choices…"; }
-  profile.preferences = { ...currentPreferences(), favoriteGenres:draft.favoriteGenres.slice(0,3), contentMix:["movies","series"].includes(draft.contentMix) ? draft.contentMix : "both", familySafe:draft.familySafe === true };
+  profile.preferences = { ...onboardingPreferences(profile), favoriteGenres:draft.favoriteGenres.slice(0,3), contentMix:["movies","series"].includes(draft.contentMix) ? draft.contentMix : "both", familySafe:draft.familySafe === true };
   state.account.onboardingComplete = false;
   state.account.onboardingStep = nextStep;
   try { await persistOnboardingAccount(); state.onboardingStep = nextStep; renderOnboarding(); }
@@ -2978,15 +3039,14 @@ async function saveOnboardingChoices(nextStep, submitButton = null) {
 async function finishOnboarding(submitButton = null) {
   const draft = state.onboardingDraft, error = document.querySelector("[data-onboarding-error]"), submit = submitButton || document.querySelector("[data-onboarding-continue]");
   if (!draft || !state.session?.access_token) { if (error) error.textContent = "Sign in again to save this profile."; return; }
-  const profile = currentProfile();
+  const profile = onboardingProfile();
   if (!profile) { if (error) error.textContent = "This profile could not be loaded. Please try again."; return; }
   if (!String(draft.name || "").trim()) { if (error) error.textContent = "Add a profile name before continuing."; return; }
   if (submit) { submit.disabled = true; submit.textContent = submit.hasAttribute("data-onboarding-default") ? "Saving…" : "Saving your profile…"; }
   profile.name = String(draft.name).trim().slice(0,24);
   profile.avatar = isProfileAvatar(draft.avatar) ? draft.avatar : AVATAR_OPTIONS[0][1];
   profile.color = "#d3131c";
-  profile.preferences = { ...currentPreferences(), favoriteGenres:draft.favoriteGenres.slice(0,3), contentMix:["movies","series"].includes(draft.contentMix) ? draft.contentMix : "both", familySafe:draft.familySafe === true };
-  state.account.activeProfileId = profile.id;
+  profile.preferences = { ...onboardingPreferences(profile), favoriteGenres:draft.favoriteGenres.slice(0,3), contentMix:["movies","series"].includes(draft.contentMix) ? draft.contentMix : "both", familySafe:draft.familySafe === true };
   state.account.onboardingComplete = true;
   delete state.account.onboardingStep;
   if (state.account.googleProfileSetupPending === true) delete state.account.googleProfileSetupPending;
@@ -3003,12 +3063,14 @@ async function finishOnboarding(submitButton = null) {
     if (submit) { submit.disabled = false; submit.innerHTML = submit.hasAttribute("data-onboarding-default") ? `<span>${escapeHTML(submit.dataset.defaultLabel)}</span><i aria-hidden="true">→</i>` : 'Start watching <span aria-hidden="true">→</span>'; }
   }
 }
-function currentProfile() { return state.account?.profiles?.find(profile => profile.id === activeProfileId()) || state.account?.profiles?.[0]; }
+function currentProfile() { const id = activeProfileId(); return id ? state.account?.profiles?.find(profile => profile.id === id) || null : null; }
 function recentSearches(profile = currentProfile()) {
+  if (!activeProfileId()) return [];
   if (Array.isArray(profile?.recentSearches)) return profile.recentSearches.filter(query => typeof query === "string" && query.trim());
   try { const raw = JSON.parse(localStorage.getItem(`seven-recent-searches-${activeProfileId()}`) || "[]"); return Array.isArray(raw) ? raw.filter(query => typeof query === "string" && query.trim()) : []; } catch { return []; }
 }
 async function addRecentSearch(query, profile = currentProfile()) {
+  if (!activeProfileId()) return;
   const clean = typeof query === "string" ? query.trim() : "";
   if (clean.length < 2) return;
   const updated = [clean, ...recentSearches(profile).filter(item => item.toLowerCase() !== clean.toLowerCase())].slice(0, 12);
@@ -3017,6 +3079,7 @@ async function addRecentSearch(query, profile = currentProfile()) {
   if (state.user) await saveAccount();
 }
 async function removeRecentSearch(query, profile = currentProfile()) {
+  if (!activeProfileId()) return;
   const clean = typeof query === "string" ? query.trim() : "";
   const updated = recentSearches(profile).filter(item => item.toLowerCase() !== clean.toLowerCase());
   if (profile) profile.recentSearches = updated;
@@ -3024,6 +3087,7 @@ async function removeRecentSearch(query, profile = currentProfile()) {
   if (state.user) await saveAccount();
 }
 async function clearRecentSearches(profile = currentProfile()) {
+  if (!activeProfileId()) return;
   if (profile) profile.recentSearches = [];
   localStorage.removeItem(`seven-recent-searches-${activeProfileId()}`);
   if (state.user) await saveAccount();
@@ -3052,7 +3116,7 @@ function hideAction() { return ""; }
 function ratingAction(item) { if (!state.user) return ""; const liked = isLikedTitle(item); return `<div class="title-feedback"><span>Rate this title</span><div class="rate-buttons"><button type="button" class="rate-btn up ${liked ? "selected" : ""}" data-like-title aria-label="I like this"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 21h3V9H2v12zM22 10c0-1.1-.9-2-2-2h-6.3l1-4.6c.1-.5-.1-1-.5-1.3l-1.1-1c-.4-.4-1-.4-1.4 0L6 7v14h11c.8 0 1.5-.5 1.8-1.3l2.1-7c.1-.2.1-.4.1-.7v-2z"/></svg></button><button type="button" class="rate-btn down" data-hide-title aria-label="Not for me"><svg viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(180deg)"><path d="M2 21h3V9H2v12zM22 10c0-1.1-.9-2-2-2h-6.3l1-4.6c.1-.5-.1-1-.5-1.3l-1.1-1c-.4-.4-1-.4-1.4 0L6 7v14h11c.8 0 1.5-.5 1.8-1.3l2.1-7c.1-.2.1-.4.1-.7v-2z"/></svg></button></div><em class="rate-note">${liked ? "Thanks — recommendations updated." : ""}</em></div>`; }
 async function likeTitle(item) {
   const profile = currentProfile();
-  if (!profile) return showAuth();
+  if (!profile) { if(state.account){state.route="profiles";render();return;} return showAuth(); }
   if(feedbackUndoPending.has(undoActionScope()+":"+hiddenTitleKey(item)))return;
   globalThis.window?.SEVENUndo?.begin("feedback:"+hiddenTitleKey(item));
   const key = hiddenTitleKey(item), existing = likedTitles().filter(liked => hiddenTitleKey(liked) !== key);
@@ -3063,7 +3127,7 @@ async function likeTitle(item) {
 }
 async function hideTitle(item) {
   const profile = currentProfile();
-  if (!profile) return showAuth();
+  if (!profile) { if(state.account){state.route="profiles";render();return;} return showAuth(); }
   const key = hiddenTitleKey(item);
   const scope=undoActionScope();if(feedbackUndoPending.has(scope+":"+key))return;
   const ticket=globalThis.window?.SEVENUndo?.begin("feedback:"+key),hiddenBefore=hiddenTitles().find(item=>hiddenTitleKey(item)===key),likedBefore=likedTitles().find(item=>hiddenTitleKey(item)===key),hiddenIndex=hiddenTitles().findIndex(item=>hiddenTitleKey(item)===key),likedIndex=likedTitles().findIndex(item=>hiddenTitleKey(item)===key),featuredBefore=state.featuredPool.filter(item=>hiddenTitleKey(item)===key);
@@ -3081,7 +3145,7 @@ async function hideTitle(item) {
 }
 async function restoreHiddenTitle(key) {
   const profile = currentProfile();
-  if (!profile) return;
+  if (!profile) { if(state.account){state.route="profiles";render();} return; }
   if(feedbackUndoPending.has(undoActionScope()+":"+key))return;
   globalThis.window?.SEVENUndo?.begin("feedback:"+key);
   profile.hiddenTitles = hiddenTitles().filter(item => hiddenTitleKey(item) !== key);
@@ -3130,13 +3194,14 @@ function accountHub() {
   const account = { ...(state.account || defaultAccount()), preferences:currentPreferences() }, profile = currentProfile(), tab = state.accountTab || "profiles", navOpen = state.accountSidebarOpen !== false;
   return `${header()}<main class="account-page account-workspace-page"><div class="account-page-top"><button class="account-back" data-account-back>‹ ${t("Browse")}</button><div class="account-heading"><span class="brand">SEVEN ACCOUNT</span><h1>${t("Account")}</h1><p>${escapeHTML(state.user?.email || "Signed in")}</p></div><div class="account-active-profile">${profileAvatar(profile)}<span><b>${escapeHTML(profile?.name || "Profile")}</b><small>${t("Watching now")}</small></span></div></div><div class="account-workspace ${navOpen ? "nav-open" : "nav-closed"}"><aside class="account-sidebar" aria-label="Account categories"><button class="account-nav-toggle" data-toggle-account-nav aria-label="${navOpen ? "Collapse" : "Expand"} account categories">☰ <span>${t("Categories")}</span></button><nav>${accountNavItem("profiles", "◉", t("Profiles"), tab)}${accountNavItem("activity", "▦", t("Your SEVEN"), tab)}${accountNavItem("playback", "▷", t("Playback"), tab)}${accountNavItem("security", "⌾", t("Security"), tab)}</nav></aside><div class="account-workspace-content">${accountPanel(account, profile, tab)}</div></div></main>`;
 }
-function showProfileEditor(id = "", returnRoute = "account", initialCategory = "home") {
+function showProfileEditor(id = "", returnRoute = "account", initialCategory = "profile") {
   const existing = state.account.profiles.find(profile => profile.id === id);
   if (!existing && state.account.profiles.length >= 5) return;
   state.profileDraft = existing ? { ...existing } : { id:`profile-${Date.now()}`, name:"", color:PROFILE_COLORS[state.account.profiles.length % PROFILE_COLORS.length], kids:false };
   state.profileEditorIsNew = !existing;
   state.profileSettingsReturn = returnRoute;
   state.profileSettingsCategory = initialCategory;
+  state.profileFormReturnCategory = null;
   state.route = "profile-settings"; scrollToTop(); render();
 }
 function profileCategoryRow(id, title, detail) {
@@ -3160,6 +3225,27 @@ function profileSettingsHome(profile, isNew) {
 function iosDnsProtectionCard() {
   return `<section class="profile-pin-card dns-filtering-card"><span class="brand">OPTIONAL · IPHONE-WIDE</span><h2>Block known ad domains</h2><p>SEVEN blocks many player pop-ups. For broader filtering, use AdGuard’s free public DNS profile on iPhone. It can reduce requests to known ad and tracker domains, but cannot catch every ad.</p><a class="dns-filtering-link" href="https://adguard-dns.io/en/public-dns.html" target="_blank" rel="noopener noreferrer">View iPhone DNS setup <span aria-hidden="true">↗</span></a><small>On the official page, choose the Default server and download its iOS profile. Then review and install it in Settings. This changes DNS for the whole iPhone, not just SEVEN, and may affect playback.</small></section>`;
 }
+function profileEditorInitial(name) {
+  const letter = Array.from(String(name || "").trim())[0] || "";
+  return { letter, tone:letter ? (letter.codePointAt(0) % 6) + 1 : 1 };
+}
+function profileEditorFaceMarkup(avatar, name) {
+  if (isProfileAvatar(avatar)) return `<span class="profile-editor-avatar-image"><img src="${escapeHTML(avatar)}" width="512" height="512" alt="" decoding="async"></span>`;
+  const initial = profileEditorInitial(name);
+  return `<span class="profile-editor-avatar-initial" style="--profile-avatar-tone:var(--profile-avatar-tone-${initial.tone})"><span class="profile-editor-initial-letter" data-profile-initial>${escapeHTML(initial.letter)}</span></span>`;
+}
+function profileEditorFormMarkup(profile, isNew, canRemove) {
+  const isPreset = AVATAR_OPTIONS.some(([, path]) => path === profile.avatar), customAvatar = !isNew && isProfileAvatar(profile.avatar) && !isPreset;
+  const selected = avatar => profile.avatar === avatar;
+  const initialSelected = !isProfileAvatar(profile.avatar);
+  const avatarTiles = [
+    `<button type="button" role="radio" class="profile-editor-avatar-choice ${initialSelected ? "selected" : ""}" data-avatar-choice="initial" aria-label="Initial avatar" aria-checked="${initialSelected}"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(null, profile.name)}</span></button>`,
+    ...AVATAR_OPTIONS.map(([name, path], index) => `<button type="button" role="radio" class="profile-editor-avatar-choice ${selected(path) ? "selected" : ""}" data-avatar-choice="preset-${index}" aria-label="Avatar ${index + 1}" aria-checked="${selected(path)}"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(path, profile.name)}</span></button>`),
+    ...(customAvatar ? [`<button type="button" role="radio" class="profile-editor-avatar-choice selected" data-avatar-choice="current" aria-label="Avatar ${AVATAR_OPTIONS.length + 1}" aria-checked="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(profile.avatar, profile.name)}</span></button>`] : [])
+  ].join("");
+  const counterVisible = String(profile.name || "").length >= 19;
+  return `<main class="profile-editor-route profile-settings-redesign" data-profile-editor><div class="profile-editor-column"><header class="profile-editor-topbar"><button type="button" class="profile-editor-cancel" data-profile-form-cancel>Cancel</button><h1>${isNew ? "New profile" : "Edit profile"}</h1></header><form id="profile-settings-form" class="profile-editor-form" novalidate><div class="profile-editor-content"><div class="profile-editor-preview" data-avatar-preview aria-hidden="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(profile.avatar, profile.name)}</span></div><div class="profile-editor-name"><label class="profile-editor-visually-hidden" for="profile-editor-name">Profile name</label><input id="profile-editor-name" name="name" type="text" required maxlength="24" value="${escapeHTML(profile.name)}" placeholder="Profile name" aria-label="Profile name" aria-describedby="profile-editor-field-error profile-editor-counter" autocapitalize="words" autocomplete="off" enterkeyhint="done"><span class="profile-editor-underline" aria-hidden="true"></span><div class="profile-editor-field-meta"><p id="profile-editor-field-error" class="profile-editor-field-error" role="status" aria-live="polite"></p><span id="profile-editor-counter" class="profile-editor-counter" ${counterVisible ? "" : "hidden"}>${String(profile.name || "").length} / 24</span></div></div><section class="profile-editor-avatar-picker" aria-labelledby="profile-editor-avatar-title"><h2 id="profile-editor-avatar-title">Choose an avatar</h2><div class="profile-editor-avatar-grid" role="radiogroup" aria-labelledby="profile-editor-avatar-title">${avatarTiles}</div></section>${canRemove ? `<button type="button" class="profile-editor-delete" data-remove-profile>Delete profile</button>` : ""}</div><div class="profile-editor-actions"><p class="profile-editor-save-error" role="status" aria-live="polite"></p><button type="submit" class="primary profile-editor-submit" disabled><span class="profile-editor-submit-label">${isNew ? "Create profile" : "Save changes"}</span><i class="profile-editor-submit-progress" aria-hidden="true"></i></button></div></form></div></main>`;
+}
 function profileSettingsDetail(profile, category, preferences, isNew) {
   preferences = { ...preferences, maturity:maturityForProfile(profile) };
   const canRemove = !isNew && state.account.profiles.length > 1 && profile.id !== (globalThis.window?.SEVENDevices?.mainId() || "main"), save = `<div class="profile-settings-actions"><button class="primary" type="submit">${t(isNew ? "Create profile" : "Save changes")}</button></div>`;
@@ -3172,6 +3258,158 @@ function profileSettingsDetail(profile, category, preferences, isNew) {
   if (profile.kids) return `<section class="profile-detail-card"><span class="brand">PRIVACY & SECURITY</span><form id="profile-settings-form"><section class="profile-pin-card parent-access-card"><h2>${t("Parent access code")}</h2><p>${state.account?.parentPinHash ? "This code protects profile and account settings for 15 minutes after it is entered. Kids profiles do not use a profile-picker PIN." : "Set one code to protect kids settings and profile management on shared devices."}</p><label class="profile-pin-field">${t(state.account?.parentPinHash ? "Change parent access code" : "Set parent access code")}<input name="parentPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="${state.account?.parentPinHash ? "Leave blank to keep current code" : "Optional: 4–8 digits"}"></label>${state.account?.parentPinHash ? `<label class="profile-remove-pin"><input type="checkbox" name="removeParentPin"> Turn off parent access code</label>` : ""}</section><p class="form-error profile-settings-error" id="profile-error"></p>${save}</form><div class="profile-category-actions">${accountAction("⌂", "Install SEVEN", "Add SEVEN to this device’s Home Screen", "data-install-seven", "Install")}${accountAction("⌫", "Clear viewing history", "Remove activity for this profile", "data-clear-history", "Clear")}</div></section>`;
   return `<section class="profile-detail-card"><span class="brand">PRIVACY & SECURITY</span><form id="profile-settings-form"><section class="profile-pin-card"><h2>${t("Profile PIN")}</h2><p>Keep this profile private on shared devices.</p><label class="profile-pin-field">${t(profile.pinHash ? "Change profile PIN" : "Set a profile PIN")}<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="${profile.pinHash ? "Leave blank to keep current PIN" : "Optional: 4–8 digits"}"></label>${profile.pinHash ? `<label class="profile-remove-pin"><input type="checkbox" name="removePin"> Remove PIN protection</label>` : ""}</section><section class="profile-pin-card parent-access-card"><h2>${t("Parent access code")}</h2><p>${state.account?.parentPinHash ? "This code protects profile and account settings for 15 minutes after it is entered." : "Set one code to protect profile and account settings on shared devices."}</p><label class="profile-pin-field">${t(state.account?.parentPinHash ? "Change parent access code" : "Set parent access code")}<input name="parentPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="${state.account?.parentPinHash ? "Leave blank to keep current code" : "Optional: 4–8 digits"}"></label>${state.account?.parentPinHash ? `<label class="profile-remove-pin"><input type="checkbox" name="removeParentPin"> Turn off parent access code</label>` : ""}</section><p class="form-error profile-settings-error" id="profile-error"></p>${save}</form><div class="profile-category-actions">${accountAction("⌂", "Install SEVEN", "Add SEVEN to this device’s Home Screen", "data-install-seven", "Install")}${accountAction("⌫", "Clear viewing history", "Remove activity for this profile", "data-clear-history", "Clear")}</div></section>`;
 }
+function confirmProfileEditorDiscard() {
+  return window.SEVENSettingsUI.confirm("Your profile changes haven’t been saved.", { title:"Discard changes?", confirmLabel:"Discard", cancelLabel:"Keep editing" });
+}
+function cleanupProfileEditorListeners() {
+  state.profileEditorViewportCleanup?.(); state.profileEditorViewportCleanup = null;
+  state.profileEditorDirtyCheck = null; state.profileEditorSaving = false; state.profileEditorEscapeHandler = null;
+}
+function returnFromProfileEditor() {
+  const returnCategory = state.profileFormReturnCategory;
+  cleanupProfileEditorListeners();
+  state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileFormReturnCategory = null;
+  if (!activeProfileId()) { state.profileSettingsReturn = null; state.route = "profiles"; }
+  else if (returnCategory) { state.route = "profile-settings"; state.profileSettingsCategory = returnCategory; }
+  else { state.route = state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; }
+  render(); scrollToTop();
+}
+function removeProfileFromState(profileId) {
+  const wasActive=activeProfileId()===profileId;
+  state.account.profiles=state.account.profiles.filter(item=>item.id!==profileId);
+  if(wasActive){clearActiveProfileChoice();state.accountProgress=[];state.myList=[];hydrateWatchlist();}
+  return wasActive;
+}
+async function requestProfileEditorCancel() {
+  if (state.profileEditorSaving) return;
+  const dirty = Boolean(state.profileEditorDirtyCheck?.());
+  if (dirty && !await confirmProfileEditorDiscard()) return;
+  if (dirty) state.profileDiscardConfirmed = true;
+  if (!navigateBackInApp(returnFromProfileEditor)) state.profileDiscardConfirmed = false;
+}
+function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
+  const form = document.querySelector("#profile-settings-form"), input = form?.elements.name, preview = document.querySelector("[data-avatar-preview]"), fieldError = document.querySelector("#profile-editor-field-error"), counter = document.querySelector("#profile-editor-counter"), saveError = document.querySelector(".profile-editor-save-error"), submit = form?.querySelector("[type=submit]"), group = form?.querySelector("[role=radiogroup]");
+  if (!form || !input || !submit || !group) return;
+  const initialName = String(profile.name || ""), originalAvatar = profile.avatar || null, avatarKey = value => {
+    if (!isProfileAvatar(value)) return "initial";
+    const preset = AVATAR_OPTIONS.findIndex(([, path]) => path === value);
+    return preset >= 0 ? `preset-${preset}` : "current";
+  };
+  let selectedAvatar = originalAvatar, previewKey = isProfileAvatar(originalAvatar) ? String(originalAvatar) : (() => { const initial = profileEditorInitial(initialName); return `initial:${initial.letter}:${initial.tone}`; })(), saving = false;
+  const normalizedName = () => input.value.trim().replace(/\s+/g, " ");
+  const dirty = () => input.value !== initialName || avatarKey(selectedAvatar) !== avatarKey(originalAvatar);
+  state.profileEditorDirtyCheck = dirty;
+  state.profileEditorSaving = false;
+  const currentInitialMarkup = () => {
+    const initial = profileEditorInitial(input.value);
+    group.querySelectorAll("[data-avatar-choice=initial] .profile-editor-avatar-initial").forEach(face => {
+      face.style.setProperty("--profile-avatar-tone", `var(--profile-avatar-tone-${initial.tone})`);
+      const glyphs = [...face.querySelectorAll("[data-profile-initial]")], glyph = glyphs.at(-1);
+      if (!glyph || glyph.textContent === initial.letter) return;
+      glyphs.slice(0, -1).forEach(node => node.remove());
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { glyph.textContent = initial.letter; return; }
+      const next = document.createElement("span"); next.className = "profile-editor-initial-letter is-entering"; next.dataset.profileInitial = ""; next.textContent = initial.letter;
+      glyph.classList.add("is-leaving"); face.append(next);
+      requestAnimationFrame(() => next.classList.remove("is-entering"));
+      setTimeout(() => glyph.remove(), 150);
+    });
+  };
+  const updatePreview = () => {
+    const initial = profileEditorInitial(input.value), key = isProfileAvatar(selectedAvatar) ? String(selectedAvatar) : `initial:${initial.letter}:${initial.tone}`;
+    if (key === previewKey) return;
+    previewKey = key;
+    const prior = [...preview.querySelectorAll(":scope > .profile-editor-avatar-face")];
+    prior.filter(face => face.classList.contains("is-leaving")).forEach(face => face.remove());
+    const next = document.createElement("span"); next.className = "profile-editor-avatar-face is-entering"; next.innerHTML = profileEditorFaceMarkup(selectedAvatar, input.value); preview.append(next);
+    requestAnimationFrame(() => { next.classList.remove("is-entering"); prior.forEach(face => face.classList.add("is-leaving")); });
+    setTimeout(() => prior.forEach(face => face.remove()), 170);
+  };
+  const updateSelection = () => {
+    group.querySelectorAll("[role=radio]").forEach(button => {
+      const selected = button.dataset.avatarChoice === avatarKey(selectedAvatar);
+      button.classList.toggle("selected", selected); button.setAttribute("aria-checked", String(selected)); button.tabIndex = selected ? 0 : -1;
+    });
+    profile.avatar = selectedAvatar;
+    currentInitialMarkup(); updatePreview(); updateState();
+  };
+  const updateState = ({ showError = false } = {}) => {
+    const name = normalizedName(), valid = name.length > 0 && input.value.length <= input.maxLength;
+    const message = (showError || input.dataset.touched === "true") && !valid ? "Enter a profile name." : "";
+    fieldError.textContent = message;
+    input.setAttribute("aria-invalid", String(Boolean(message)));
+    const length = input.value.length; counter.textContent = `${length} / ${input.maxLength}`; counter.hidden = length < input.maxLength - 5;
+    const changed = dirty(); submit.disabled = saving || !valid || (!isNew && !changed);
+    if (!saving && submit.getAttribute("aria-busy") === "true") submit.removeAttribute("aria-busy");
+  };
+  const setAvatar = value => { selectedAvatar = value || null; saveError.textContent = ""; updateSelection(); };
+  group.querySelectorAll("[role=radio]").forEach(button => {
+    button.tabIndex = button.getAttribute("aria-checked") === "true" ? 0 : -1;
+    button.addEventListener("click", () => {
+      const key = button.dataset.avatarChoice;
+      if (key === "initial") setAvatar(null);
+      else if (key === "current") setAvatar(originalAvatar);
+      else setAvatar(AVATAR_OPTIONS[Number(key.slice("preset-".length))]?.[1] || null);
+    });
+    button.addEventListener("keydown", event => {
+      const direction = { ArrowRight:1, ArrowDown:1, ArrowLeft:-1, ArrowUp:-1 }[event.key];
+      if (!direction) return;
+      const buttons = [...group.querySelectorAll("[role=radio]")], index = buttons.indexOf(button), next = buttons[(index + direction + buttons.length) % buttons.length];
+      event.preventDefault(); next.focus(); next.click();
+    });
+  });
+  input.addEventListener("input", () => { saveError.textContent = ""; currentInitialMarkup(); updatePreview(); updateState(); });
+  input.addEventListener("blur", () => { input.dataset.touched = "true"; updateState(); });
+  input.addEventListener("focus", () => { setTimeout(() => input.scrollIntoView({ block:"center", behavior:"auto" }), 80); });
+  updateState(); currentInitialMarkup(); updatePreview();
+  document.querySelector("[data-profile-form-cancel]").addEventListener("click", () => { void requestProfileEditorCancel(); });
+  document.addEventListener("keydown", state.profileEditorEscapeHandler = event => {
+    if (event.key === "Escape" && state.route === "profile-settings" && state.profileSettingsCategory === "profile") { event.preventDefault(); void requestProfileEditorCancel(); }
+  }, { once:false });
+  const viewport = window.visualViewport, syncViewport = () => {
+    const offset = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+    document.querySelector(".profile-editor-route")?.style.setProperty("--profile-keyboard-offset", `${offset}px`);
+    if (document.activeElement === input && viewport) input.scrollIntoView({ block:"center", behavior:"auto" });
+  };
+  state.profileEditorViewportCleanup?.();
+  viewport?.addEventListener("resize", syncViewport); viewport?.addEventListener("scroll", syncViewport); window.addEventListener("resize", syncViewport); syncViewport();
+  state.profileEditorViewportCleanup = () => { viewport?.removeEventListener("resize", syncViewport); viewport?.removeEventListener("scroll", syncViewport); window.removeEventListener("resize", syncViewport); if (state.profileEditorEscapeHandler) document.removeEventListener("keydown", state.profileEditorEscapeHandler); };
+  form.addEventListener("submit", async event => {
+    event.preventDefault(); saveError.textContent = "";
+    const name = normalizedName();
+    if (!name) { input.dataset.touched = "true"; updateState({ showError:true }); input.focus(); return; }
+    if (submit.disabled || saving) return;
+    saving = true; state.profileEditorSaving = true; submit.disabled = true; submit.setAttribute("aria-busy", "true"); form.querySelectorAll("input,button").forEach(control => { control.disabled = true; }); document.querySelector("[data-profile-form-cancel]").disabled = true;
+    const previous = state.account.profiles.find(item => item.id === profile.id) || profile;
+    const next = { ...previous, name, preferences:{ ...(previous.preferences || {}) } };
+    if (selectedAvatar) next.avatar = selectedAvatar; else delete next.avatar;
+    if (isNew) state.account.profiles.push(next);
+    else state.account.profiles = state.account.profiles.map(item => item.id === profile.id ? next : item);
+    state.profileDraft = next;
+    try {
+      await saveAccount(true, { base:initialAccount });
+      returnFromProfileEditor();
+    } catch {
+      if (isNew) state.account.profiles = state.account.profiles.filter(item => item.id !== next.id);
+      else state.account.profiles = state.account.profiles.map(item => item.id === profile.id ? previous : item);
+      state.profileDraft = profile;
+      saveError.textContent = isNew ? "Couldn't create profile. Try again." : "Couldn't save changes. Try again.";
+      saving = false; state.profileEditorSaving = false; submit.removeAttribute("aria-busy"); form.querySelectorAll("input,button").forEach(control => { control.disabled = false; }); document.querySelector("[data-profile-form-cancel]").disabled = false; updateState();
+    }
+  });
+  document.querySelector("[data-remove-profile]")?.addEventListener("click", async event => {
+    const button = event.currentTarget;
+    if (button.disabled) return;
+    button.disabled = true;
+    const accepted = await window.SEVENSettingsUI.confirm(`Delete ${profile.name || "this profile"} and its saved preferences.`, { title:"Delete profile?", confirmLabel:"Delete profile", danger:true });
+    if (!accepted) { button.disabled = false; return; }
+    const ownerId = accountWatchlistUserId(), wasActive = removeProfileFromState(profile.id);
+    clearWatchlistCache(ownerId, profile.id);
+    if (state.session && ownerId) void localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profile.id)}&all=true`, { method:"DELETE", headers:authorizedHeaders() }).catch(() => {});
+    await saveAccount();
+    if (wasActive) { state.profileSettingsReturn = null; state.profileFormReturnCategory = null; state.route = "profiles"; state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; render(); }
+    else returnFromProfileEditor();
+  });
+}
 function renderProfileSettings() {
   globalThis.window?.SEVENSettingsUI?.capture();
   syncAppRouteHistory();
@@ -3180,6 +3418,13 @@ function renderProfileSettings() {
   const initialAccount = JSON.parse(JSON.stringify(state.account));let avatarTouched=false;
   const isNew = state.profileEditorIsNew, preferences = { ...currentPreferences(), ...(profile.preferences || {}) }, category = state.profileSettingsCategory || "home", titles = { profiles:"Manage profiles", profile:"Edit this profile", family:"Family controls", playback:"Playback", language:"Language & display", activity:"Your SEVEN activity", security:"Privacy & security" }, descriptions = { profiles:"Manage each profile's details and viewing limits.", profile:"Choose a profile name and avatar.", family:"Choose what this profile can discover and watch.", playback:"Make playback fit your preferences.", language:"Choose the language and content you want to see.", activity:"Review saved titles, ratings, and watch history.", security:"Protect the profile and manage account access." };
   const detailHeading = category === "home" ? "" : `<header class="profile-settings-page-heading"><button class="profile-category-back" data-profile-category-back>‹ ${t("All settings")}</button><div class="profile-settings-heading-copy"><span class="brand">${t("PROFILE SETTINGS")}</span><h2>${t(titles[category])}</h2></div><p>${t(descriptions[category])}</p></header>`;
+  if (category === "profile") {
+    const canRemove = !isNew && state.account.profiles.length > 1 && profile.id !== (globalThis.window?.SEVENDevices?.mainId() || "main");
+    app.innerHTML = profileEditorFormMarkup(profile, isNew, canRemove);
+    bindCommon(); bindProfileEditor(profile, isNew, canRemove, initialAccount);
+    globalThis.window?.SEVENSettingsUI?.enhance();
+    return;
+  }
   app.innerHTML = `${header()}<main class="profile-settings-page profile-settings-mobile-first profile-settings-redesign"><div class="profile-settings-topbar"><button class="account-back" data-profile-settings-back>‹ ${t("Browse")}</button><button class="profile-settings-switch" data-switch-profile><span>${t("Switch profile")}</span><i aria-hidden="true">⇄</i></button></div>${category === "home" ? profileSettingsHome(profile, isNew) : `<div class="profile-settings-detail-page">${detailHeading}${profileSettingsDetail(profile, category, preferences, isNew)}</div>`}</main>`;
   if (category === "security") document.querySelector(".profile-settings-detail-page")?.insertAdjacentHTML("beforeend", iosDnsProtectionCard());
   if(category==='security')document.querySelector('.profile-category-actions')?.insertAdjacentHTML('afterbegin',accountAction('◌','Privacy choices','Optional analytics and how SEVEN uses your data','data-privacy-settings','Manage'));
@@ -3190,9 +3435,9 @@ function renderProfileSettings() {
   document.querySelector("[data-profile-settings-back]").onclick = () => { state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; render(); };
   document.querySelector("[data-switch-profile]")?.addEventListener("click", () => { state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.route = "profiles"; scrollToTop(); render(); });
   document.querySelector("[data-profile-category-back]")?.addEventListener("click", () => { state.profileSettingsCategory = "home"; renderProfileSettings(); scrollToTop(); });
-  document.querySelectorAll("[data-profile-category]").forEach(button => button.onclick = () => { state.profileSettingsCategory = button.dataset.profileCategory; renderProfileSettings(); scrollToTop(); });
-  document.querySelectorAll("[data-manage-profile]").forEach(button => button.onclick = () => { const selected = state.account.profiles.find(item => item.id === button.dataset.manageProfile); if (!selected) return; state.profileDraft = { ...selected }; state.profileEditorIsNew = false; state.profileSettingsCategory = "profile"; renderProfileSettings(); });
-  document.querySelector("[data-add-profile-mobile]")?.addEventListener("click", () => { state.profileDraft = { id:`profile-${Date.now()}`, name:"", color:PROFILE_COLORS[state.account.profiles.length % PROFILE_COLORS.length], kids:false }; state.profileEditorIsNew = true; state.profileSettingsCategory = "profile"; renderProfileSettings(); });
+  document.querySelectorAll("[data-profile-category]").forEach(button => button.onclick = () => { state.profileFormReturnCategory = button.dataset.profileCategory === "profile" ? category : null; state.profileSettingsCategory = button.dataset.profileCategory; renderProfileSettings(); scrollToTop(); });
+  document.querySelectorAll("[data-manage-profile]").forEach(button => button.onclick = () => { const selected = state.account.profiles.find(item => item.id === button.dataset.manageProfile); if (!selected) return; state.profileDraft = { ...selected }; state.profileEditorIsNew = false; state.profileFormReturnCategory = category; state.profileSettingsCategory = "profile"; renderProfileSettings(); });
+  document.querySelector("[data-add-profile-mobile]")?.addEventListener("click", () => { state.profileDraft = { id:`profile-${Date.now()}`, name:"", color:PROFILE_COLORS[state.account.profiles.length % PROFILE_COLORS.length], kids:false }; state.profileEditorIsNew = true; state.profileFormReturnCategory = category; state.profileSettingsCategory = "profile"; renderProfileSettings(); });
   document.querySelector("[data-toggle-avatar-picker]")?.addEventListener("click", event => { const picker = document.querySelector("#avatar-choices"), open = picker.hasAttribute("hidden"); picker.toggleAttribute("hidden", !open); event.currentTarget.setAttribute("aria-expanded", String(open)); });
   document.querySelectorAll("[data-change-parent-code]").forEach(button => button.addEventListener("click", showParentCodeChange));
   document.querySelectorAll("[data-avatar-option]").forEach(button => button.onclick = () => { avatarTouched=true; profile.avatar = button.dataset.avatarOption; document.querySelector("[data-avatar-preview]").innerHTML = profileAvatar(profile); document.querySelectorAll("[data-avatar-option]").forEach(option => option.classList.toggle("selected", option === button)); });
@@ -3243,7 +3488,7 @@ function renderProfileSettings() {
   document.querySelector("[data-change-password]")?.addEventListener("click", showChangePassword);
   document.querySelector("[data-signout]")?.addEventListener("click", async () => { if (await window.SEVENSettingsUI.confirm("You’ll be signed out of SEVEN on this device.", {title:"Sign out?",confirmLabel:"Sign out",confirmAfterSeconds:3})) signOut(); });
   globalThis.window?.SEVENDevices?.bind();
-  document.querySelector("[data-remove-profile]")?.addEventListener("click", async () => { if (!await window.SEVENSettingsUI.confirm(`Delete ${profile.name || "this profile"} and its saved preferences.`, {title:"Delete profile?",confirmLabel:"Delete profile",danger:true})) return; const ownerId = accountWatchlistUserId(), wasActive = state.account.activeProfileId === profile.id; state.account.profiles = state.account.profiles.filter(item => item.id !== profile.id); if (wasActive) state.account.activeProfileId = state.account.profiles[0].id; clearWatchlistCache(ownerId, profile.id); if (state.session && ownerId) void localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profile.id)}&all=true`, { method:"DELETE", headers:authorizedHeaders() }).catch(() => {}); if (wasActive) { hydrateWatchlist(); void loadAccountWatchlist(); } await saveAccount(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; render(); });
+  document.querySelector("[data-remove-profile]")?.addEventListener("click", async () => { if (!await window.SEVENSettingsUI.confirm(`Delete ${profile.name || "this profile"} and its saved preferences.`, {title:"Delete profile?",confirmLabel:"Delete profile",danger:true})) return; const ownerId = accountWatchlistUserId(), wasActive = removeProfileFromState(profile.id); clearWatchlistCache(ownerId, profile.id); if (state.session && ownerId) void localAPI(`/api/account/watchlist?profile=${encodeURIComponent(profile.id)}&all=true`, { method:"DELETE", headers:authorizedHeaders() }).catch(() => {}); await saveAccount(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = wasActive ? "profiles" : state.profileSettingsReturn || "account"; state.profileSettingsReturn = null; render(); });
   globalThis.window?.SEVENSettingsUI?.enhance();
 }
 function renderAccount() {
@@ -3251,7 +3496,7 @@ function renderAccount() {
   document.querySelector("[data-account-back]").onclick = () => { state.route = state.accountReturn || "home"; state.accountReturn = null; render(); };
   document.querySelector("[data-toggle-account-nav]").onclick = () => { state.accountSidebarOpen = state.accountSidebarOpen === false; render(); };
   document.querySelectorAll("[data-account-tab]").forEach(button => button.onclick = () => { state.accountTab = button.dataset.accountTab; render(); });
-  document.querySelectorAll("[data-select-profile]").forEach(button => button.onclick = async () => { state.account.activeProfileId = button.dataset.selectProfile; hydrateWatchlist(); void loadAccountWatchlist(); await saveAccount(); try { await loadMyList(); await refreshCatalogForLanguage(); } catch {} render(); });
+  document.querySelectorAll("[data-select-profile]").forEach(button => button.onclick = () => { state.route="profiles"; scrollToTop(); render(); });
   document.querySelectorAll("[data-edit-profile]").forEach(button => button.onclick = () => showProfileEditor(button.dataset.editProfile));
   document.querySelector("[data-add-profile]")?.addEventListener("click", () => showProfileEditor());
   document.querySelector("[data-view-history]")?.addEventListener("click", () => { state.historyReturn = "account"; state.route = "history"; render(); });
@@ -3281,9 +3526,11 @@ function showInstallSEVEN() {
   document.querySelector("[data-confirm-install]")?.addEventListener("click", async () => { const prompt = deferredInstallPrompt; if (!prompt) return; prompt.prompt(); await prompt.userChoice; deferredInstallPrompt = null; document.querySelector(".install-modal")?.remove(); });
 }
 function queueProgressSync(item, currentTime, duration, progress, immediate = false) {
-  globalThis.window?.SEVENUndo?.begin("progress:"+watchKey(item));
+  const contentKey = watchKey(item);
+  if (!contentKey) return;
+  globalThis.window?.SEVENUndo?.begin("progress:"+contentKey);
   if (!state.session) return;
-  const payload = { content_key:watchKey(item), content_type:item.type, tmdb_id:item.id, season:item.season || null, episode:item.episode || null, title:item.title || "Untitled", poster_path:item.posterPath || null, progress_seconds:currentTime, duration_seconds:duration, is_watched:progress >= 90, last_watched_at:new Date().toISOString() };
+  const payload = { content_key:contentKey, content_type:item.type, tmdb_id:item.id, season:item.season || null, episode:item.episode || null, title:item.title || "Untitled", poster_path:item.posterPath || null, progress_seconds:currentTime, duration_seconds:duration, is_watched:progress >= 90, last_watched_at:new Date().toISOString() };
   upsertAccountProgress(payload);
   if (immediate) {
     clearTimeout(state.progressTimer); state.pendingProgress = null;
@@ -3307,7 +3554,7 @@ function bindCommon() {
   document.querySelectorAll("[data-home]").forEach(button => button.onclick = () => { state.route = "home"; render(); });
   document.querySelectorAll("[data-open]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, id); });
   document.querySelectorAll("[data-person]").forEach(button => button.onclick = () => openPerson(button.dataset.person));
-  document.querySelectorAll("[data-continue]").forEach(button => button.onclick = () => { const [type, id, season, episode] = button.dataset.continue.split(":"), item = { type, id:Number(id), season:Number(season) || undefined, episode:Number(episode) || undefined }, saved = JSON.parse(localStorage.getItem(watchKey(item)) || "{}"); state.player = { ...item, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(item) }; state.route = "player"; render(); scrollToTop(); });
+  document.querySelectorAll("[data-continue]").forEach(button => button.onclick = () => { if(!activeProfileId()){state.route="profiles";render();return;}const [type, id, season, episode] = button.dataset.continue.split(":"), item = { type, id:Number(id), season:Number(season) || undefined, episode:Number(episode) || undefined }, saved = JSON.parse(localStorage.getItem(watchKey(item)) || "{}"); state.player = { ...item, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(item) }; state.route = "player"; render(); scrollToTop(); });
   document.querySelectorAll("[data-explore]").forEach(button => button.onclick = () => { const view = state.explorable?.[button.dataset.explore]; if (!view) return; void openExplore(view); });
   const input = document.querySelector("#search"); let timer;
   if (input) {
@@ -3348,6 +3595,8 @@ window.addEventListener("click", () => { const providerList = document.querySele
 function recordPlaybackEvent(data) {
   const duration = Number(data.duration) || 0, currentTime = Number(data.currentTime) || 0;
   if (!duration) return;
+  const contentKey = state.player && watchKey(state.player);
+  if (!contentKey) { state.route="profiles"; render(); return; }
   samplePlaybackWatchTime(currentTime);
   if (party.role !== "guest") {
     party.lastHostTime = currentTime;
@@ -3360,7 +3609,7 @@ function recordPlaybackEvent(data) {
     else if (data.event === "pause" || data.event === "ended") party.guestPlaying = false;
   }
   const progress = Math.min(100, currentTime / duration * 100);
-  localStorage.setItem(watchKey(state.player), JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()}));
+  localStorage.setItem(contentKey, JSON.stringify({currentTime,duration,progress,watched:progress >= 90,genreIds:state.player.genreIds || [],type:state.player.type,id:state.player.id,season:state.player.season || null,episode:state.player.episode || null,title:state.player.title,posterPath:state.player.posterPath || null,lastWatchedAt:new Date().toISOString()}));
   queueProgressSync(state.player, currentTime, duration, progress);
   const pendingPrevious = state.pendingEpisodeCompletion;
   if (pendingPrevious && shouldConfirmPreviousEpisode(pendingPrevious, state.player, savedProgress(pendingPrevious), progress)) { markEpisodeWatched(pendingPrevious); state.pendingEpisodeCompletion = null; }
@@ -3370,7 +3619,7 @@ function recordPlaybackEvent(data) {
   if (time) time.textContent = `${Math.floor(currentTime)}s of ${Math.floor(duration)}s`;
 }
 function bindPlayerControlLift() { const frame = document.querySelector(".player-frame"); if (!frame) return; let idleTimer; const show = () => { clearTimeout(idleTimer); frame.classList.add("player-controls-active"); }; const deferHide = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => frame.classList.remove("player-controls-active"), 1800); }; frame.addEventListener("pointerenter", show); frame.addEventListener("pointermove", show); frame.addEventListener("pointerleave", deferHide); frame.addEventListener("focusin", show); frame.addEventListener("focusout", deferHide); }
-function markEpisodeWatched(item) { const saved = savedProgress(item), duration = Math.max(1, Number(saved.duration) || 0), record = { ...saved, currentTime:duration, duration, progress:100, watched:true, type:item.type, id:item.id, season:item.season || null, episode:item.episode || null, title:saved.title || item.title || "Untitled", posterPath:saved.posterPath || item.posterPath || null, genreIds:saved.genreIds || item.genreIds || [], lastWatchedAt:new Date().toISOString() }; localStorage.setItem(watchKey(item), JSON.stringify(record)); state.seriesNext = null; queueProgressSync(item, duration, duration, 100, true); }
+function markEpisodeWatched(item) { const key=watchKey(item);if(!key)return;const saved = savedProgress(item), duration = Math.max(1, Number(saved.duration) || 0), record = { ...saved, currentTime:duration, duration, progress:100, watched:true, type:item.type, id:item.id, season:item.season || null, episode:item.episode || null, title:saved.title || item.title || "Untitled", posterPath:saved.posterPath || item.posterPath || null, genreIds:saved.genreIds || item.genreIds || [], lastWatchedAt:new Date().toISOString() }; localStorage.setItem(key, JSON.stringify(record)); state.seriesNext = null; queueProgressSync(item, duration, duration, 100, true); }
 let fullscreenOrientationLockActive = false;
 let fullscreenOrientationLockPending = false;
 function syncFullscreenOrientation() {
@@ -3423,7 +3672,7 @@ if ("serviceWorker" in navigator) {
     updateReloaded = true;
     location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=418", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=421", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

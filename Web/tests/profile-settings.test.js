@@ -79,15 +79,26 @@ test("the startup intro honors the active profile preference before account defa
   assert.ok(introSource, "launchIntroEnabled should be available");
   const context = {
     ACCOUNT_KEY:"settings",
-    localStorage:{ getItem:() => JSON.stringify({
-      activeProfileId:"main",
-      preferences:{ introEnabled:true },
-      profiles:[{ id:"main", preferences:{ introEnabled:false } }]
-    }) }
+    SESSION_KEY:"session",
+    ACCOUNT_OWNER_KEY:"owner",
+    ACTIVE_PROFILE_CHOICE_PREFIX:"seven.active-profile-choice.",
+    localStorage:{ getItem:key => ({
+      settings:JSON.stringify({activeProfileId:"main",preferences:{introEnabled:true},profiles:[{id:"main",preferences:{introEnabled:false}}]}),
+      session:JSON.stringify({user:{id:"qa"}}),
+      owner:"qa",
+      "seven.active-profile-choice.qa":"main"
+    })[key]||null }
   };
   vm.createContext(context);
   vm.runInContext(introSource, context);
   assert.equal(context.launchIntroEnabled(), false);
+});
+
+test("the old automatic account active id cannot select a profile for the startup preference", () => {
+  const introSource = source.match(/function launchIntroEnabled\(\) \{[^\n]+/)?.[0];
+  const context={ACCOUNT_KEY:"settings",SESSION_KEY:"session",ACCOUNT_OWNER_KEY:"owner",ACTIVE_PROFILE_CHOICE_PREFIX:"seven.active-profile-choice.",localStorage:{getItem:key=>({settings:JSON.stringify({activeProfileId:"main",preferences:{introEnabled:true},profiles:[{id:"main",preferences:{introEnabled:false}}]}),session:JSON.stringify({user:{id:"qa"}}),owner:"qa"})[key]||null}};
+  vm.createContext(context);vm.runInContext(introSource,context);
+  assert.equal(context.launchIntroEnabled(),true);
 });
 
 test("privacy settings provide an explicit, device-wide iPhone DNS filtering guide", () => {

@@ -8,11 +8,15 @@
   const snapshot=()=>normalize(state.account);
   function apply(next,before){
     if(owner()!==accountOwner)return;
-    const active=state.account.activeProfileId,old=state.account,merged=model().merge(before,snapshot(),next,{mergeStats:root.SEVENProfileStats?.mergeWatchStats}).value;
-    state.account={...merged,activeProfileId:active};
+    const active=activeProfileId(),source=state.activeProfileSource,old=state.account,merged=model().merge(before,snapshot(),next,{mergeStats:root.SEVENProfileStats?.mergeWatchStats}).value;
+    state.account={...merged,activeProfileId:null};
+    const activeStillExists=Boolean(active&&merged.profiles.some(p=>p.id===active)),validSource=["explicit tap","restored from storage"].includes(source);
+    if(activeStillExists&&validSource)setActiveProfile(active,source,{persistChoice:false});
+    else if(active)clearActiveProfileChoice();
     if(state.profileDraft){const id=state.profileDraft.id,remote=merged.profiles.find(p=>p.id===id),prior=old.profiles.find(p=>p.id===id);if(remote)state.profileDraft=model().merge(prior,state.profileDraft,remote).value;}
     persistLocalAccount();
-    if(!state.account.profiles.some(p=>p.id===active)){state.account.activeProfileId=state.account.profiles[0]?.id;state.profileDraft=null;state.route='profiles';hydrateWatchlist();render();showToast('This profile was removed on another device.');}
+    if(active&&!activeStillExists){state.accountProgress=[];state.myList=[];state.profileDraft=null;state.profileEditorIsNew=null;state.profileSettingsCategory=null;state.route='profiles';hydrateWatchlist();render();showToast('This profile was removed on another device.');}
+    else if(activeStillExists&&!validSource){state.accountProgress=[];state.myList=[];state.route='profiles';hydrateWatchlist();render();}
     if(state.user?.id===accountOwner)state.user={...state.user,user_metadata:{...state.user.user_metadata,seven_account:model().clone(next),seven_settings_revision:engine?.state().revision||0}};
   }
   function lock(name,task){return navigator.locks?.request?navigator.locks.request(name,{mode:'exclusive'},task):Promise.resolve().then(task);}
