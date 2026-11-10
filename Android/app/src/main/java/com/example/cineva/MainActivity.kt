@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
             if (!isNativeOAuthAuthorize(rawUrl)) return false
             runOnUiThread {
                 val authUri = Uri.parse(rawUrl)
-                val provider = CustomTabsClient.getPackageName(this@MainActivity)
+                val provider = CustomTabsClient.getPackageName(this@MainActivity, null)
                 runCatching {
                     if (provider != null && CustomTabsClient.isAuthTabSupported(this@MainActivity, provider)) {
                         val toolbar = AuthTabColorSchemeParams.Builder()
