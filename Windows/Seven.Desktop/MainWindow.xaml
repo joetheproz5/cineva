@@ -5,9 +5,9 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="SEVEN" Icon="/Assets/seven.ico" Width="1440" Height="920" MinWidth="820" MinHeight="580"
         WindowStyle="None" ResizeMode="CanResize"
-        Background="{StaticResource CanvasBrush}" Foreground="{StaticResource InkBrush}"
+        Background="{StaticResource CanvasBrush}" Foreground="{StaticResource InkBrush}" Opacity="0"
         WindowStartupLocation="Manual" PreviewKeyDown="Window_PreviewKeyDown"
-        Loaded="Window_Loaded" StateChanged="Window_StateChanged"
+        Loaded="Window_Loaded" ContentRendered="Window_ContentRendered" StateChanged="Window_StateChanged"
         Closing="Window_Closing"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
   <shell:WindowChrome.WindowChrome>
@@ -19,7 +19,7 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <Border x:Name="CaptionBar" Grid.Row="0" Background="#101114" BorderBrush="#24252A" BorderThickness="0,0,0,1">
+    <Border x:Name="CaptionBar" Grid.Row="0" Background="{StaticResource CanvasBrush}" BorderBrush="#24252A" BorderThickness="0,0,0,1">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />

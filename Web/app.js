@@ -24,7 +24,7 @@ let sessionRefreshPromise;
 let deferredInstallPrompt;
 let profileGatePosterTimer = null, profileGatePosterGeneration = 0;
 const continuePosterRepairs = new Set();
-const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introTimer: null, introSafetyTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, profileGateResize: null, profileGateResizeObserver: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -752,6 +752,7 @@ async function startSocialOAuth(provider, mode) {
 }
 async function boot() {
   renderLoading();
+  markStartupReady();
   const verifiedEmail = await consumeEmailVerificationRedirect();
   const socialAuthError = await consumeSocialOAuthRedirect();
   await restoreSession();
@@ -1683,70 +1684,106 @@ async function syncNativePlayerEpisode(change) {
   try { await refreshPlayerEpisodeContext(Number(previous.id), season, request); }
   catch { /* Keep the counter in sync even if episode metadata is temporarily unavailable. */ }
 }
+function startupSoundEnabled() { try { return localStorage.getItem(window.SplashSpec?.soundStorageKey || "seven.startup.sound") !== "false"; } catch { return true; } }
 function launchIntroEnabled() { try { const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null"), profile = cached?.profiles?.find(item => item.id === cached.activeProfileId), enabled = profile?.preferences?.introEnabled ?? cached?.preferences?.introEnabled; return enabled !== false; } catch { return true; } }
 function dismissIntro() {
-  if (!document.querySelector(".seven-intro")) return;
-  clearTimeout(state.introTimer);
   clearTimeout(state.introSafetyTimer);
-  state.introTimer = null;
   state.introSafetyTimer = null;
-  document.documentElement.style.overflow = "";
-  document.querySelector(".seven-intro")?.remove();
+  clearTimeout(state.introScreenFadeTimer);
+  state.introScreenFadeTimer = null;
+  state.introHandle?.destroy();
+  state.introHandle = null;
+  const appScreen = document.getElementById("app");
+  if (appScreen) {
+    appScreen.removeAttribute("inert");
+    appScreen.removeAttribute("aria-hidden");
+    appScreen.style.removeProperty("transition");
+    appScreen.style.removeProperty("opacity");
+    appScreen.style.removeProperty("transform");
+    appScreen.style.removeProperty("pointer-events");
+  }
   document.querySelector(".profile-gate")?.classList.replace("profile-gate-pending", "profile-gate-ready");
+  const firstControl = appScreen?.querySelector("a[href],button,input,select,textarea,[tabindex]:not([tabindex='-1'])");
+  (firstControl || appScreen)?.focus?.({ preventScroll: true });
 }
-function maybeFinishIntro() {
+function maybeFinishIntro(skip = false) {
   if (!state.startupReady || !state.introAnimationComplete || state.introExitStarted) return;
-  const overlay = document.querySelector(".seven-intro");
-  if (!overlay) return;
+  if (!state.introHandle) return;
   state.introExitStarted = true;
-  overlay.classList.add("exiting");
   clearTimeout(state.introSafetyTimer);
-  state.introTimer = setTimeout(dismissIntro, 520);
+  state.introHandle.exit({ skip });
 }
-function StartupIntro() {
-  const overlay = document.createElement("div");
-  overlay.className = "seven-intro";
-  overlay.setAttribute("aria-hidden", "true");
-  overlay.innerHTML = `<div class="startup-intro-scene"><span class="startup-intro-rays"></span><span class="startup-intro-bloom"></span><span class="startup-intro-flare"></span><div class="startup-intro-logo"><img class="startup-intro-mark" src="assets/seven-wordmark-v2.png" alt="" fetchpriority="high" decoding="async"><span class="startup-intro-fallback" hidden>SEVEN</span><span class="startup-intro-sweep"></span></div></div>`;
-  overlay.addEventListener("animationend", event => {
-    if (event.target !== overlay) return;
-    if (event.animationName === "intro-atmosphere") {
-      state.introAnimationComplete = true;
-      maybeFinishIntro();
-    } else if (event.animationName === "intro-out") {
-      dismissIntro();
-    }
-  });
-  return overlay;
+function beginSplashExit(phases) {
+  const appScreen = document.getElementById("app");
+  if (!appScreen) return;
+  appScreen.style.opacity = "0";
+  appScreen.style.transform = "scale(1.02)";
+  appScreen.style.pointerEvents = "none";
+  appScreen.style.transition = "none";
+  void appScreen.offsetWidth;
+  clearTimeout(state.introScreenFadeTimer);
+  state.introScreenFadeTimer = setTimeout(() => {
+    state.introScreenFadeTimer = null;
+    if (!appScreen.isConnected) return;
+    appScreen.removeAttribute("inert");
+    appScreen.removeAttribute("aria-hidden");
+    appScreen.style.pointerEvents = "";
+    appScreen.style.transition = `opacity ${phases.screenFadeWallMs}ms ${phases.screenEasing}, transform ${phases.screenFadeWallMs}ms ${phases.screenEasing}`;
+    requestAnimationFrame(() => {
+      appScreen.style.opacity = "1";
+      appScreen.style.transform = "scale(1)";
+    });
+  }, phases.screenDelayWallMs);
 }
-function renderLaunchIntro() {
-  if (!launchIntroEnabled()) {
+function renderLaunchIntro(override = null) {
+  const options = override || window.SEVENSplash?.resolveLaunchOptions({ enabled: launchIntroEnabled() });
+  if (!options || !window.SEVENSplash) {
     state.introAnimationComplete = true;
     return;
   }
-  if (document.querySelector(".seven-intro")) return;
-  const overlay = StartupIntro();
-  const logo = overlay.querySelector(".startup-intro-mark");
-  const startIntro = loaded => {
-    if (!overlay.isConnected) return;
-    if (!loaded) {
-      logo.hidden = true;
-      overlay.querySelector(".startup-intro-fallback").hidden = false;
-    }
-    overlay.classList.add("live");
-  };
-  document.documentElement.style.overflow = "hidden";
-  document.body.appendChild(overlay);
-  state.introSafetyTimer = setTimeout(() => {
-    state.startupReady = true;
-    state.introAnimationComplete = true;
-    if (!overlay.classList.contains("live")) startIntro(false);
-    maybeFinishIntro();
-  }, 12000);
-  const imageReady = typeof logo.decode === "function"
-    ? logo.decode().then(() => true, () => false)
-    : new Promise(resolve => { logo.onload = () => resolve(true); logo.onerror = () => resolve(false); });
-  Promise.race([imageReady, new Promise(resolve => setTimeout(() => resolve(false), 1800))]).then(startIntro);
+  if (options.debug) state.startupReady = true;
+  state.introExitStarted = false;
+  state.introAnimationComplete = false;
+  const appScreen = document.getElementById("app");
+  if (appScreen) {
+    appScreen.setAttribute("inert", "");
+    appScreen.setAttribute("aria-hidden", "true");
+    appScreen.style.opacity = "0";
+    appScreen.style.transform = "scale(1.02)";
+    appScreen.style.pointerEvents = "none";
+    appScreen.style.transition = "none";
+  }
+  state.introHandle = window.SEVENSplash.createOverlay(options, {
+    onEntryComplete() {
+      state.introAnimationComplete = true;
+      maybeFinishIntro();
+    },
+    onSkip() {
+      state.startupReady = true;
+      state.introAnimationComplete = true;
+      clearTimeout(state.introSafetyTimer);
+      maybeFinishIntro(true);
+    },
+    onExitStart: beginSplashExit,
+    onExitComplete: dismissIntro,
+  });
+  document.body.appendChild(state.introHandle.element);
+  state.introHandle.start();
+  if (!options.debug) {
+    state.introSafetyTimer = setTimeout(() => {
+      state.startupReady = true;
+      state.introAnimationComplete = true;
+      state.introHandle?.finish();
+      maybeFinishIntro();
+    }, window.SplashSpec.readyTimeout);
+  }
+  if (!document.querySelector(".splash-debug")) {
+    window.SEVENSplash.mountDebugControls(({ version, scale, sliceStaggerMs, sliceDurationMs, glintStartMs, glintDurationMs }) => {
+      dismissIntro();
+      state.startupReady = true;
+      renderLaunchIntro({ version, scale, sliceStaggerMs, sliceDurationMs, glintStartMs, glintDurationMs, reducedMotion: window.SEVENSplash.reducedMotionRequested(), debug: true });
+    });
+  }
 }
 function screenTimeState(profile = currentProfile()) {
   if (!profile?.kids || !profile.screenTime?.enabled) return null;
@@ -3067,7 +3104,7 @@ function profileGateAvatar(profile) { return profileAvatar(profile); }
 function accountNavItem(tab, icon, label, active) { return `<button class="account-nav-item ${tab === active ? "active" : ""}" data-account-tab="${tab}" aria-current="${tab === active ? "page" : "false"}"><i aria-hidden="true">${icon}</i><span>${label}</span></button>`; }
 function accountAction(icon, title, detail, action, value = "Open") { return `<button class="account-action-card" ${action}><i aria-hidden="true">${icon}</i><span><b>${t(title)}</b><small>${t(detail)}</small></span><em>${t(String(value))} ›</em></button>`; }
 function parentAccessCodeAction() { const hasCode = parentAccessConfigured(); return `<button type="button" class="account-action-card profile-parent-code-action" data-change-parent-code><i aria-hidden="true">⌘</i><span><b>${t(hasCode ? "Change parent access code" : "Set parent access code")}</b><small>${t(hasCode ? "Confirm your current code before changing or turning it off." : "Protect profile and account settings without locking the profile picker.")}</small></span><em>${hasCode ? "Change" : "Set"} ›</em></button>`; }
-function playbackPreferencesPanel(account, profile) { return `<section class="account-content-panel"><div class="account-content-heading"><span class="brand">PLAYBACK & ACCESS</span><h2>${t("Viewing preferences")}</h2><p>These choices apply only to ${escapeHTML(profile?.name || "this profile")}.</p></div><div class="settings-stack"><label class="account-toggle"><span>Autoplay next episode<small>Continue series automatically when available</small></span><input type="checkbox" data-pref="autoplayNext" ${account.preferences.autoplayNext !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Cinematic intro<small>Play the SEVEN ident when the app opens</small></span><input type="checkbox" data-pref="introEnabled" ${account.preferences.introEnabled !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Autoplay spotlight<small>Rotate featured titles on Home</small></span><input type="checkbox" data-pref="autoplayPreviews" ${account.preferences.autoplayPreviews !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>New episode alerts<small>Notify me when a show in Favourites has a new episode</small></span><input type="checkbox" data-pref="episodeAlerts" ${account.preferences.episodeAlerts === true ? "checked" : ""}><i></i></label><div class="account-selects"><label class="account-select">Maturity setting<select data-pref="maturity" ${!profile?.kids ? "disabled" : ""}><option ${account.preferences.maturity === "Kids" ? "selected" : ""}>Kids</option><option ${account.preferences.maturity === "13+" ? "selected" : ""}>13+</option><option ${account.preferences.maturity === "16+" ? "selected" : ""}>16+</option><option ${account.preferences.maturity === "18+" ? "selected" : ""}>18+</option></select></label><label class="account-select">Video player<select data-pref="playerProvider"><option value="cinesrc" ${account.preferences.playerProvider === "cinesrc" || !PLAYER_PROVIDERS.includes(account.preferences.playerProvider) ? "selected" : ""}>CineSrc 4K (recommended)</option><option value="vidfast" ${account.preferences.playerProvider === "vidfast" ? "selected" : ""}>VidFast 4K</option><option value="multiembed" ${account.preferences.playerProvider === "multiembed" ? "selected" : ""}>MultiEmbed</option><option value="vidsrc" ${account.preferences.playerProvider === "vidsrc" ? "selected" : ""}>VidSrc</option><option value="2embed" ${account.preferences.playerProvider === "2embed" ? "selected" : ""}>2Embed</option></select></label><label class="account-select">Display language<select data-pref="language"><option ${account.preferences.language === "English" ? "selected" : ""}>English</option><option ${account.preferences.language === "Arabic" ? "selected" : ""}>Arabic</option><option ${account.preferences.language === "French" ? "selected" : ""}>French</option></select></label></div></section>`; }
+function playbackPreferencesPanel(account, profile) { return `<section class="account-content-panel"><div class="account-content-heading"><span class="brand">PLAYBACK & ACCESS</span><h2>${t("Viewing preferences")}</h2><p>These choices apply only to ${escapeHTML(profile?.name || "this profile")}.</p></div><div class="settings-stack"><label class="account-toggle"><span>Autoplay next episode<small>Continue series automatically when available</small></span><input type="checkbox" data-pref="autoplayNext" ${account.preferences.autoplayNext !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Cinematic intro<small>Play the SEVEN ident when the app opens</small></span><input type="checkbox" data-pref="introEnabled" ${account.preferences.introEnabled !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Startup sound<small>Play the ident sound when a sound file is installed</small></span><input type="checkbox" data-pref="startupSound" ${startupSoundEnabled() ? "checked" : ""}><i></i></label><label class="account-toggle"><span>Autoplay spotlight<small>Rotate featured titles on Home</small></span><input type="checkbox" data-pref="autoplayPreviews" ${account.preferences.autoplayPreviews !== false ? "checked" : ""}><i></i></label><label class="account-toggle"><span>New episode alerts<small>Notify me when a show in Favourites has a new episode</small></span><input type="checkbox" data-pref="episodeAlerts" ${account.preferences.episodeAlerts === true ? "checked" : ""}><i></i></label><div class="account-selects"><label class="account-select">Maturity setting<select data-pref="maturity" ${!profile?.kids ? "disabled" : ""}><option ${account.preferences.maturity === "Kids" ? "selected" : ""}>Kids</option><option ${account.preferences.maturity === "13+" ? "selected" : ""}>13+</option><option ${account.preferences.maturity === "16+" ? "selected" : ""}>16+</option><option ${account.preferences.maturity === "18+" ? "selected" : ""}>18+</option></select></label><label class="account-select">Video player<select data-pref="playerProvider"><option value="cinesrc" ${account.preferences.playerProvider === "cinesrc" || !PLAYER_PROVIDERS.includes(account.preferences.playerProvider) ? "selected" : ""}>CineSrc 4K (recommended)</option><option value="vidfast" ${account.preferences.playerProvider === "vidfast" ? "selected" : ""}>VidFast 4K</option><option value="multiembed" ${account.preferences.playerProvider === "multiembed" ? "selected" : ""}>MultiEmbed</option><option value="vidsrc" ${account.preferences.playerProvider === "vidsrc" ? "selected" : ""}>VidSrc</option><option value="2embed" ${account.preferences.playerProvider === "2embed" ? "selected" : ""}>2Embed</option></select></label><label class="account-select">Display language<select data-pref="language"><option ${account.preferences.language === "English" ? "selected" : ""}>English</option><option ${account.preferences.language === "Arabic" ? "selected" : ""}>Arabic</option><option ${account.preferences.language === "French" ? "selected" : ""}>French</option></select></label></div></section>`; }
 function accountPanel(account, profile, tab) {
   if (tab === "playback") return playbackPreferencesPanel(account, profile);
   if (tab === "activity") return `<section class="account-content-panel"><div class="account-content-heading"><span class="brand">YOUR SEVEN</span><h2>${escapeHTML(profile?.name || "Your")} activity</h2><p>Everything this profile has saved, watched, rated, or hidden.</p></div><div class="account-action-grid">${accountAction("◴", "Profile stats", "Watch time, streaks, genres, and completed titles", "data-profile-stats")}${accountAction("♥", "Favourites", `Movies and series saved by ${escapeHTML(profile?.name || "this profile")}`, "data-my-list")}${accountAction("▤", "Viewing activity", "Review or remove watched titles", "data-view-history")}${accountAction("★", "Your ratings", "Titles used to shape recommendations", "data-liked-titles", likedTitles().length || "View")}${accountAction("⊘", "Not for me", "Bring hidden titles back into browse rows", "data-hidden-titles", hiddenTitles().length || "View")}</div></section>`;
@@ -3210,7 +3247,7 @@ function renderAccount() {
   document.querySelector("[data-profile-stats]")?.addEventListener("click", () => { state.route = "stats"; scrollToTop(); render(); });
   document.querySelector("[data-liked-titles]")?.addEventListener("click", () => { state.route = "liked"; scrollToTop(); render(); });
   document.querySelector("[data-install-seven]")?.addEventListener("click", showInstallSEVEN);
-  document.querySelectorAll("[data-pref]").forEach(field => field.onchange = async () => { if (field.dataset.pref === "episodeAlerts" && field.checked && !await requestEpisodeAlerts()) field.checked = false; updateCurrentPreferences({ [field.dataset.pref]:field.type === "checkbox" ? field.checked : field.value }); await saveAccount(); if (field.dataset.pref === "episodeAlerts") notifyNewEpisodes(); if (["language", "maturity"].includes(field.dataset.pref)) { applyLocale(); try { await refreshCatalogForLanguage(); } catch { /* The saved setting is used by the next successful TMDB request. */ } } });
+  document.querySelectorAll("[data-pref]").forEach(field => field.onchange = async () => { if (field.dataset.pref === "startupSound") { try { localStorage.setItem(window.SplashSpec?.soundStorageKey || "seven.startup.sound", String(field.checked)); } catch { } return; } if (field.dataset.pref === "episodeAlerts" && field.checked && !await requestEpisodeAlerts()) field.checked = false; updateCurrentPreferences({ [field.dataset.pref]:field.type === "checkbox" ? field.checked : field.value }); await saveAccount(); if (field.dataset.pref === "episodeAlerts") notifyNewEpisodes(); if (["language", "maturity"].includes(field.dataset.pref)) { applyLocale(); try { await refreshCatalogForLanguage(); } catch { /* The saved setting is used by the next successful TMDB request. */ } } });
   document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!confirm(`Clear viewing history for ${currentProfile()?.name || "this profile"}?`)) return; const profileId = activeProfileId(), prefix = `seven-progress-${profileId}-`; Object.keys(localStorage).filter(key => key.startsWith(prefix)).forEach(key => localStorage.removeItem(key)); forgetProfileProgress(profileId); await clearProfilePlaybackStats(profileId); if (state.session) try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(profileId)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} showAccount(); });
   document.querySelector("[data-change-password]")?.addEventListener("click", showChangePassword);
   document.querySelector("[data-signout]")?.addEventListener("click", signOut);
@@ -3365,7 +3402,7 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js?v=403", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=406", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

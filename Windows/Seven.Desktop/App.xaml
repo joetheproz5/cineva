@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
-    <SolidColorBrush x:Key="CanvasBrush" Color="#08090B" />
+    <SolidColorBrush x:Key="CanvasBrush" Color="#020203" />
     <SolidColorBrush x:Key="PanelBrush" Color="#111215" />
     <SolidColorBrush x:Key="LineBrush" Color="#292A30" />
     <SolidColorBrush x:Key="InkBrush" Color="#F5F5F6" />

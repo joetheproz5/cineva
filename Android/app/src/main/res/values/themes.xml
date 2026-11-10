@@ -2,7 +2,10 @@
     <style name="Theme.Cineva" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#071018</item>
-        <item name="android:navigationBarColor">#071018</item>
+        <item name="android:windowBackground">@color/splash_bg0</item>
+        <item name="android:statusBarColor">@color/splash_bg0</item>
+        <item name="android:navigationBarColor">@color/splash_bg0</item>
+    </style>
+    <style name="Theme.Cineva.Launch" parent="Theme.Cineva">
     </style>
 </resources>

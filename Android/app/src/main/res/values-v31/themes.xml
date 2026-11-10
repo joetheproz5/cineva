@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Cineva.Launch" parent="Theme.Cineva">
+        <item name="android:windowSplashScreenBackground">@color/splash_bg0</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_transparent_icon</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+    </style>
+</resources>

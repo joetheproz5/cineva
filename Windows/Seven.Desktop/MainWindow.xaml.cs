@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Shell;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
@@ -38,6 +39,7 @@ public partial class MainWindow : Window
         "adblock-setup.log");
     private CoreWebView2BrowserExtension? _contentBlockerExtension;
     private CoreWebView2? _webViewCore;
+    private MediaPlayer? _splashPlayer;
     private string? _contentBlockerVersion;
     private string? _contentBlockerError;
     private bool _browserExtensionsAvailable;
@@ -185,7 +187,10 @@ public partial class MainWindow : Window
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsZoomControlEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
+            var reduceMotion = (!SystemParameters.ClientAreaAnimation).ToString().ToLowerInvariant();
+            await core.AddScriptToExecuteOnDocumentCreatedAsync($"window.SEVEN_REDUCED_MOTION = {reduceMotion};");
             core.NavigationStarting += Browser_NavigationStarting;
+            core.WebMessageReceived += Browser_WebMessageReceived;
             core.NewWindowRequested += Browser_NewWindowRequested;
             core.ContainsFullScreenElementChanged += (_, _) =>
             {
@@ -199,6 +204,44 @@ public partial class MainWindow : Window
         {
             Browser.Visibility = Visibility.Collapsed;
             RuntimeHelp.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void Window_ContentRendered(object? sender, EventArgs e)
+    {
+        Opacity = 1;
+    }
+
+    private void Browser_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        if (!Uri.TryCreate(e.Source, UriKind.Absolute, out var source)
+            || !source.IdnHost.Equals(AppHost, StringComparison.OrdinalIgnoreCase)) return;
+        try
+        {
+            using var message = JsonDocument.Parse(e.WebMessageAsJson);
+            if (message.RootElement.TryGetProperty("type", out var type) && type.GetString() == "playSplashSting")
+                PlaySplashStingIfAvailable();
+        }
+        catch (JsonException)
+        {
+            // Ignore messages from the page that do not use the splash bridge format.
+        }
+    }
+
+    private void PlaySplashStingIfAvailable()
+    {
+        var file = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "audio", "splash_sting.wav");
+        if (!File.Exists(file)) return;
+        try
+        {
+            var player = new MediaPlayer { Volume = 0.251 };
+            player.MediaOpened += (_, _) => player.Play();
+            player.Open(new Uri(file, UriKind.Absolute));
+            _splashPlayer = player;
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceWarning("SEVEN could not play its optional splash sting: {0}", exception.GetType().Name);
         }
     }
 

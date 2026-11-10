@@ -11,8 +11,10 @@ let package = Package(
         .executableTarget(
             name: "SEVEN",
             path: "Sources",
+            resources: [.copy("Resources")],
             linkerSettings: [
                 .linkedFramework("AppKit"),
+                .linkedFramework("AVFoundation"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("WebKit")
             ]

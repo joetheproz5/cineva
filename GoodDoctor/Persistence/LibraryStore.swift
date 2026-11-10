@@ -26,4 +26,6 @@ import Combine
     @Published var rememberPosition = UserDefaults.standard.object(forKey: "remember") as? Bool ?? true { didSet { UserDefaults.standard.set(rememberPosition, forKey: "remember") } }
     @Published var cellularPlayback = UserDefaults.standard.object(forKey: "cellular") as? Bool ?? true { didSet { UserDefaults.standard.set(cellularPlayback, forKey: "cellular") } }
     @Published var quality = UserDefaults.standard.string(forKey: "quality") ?? "Auto" { didSet { UserDefaults.standard.set(quality, forKey: "quality") } }
+    @Published var startupIntro = UserDefaults.standard.object(forKey: "seven.startup.intro.enabled") as? Bool ?? true { didSet { UserDefaults.standard.set(startupIntro, forKey: "seven.startup.intro.enabled") } }
+    @Published var startupSound = UserDefaults.standard.object(forKey: "seven.startup.sound.enabled") as? Bool ?? true { didSet { UserDefaults.standard.set(startupSound, forKey: "seven.startup.sound.enabled") } }
 }

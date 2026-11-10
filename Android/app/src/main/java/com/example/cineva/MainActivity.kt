@@ -1,10 +1,14 @@
 package com.example.cineva
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.media.AudioManager
+import android.media.MediaPlayer
 import android.content.pm.ActivityInfo
 import android.graphics.Color
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -12,6 +16,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -62,17 +67,29 @@ class MainActivity : Activity() {
     private var fullscreenPreviousOrientation: Int? = null
     private var fullScreenContainer: FrameLayout? = null
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var splashPlayer: MediaPlayer? = null
+
+    private inner class SevenNativeBridge {
+        @JavascriptInterface
+        fun areAnimationsEnabled(): Boolean = ValueAnimator.areAnimatorsEnabled()
+
+        @JavascriptInterface
+        fun playSplashSting() {
+            runOnUiThread { playSplashStingIfAvailable() }
+        }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AndroidAdBlocker.initialize(applicationContext)
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-        window.statusBarColor = Color.BLACK
-        window.navigationBarColor = Color.BLACK
+        val bg0 = Color.rgb(2, 2, 3)
+        window.statusBarColor = bg0
+        window.navigationBarColor = bg0
 
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
-        fullScreenContainer = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        val root = FrameLayout(this).apply { setBackgroundColor(bg0) }
+        fullScreenContainer = FrameLayout(this).apply { setBackgroundColor(bg0) }
         root.addView(fullScreenContainer, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         web = WebView(this).apply {
@@ -82,11 +99,12 @@ class MainActivity : Activity() {
             settings.builtInZoomControls = false
             settings.displayZoomControls = false
             settings.mediaPlaybackRequiresUserGesture = false
+            addJavascriptInterface(SevenNativeBridge(), "SEVENNative")
             settings.setSupportMultipleWindows(false)
             settings.javaScriptCanOpenWindowsAutomatically = false
             settings.allowFileAccess = false
             settings.allowContentAccess = false
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(bg0)
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                     return if (AndroidAdBlocker.shouldBlock(request)) AndroidAdBlocker.blockedResponse() else null
@@ -159,6 +177,46 @@ class MainActivity : Activity() {
         callback?.onCustomViewHidden()
     }
 
+    private fun playSplashStingIfAvailable() {
+        val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+        if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) <= 0 || audio.isMusicActive) return
+        val descriptor = runCatching { assets.openFd("audio/splash_sting.ogg") }.getOrNull() ?: return
+        val player = MediaPlayer()
+        try {
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+            player.setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+            descriptor.close()
+            player.setOnPreparedListener { prepared ->
+                val currentAudio = getSystemService(AUDIO_SERVICE) as AudioManager
+                if (currentAudio.getStreamVolume(AudioManager.STREAM_MUSIC) > 0 && !currentAudio.isMusicActive) {
+                    splashPlayer?.release()
+                    splashPlayer = prepared
+                    prepared.setOnCompletionListener { completed ->
+                        if (splashPlayer === completed) splashPlayer = null
+                        completed.release()
+                    }
+                    prepared.start()
+                } else {
+                    prepared.release()
+                }
+            }
+            player.setOnErrorListener { failed, _, _ ->
+                if (splashPlayer === failed) splashPlayer = null
+                failed.release()
+                true
+            }
+            player.prepareAsync()
+        } catch (_: Exception) {
+            runCatching { descriptor.close() }
+            player.release()
+        }
+    }
+
     override fun onBackPressed() {
         when {
             customView != null -> exitFullscreen()
@@ -177,6 +235,8 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         if (customView != null) exitFullscreen()
+        splashPlayer?.release()
+        splashPlayer = null
         web.destroy()
         super.onDestroy()
     }

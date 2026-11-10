@@ -20,24 +20,24 @@ test("opening a movie or series does not scroll Home before its details load", (
   assert.match(openItem, /render\(\);\s*scrollToTop\(\);/);
 });
 
-test("the launch intro finishes its reveal and waits for startup before fading", () => {
+test("the procedural launch splash completes its reveal before the staggered handoff", () => {
   const start = app.indexOf("function dismissIntro()");
   const end = app.indexOf("function screenTimeState(", start);
   const intro = app.slice(start, end);
 
   assert.doesNotMatch(intro, /addEventListener\("click", dismissIntro/);
-  assert.match(intro, /logo\.decode\(\)/);
-  assert.match(intro, /event\.animationName === "intro-atmosphere"/);
+  assert.match(intro, /window\.SEVENSplash\.createOverlay/);
   assert.match(intro, /!state\.startupReady \|\| !state\.introAnimationComplete/);
   assert.match(intro, /state\.introSafetyTimer = setTimeout\(/);
+  assert.match(intro, /onExitStart: beginSplashExit/);
+  assert.match(intro, /phases\.screenDelay/);
+  assert.match(intro, /phases\.screenFadeDuration/);
   assert.match(app, /void boot\(\)\.then\(markStartupReady/);
-  assert.doesNotMatch(intro, /prefersReducedMotion|reduced-motion/);
-  assert.match(styles, /\.seven-intro\.exiting/);
-  assert.match(styles, /\.startup-intro-rays \{[^}]*animation: intro-rays/);
-  assert.match(styles, /\.startup-intro-mark \{[^}]*animation: intro-mark-focus/);
-  assert.doesNotMatch(styles, /\.seven-intro\.reduced-motion|\.seven-intro\.live,\.startup-intro-rays/);
-  assert.match(styles, /animation-play-state: paused/);
-  assert.match(index, /ui\.css\?v=311/);
+  assert.match(app, /renderLoading\(\);\s*markStartupReady\(\);/);
+  assert.match(styles, /\.splash-composition \{[^}]*will-change: transform, opacity/);
+  assert.match(index, /SplashSpec\.js\?v=2/);
+  assert.match(index, /splash-animation\.js\?v=2/);
+  assert.match(index, /ui\.css\?v=313/);
   assert.match(index, /auth\.css\?v=284/);
   const appVersion = index.match(/app\.js\?v=(\d+)/)?.[1];
   const workerShellAppVersion = serviceWorker.match(/"app\.js\?v=(\d+)"/)?.[1];
@@ -48,15 +48,11 @@ test("the launch intro finishes its reveal and waits for startup before fading",
   assert.equal(workerCacheVersion, appVersion);
   assert.equal(workerRegistrationVersion, appVersion);
   assert.match(serviceWorker, /auth\.css\?v=284/);
-  assert.match(serviceWorker, /ui\.css\?v=311/);
-  assert.match(serviceWorker, /assets\/seven-wordmark-v2\.png/);
-  const logoAnimationStart = styles.indexOf("@keyframes intro-mark-focus");
-  const logoAnimationEnd = styles.indexOf("@keyframes intro-sweep", logoAnimationStart);
-  const logoAnimation = styles.slice(logoAnimationStart, logoAnimationEnd);
-  assert.match(styles, /\.seven-intro\s*\{[^}]*height:\s*calc\(100svh \+ 96px\)/);
-  assert.match(styles, /\.startup-intro-scene\s*\{[^}]*height:\s*100svh/);
-  assert.doesNotMatch(logoAnimation, /transform\s*:/);
-  assert.doesNotMatch(styles.match(/@keyframes intro-out\s*\{([^}]+)\}/)?.[1] || "", /transform\s*:/);
+  assert.match(serviceWorker, /ui\.css\?v=313/);
+  assert.match(serviceWorker, /assets\/seven-wordmark\.svg/);
+  assert.match(serviceWorker, /SplashSpec\.js\?v=2/);
+  assert.match(serviceWorker, /splash-animation\.js\?v=2/);
+  assert.match(index, /--splash-bg0:#020203/);
 });
 
 test("the footer back-to-top link animates even when reduced motion is requested", () => {

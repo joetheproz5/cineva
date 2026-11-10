@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Combine
 import SwiftUI
 import WebKit
@@ -7,14 +8,18 @@ private let sevenHomeURL = URL(string: "https://seven-9fm.pages.dev/")!
 private let sevenHost = "seven-9fm.pages.dev"
 
 @MainActor
-private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate {
+private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     let webView: WKWebView
 
     @Published private(set) var canGoBack = false
     @Published private(set) var canGoForward = false
+    private var splashPlayer: AVAudioPlayer?
 
     override init() {
         let configuration = WKWebViewConfiguration()
+        let userContent = WKUserContentController()
+        userContent.add(self, name: "sevenSplashAudio")
+        configuration.userContentController = userContent
         configuration.websiteDataStore = .default()
         configuration.allowsAirPlayForMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
@@ -27,7 +32,7 @@ private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelega
         webView.allowsBackForwardNavigationGestures = true
         webView.allowsMagnification = false
         webView.pageZoom = 1.0
-        webView.underPageBackgroundColor = NSColor(calibratedRed: 8.0 / 255.0, green: 9.0 / 255.0, blue: 11.0 / 255.0, alpha: 1)
+        webView.underPageBackgroundColor = NSColor(calibratedRed: 2.0 / 255.0, green: 2.0 / 255.0, blue: 3.0 / 255.0, alpha: 1)
         webView.load(URLRequest(url: sevenHomeURL))
     }
 
@@ -78,6 +83,21 @@ private final class SevenBrowser: NSObject, ObservableObject, WKNavigationDelega
         refreshNavigationState()
     }
 
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "sevenSplashAudio",
+              (message.body as? String) == "play",
+              message.frameInfo.securityOrigin.host == sevenHost,
+              let url = Bundle.module.url(forResource: "splash_sting", withExtension: "wav", subdirectory: "Resources/audio") else { return }
+        do {
+            splashPlayer = try AVAudioPlayer(contentsOf: url)
+            splashPlayer?.volume = 0.251
+            splashPlayer?.prepareToPlay()
+            splashPlayer?.play()
+        } catch {
+            splashPlayer = nil
+        }
+    }
+
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url, ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
             NSWorkspace.shared.open(url)
@@ -110,7 +130,7 @@ private struct SEVENWindow: View {
     var body: some View {
         WebContent(webView: browser.webView)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(nsColor: .windowBackgroundColor))
+            .background(Color(red: 2.0 / 255, green: 2.0 / 255, blue: 3.0 / 255))
             .background(WindowFrameAutosave())
             .preferredColorScheme(.dark)
             .toolbar {
@@ -176,12 +196,27 @@ private struct WindowFrameAutosave: NSViewRepresentable {
 
     final class AutosaveView: NSView {
         private var didSetAutosaveName = false
+        private var didPaintInitialFrame = false
+
+        override func draw(_ dirtyRect: NSRect) {
+            super.draw(dirtyRect)
+            NSColor(calibratedRed: 2.0 / 255.0, green: 2.0 / 255.0, blue: 3.0 / 255.0, alpha: 1).setFill()
+            dirtyRect.fill()
+            guard !didPaintInitialFrame else { return }
+            didPaintInitialFrame = true
+            DispatchQueue.main.async { [weak self] in self?.window?.alphaValue = 1 }
+        }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard !didSetAutosaveName, let window else { return }
-            didSetAutosaveName = true
-            _ = window.setFrameAutosaveName("SEVEN.MainWindow")
+            guard let window else { return }
+            window.backgroundColor = NSColor(calibratedRed: 2.0 / 255.0, green: 2.0 / 255.0, blue: 3.0 / 255.0, alpha: 1)
+            window.isOpaque = true
+            if !didPaintInitialFrame { window.alphaValue = 0 }
+            if !didSetAutosaveName {
+                didSetAutosaveName = true
+                _ = window.setFrameAutosaveName("SEVEN.MainWindow")
+            }
         }
     }
 }
