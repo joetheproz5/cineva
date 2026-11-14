@@ -125,9 +125,10 @@ const activeProfileChoiceKey = () => `${ACTIVE_PROFILE_CHOICE_PREFIX}${profileOw
 function profileSelectionDebugBuild() { return window.__SEVEN_DEBUG__ === true || ["localhost", "127.0.0.1", "::1"].includes(location.hostname); }
 function logActiveProfileSource(source) { if (profileSelectionDebugBuild()) console.info(`[SEVEN] Active profile: ${source}`); }
 function setActiveProfile(id, source, { persistChoice = true } = {}) {
-  const allowedSources = new Set(["explicit tap", "restored from storage"]);
-  console.assert(allowedSources.has(source), "Active profile can only be set by an explicit picker tap or a valid local restore.");
+  const allowedSources = new Set(["explicit tap", "restored from storage", "guest default"]);
+  console.assert(allowedSources.has(source), "Active profile can only come from an explicit picker tap, a valid local restore, or the signed-out guest default.");
   if (!allowedSources.has(source)) throw new Error("Invalid active profile source.");
+  if (source === "guest default" && state.user?.id) return false;
   if (!state.account?.profiles?.some(profile => profile.id === id)) return false;
   state.account.activeProfileId = id;
   state.activeProfileSource = source;
@@ -148,6 +149,10 @@ function restoreActiveProfileSelection() {
   try { savedId = localStorage.getItem(activeProfileChoiceKey()) || ""; } catch {}
   if (savedId && setActiveProfile(savedId, "restored from storage", { persistChoice:false })) return savedId;
   if (savedId) try { localStorage.removeItem(activeProfileChoiceKey()); } catch {}
+  if (!state.user?.id) {
+    const guestProfile = state.account?.profiles?.[0];
+    if (guestProfile && setActiveProfile(guestProfile.id, "guest default", { persistChoice:false })) return guestProfile.id;
+  }
   logActiveProfileSource("none");
   return null;
 }
@@ -395,6 +400,7 @@ function clearSession() {
   state.session = null;
   state.user = null;
   state.account = defaultAccount();
+  restoreActiveProfileSelection();
 }
 function signOut() { globalThis.window?.SEVENDevices?.logout(); clearSession(); resetAppNavigation(); state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileSettingsReturn = null; state.accountReturn = null; state.route = "home"; render(); }
 function accessTokenExpiresSoon(session = state.session) { return !session?.access_token || !session.expires_at || Number(session.expires_at) * 1000 - Date.now() < 90 * 1000; }
@@ -1227,8 +1233,10 @@ function restoreAppNavigation(event) {
 window.addEventListener("popstate", restoreAppNavigation);
 function render() {
   primeSavedAgeRatings();
+  if (state.account && !state.user?.id && !activeProfileId()) restoreActiveProfileSelection();
+  if (!state.user?.id && state.route === "profiles") state.route = "home";
   const profileEditorWithoutActive = state.route === "profile-settings" && state.profileSettingsCategory === "profile" && Boolean(state.profileDraft);
-  if (state.account && !activeProfileId() && state.route !== "profiles" && state.route !== "onboarding" && !profileEditorWithoutActive) {
+  if (state.account && state.user?.id && !activeProfileId() && state.route !== "profiles" && state.route !== "onboarding" && !profileEditorWithoutActive) {
     state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.route = "profiles";
   }
   if (state.route === "account" && state.user && currentProfile()) {
