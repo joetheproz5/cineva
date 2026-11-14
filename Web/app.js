@@ -3840,15 +3840,10 @@ window.addEventListener("message", async event => {
   if (normalized) recordPlaybackEvent(normalized.data);
 });
 if ("serviceWorker" in navigator) {
-  const hadController = Boolean(navigator.serviceWorker.controller), updateKey = "seven.sw.home-refresh.v416";
-  let updateReloaded = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (!hadController || updateReloaded || state.route !== "home") return;
-    try { if (sessionStorage.getItem(updateKey)) return; sessionStorage.setItem(updateKey, "1"); } catch { /* Reload once from memory if storage is unavailable. */ }
-    updateReloaded = true;
-    location.reload();
-  });
-  navigator.serviceWorker.register("service-worker.js?v=421", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  // A newly activated worker can take control a few seconds after launch.
+  // Never reload on controllerchange: that restarted the startup ident over
+  // the already-rendered Home/auth screen and could cut the first ident short.
+  navigator.serviceWorker.register("service-worker.js?v=432", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
