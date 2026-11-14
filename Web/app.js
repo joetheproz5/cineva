@@ -1528,18 +1528,24 @@ function bindHeroControls() {
     void Promise.resolve(rotateHero(direction)).then(changed => { if (changed) announceSlide(); });
     featured.querySelector(`[data-hero-direction="${direction}"]`)?.focus({ preventScroll:true });
   };
-  featured.querySelectorAll("[data-hero-direction]").forEach(button => button.onclick = () => selectAndFocus(Number(button.dataset.heroDirection)));
   featured.querySelectorAll("[data-hero-index]").forEach(button => {
     const index = Number(button.dataset.heroIndex), active = index === state.featuredIndex;
     button.classList.toggle("is-active", active);
     if (active) button.setAttribute("aria-current", "true"); else button.removeAttribute("aria-current");
-    button.onclick = () => { void Promise.resolve(setFeaturedIndex(index)).then(changed => { if (changed) announceSlide(); }); };
   });
-  featured.querySelectorAll(".home-hero-content [data-open]").forEach(button => {
-    const open = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, Number(id)); };
-    button.onclick = open;
-    if (button.role === "button") button.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } };
-  });
+  featured.onclick = event => {
+    const control = event.target.closest?.("[data-hero-direction], [data-hero-index], .home-hero-content [data-open]");
+    if (!control || !featured.contains(control)) return;
+    event.preventDefault();
+    if (control.hasAttribute("data-hero-direction")) return selectAndFocus(Number(control.dataset.heroDirection));
+    if (control.hasAttribute("data-hero-index")) {
+      const index = Number(control.dataset.heroIndex);
+      void Promise.resolve(setFeaturedIndex(index)).then(changed => { if (changed) announceSlide(); });
+      return;
+    }
+    const [type, id] = control.dataset.open.split(":");
+    openItem(type, Number(id));
+  };
 }
 function setFeaturedIndex(index) { return window.SEVENHero.select(index); }
 function rotateHero(direction = 1) { return window.SEVENHero.move(direction); }

@@ -44,11 +44,8 @@
   }
   const loader = createImageLoader();
   let active = null;
-  const scope = () => `${state.user?.id || "guest"}:${activeProfileId()}:${currentPreferences().language}`;
   const artwork = item => [item.backdrop_path ? `${TMDB_BACKDROP}${item.backdrop_path}` : "", posterOf(item), STILL_FALLBACK];
-  function valid(view) {
-    return active === view && state.route === "home" && view.scope === scope() && view.pool === state.featuredPool && document.querySelector("#featured") === view.element;
-  }
+  function valid(view) { return active === view && document.querySelector("#featured") === view.element; }
   function preload(pool = []) {
     // Keep the decoded working set small; do not decode a dozen full-size backdrops on phones.
     pool.slice(0, 2).forEach(item => { void loader.first(artwork(item)).catch(() => {}); });
@@ -138,7 +135,7 @@
     // Keep the arrows and grading stationary; artwork and its copy move as one horizontal slide.
     element.classList.remove("hero-refresh"); element.classList.add("spotlight-ready");
     element.innerHTML = `<div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="spotlight-placeholder" role="status" aria-label="Loading spotlight artwork"></div>${heroNavigation()}`;
-    active = { element, pool:state.featuredPool, scope:scope(), index:state.featuredIndex || 0, target:state.featuredIndex || 0, ticket:0, current:null, animations:[], transition:Promise.resolve(), loading:false };
+    active = { element, pool:state.featuredPool, index:state.featuredIndex || 0, target:state.featuredIndex || 0, ticket:0, current:null, animations:[], transition:Promise.resolve(), loading:false };
     // A one-title fallback is also decoded before its copy is inserted.
     if (!state.featuredPool.length) { active.pool = state.featuredPool = pool; active.index = active.target = 0; }
     bindHeroControls();
