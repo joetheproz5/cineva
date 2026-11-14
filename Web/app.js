@@ -24,6 +24,7 @@ let sessionRefreshPromise;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, activeProfileSource:null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
+let profileGateLayoutAbortController = null;
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -1233,6 +1234,7 @@ function restoreAppNavigation(event) {
 window.addEventListener("popstate", restoreAppNavigation);
 function render() {
   primeSavedAgeRatings();
+  if (state.route !== "profiles" && profileGateLayoutAbortController) { profileGateLayoutAbortController.abort(); profileGateLayoutAbortController = null; }
   if (state.account && !state.user?.id && !activeProfileId()) restoreActiveProfileSelection();
   if (!state.user?.id && state.route === "profiles") state.route = "home";
   const profileEditorWithoutActive = state.route === "profile-settings" && state.profileSettingsCategory === "profile" && Boolean(state.profileDraft);
@@ -1418,10 +1420,31 @@ function renderProfileGate() {
   const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro"));
   const profileTiles = account.profiles.map((profile, index) => '<button type="button" class="profile-choice" data-watch-profile="' + escapeHTML(profile.id) + '" aria-label="Profile ' + escapeHTML(profile.name) + '" style="--profile-index:' + index + '">' + profileGateAvatar(profile) + '<b title="' + escapeHTML(profile.name) + '">' + escapeHTML(profile.name) + '</b></button>').join("");
   const addIndex = account.profiles.length;
-  const addProfile = account.profiles.length < 5 ? '<button type="button" class="profile-choice profile-choice-add" data-add-profile-gate style="--profile-index:' + addIndex + '" aria-label="Add profile"><span class="profile-add-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>Add profile</b></button>' : "";
-  const scrollable = account.profiles.length + (addProfile ? 1 : 0) > 6 ? "profile-gate-scrollable" : "";
-  app.innerHTML = '<main class="profile-gate ' + (hasIntro ? "profile-gate-pending" : "profile-gate-ready") + ' ' + scrollable + '"><div class="profile-gate-glow" aria-hidden="true"></div><header class="profile-gate-top"><img src="assets/seven-wordmark.svg" alt="SEVEN" width="1544" height="407"></header><section class="profile-gate-content" aria-labelledby="profile-gate-title"><h1 id="profile-gate-title">' + t("Who’s watching?") + '</h1><div class="profile-chooser" aria-label="Profiles">' + profileTiles + addProfile + '</div></section></main>';
+  const addProfile = account.profiles.length < 5 ? '<button type="button" class="profile-choice profile-gate-add" data-add-profile-gate style="--profile-index:' + addIndex + '" aria-label="Add profile"><span class="profile-gate-add-plus" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4.5v15M4.5 12h15"/></svg></span><span class="profile-gate-add-label">Add profile</span></button>' : "";
+  app.innerHTML = '<main class="profile-gate ' + (hasIntro ? "profile-gate-pending" : "profile-gate-ready") + '"><div class="profile-gate-glow" aria-hidden="true"></div><header class="profile-gate-top"><img src="assets/seven-wordmark.svg" alt="SEVEN" width="1544" height="407"></header><section class="profile-gate-content" aria-labelledby="profile-gate-title"><h1 id="profile-gate-title">' + t("Who’s watching?") + '</h1><div class="profile-gate-tile-area"><div class="profile-gate-tile-stack"><div class="profile-chooser" aria-label="Profiles">' + profileTiles + '</div>' + addProfile + '</div></div></section></main>';
   const gate = document.querySelector(".profile-gate");
+  profileGateLayoutAbortController?.abort();
+  const layoutAbortController = new AbortController();
+  profileGateLayoutAbortController = layoutAbortController;
+  const syncTileArea = () => {
+    if (!gate?.isConnected) return;
+    const content = gate.querySelector(".profile-gate-content"), title = gate.querySelector("#profile-gate-title"), area = gate.querySelector(".profile-gate-tile-area");
+    if (!content || !title || !area) return;
+    const width = window.innerWidth || document.documentElement.clientWidth, height = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
+    const mobile = width < 600, tileCount = account.profiles.length + (account.profiles.length < 5 ? 1 : 0);
+    const oldTileSize = mobile ? 112 : 140, oldColumns = mobile ? 2 : Math.max(1, Math.floor((Math.min(width - 64, 1080) + 32) / 172));
+    const rows = Math.max(1, Math.ceil(tileCount / oldColumns)), oldLabelHeight = parseFloat(getComputedStyle(title).fontSize) * 15 / 28 * 1.25;
+    const oldCardHeight = oldTileSize + 12 + oldLabelHeight, oldRowGap = mobile ? 28 : 32;
+    const oldContentHeight = title.getBoundingClientRect().height + 40 + rows * oldCardHeight + (rows - 1) * oldRowGap;
+    const stableTitleTop = height * 0.45 - oldContentHeight / 2;
+    const availableAreaHeight = Math.max(0, height - stableTitleTop - title.getBoundingClientRect().height - 40);
+    area.style.height = availableAreaHeight + "px";
+    content.style.setProperty("--profile-gate-title-shift", ((content.getBoundingClientRect().height - oldContentHeight) / 2) + "px");
+  };
+  const queueTileAreaSync = () => requestAnimationFrame(syncTileArea);
+  window.addEventListener("resize", queueTileAreaSync, { passive:true, signal:layoutAbortController.signal });
+  window.visualViewport?.addEventListener("resize", queueTileAreaSync, { passive:true, signal:layoutAbortController.signal });
+  syncTileArea();
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) gate?.classList.replace("profile-gate-pending", "profile-gate-ready");
   bindProfileGateAvatarLoads(gate);
   document.querySelectorAll("[data-watch-profile]").forEach(button => button.onclick = () => { const profile = account.profiles.find(item => item.id === button.dataset.watchProfile); if (!profile) return; if (profile.pinHash && !profile.kids) showProfileUnlock(profile); else beginProfileGateSelection(profile.id); });
@@ -3843,7 +3866,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=432", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=433", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
