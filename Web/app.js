@@ -1508,23 +1508,33 @@ function renderHome() {
 function heroNavigation() {
   const count = state.featuredPool.length;
   if (count < 2) return "";
-  const position = String(state.featuredIndex + 1).padStart(2, "0"), total = String(count).padStart(2, "0");
-  return `<div class="hero-nav" aria-label="Featured titles"><button class="hero-arrow hero-arrow-prev" data-hero-direction="-1" aria-label="Previous featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button><span class="hero-counter" aria-live="polite"><b>${position}</b><i>/</i>${total}</span><button class="hero-arrow hero-arrow-next" data-hero-direction="1" aria-label="Next featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button></div>`;
+  const indicators = state.featuredPool.map((_, index) => `<button class="hero-indicator${index === state.featuredIndex ? " is-active" : ""}" type="button" data-hero-index="${index}" aria-label="Go to slide ${index + 1}"${index === state.featuredIndex ? ' aria-current="true"' : ""}><span aria-hidden="true"></span></button>`).join("");
+  return `<div class="hero-nav" aria-label="Featured titles"><button class="hero-arrow hero-arrow-prev" type="button" data-hero-direction="-1" aria-label="Previous featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button><div class="hero-indicators" role="group" aria-label="Featured slides">${indicators}</div><span class="hero-slide-live" data-hero-slide-live role="status" aria-live="polite" aria-atomic="true"></span><button class="hero-arrow hero-arrow-next" type="button" data-hero-direction="1" aria-label="Next featured title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button></div>`;
 }
 function featuredMarkup(f = state.featured) {
   if (!f) return `<div class="hero-skeleton skeleton"></div>`;
-  const backdrop = f.backdrop_path ? `${TMDB_BACKDROP}${f.backdrop_path}` : posterOf(f), score = Number(f.vote_average) || 0, type = contentType(f), description = f.overview || "Discover a new story selected for you on SEVEN.";
-  const words = escapeHTML(titleOf(f)).split(/\s+/).map((word, index) => `<span class="hero-word" style="animation-delay:${.42 + index * .09}s">${word}</span>`).join("");
-  return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')"></div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-layout"><div class="home-hero-content"><p class="hero-eyebrow">TONIGHT ON SEVEN</p><h1>${words}</h1><div class="hero-meta"><strong>${score ? `${Math.round(score * 10)}% match` : "Featured"}</strong><span>${yearOf(f) || "New"}</span><span>${type === "tv" ? "Series" : "Movie"}</span><span class="hero-rating">${type === "tv" ? "TV SERIES" : "FEATURED FILM"}</span></div><p class="hero-synopsis">${escapeHTML(description)}</p><div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><span class="hero-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><span>${t("Watch now")}</span></button><button type="button" class="hero-info-link" data-open="${type}:${f.id}"><span>More info</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div></div></div>${heroNavigation()}`;
+  const backdrop = f.backdrop_path ? `${TMDB_BACKDROP}${f.backdrop_path}` : posterOf(f), type = contentType(f), year = yearOf(f), description = String(f.overview || "").trim();
+  const meta = [year, type === "tv" ? "Series" : "Movie"].filter(Boolean).join(" · ");
+  return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')"></div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-layout"><div class="home-hero-content${description ? " has-synopsis" : ""}"><h1>${escapeHTML(titleOf(f))}</h1>${meta ? `<div class="hero-meta">${escapeHTML(meta)}</div>` : ""}${description ? `<p class="hero-synopsis">${escapeHTML(description)}</p>` : ""}<div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg class="hero-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>${t("Watch now")}</span></button><button type="button" class="hero-info-link" data-open="${type}:${f.id}"><span>More info</span></button></div></div></div>${heroNavigation()}`;
 }
 function bindHeroControls() {
   const featured = document.querySelector("#featured");
   if (!featured) return;
+  const announceSlide = () => {
+    const live = featured.querySelector("[data-hero-slide-live]");
+    if (live) live.textContent = `Slide ${state.featuredIndex + 1} of ${state.featuredPool.length}`;
+  };
   const selectAndFocus = direction => {
-    void rotateHero(direction);
+    void Promise.resolve(rotateHero(direction)).then(changed => { if (changed) announceSlide(); });
     featured.querySelector(`[data-hero-direction="${direction}"]`)?.focus({ preventScroll:true });
   };
   featured.querySelectorAll("[data-hero-direction]").forEach(button => button.onclick = () => selectAndFocus(Number(button.dataset.heroDirection)));
+  featured.querySelectorAll("[data-hero-index]").forEach(button => {
+    const index = Number(button.dataset.heroIndex), active = index === state.featuredIndex;
+    button.classList.toggle("is-active", active);
+    if (active) button.setAttribute("aria-current", "true"); else button.removeAttribute("aria-current");
+    button.onclick = () => { void Promise.resolve(setFeaturedIndex(index)).then(changed => { if (changed) announceSlide(); }); };
+  });
   featured.querySelectorAll(".home-hero-content [data-open]").forEach(button => {
     const open = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, Number(id)); };
     button.onclick = open;
