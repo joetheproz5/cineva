@@ -3065,11 +3065,12 @@ const PROFILE_COLORS = ["#d41520", "#2f73c9", "#8e44ad", "#008f73", "#d08a16"];
 const AVATAR_OPTIONS = [
   ["Arctic fox", "assets/avatars/red-panda.png"], ["Astronaut", "assets/avatars/black-cat.png"], ["Robot", "assets/avatars/astronaut.png"],
   ["Baby dragon", "assets/avatars/dino.png"], ["Owl", "assets/avatars/duck.png"], ["Penguin", "assets/avatars/robot.png"],
-  ["Raccoon", "assets/avatars/raccoon.webp"], ["Bear cub", "assets/avatars/bear-cub.webp"], ["Hedgehog", "assets/avatars/hedgehog.webp"], ["Wolf pup", "assets/avatars/wolf-pup.webp"]
+  ["Raccoon", "assets/avatars/raccoon.webp"], ["Bear cub", "assets/avatars/bear-cub.webp"], ["Hedgehog", "assets/avatars/hedgehog.webp"]
 ];
+const RETIRED_AVATAR_SOURCES = new Set(["assets/avatars/wolf-pup.webp"]);
 const ONBOARDING_GENRES = [[28,"Action",10759],[12,"Adventure",10759],[16,"Animation",16],[35,"Comedy",35],[80,"Crime",80],[99,"Documentary",99],[18,"Drama",18],[10751,"Family",10751],[27,"Horror",27],[9648,"Mystery",9648],[10749,"Romance",10749],[53,"Thriller",53]];
 const FAMILY_FRIENDLY_GENRES = new Set([12,16,35,99,10751]);
-function isProfileAvatar(value) { return AVATAR_OPTIONS.some(([, path]) => path === value) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(value || "")); }
+function isProfileAvatar(value) { return AVATAR_OPTIONS.some(([, path]) => path === value) || RETIRED_AVATAR_SOURCES.has(value) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(value || "")); }
 function prepareUploadedAvatar(file) { return new Promise((resolve, reject) => { if (!file?.type?.startsWith("image/")) return reject(new Error("Choose an image file.")); if (file.size > 10 * 1024 * 1024) return reject(new Error("Choose an image smaller than 10 MB.")); const reader = new FileReader(); reader.onerror = () => reject(new Error("That image could not be read.")); reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("That image format is not supported.")); image.onload = () => { const edge = 120, canvas = document.createElement("canvas"), scale = Math.max(edge / image.naturalWidth, edge / image.naturalHeight), width = image.naturalWidth * scale, height = image.naturalHeight * scale; canvas.width = edge; canvas.height = edge; canvas.getContext("2d").drawImage(image, (edge - width) / 2, (edge - height) / 2, width, height); const avatar = canvas.toDataURL("image/jpeg", .78); if (avatar.length > 30000) return reject(new Error("Choose a simpler photo so it can sync with your profile.")); resolve(avatar); }; image.src = String(reader.result); }; reader.readAsDataURL(file); }); }
 function isSocialOAuthUser() {
   const provider = state.user?.app_metadata?.provider;
@@ -3443,7 +3444,7 @@ function profileEditorInitialSelection(profile, isNew) {
   return AVATAR_OPTIONS.find(([, avatar]) => !used.has(avatar))?.[1] || AVATAR_OPTIONS[0]?.[1] || null;
 }
 function profileEditorFormMarkup(profile, isNew, canRemove) {
-  const selectedAvatar = profileEditorInitialSelection(profile, isNew), isPreset = AVATAR_OPTIONS.some(([, path]) => path === profile.avatar), customAvatar = !isNew && isProfileAvatar(profile.avatar) && !isPreset;
+  const selectedAvatar = profileEditorInitialSelection(profile, isNew), isPreset = AVATAR_OPTIONS.some(([, path]) => path === profile.avatar), customAvatar = !isNew && isProfileAvatar(profile.avatar) && !isPreset && !RETIRED_AVATAR_SOURCES.has(profile.avatar);
   const avatarTiles = AVATAR_OPTIONS.map(([, path], index) => `<button type="button" role="radio" class="profile-editor-avatar-choice ${selectedAvatar === path ? "selected" : ""}" data-avatar-choice="preset-${index}" aria-label="Avatar ${index + 1}" aria-checked="${selectedAvatar === path}"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(path, profile.name)}</span></button>`).join("")
     + (customAvatar ? `<button type="button" role="radio" class="profile-editor-avatar-choice selected" data-avatar-choice="current" aria-label="Avatar ${AVATAR_OPTIONS.length + 1}" aria-checked="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(profile.avatar, profile.name)}</span></button>` : "");
   const counterVisible = String(profile.name || "").length >= 19;
@@ -3867,7 +3868,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=435", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=436", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
