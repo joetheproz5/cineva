@@ -3868,7 +3868,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=437", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=438", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
