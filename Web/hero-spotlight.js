@@ -63,13 +63,13 @@
     const view = active; active = null; view.ticket++;
     view.animations.forEach(animation => animation.cancel());
   }
-  function panel(item, url) {
+  function panel(item, url = STILL_FALLBACK) {
     const template = document.createElement("template");
     template.innerHTML = featuredMarkup(item);
     const slide = document.createElement("div");
     slide.className = "spotlight-slide"; slide.dataset.spotlightTitle = `${contentType(item)}:${item.id}`;
     const backdrop = template.content.querySelector(".home-hero-backdrop");
-    backdrop.style.backgroundImage = `url(${JSON.stringify(url)})`;
+    backdrop.style.backgroundImage = `url(${JSON.stringify(url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
     slide.append(backdrop, template.content.querySelector(".home-hero-layout"));
     return slide;
   }
@@ -83,34 +83,31 @@
     if (!view || !valid(view) || !view.pool.length) return false;
     const count = view.pool.length, target = ((index % count) + count) % count;
     view.target = target;
-    if (target === view.index && view.current && !view.loading) return false;
+    if (target === view.index && view.current) return false;
     const ticket = ++view.ticket;
-    busy(view, true);
-    let ready;
-    try { ready = await loader.first(artwork(view.pool[target])); }
-    catch {
-      if (valid(view) && ticket === view.ticket) {
-        busy(view, false);
-        if (!view.current) view.element.querySelector(".spotlight-placeholder")?.setAttribute("aria-label", "Spotlight unavailable. Try again.");
-      }
-      return false;
-    }
-    if (!valid(view) || ticket !== view.ticket) return false;
-    await view.transition;
-    if (!valid(view) || ticket !== view.ticket) return false;
-    const next = panel(view.pool[target], ready.url), previous = view.current;
+    // Navigation must not wait for a remote image. Cancel any in-flight transition,
+    // retain its current slide, and show the new title over the local fallback first.
+    view.animations.forEach(animation => animation.cancel());
+    view.animations = [];
+    view.element.querySelectorAll(".spotlight-slide").forEach(slide => { if (slide !== view.current) slide.remove(); });
+    view.transition = Promise.resolve();
+    const item = view.pool[target], previous = view.current, next = panel(item);
     view.element.append(next);
     view.current = next; view.index = target;
-    state.featuredIndex = target; state.featured = view.pool[target];
+    state.featuredIndex = target; state.featured = item;
     view.element.querySelector(".spotlight-placeholder")?.remove();
-    const counter = view.element.querySelector(".hero-counter b");
-    if (counter) counter.textContent = String(target + 1).padStart(2, "0");
     bindHeroControls();
     warmNeighbours(view);
+    const backdrop = next.querySelector(".home-hero-backdrop");
+    void loader.first(artwork(item)).then(ready => {
+      if (!valid(view) || ticket !== view.ticket || view.current !== next || !backdrop) return;
+      backdrop.style.backgroundImage = `url(${JSON.stringify(ready.url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
+    }).catch(() => {});
     const reduced = root.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (!previous || reduced || typeof next.animate !== "function") {
       previous?.remove(); busy(view, false); return true;
     }
+    busy(view, true);
     previous.setAttribute("aria-hidden", "true"); previous.inert = true;
     const offset = view.element.getBoundingClientRect().width * (direction < 0 ? -1 : 1);
     const options = { duration:620, easing:"cubic-bezier(.22,.72,.22,1)", fill:"both" };
