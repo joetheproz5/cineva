@@ -87,7 +87,6 @@
     view.animations.forEach(animation => animation.cancel());
     view.animations = [];
     view.element.querySelectorAll(".spotlight-slide").forEach(slide => { if (slide !== view.current) slide.remove(); });
-    view.transition = Promise.resolve();
     const item = view.pool[target], previous = view.current, next = panel(item);
     view.element.append(next);
     view.current = next; view.index = target;
@@ -110,22 +109,25 @@
     const options = { duration:620, easing:"cubic-bezier(.22,.72,.22,1)", fill:"both" };
     const outgoing = [...previous.querySelectorAll(".home-hero-backdrop, .home-hero-layout")];
     const incoming = [...next.querySelectorAll(".home-hero-backdrop, .home-hero-layout")];
-    view.animations = [
+    const animations = [
       ...outgoing.map(element => element.animate([{ transform:"translateX(0px)" }, { transform:`translateX(${-offset}px)` }], options)),
       ...incoming.map(element => element.animate([{ transform:`translateX(${offset}px)` }, { transform:"translateX(0px)" }], options))
     ];
-    view.transition = Promise.allSettled(view.animations.map(animation => animation.finished)).then(() => {
-      previous.remove();
-      view.animations.forEach(animation => animation.cancel()); view.animations = [];
-      if (valid(view) && ticket === view.ticket) busy(view, false);
+    view.animations = animations;
+    void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
+      if (previous !== view.current) previous.remove();
+      // An older canceled transition must never cancel or clear a newer one.
+      if (!valid(view) || ticket !== view.ticket) return;
+      animations.forEach(animation => animation.cancel());
+      if (view.animations === animations) view.animations = [];
+      busy(view, false);
     });
-    await view.transition;
-    return valid(view);
+    return true;
   }
   function move(direction = 1, { automatic = false } = {}) {
     const view = active;
     if (!view || !valid(view) || view.pool.length < 2 || automatic && (view.loading || document.hidden)) return Promise.resolve(false);
-    return select((view.loading ? view.target : view.index) + direction, direction);
+    return select(view.index + direction, direction);
   }
   function mount() {
     cancel();
@@ -135,7 +137,7 @@
     // Keep the arrows and grading stationary; artwork and its copy move as one horizontal slide.
     element.classList.remove("hero-refresh"); element.classList.add("spotlight-ready");
     element.innerHTML = `<div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="spotlight-placeholder" role="status" aria-label="Loading spotlight artwork"></div>${heroNavigation()}`;
-    active = { element, pool:state.featuredPool, index:state.featuredIndex || 0, target:state.featuredIndex || 0, ticket:0, current:null, animations:[], transition:Promise.resolve(), loading:false };
+    active = { element, pool:state.featuredPool, index:state.featuredIndex || 0, target:state.featuredIndex || 0, ticket:0, current:null, animations:[], loading:false };
     // A one-title fallback is also decoded before its copy is inserted.
     if (!state.featuredPool.length) { active.pool = state.featuredPool = pool; active.index = active.target = 0; }
     bindHeroControls();
