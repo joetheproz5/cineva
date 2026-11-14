@@ -1389,8 +1389,8 @@ async function activateProfile(id, { handoff = false } = {}) {
       enterHome();
       return;
     }
-    gate?.classList.add("profile-gate-brand-zoom");
-    await new Promise(resolve => setTimeout(resolve, 820));
+    gate?.classList.add("profile-gate-image-zoom");
+    await new Promise(resolve => setTimeout(resolve, 680));
     if (state.route === "profiles") enterHome();
   } else if (state.route === "home") render();
 }
@@ -1408,8 +1408,9 @@ function beginProfileGateSelection(id) {
     gate.style.setProperty("--handoff-y", `${rect.top + rect.height / 2 - centerY}px`);
     gate.style.setProperty("--handoff-scale", String(rect.width / handoffSize));
     gate.style.setProperty("--handoff-size", `${handoffSize}px`);
+    gate.style.setProperty("--handoff-zoom-scale", String(Math.max(gate.clientWidth, gate.clientHeight) * 1.2 / handoffSize));
     gate.style.setProperty("--handoff-label-offset", `${handoffSize / 2 + 27}px`);
-    gate.insertAdjacentHTML("beforeend", '<div class="profile-gate-handoff-layer" aria-hidden="true"><div class="profile-gate-handoff-avatar">' + profileGateAvatar(profile) + '</div><img class="profile-gate-brand-mark" src="assets/seven-wordmark.svg" alt=""></div><div class="profile-gate-loading" role="status" aria-live="polite"><i aria-hidden="true"></i><span>' + escapeHTML(t("Loading your profile")) + '</span></div>');
+    gate.insertAdjacentHTML("beforeend", '<div class="profile-gate-handoff-layer" aria-hidden="true"><div class="profile-gate-handoff-avatar">' + profileGateAvatar(profile) + '</div></div><div class="profile-gate-loading" role="status" aria-live="polite"><i aria-hidden="true"></i><span>' + escapeHTML(t("Loading your profile")) + '</span></div>');
     bindProfileGateAvatarLoads(gate);
   }
   gate.dataset.selectionStartedAt = String(performance.now());
