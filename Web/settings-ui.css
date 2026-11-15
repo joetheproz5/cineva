@@ -286,3 +286,83 @@
   .profile-settings-page.settings-screen .profile-mobile-toggle em::after,
   .settings-toast,.settings-toast.is-leaving { transition: none !important; animation: none !important; }
 }
+
+/* Settings polish pass: grouped tonal rows and consistent leading iconography. */
+.profile-settings-page.settings-screen {
+  --settings-surface: color-mix(in srgb, var(--text) 5%, transparent);
+  --settings-row-hover: color-mix(in srgb, var(--text) 6%, transparent);
+  --settings-divider: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.profile-settings-page.settings-screen .profile-settings-groups { margin-top: 24px; }
+.profile-settings-page.settings-screen .profile-settings-group + .profile-settings-group,
+.profile-settings-page.settings-screen .profile-settings-signout { margin-top: 28px; }
+.profile-settings-page.settings-screen .profile-settings-group-heading { margin: 0 0 8px; padding: 0 16px; }
+.profile-settings-page.settings-screen .profile-settings-group-heading h3,
+.profile-settings-page.settings-screen .settings-section > h2 { color: var(--muted); font-size: 13px; font-weight: 560; line-height: 1.4; }
+.profile-settings-page.settings-screen .profile-category-list,
+.profile-settings-page.settings-screen .settings-section-rows { overflow: hidden; border: 0; border-radius: 16px; background: var(--settings-surface); box-shadow: none; }
+.profile-settings-page.settings-screen .settings-disclosure { border: 0; border-radius: 0; background: transparent; }
+.profile-settings-page.settings-screen .profile-category-row,
+.profile-settings-page.settings-screen .settings-action-row { grid-template-columns: 22px minmax(0, 1fr) auto; gap: 16px; width: 100%; min-height: 64px; margin: 0; padding: 14px 16px; border: 0; border-radius: 0; background: transparent; }
+.profile-settings-page.settings-screen .profile-category-row:hover,
+.profile-settings-page.settings-screen .settings-action-row:hover,
+.profile-settings-page.settings-screen .profile-mobile-row:hover { border-radius: 0; background: var(--settings-row-hover); }
+.profile-settings-page.settings-screen .profile-category-row:active,
+.profile-settings-page.settings-screen .settings-action-row:active,
+.profile-settings-page.settings-screen .profile-mobile-row:active { background: var(--settings-row-hover); }
+.profile-settings-page.settings-screen .profile-category-row::after,
+.profile-settings-page.settings-screen .settings-action-row::after,
+.profile-settings-page.settings-screen .profile-mobile-row::after { position: absolute; right: 0; bottom: 0; left: 54px; height: 1px; background: var(--settings-divider); content: ""; pointer-events: none; }
+.profile-settings-page.settings-screen .profile-mobile-row::after { left: 16px; }
+.profile-settings-page.settings-screen .profile-category-list > :last-child::after,
+.profile-settings-page.settings-screen .settings-section-rows > :last-child::after,
+.profile-settings-page.settings-screen .settings-section-rows .screen-time-rows > :last-child::after,
+.profile-settings-page.settings-screen .settings-section-rows .profile-settings-subsection > :last-child::after { display: none; }
+.profile-settings-page.settings-screen .profile-category-row > .settings-leading-icon,
+.profile-settings-page.settings-screen .settings-action-row > i { display: grid !important; width: 22px; height: 22px; flex: 0 0 22px; place-items: center; margin: 0; border: 0; border-radius: 0; color: var(--muted); background: transparent; }
+.profile-settings-page.settings-screen .settings-leading-icon svg,
+.profile-settings-page.settings-screen .settings-action-row > i svg { display: block; width: 22px; height: 22px; color: var(--muted); }
+.profile-settings-page.settings-screen .profile-category-copy,
+.profile-settings-page.settings-screen .settings-action-row > span { min-width: 0; }
+.profile-settings-page.settings-screen .profile-category-row b,
+.profile-settings-page.settings-screen .settings-action-row b,
+.profile-settings-page.settings-screen .profile-mobile-row b { color: var(--text); font-size: 16px; font-weight: 560; line-height: 1.35; }
+.profile-settings-page.settings-screen .profile-category-row small,
+.profile-settings-page.settings-screen .settings-action-row small,
+.profile-settings-page.settings-screen .profile-mobile-row small { color: var(--muted); font-size: 13px; font-weight: 400; line-height: 1.4; }
+.profile-settings-page.settings-screen .settings-action-row > em { gap: 12px; color: var(--muted); font-size: 14px; font-weight: 400; }
+.profile-settings-page.settings-screen .profile-mobile-select .settings-select-value { font-size: 14px; }
+.profile-settings-page.settings-screen .family-title-results button,
+.profile-settings-page.settings-screen .family-blocked-list button { font-size: 13px; }
+.profile-settings-page.settings-screen .dns-filtering-card .settings-disclosure-body > small { font-size: 13px; }
+.profile-settings-page.settings-screen .profile-category-arrow,
+.profile-settings-page.settings-screen .settings-action-row > em svg,
+.profile-settings-page.settings-screen .profile-mobile-select .settings-select-chevron { color: color-mix(in srgb, var(--muted) 68%, transparent); }
+.profile-settings-page.settings-screen .profile-mobile-row { min-height: 64px; padding: 14px 16px; border: 0; border-radius: 0; background: transparent; }
+.profile-settings-page.settings-screen .profile-mobile-row > i { display: none; }
+.profile-settings-page.settings-screen .profile-mobile-row:has(input:disabled) em,
+.profile-settings-page.settings-screen .profile-mobile-row:has(select:disabled) .settings-select-value,
+.profile-settings-page.settings-screen .profile-mobile-row:has(select:disabled) .settings-select-chevron { opacity: .45; }
+.profile-settings-page.settings-screen .settings-section { margin-top: 28px; }
+.profile-settings-page.settings-screen .settings-section:first-child { margin-top: 20px; }
+.profile-settings-page.settings-screen .settings-section > h2 { margin: 0 0 8px; padding: 0 16px; }
+.profile-settings-page.settings-screen .settings-signout-row { grid-template-columns: 22px minmax(0, 1fr); min-height: 64px; border-radius: 16px; background: var(--settings-surface); }
+.profile-settings-page.settings-screen .settings-signout-row:hover,
+.profile-settings-page.settings-screen .settings-signout-row:active { border-radius: 16px; background: var(--settings-row-hover); }
+.profile-settings-page.settings-screen .settings-signout-row b { color: var(--text); }
+.profile-settings-page.settings-screen .profile-hub-switch { min-width: 0; min-height: 36px; height: 36px; padding: 0 14px; border: 0; border-radius: 10px; color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); font-size: 14px; font-weight: 560; }
+.profile-settings-page.settings-screen .profile-hub-switch:hover { color: var(--text); background: color-mix(in srgb, var(--text) 12%, transparent); }
+.profile-settings-page.settings-screen .profile-hub-switch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media(max-width:600px){
+  .profile-settings-page.settings-screen .profile-category-list,
+  .profile-settings-page.settings-screen .settings-section-rows { margin-inline: 16px; }
+  .profile-settings-page.settings-screen .profile-settings-signout .settings-signout-row { width: calc(100% - 32px); margin-inline: 16px; }
+  .profile-settings-page.settings-screen .profile-settings-group + .profile-settings-group,
+  .profile-settings-page.settings-screen .profile-settings-signout { margin-top: 28px; }
+  .profile-settings-page.settings-screen .profile-settings-page-heading { margin-bottom: 0; }
+  .profile-settings-page.settings-screen .profile-settings-group-heading,
+  .profile-settings-page.settings-screen .settings-section > h2 { margin-inline: 16px; }
+  .profile-settings-page.settings-screen .profile-category-row,
+  .profile-settings-page.settings-screen .settings-action-row,
+  .profile-settings-page.settings-screen .profile-mobile-row { min-height: 64px; }
+}

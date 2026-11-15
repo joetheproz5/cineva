@@ -8,15 +8,25 @@
   const paths={
     lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/>',
     shield:'<path d="m12 3 8 3v5c0 5-3 8-8 10-5-2-8-5-8-10V6z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>',
+    users:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    'user-edit':'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="m16 11 4-4 2 2-4 4-3 1z"/>',
+    'play-circle':'<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/>',
+    globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.3 2.5 3.4 5.5 3.4 9S14.3 18.5 12 21c-2.3-2.5-3.4-5.5-3.4-9S9.7 5.5 12 3z"/>',
     devices:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8m-4-5v5"/>',
     password:'<circle cx="8" cy="9" r="4"/><path d="m11 12 9 9m-3-3 3-3m-6 0 3-3"/>',
+    smartphone:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
+    mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
+    sliders:'<path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M2 14h4m4-6h4m4 8h4"/>',
     download:'<path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/>',
     history:'<path d="M4 8a8.5 8.5 0 1 1-1 7M3 3v6h6m3-2v6l4 2"/>',
     exit:'<path d="M9 4H4v16h5m5-13 5 5-5 5m-6-5h11"/>',
     trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
     stats:'<path d="M4 20V10m5 10V4m6 16v-7m5 7V8"/>',
     heart:'<path d="M20.5 5.5a5 5 0 0 0-7 0L12 7l-1.5-1.5a5 5 0 0 0-7 7L12 21l8.5-8.5a5 5 0 0 0 0-7z"/>',
+    star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
     eye:'<path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9 5.3C10 5.1 11 5 12 5c6 0 10 7 10 7a20 20 0 0 1-4 4M6 6a20 20 0 0 0-4 6s4 7 10 7c1.5 0 3-.3 4.3-.9"/>',
+    'eye-off':'<path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-4.1 4.7M6.2 6.2A19 19 0 0 0 2 12s4 7 10 7c1.1 0 2.2-.2 3.1-.5"/>',
+    bookmark:'<path d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-6-4-6 4z"/>',
     titles:'<rect x="4" y="3" width="13" height="17" rx="2"/><path d="M8 7h5m-5 4h5m7-4v14H8"/>',
     arrow:'<path d="m9 5 7 7-7 7"/>'
   };
@@ -30,8 +40,9 @@
     draft={scope:page.dataset.settingsScope,fields:[...page.querySelectorAll("#profile-settings-form input, #profile-settings-form select, #profile-settings-form textarea")].filter(field=>!secret(field)&&(field.name||field.id)).map(field=>({name:field.name,id:field.id,type:field.type,value:field.value,checked:field.checked})),open:[...page.querySelectorAll("details[data-settings-disclosure][open]")].map(el=>el.dataset.settingsDisclosure)};
   }
   function decorateActions(page){
-    const icons=[["[data-change-parent-code]","shield"],["[data-change-password]","password"],["[data-manage-devices]","devices"],["[data-install-seven]","download"],["[data-clear-history]","history"],["[data-signout]","exit"],["[data-remove-profile]","trash"],["[data-profile-stats]","stats"],["[data-my-list]","heart"],["[data-view-history]","history"],["[data-liked-titles]","heart"],["[data-hidden-titles]","eye"]];
-    page.querySelectorAll(".account-action-card:not(.settings-action-row)").forEach(button=>{if(button.tagName==="BUTTON")button.type="button";button.classList.add("settings-action-row");const name=button.matches('[data-watchlist]')?"titles":icons.find(([selector])=>button.matches(selector))?.[1]||"lock",icon=button.querySelector(":scope > i");if(icon)icon.innerHTML=svg(name);});
+    const icons=[["[data-change-parent-code]","shield"],["[data-change-password]","password"],["[data-two-step]","smartphone"],["[data-email-security]","mail"],["[data-manage-devices]","devices"],["[data-privacy-settings]","sliders"],["[data-install-seven]","download"],["[data-clear-history]","history"],["[data-signout]","exit"],["[data-remove-profile]","trash"],["[data-profile-stats]","stats"],["[data-my-list]","heart"],["[data-view-history]","history"],["[data-liked-titles]","star"],["[data-hidden-titles]","eye-off"]];
+    page.querySelectorAll("[data-settings-icon]").forEach(icon=>{if(icon.dataset.renderedSettingsIcon!==icon.dataset.settingsIcon){icon.innerHTML=svg(icon.dataset.settingsIcon);icon.dataset.renderedSettingsIcon=icon.dataset.settingsIcon;}});
+    page.querySelectorAll(".account-action-card:not(.settings-action-row)").forEach(button=>{if(button.tagName==="BUTTON")button.type="button";button.classList.add("settings-action-row");const name=button.matches('[data-watchlist]')?"bookmark":icons.find(([selector])=>button.matches(selector))?.[1]||"lock",icon=button.querySelector(":scope > i");if(icon)icon.innerHTML=svg(name);});
     if(page.matches(".settings-screen"))page.querySelectorAll(".settings-action-row").forEach(row=>{const value=row.querySelector(":scope > em");if(!value)return;const label=value.textContent.replace(/[›\s]+$/g,"").trim();if(row.dataset.settingsValue===label)return;const show=label&&!/^(open|view)$/i.test(label);value.innerHTML=`${show?`<span>${label}</span>`:""}${svg("arrow")}`;row.dataset.settingsValue=label;});
   }
   function disclosure(card,key,title,description,icon,value="",keepCopy=false){
@@ -139,7 +150,7 @@
     }
     const restrictions=page.querySelector(".family-restrictions");
     if(restrictions){
-      const count=restrictions.querySelectorAll("[data-unblock-title]").length,view=disclosure(restrictions,"blocked-titles","Block specific titles","Choose which titles this profile can’t see.","titles",count?String(count):"Manage");
+      const count=restrictions.querySelectorAll("[data-unblock-title]").length,view=disclosure(restrictions,"blocked-titles","Block specific titles","Choose which titles this profile can’t see.","eye-off",count?String(count):"Manage");
       const error=root.document.createElement("p");error.id="family-title-error";error.className="form-error";error.setAttribute("role","alert");view.body.prepend(error);
       const input=view.body.querySelector("#family-title-search");if(input){input.type="search";input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();event.stopPropagation();view.body.querySelector("[data-family-search]")?.click();}});}
     }
