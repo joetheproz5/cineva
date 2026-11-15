@@ -27,6 +27,11 @@ test('mobile hero sizing, contrast layers, copy placement and poster cross-fade 
   assert.match(mobileHero,/hero-synopsis \{ -webkit-line-clamp:2 !important/);
   assert.match(mobileHero,/hero-indicators \{ bottom:20px/);
   assert.match(mobileHero,/transition:opacity 200ms ease/);
+  assert.match(mobileHero,/spotlight-slide\.has-phone-poster:not\(\.phone-poster-failed\) \.home-hero-backdrop \{ background-image:none !important; \}/);
+  assert.match(spotlight,/slide\.classList\.add\("has-phone-poster"\)/);
+  assert.match(spotlight,/phonePoster\.loading = "eager"/);
+  assert.match(spotlight,/phonePoster\.addEventListener\("error", failPoster\)/);
+  assert.match(spotlight,/phoneArtwork\(item\)/);
   assert.match(css,/\.home-page \.hero \.home-hero-phone-art \{ display:none; \}/);
   assert.match(spotlight,/duration:620, easing:"cubic-bezier\(\.22,\.72,\.22,1\)"/);
 });

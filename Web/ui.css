@@ -1650,6 +1650,9 @@ html,body { touch-action: pan-x pan-y; }
     opacity:0;
     transition:opacity 200ms ease;
   }
+  /* Keep the wide backdrop from flashing as a different image before this
+     slide's portrait poster has decoded. Titles without posters still use it. */
+  #featured.spotlight-ready .spotlight-slide.has-phone-poster:not(.phone-poster-failed) .home-hero-backdrop { background-image:none !important; }
   #featured.spotlight-ready .spotlight-slide.phone-poster-loaded .home-hero-phone-art img { opacity:1; }
   .home-page .hero .home-hero-layout { padding:0 20px 114px; }
   .home-page .hero .home-hero-content { position:relative; inset:auto; width:100%; }

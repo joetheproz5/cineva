@@ -45,15 +45,21 @@
   const loader = createImageLoader();
   let active = null;
   const artwork = item => [item.backdrop_path ? `${TMDB_BACKDROP}${item.backdrop_path}` : "", posterOf(item), STILL_FALLBACK];
+  const phoneArtwork = item => {
+    const posterPath = item.poster_path || item.posterPath;
+    return root.matchMedia?.("(max-width: 767px)").matches && posterPath
+      ? [`${TMDB_IMAGE.replace(/\/w\d+$/, "/w780")}${posterPath}`, ...artwork(item)]
+      : artwork(item);
+  };
   function valid(view) { return active === view && document.querySelector("#featured") === view.element; }
   function preload(pool = []) {
     // Keep the decoded working set small; do not decode a dozen full-size backdrops on phones.
-    pool.slice(0, 2).forEach(item => { void loader.first(artwork(item)).catch(() => {}); });
+    pool.slice(0, 2).forEach(item => { void loader.first(phoneArtwork(item)).catch(() => {}); });
   }
   function warmNeighbours(view) {
     if (!valid(view) || view.pool.length < 2) return;
     const next = view.pool[(view.index + 1) % view.pool.length];
-    void loader.first(artwork(next)).catch(() => {});
+    void loader.first(phoneArtwork(next)).catch(() => {});
   }
   function cancel() {
     if (!active) return;
@@ -71,10 +77,17 @@
     backdrop.style.backgroundImage = `url(${JSON.stringify(url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
     const phonePoster = template.content.querySelector(".home-hero-phone-art img");
     if (phonePoster) {
+      slide.classList.add("has-phone-poster");
+      // This is the visible hero image, so don't leave it to native lazy loading
+      // after the old slide starts moving away.
+      phonePoster.loading = "eager";
+      phonePoster.fetchPriority = "high";
       const revealPoster = () => {
         if (root.matchMedia?.("(max-width: 767px)").matches && phonePoster.complete && phonePoster.naturalWidth > 1) slide.classList.add("phone-poster-loaded");
       };
+      const failPoster = () => slide.classList.add("phone-poster-failed");
       phonePoster.addEventListener("load", revealPoster);
+      phonePoster.addEventListener("error", failPoster);
       revealPoster();
     }
     slide.append(backdrop, template.content.querySelector(".home-hero-layout"));
@@ -131,7 +144,7 @@
     warmNeighbours(view);
 
     const backdrop = next.querySelector(".home-hero-backdrop");
-    void loader.first(artwork(item)).then(ready => {
+    void loader.first(phoneArtwork(item)).then(ready => {
       if (!valid(view) || ticket !== view.ticket || view.current !== next || !backdrop) return;
       backdrop.style.backgroundImage = `url(${JSON.stringify(ready.url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
     }).catch(() => {});
