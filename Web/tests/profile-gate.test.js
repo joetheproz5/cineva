@@ -113,10 +113,18 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=293/);
-  assert.match(index, /app\.js\?v=425/);
-  assert.match(serviceWorker, /seven-v425/);
-  assert.match(serviceWorker, /auth\.css\?v=293/);
-  assert.match(serviceWorker, /app\.js\?v=425/);
+  assert.match(index, /auth\.css\?v=298/);
+  assert.match(index, /app\.js\?v=446/);
+  assert.match(serviceWorker, /seven-v450/);
+  assert.match(serviceWorker, /auth\.css\?v=298/);
+  assert.match(serviceWorker, /app\.js\?v=446/);
   assert.doesNotMatch(serviceWorker, /assets\/profile-person\.svg/);
+});
+
+test("the profile selector does not replay its entrance when profiles refresh", () => {
+  assert.match(app, /let profileGateEntranceHasRun = false/);
+  assert.match(app, /const staticGate = profileGateEntranceHasRun && !hasIntro/);
+  assert.match(app, /profile-gate-static/);
+  assert.match(styles, /\.profile-gate-static \.profile-choice,[\s\S]*?animation:none; opacity:1; translate:none/);
+  assert.match(app, /image\.decode\(\)\.then\(reveal/);
 });
