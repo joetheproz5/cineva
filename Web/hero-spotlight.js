@@ -59,6 +59,8 @@
     if (!active) return;
     const view = active; active = null; view.ticket++;
     view.animations.forEach(animation => animation.cancel());
+    view.queue.length = 0;
+    view.element.removeAttribute("aria-busy");
   }
   function panel(item, url = STILL_FALLBACK) {
     const template = document.createElement("template");
@@ -75,59 +77,120 @@
     view.loading = value;
     if (value) view.element.setAttribute("aria-busy", "true"); else view.element.removeAttribute("aria-busy");
   }
-  async function select(index, direction = 1) {
-    const view = active;
-    if (!view || !valid(view) || !view.pool.length) return false;
-    const count = view.pool.length, target = ((index % count) + count) % count;
-    view.target = target;
-    if (target === view.index && view.current) return false;
+  function updateHeroControls(view) {
+    if (!valid(view)) return;
+    view.element.querySelectorAll("[data-hero-index]").forEach(button => {
+      const activeIndex = Number(button.dataset.heroIndex) === view.index;
+      button.classList.toggle("is-active", activeIndex);
+      if (activeIndex) button.setAttribute("aria-current", "true"); else button.removeAttribute("aria-current");
+    });
+    const live = view.element.querySelector("[data-hero-slide-live]");
+    if (live) live.textContent = `Slide ${view.index + 1} of ${view.pool.length}`;
+  }
+  function bindHeroControls(view) {
+    if (!valid(view) || view.controlsBound) return;
+    view.controlsBound = true;
+    view.element.addEventListener("click", event => {
+      if (active !== view || !valid(view)) return;
+      const control = event.target.closest?.("[data-hero-direction], [data-hero-index], .home-hero-content [data-open]");
+      if (!control || !view.element.contains(control)) return;
+      event.preventDefault();
+      if (control.hasAttribute("data-hero-direction")) {
+        const direction = Number(control.dataset.heroDirection);
+        void move(direction);
+        view.element.querySelector(`[data-hero-direction="${direction}"]`)?.focus({ preventScroll:true });
+        return;
+      }
+      if (control.hasAttribute("data-hero-index")) {
+        void select(Number(control.dataset.heroIndex));
+        return;
+      }
+      const [type, id] = control.dataset.open.split(":");
+      openItem(type, Number(id));
+    });
+    updateHeroControls(view);
+  }
+  async function transitionTo(view, target, direction) {
+    if (!valid(view)) return;
     const ticket = ++view.ticket;
-    // Navigation must not wait for a remote image. Cancel any in-flight transition,
-    // retain its current slide, and show the new title over the local fallback first.
-    view.animations.forEach(animation => animation.cancel());
-    view.animations = [];
-    view.element.querySelectorAll(".spotlight-slide").forEach(slide => { if (slide !== view.current) slide.remove(); });
     const item = view.pool[target], previous = view.current, next = panel(item);
+    view.element.querySelectorAll(".spotlight-slide").forEach(slide => { if (slide !== previous) slide.remove(); });
     view.element.append(next);
-    view.current = next; view.index = target;
+    view.current = next; view.index = target; view.target = target;
     state.featuredIndex = target; state.featured = item;
     view.element.querySelector(".spotlight-placeholder")?.remove();
-    bindHeroControls();
+    updateHeroControls(view);
     warmNeighbours(view);
+
     const backdrop = next.querySelector(".home-hero-backdrop");
     void loader.first(artwork(item)).then(ready => {
       if (!valid(view) || ticket !== view.ticket || view.current !== next || !backdrop) return;
       backdrop.style.backgroundImage = `url(${JSON.stringify(ready.url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
     }).catch(() => {});
+
     const reduced = root.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (!previous || reduced || typeof next.animate !== "function") {
-      previous?.remove(); busy(view, false); return true;
+      previous?.remove();
+      return;
     }
-    busy(view, true);
     previous.setAttribute("aria-hidden", "true"); previous.inert = true;
     const offset = view.element.getBoundingClientRect().width * (direction < 0 ? -1 : 1);
     const options = { duration:620, easing:"cubic-bezier(.22,.72,.22,1)", fill:"both" };
     const outgoing = [...previous.querySelectorAll(".home-hero-backdrop, .home-hero-layout")];
     const incoming = [...next.querySelectorAll(".home-hero-backdrop, .home-hero-layout")];
-    const animations = [
-      ...outgoing.map(element => element.animate([{ transform:"translateX(0px)" }, { transform:`translateX(${-offset}px)` }], options)),
-      ...incoming.map(element => element.animate([{ transform:`translateX(${offset}px)` }, { transform:"translateX(0px)" }], options))
-    ];
+    let animations;
+    try {
+      animations = [
+        ...outgoing.map(element => element.animate([{ transform:"translateX(0px)" }, { transform:`translateX(${-offset}px)` }], options)),
+        ...incoming.map(element => element.animate([{ transform:`translateX(${offset}px)` }, { transform:"translateX(0px)" }], options))
+      ];
+    } catch {
+      previous.remove();
+      return;
+    }
     view.animations = animations;
-    void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
-      if (previous !== view.current) previous.remove();
-      // An older canceled transition must never cancel or clear a newer one.
-      if (!valid(view) || ticket !== view.ticket) return;
-      animations.forEach(animation => animation.cancel());
-      if (view.animations === animations) view.animations = [];
-      busy(view, false);
-    });
-    return true;
+    let safetyTimer;
+    await Promise.race([
+      Promise.allSettled(animations.map(animation => animation.finished)),
+      new Promise(resolve => { safetyTimer = setTimeout(resolve, 900); })
+    ]);
+    clearTimeout(safetyTimer);
+    if (!valid(view) || ticket !== view.ticket) return;
+    previous.remove();
+    animations.forEach(animation => animation.cancel());
+    if (view.animations === animations) view.animations = [];
+  }
+  async function drain(view) {
+    let changed = false;
+    while (valid(view) && view.queue.length) {
+      const { target, direction } = view.queue.shift();
+      if (target === view.index && view.current) continue;
+      try { await transitionTo(view, target, direction); changed = true; }
+      catch { /* Keep navigation available if a browser rejects an animation operation. */ }
+    }
+    if (valid(view)) busy(view, false);
+    view.running = false;
+    return changed;
+  }
+  function select(index, direction = 1) {
+    const view = active;
+    if (!view || !valid(view) || !view.pool.length) return Promise.resolve(false);
+    const count = view.pool.length, target = ((index % count) + count) % count;
+    const queuedTarget = view.queue.length ? view.queue[view.queue.length - 1].target : view.index;
+    if (target === queuedTarget && view.current) return Promise.resolve(false);
+    view.queue.push({ target, direction });
+    view.target = target;
+    busy(view, true);
+    if (view.running) return view.navigation || Promise.resolve(true);
+    view.running = true;
+    view.navigation = drain(view);
+    return view.navigation;
   }
   function move(direction = 1, { automatic = false } = {}) {
     const view = active;
     if (!view || !valid(view) || view.pool.length < 2 || automatic && (view.loading || document.hidden)) return Promise.resolve(false);
-    return select(view.index + direction, direction);
+    const current = view.queue.length ? view.queue[view.queue.length - 1].target : view.index;
+    return select(current + direction, direction);
   }
   function mount() {
     cancel();
@@ -137,10 +200,10 @@
     // Keep the arrows and grading stationary; artwork and its copy move as one horizontal slide.
     element.classList.remove("hero-refresh"); element.classList.add("spotlight-ready");
     element.innerHTML = `<div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="spotlight-placeholder" role="status" aria-label="Loading spotlight artwork"></div>${heroNavigation()}`;
-    active = { element, pool:state.featuredPool, index:state.featuredIndex || 0, target:state.featuredIndex || 0, ticket:0, current:null, animations:[], loading:false };
+    active = { element, pool:state.featuredPool, index:state.featuredIndex || 0, target:state.featuredIndex || 0, ticket:0, current:null, animations:[], loading:false, queue:[], running:false, navigation:null, controlsBound:false };
     // A one-title fallback is also decoded before its copy is inserted.
     if (!state.featuredPool.length) { active.pool = state.featuredPool = pool; active.index = active.target = 0; }
-    bindHeroControls();
+    bindHeroControls(active);
     void select(active.index);
     warmNeighbours(active);
   }

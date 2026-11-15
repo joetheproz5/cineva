@@ -729,7 +729,7 @@ async function refreshCatalogNow() {
     ]);
     if (scope !== catalogPolicyScope()) return;
     const movieList = results(movies), showList = results(shows), recentList = results(recent), airingList = results(airing), trending = results(trendingData);
-    state.featuredPool = shuffle([...recentList, ...airingList, ...movieList]).filter(item => item.backdrop_path).slice(0, 12);
+    state.featuredPool = spotlightCandidates(recentList, airingList, movieList);
     state.featured = state.featuredPool[0] || trending[0] || null;
     state.featuredIndex = 0;
     window.SEVENHero.preload(state.featuredPool);
@@ -750,7 +750,7 @@ async function refreshCatalogNow() {
   else if (month >= 5 && month <= 7) { seasonalName = "Summer blockbusters"; seasonalParams = { with_genres:"28", "primary_release_date.gte":`${year}-06-01`, "primary_release_date.lte":`${year}-08-31`, sort_by:"popularity.desc" }; }
   const seasonalData = seasonalParams ? await api("discover/movie", seasonalParams).catch(() => null) : null;
   if (scope !== catalogPolicyScope()) return;
-  state.featuredPool = shuffle([...results(recent), ...results(airing), ...results(trending)]).filter(item => item.backdrop_path).slice(0, 12);
+  state.featuredPool = spotlightCandidates(results(recent), results(airing), results(trending));
   state.featured = state.featuredPool[0] || normalize(featured, "tv");
   state.featuredIndex = 0;
   window.SEVENHero.preload(state.featuredPool);
@@ -1059,6 +1059,16 @@ async function retryConnection() {
   await loadStartupData();
 }
 function shuffle(items) { const copy = [...items]; for (let index = copy.length - 1; index > 0; index -= 1) { const target = Math.floor(Math.random() * (index + 1)); [copy[index], copy[target]] = [copy[target], copy[index]]; } return copy; }
+function spotlightCandidates(...groups) {
+  const seen = new Set();
+  return shuffle(groups.flat()).filter(item => {
+    if (!item?.id || !(item.backdrop_path || item.poster_path)) return false;
+    const key = `${contentType(item)}:${item.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 12);
+}
 function sharedTitleTarget() { const value = new URLSearchParams(window.location.search).get("title") || "", match = value.match(/^(movie|tv):(\d+)$/); return match ? { type:match[1], id:Number(match[2]) } : null; }
 function maturityForProfile(profile) { return profile?.kids ? (["Kids", "13+", "16+"].includes(profile.preferences?.maturity) ? profile.preferences.maturity : "Kids") : "18+"; }
 function profileMaturity() { return maturityForProfile(currentProfile()); }
@@ -1474,7 +1484,7 @@ function bindProfileGateAvatarLoads(gate) {
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function renderHome() {
-  clearInterval(state.heroTimer);
+  clearTimeout(state.heroTimer);
   if (!Object.keys(state.catalog || {}).length && !state.catalogRequest && !state.error && navigator.onLine && !catalogRecoveryScheduled) {
     catalogRecoveryScheduled = true;
     setTimeout(() => {
@@ -1517,39 +1527,22 @@ function featuredMarkup(f = state.featured) {
   const meta = [year, type === "tv" ? "Series" : "Movie"].filter(Boolean).join(" · ");
   return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')"></div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-layout"><div class="home-hero-content${description ? " has-synopsis" : ""}"><h1>${escapeHTML(titleOf(f))}</h1>${meta ? `<div class="hero-meta">${escapeHTML(meta)}</div>` : ""}${description ? `<p class="hero-synopsis">${escapeHTML(description)}</p>` : ""}<div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg class="hero-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>${t("Watch now")}</span></button><button type="button" class="hero-info-link" data-open="${type}:${f.id}"><span>More info</span></button></div></div></div>${heroNavigation()}`;
 }
-function bindHeroControls() {
-  const featured = document.querySelector("#featured");
-  if (!featured) return;
-  const announceSlide = () => {
-    const live = featured.querySelector("[data-hero-slide-live]");
-    if (live) live.textContent = `Slide ${state.featuredIndex + 1} of ${state.featuredPool.length}`;
-  };
-  const selectAndFocus = direction => {
-    void Promise.resolve(rotateHero(direction)).then(changed => { if (changed) announceSlide(); });
-    featured.querySelector(`[data-hero-direction="${direction}"]`)?.focus({ preventScroll:true });
-  };
-  featured.querySelectorAll("[data-hero-index]").forEach(button => {
-    const index = Number(button.dataset.heroIndex), active = index === state.featuredIndex;
-    button.classList.toggle("is-active", active);
-    if (active) button.setAttribute("aria-current", "true"); else button.removeAttribute("aria-current");
-  });
-  featured.onclick = event => {
-    const control = event.target.closest?.("[data-hero-direction], [data-hero-index], .home-hero-content [data-open]");
-    if (!control || !featured.contains(control)) return;
-    event.preventDefault();
-    if (control.hasAttribute("data-hero-direction")) return selectAndFocus(Number(control.dataset.heroDirection));
-    if (control.hasAttribute("data-hero-index")) {
-      const index = Number(control.dataset.heroIndex);
-      void Promise.resolve(setFeaturedIndex(index)).then(changed => { if (changed) announceSlide(); });
+function scheduleHero() {
+  clearTimeout(state.heroTimer);
+  state.heroTimer = null;
+  if (state.featuredPool.length < 2 || currentPreferences().autoplayPreviews === false) return;
+  const advance = () => {
+    if (state.route !== "home") return;
+    if (document.hidden) {
+      state.heroTimer = setTimeout(advance, 1000);
       return;
     }
-    const [type, id] = control.dataset.open.split(":");
-    openItem(type, Number(id));
+    void window.SEVENHero.move(1, { automatic:true }).finally(() => {
+      if (state.route === "home") state.heroTimer = setTimeout(advance, 8500);
+    });
   };
+  state.heroTimer = setTimeout(advance, 8500);
 }
-function setFeaturedIndex(index) { return window.SEVENHero.select(index); }
-function rotateHero(direction = 1) { return window.SEVENHero.move(direction); }
-function scheduleHero() { if (state.featuredPool.length > 1 && currentPreferences().autoplayPreviews !== false) state.heroTimer = setInterval(() => { if (state.route === "home") void window.SEVENHero.move(1, { automatic:true }); }, 8500); }
 function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(t(name === "My List" ? "Favourites" : name))}</h2>`; }
 function rail(name, items) { const visible = items.filter(contentAllowed); if (!visible.length) return ""; const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name, ranked = name === "Trending now", upcoming = name === "Coming soon", railItems = ranked ? visible.slice(0, 4) : visible; state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route, sources:collectionSources(name) }; return `<section class="rail ${ranked ? "ranked-rail" : ""} ${upcoming ? "upcoming-rail" : ""}"><div class="rail-title"><div>${railTitle(displayName)}<small>${ranked ? "This week on TMDB" : upcoming ? t("Release dates from TMDB") : "Curated for your screen"}</small></div><button class="explore-all" data-explore="${escapeHTML(key)}">View all <b>›</b></button></div><div class="cards">${railItems.map((item, index) => upcoming ? upcomingCard(item) : card(item, ranked ? index + 1 : 0)).join("")}</div></section>`; }
 function newEpisodeRail(items) { return `<section class="rail new-episode-rail"><div class="rail-title">${railTitle("New episodes")}<span>From followed series</span></div><div class="cards">${items.map(item => `<button class="card" data-open="tv:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>NEW EPISODE</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>S${item.episode.season_number} · E${item.episode.episode_number} · ${escapeHTML(item.episode.name || "New episode")}</small></button>`).join("")}</div></section>`; }
