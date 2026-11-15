@@ -1632,7 +1632,19 @@ html,body { touch-action: pan-x pan-y; }
   .home-page .hero::before {
     background:linear-gradient(180deg,rgba(5,8,13,.22) 0%,rgba(5,8,13,.08) 13%,transparent 30%,transparent 40%,color-mix(in srgb,var(--bg,#050505) 72%,transparent) 55%,color-mix(in srgb,var(--bg,#050505) 94%,transparent) 80%,var(--bg,#050505) 100%);
   }
-  .home-page .hero::after { display:none; }
+  .home-page .hero::after {
+    display:block;
+    inset:0 0 auto;
+    width:auto;
+    height:120px;
+    border-radius:0;
+    background:linear-gradient(180deg,rgba(6,10,16,.2),rgba(6,10,16,.1) 48%,transparent 100%);
+    filter:none;
+    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px);
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.65) 52%,transparent 100%);
+    mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.65) 52%,transparent 100%);
+  }
   .home-page .hero .home-hero-grade { background:none; animation:none; }
   .home-page .hero .home-hero-grade::before,
   .home-page .hero .home-hero-grade::after { display:none; }
