@@ -1660,10 +1660,10 @@ html,body { touch-action: pan-x pan-y; }
   .home-page .hero .hero-indicators { bottom:20px; }
 }
 @media (max-width:650px) {
-  /* Let phone artwork run to the screen top while keeping the hero's lower
-     edge in place and the SEVEN bar floating above it. */
+  /* Extend the artwork behind the SEVEN bar without pulling it into the
+     safe-area strip above the bar. */
   body:has(.home-page) .home-page .hero {
-    --home-hero-underlap:calc(69px + env(safe-area-inset-top));
+    --home-hero-underlap:55px;
     height:calc(66vh + var(--home-hero-underlap));
     height:calc(66svh + var(--home-hero-underlap));
     min-height:calc(480px + var(--home-hero-underlap));
