@@ -1630,7 +1630,7 @@ html,body { touch-action: pan-x pan-y; }
     background:var(--bg,#050505);
   }
   .home-page .hero::before {
-    background:linear-gradient(180deg,transparent 40%,color-mix(in srgb,var(--bg,#050505) 72%,transparent) 55%,color-mix(in srgb,var(--bg,#050505) 94%,transparent) 80%,var(--bg,#050505) 100%);
+    background:linear-gradient(180deg,rgba(5,8,13,.22) 0%,rgba(5,8,13,.08) 13%,transparent 30%,transparent 40%,color-mix(in srgb,var(--bg,#050505) 72%,transparent) 55%,color-mix(in srgb,var(--bg,#050505) 94%,transparent) 80%,var(--bg,#050505) 100%);
   }
   .home-page .hero::after { display:none; }
   .home-page .hero .home-hero-grade { background:none; animation:none; }
@@ -1658,6 +1658,31 @@ html,body { touch-action: pan-x pan-y; }
   .home-page .hero .home-hero-content { position:relative; inset:auto; width:100%; }
   .home-page .hero .home-hero-content .hero-synopsis { -webkit-line-clamp:2 !important; }
   .home-page .hero .hero-indicators { bottom:20px; }
+}
+@media (max-width:650px) {
+  /* Let phone artwork run to the screen top while keeping the hero's lower
+     edge in place and the SEVEN bar floating above it. */
+  body:has(.home-page) .home-page .hero {
+    --home-hero-underlap:calc(69px + env(safe-area-inset-top));
+    height:calc(66vh + var(--home-hero-underlap));
+    height:calc(66svh + var(--home-hero-underlap));
+    min-height:calc(480px + var(--home-hero-underlap));
+    max-height:calc(640px + var(--home-hero-underlap));
+    margin-top:calc(0px - var(--home-hero-underlap));
+  }
+  body:has(.home-page) header.main-header.app-header {
+    z-index:90;
+    border-color:rgba(174,198,232,.15);
+    background:rgba(9,12,17,.82);
+    box-shadow:0 12px 34px rgba(0,0,0,.42),0 0 24px rgba(79,125,190,.15),inset 0 1px rgba(174,198,232,.06);
+    -webkit-backdrop-filter:blur(16px) saturate(130%);
+    backdrop-filter:blur(16px) saturate(130%);
+  }
+  body:has(.home-page) header.main-header.app-header.scrolled {
+    border-color:rgba(174,198,232,.18);
+    background:rgba(10,13,19,.88);
+    box-shadow:0 12px 34px rgba(0,0,0,.58),0 0 25px rgba(79,125,190,.14),inset 0 1px rgba(174,198,232,.06);
+  }
 }
 @media (max-width:767px) and (prefers-reduced-motion:reduce) {
   .home-page .hero .home-hero-phone-art img { transition:none; }
