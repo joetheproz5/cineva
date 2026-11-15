@@ -48,3 +48,18 @@ test("the Home banner preserves its trailer destination and uses responsive scop
   assert.match(css, /@media \(max-width:650px\) \{[\s\S]*?\.home-library \.play-something-actions \.primary \{ width:100%; \}/);
   assert.match(css, /@media \(prefers-reduced-motion:reduce\)/);
 });
+
+test("phone banner uses compact spacing and naturally wraps actions without changing wider layouts", () => {
+  const phoneBanner = css.match(/@media \(max-width:767px\) \{([\s\S]*?)\n\}/)?.[1] || "";
+  assert.match(phoneBanner, /margin:40px 0 32px/);
+  assert.match(phoneBanner, /gap:20px/);
+  assert.match(phoneBanner, /-webkit-line-clamp:2/);
+  assert.match(phoneBanner, /flex-flow:row wrap/);
+  assert.match(phoneBanner, /flex:1\.6 1 max-content/);
+  assert.match(phoneBanner, /flex:1 1 max-content/);
+  assert.match(phoneBanner, /height:48px/);
+  assert.match(phoneBanner, /background:color-mix\(in srgb,var\(--text\) 10%,transparent\)/);
+  assert.match(phoneBanner, /white-space:nowrap/);
+  assert.match(phoneBanner, /button:active \{ opacity:\.88; transform:scale\(\.98\); \}/);
+  assert.doesNotMatch(css, /@media \(min-width:768px\)[\s\S]*?play-something-banner/);
+});

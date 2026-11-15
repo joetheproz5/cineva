@@ -52,5 +52,5 @@ test("the updated Settings assets are available to online and offline app loads"
     assert.ok(index.includes(asset), `index.html includes ${asset}`);
     assert.ok(worker.includes(asset), `service worker includes ${asset}`);
   }
-  assert.match(worker, /seven-v455/);
+  assert.match(worker, /seven-v456/);
 });

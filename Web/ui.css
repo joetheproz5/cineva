@@ -1562,3 +1562,60 @@ html,body { touch-action: pan-x pan-y; }
   .home-library .play-something-actions button { transition:none; scroll-behavior:auto; }
   .home-library .home-poster-card:hover,.home-library .home-poster-card:focus-within { transform:none; }
 }
+
+@media (max-width:767px) {
+  .home-library .play-something-banner {
+    align-items:stretch;
+    flex-direction:column;
+    justify-content:flex-start;
+    gap:20px;
+    margin:40px 0 32px;
+    padding:0;
+  }
+  .home-library .play-something-copy { width:100%; flex:0 0 auto; }
+  .home-library .play-something-copy h2 { font-size:20px; font-weight:560; }
+  .home-library .play-something-copy p {
+    display:-webkit-box;
+    overflow:hidden;
+    margin-top:6px;
+    max-width:60ch;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+  }
+  .home-library .play-something-actions {
+    display:flex;
+    flex:0 0 auto;
+    flex-flow:row wrap;
+    align-items:stretch;
+    gap:12px;
+    width:100%;
+  }
+  .home-library .play-something-actions button {
+    height:48px;
+    min-height:48px;
+    max-width:100%;
+    min-width:0;
+    overflow:hidden;
+    border-radius:12px;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    transition:transform .12s ease,opacity .12s ease;
+  }
+  .home-library .play-something-actions .primary {
+    flex:1.6 1 max-content;
+    width:auto;
+    padding:0 14px;
+    box-shadow:none;
+    filter:none;
+  }
+  .home-library .play-something-new-picks {
+    flex:1 1 max-content;
+    align-self:stretch;
+    padding:0 12px;
+    color:var(--text);
+    background:color-mix(in srgb,var(--text) 10%,transparent);
+    font-size:15px;
+    font-weight:560;
+  }
+  .home-library .play-something-actions button:active { opacity:.88; transform:scale(.98); }
+}
