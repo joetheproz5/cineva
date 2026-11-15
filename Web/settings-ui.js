@@ -15,6 +15,7 @@
     devices:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8m-4-5v5"/>',
     password:'<circle cx="8" cy="9" r="4"/><path d="m11 12 9 9m-3-3 3-3m-6 0 3-3"/>',
     smartphone:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
+    'smartphone-shield':'<rect x="4" y="2" width="11" height="20" rx="2"/><path d="M8 18h3m6-10 4 1.5V12c0 2.7-1.6 4.6-4 5.8-2.4-1.2-4-3.1-4-5.8V9.5z"/>',
     mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
     sliders:'<path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M2 14h4m4-6h4m4 8h4"/>',
     download:'<path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/>',
@@ -40,20 +41,26 @@
     draft={scope:page.dataset.settingsScope,fields:[...page.querySelectorAll("#profile-settings-form input, #profile-settings-form select, #profile-settings-form textarea")].filter(field=>!secret(field)&&(field.name||field.id)).map(field=>({name:field.name,id:field.id,type:field.type,value:field.value,checked:field.checked})),open:[...page.querySelectorAll("details[data-settings-disclosure][open]")].map(el=>el.dataset.settingsDisclosure)};
   }
   function decorateActions(page){
-    const icons=[["[data-change-parent-code]","shield"],["[data-change-password]","password"],["[data-two-step]","smartphone"],["[data-email-security]","mail"],["[data-manage-devices]","devices"],["[data-privacy-settings]","sliders"],["[data-install-seven]","download"],["[data-clear-history]","history"],["[data-signout]","exit"],["[data-remove-profile]","trash"],["[data-profile-stats]","stats"],["[data-my-list]","heart"],["[data-view-history]","history"],["[data-liked-titles]","star"],["[data-hidden-titles]","eye-off"]];
+    const icons=[["[data-change-parent-code]","shield"],["[data-change-password]","password"],["[data-two-step]","smartphone-shield"],["[data-email-security]","mail"],["[data-manage-devices]","devices"],["[data-privacy-settings]","sliders"],["[data-install-seven]","download"],["[data-clear-history]","history"],["[data-signout]","exit"],["[data-remove-profile]","trash"],["[data-profile-stats]","stats"],["[data-my-list]","heart"],["[data-view-history]","history"],["[data-liked-titles]","star"],["[data-hidden-titles]","eye-off"]];
     page.querySelectorAll("[data-settings-icon]").forEach(icon=>{if(icon.dataset.renderedSettingsIcon!==icon.dataset.settingsIcon){icon.innerHTML=svg(icon.dataset.settingsIcon);icon.dataset.renderedSettingsIcon=icon.dataset.settingsIcon;}});
     page.querySelectorAll(".account-action-card:not(.settings-action-row)").forEach(button=>{if(button.tagName==="BUTTON")button.type="button";button.classList.add("settings-action-row");const name=button.matches('[data-watchlist]')?"bookmark":icons.find(([selector])=>button.matches(selector))?.[1]||"lock",icon=button.querySelector(":scope > i");if(icon)icon.innerHTML=svg(name);});
     if(page.matches(".settings-screen"))page.querySelectorAll(".settings-action-row").forEach(row=>{const value=row.querySelector(":scope > em");if(!value)return;const label=value.textContent.replace(/[›\s]+$/g,"").trim();if(row.dataset.settingsValue===label)return;const show=label&&!/^(open|view)$/i.test(label);value.innerHTML=`${show?`<span>${label}</span>`:""}${svg("arrow")}`;row.dataset.settingsValue=label;});
   }
   function disclosure(card,key,title,description,icon,value="",keepCopy=false){
     const details=root.document.createElement("details");details.className="settings-disclosure";details.dataset.settingsDisclosure=key;
-    const summary=root.document.createElement("summary");summary.className="settings-action-row";
+    const summary=root.document.createElement("summary");summary.className="settings-action-row";summary.setAttribute("aria-expanded","false");summary.setAttribute("aria-controls",`settings-disclosure-${key}-panel`);
     summary.innerHTML=`<i>${svg(icon)}</i><span><b></b><small></small></span><em><span></span>${svg("arrow")}</em>`;
     summary.querySelector("b").textContent=translate(title);summary.querySelector("small").textContent=translate(description);summary.querySelector("em span").textContent=translate(value);
-    const body=root.document.createElement("div");body.className="settings-disclosure-body";
+    const panel=root.document.createElement("div");panel.className="settings-disclosure-body";panel.id=`settings-disclosure-${key}-panel`;
+    const inner=root.document.createElement("div");inner.className="settings-disclosure-inner";
+    const divider=root.document.createElement("div");divider.className="settings-disclosure-divider";divider.setAttribute("aria-hidden","true");
+    const body=root.document.createElement("div");body.className="settings-disclosure-content";
     [...card.childNodes].forEach(child=>{if(child.nodeType===1&&(child.matches(".brand,h2")||!keepCopy&&child.matches("p:not([class])")))child.remove();else body.append(child);});
-    details.append(summary,body);card.replaceChildren(details);card.classList.add("settings-disclosure-card");
-    summary.addEventListener("click",()=>queueMicrotask(()=>{if(details.open)body.querySelector('input:not([type="checkbox"]):not([disabled]), select:not([disabled])')?.focus({preventScroll:true});}));
+    inner.append(divider,body);panel.append(inner);details.append(summary,panel);card.replaceChildren(details);card.classList.add("settings-disclosure-card");
+    panel.inert=true;
+    details.addEventListener("toggle",()=>{summary.setAttribute("aria-expanded",String(details.open));panel.inert=!details.open;});
+    details.addEventListener("keydown",event=>{if(event.key!=="Escape"||!details.open)return;event.preventDefault();details.open=false;summary.focus({preventScroll:true});});
+    summary.addEventListener("click",()=>queueMicrotask(()=>{panel.inert=!details.open;if(details.open)body.querySelector('input:not([type="checkbox"]):not([disabled]), select:not([disabled])')?.focus({preventScroll:true});}));
     return {details,body};
   }
   function syncLimits(page){
@@ -66,7 +73,7 @@
     const hasCode=parentAccessConfigured();
     page?.querySelectorAll('[data-change-parent-code]').forEach(button=>{
       const title=hasCode?"Change parent access code":"Set parent access code",description=hasCode?"Confirm your current code before changing or turning it off.":"Protect profile and account settings without locking the profile picker.";
-      button.querySelector('b').textContent=translate(title);button.querySelector('small').textContent=translate(description);button.querySelector('em').textContent=translate(hasCode?"Change":"Set")+" ›";
+      button.querySelector('b').textContent=translate(title);button.querySelector('small').textContent=translate(description);const value=button.querySelector('em');if(value)value.innerHTML=`<span>${translate(hasCode?"Change":"Set")}</span>${svg("arrow")}`;
     });
   }
   function section(title,heading=true){
@@ -81,6 +88,7 @@
       if(description){if(!description.id)description.id=`settings-description-${Math.random().toString(36).slice(2,9)}`;field.setAttribute("aria-describedby",description.id);}
       if(field.type==="checkbox"){field.setAttribute("role","switch");field.setAttribute("aria-label",row.querySelector("b")?.textContent?.trim()||"");row.setAttribute("aria-disabled",String(field.disabled));const thumb=row.querySelector("em");thumb?.setAttribute("aria-hidden","true");}
       else{
+        field.setAttribute("aria-label",row.querySelector("b")?.textContent?.trim()||translate("Choose an option"));
         if(!row.dataset.settingsSelect){row.dataset.settingsSelect="true";const value=root.document.createElement("span");value.className="settings-select-value";value.setAttribute("aria-hidden","true");const icon=root.document.createElementNS("http://www.w3.org/2000/svg","svg");icon.setAttribute("viewBox","0 0 24 24");icon.setAttribute("fill","none");icon.setAttribute("stroke","currentColor");icon.setAttribute("stroke-width","1.5");icon.setAttribute("stroke-linecap","round");icon.setAttribute("stroke-linejoin","round");icon.setAttribute("aria-hidden","true");icon.classList.add("settings-select-chevron");const path=root.document.createElementNS("http://www.w3.org/2000/svg","path");path.setAttribute("d","m7 10 5 5 5-5");icon.append(path);row.insertBefore(value,field);row.append(icon);field.addEventListener("change",()=>{value.textContent=field.selectedOptions[0]?.textContent||field.value;});}
         row.querySelector(".settings-select-value").textContent=field.selectedOptions[0]?.textContent||field.value;
       }
@@ -130,7 +138,7 @@
     const detail=page.querySelector(".profile-detail-card");if(detail&&["activity","security"].includes(category))detail.classList.add("settings-unboxed");
     if(category==="profiles")page.querySelector(".profile-manager")?.classList.add("settings-unboxed");
     controlA11y(page);
-    page.addEventListener("click",event=>{if(event.target.closest("a[data-settings-action],a.profile-category-row,a.settings-action-row"))event.preventDefault();},true);
+    page.addEventListener("click",event=>{if(event.target.closest("a[data-settings-action],a.profile-category-row,a.settings-action-row:not([data-install-seven])"))event.preventDefault();},true);
   }
   function toast(message){
     if(!message||!root.document?.querySelector(".profile-settings-page.settings-screen"))return;
@@ -144,9 +152,9 @@
     if(pin){
       const label=state.profileDraft?.pinHash?"Change profile PIN":"Set a profile PIN",view=disclosure(pin,"profile-pin","Profile PIN","Keep this profile private on shared devices.","lock",state.profileDraft?.pinHash?"Change":"Set");
       const actions=page.querySelector("#profile-settings-form > .profile-settings-actions"),error=page.querySelector("#profile-error");if(error)view.body.append(error);if(actions)view.body.append(actions);
-      const cancel=root.document.createElement("button");cancel.type="button";cancel.className="settings-cancel";cancel.textContent=translate("Cancel");view.body.querySelector(".profile-settings-actions")?.prepend(cancel);
+      const cancel=root.document.createElement("button");cancel.type="button";cancel.className="settings-cancel";cancel.textContent=translate("Cancel");view.body.querySelector(".profile-settings-actions")?.append(cancel);
       cancel.onclick=()=>{view.body.querySelectorAll("input").forEach(field=>{if(field.type==="checkbox")field.checked=false;else field.value="";});if(error)error.textContent="";view.details.open=false;view.details.querySelector("summary").focus();};
-      const field=view.body.querySelector('input[name="pin"]');field?.setAttribute("aria-label",translate(label));
+      const field=view.body.querySelector('input[name="pin"]');field?.setAttribute("aria-label",translate(label));field?.setAttribute("inputmode","numeric");field?.setAttribute("autocomplete","off");
     }
     const restrictions=page.querySelector(".family-restrictions");
     if(restrictions){
@@ -164,6 +172,7 @@
     // A Kids security page has only a parent-code action, not a second empty save form.
     page.querySelectorAll("#profile-settings-form").forEach(form=>{if(!form.querySelector("input[name],select[name],textarea[name]"))form.querySelector(".profile-settings-actions")?.setAttribute("hidden","");});
     layoutSettingsPage(page);watchDialogs();
+    if(page.dataset.settingsCategory==="security")root.SEVENAuthSecurity?.prefetch?.();
   }
   function scanDialogs(){
     const page=root.document.querySelector('.profile-settings-redesign');if(page)decorateActions(page);

@@ -1,5 +1,5 @@
 (function(root){
-  let timer=null,checking=false,version=0,owner='',unlocked=null;
+  let timer=null,checking=false,version=0,owner='',unlocked=null,deviceCache={scope:'',data:null,updatedAt:0,pending:null};
   const sessionScope=()=>`${state.session?.user?.id||state.user?.id||''}:${state.session?.access_token?claims(state.session.access_token).session_id||'':''}`;
   function claims(token){try{return JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch{return {};}}
   function mainId(){const profiles=state.account?.profiles||[];return (profiles.find(p=>p.id==='main')||profiles[0])?.id||'main';}
@@ -11,7 +11,7 @@
   }
   function activity(value){const time=Date.parse(value);if(!Number.isFinite(time))return 'Activity unavailable';const seconds=Math.max(0,(Date.now()-time)/1000);if(seconds<120)return 'Active recently';if(seconds<3600)return `${Math.floor(seconds/60)} min ago`;if(seconds<86400)return `${Math.floor(seconds/3600)} hr ago`;return new Date(time).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});}
   function headers(){return {...authorizedHeaders(),'X-Seven-Profile':activeProfileId(),...(unlocked?.scope===sessionScope()&&unlocked.until>Date.now()?{'X-Seven-Device-Grant':unlocked.token}:{})};}
-  function stop(){clearInterval(timer);timer=null;version++;owner='';unlocked=null;document.querySelector('.devices-modal')?.remove();}
+  function stop(){clearInterval(timer);timer=null;version++;owner='';unlocked=null;deviceCache={scope:'',data:null,updatedAt:0,pending:null};document.querySelector('.devices-modal')?.remove();}
   function rejected(data,requestToken){if(data?.code!=='SEVEN_SESSION_REVOKED'||!state.session)return;if(requestToken&&requestToken!==state.session.access_token){const old=claims(requestToken),current=claims(state.session.access_token);if(!old.session_id||old.session_id!==current.session_id||old.sub!==current.sub)return;}stop();clearSession();resetAppNavigation();state.route='home';render();showToast('This device was signed out. Sign in again to continue.');}
   async function check(){
     if(typeof state==='undefined'||checking||!state.session?.access_token||document.hidden||accessTokenExpiresSoon())return;
@@ -27,29 +27,46 @@
     if(!isMain()){unlocked=null;document.querySelector('.devices-modal')?.remove();}
     scope.querySelectorAll('[data-manage-devices]').forEach(button=>button.onclick=()=>void show());
   }
-  async function show(){
+  async function prefetch(){
+    if(!isMain()||!state.session?.access_token)return;
+    const scope=sessionScope();
+    if(deviceCache.scope!==scope)deviceCache={scope,data:null,updatedAt:0,pending:null};
+    const refresh=()=>{
+      if(deviceCache.pending)return deviceCache.pending;
+      deviceCache.pending=localAPI('/api/account/devices',{headers:headers()}).then(data=>{if(deviceCache.scope===scope){deviceCache.data=data.devices||[];deviceCache.updatedAt=Date.now();}return data;}).catch(error=>{if(deviceCache.scope===scope)deviceCache.pending=null;throw error;}).finally(()=>{if(deviceCache.scope===scope&&deviceCache.data)deviceCache.pending=null;});
+      return deviceCache.pending;
+    };
+    if(deviceCache.data){if(Date.now()-deviceCache.updatedAt>30000)void refresh().catch(()=>{});return deviceCache.data;}
+    return deviceCache.pending||refresh();
+  }
+  function show(){
     if(!isMain())return showToast('Manage devices is available from the main profile.');
-    document.querySelector('.devices-modal')?.remove();const scope=sessionScope();let sequence=0,busy=false,devices=[];
-    app.insertAdjacentHTML('beforeend','<div class="modal devices-modal"><section class="devices-panel" role="dialog" aria-modal="true" aria-label="Manage devices"><div class="devices-heading"><h2>Manage devices</h2><button type="button" data-devices-close aria-label="Close device management">×</button></div><div class="devices-body"></div><p class="devices-error" role="status" aria-live="polite"></p></section></div>');
+    if(document.querySelector('.devices-modal'))return;
+    const returnFocus=document.activeElement;const scope=sessionScope();let sequence=0,busy=false,devices=[];
+    app.insertAdjacentHTML('beforeend','<div class="modal settings-dialog devices-modal" data-settings-screen="true"><section class="devices-panel" role="dialog" aria-modal="true" aria-labelledby="devices-dialog-title"><header class="devices-heading"><div class="devices-heading-copy"><h2 id="devices-dialog-title">Manage devices</h2><p>Signed in to your account</p></div><button type="button" class="devices-refresh" data-devices-refresh>Refresh</button><button type="button" class="devices-close" data-devices-close aria-label="Close">×</button></header><div class="devices-body" aria-busy="true"><p class="devices-note" role="status">Loading your devices…</p></div><p class="devices-error" role="status" aria-live="polite"></p></section></div>');
     const modal=document.querySelector('.devices-modal'),body=modal.querySelector('.devices-body'),error=modal.querySelector('.devices-error'),alive=()=>modal.isConnected&&scope===sessionScope()&&isMain();
-    const close=()=>{if(!busy)modal.remove();};modal.querySelector('[data-devices-close]').onclick=close;modal.onclick=e=>{if(e.target===modal)close();};
+    const close=()=>{if(!modal.isConnected)return;modal.remove();if(returnFocus?.isConnected)returnFocus.focus({preventScroll:true});};modal.querySelector('[data-devices-close]').onclick=close;modal.onclick=e=>{if(e.target===modal)close();};modal.querySelector('[data-devices-refresh]').onclick=()=>void load({preserve:true});modal.querySelector('[data-devices-close]').focus({preventScroll:true});
     modal.onkeydown=e=>{if(e.key==='Escape')close();if(e.key==='Tab'){const controls=[...modal.querySelectorAll('button:not(:disabled),input:not(:disabled)')].filter(c=>c.getClientRects().length);if(e.shiftKey&&document.activeElement===controls[0]){e.preventDefault();controls.at(-1)?.focus();}else if(!e.shiftKey&&document.activeElement===controls.at(-1)){e.preventDefault();controls[0]?.focus();}}};
-    let disabled=[];const waiting=value=>{busy=value;modal.setAttribute('aria-busy',String(value));if(value){disabled=[...modal.querySelectorAll('button,input')].map(control=>({control,was:control.disabled}));disabled.forEach(({control})=>control.disabled=true);}else disabled.forEach(({control,was})=>{if(control.isConnected)control.disabled=was;});};
+    let disabled=[];const waiting=value=>{busy=value;modal.setAttribute('aria-busy',String(value));if(value){disabled=[...modal.querySelectorAll('button:not([data-devices-close]),input')].map(control=>({control,was:control.disabled}));disabled.forEach(({control})=>control.disabled=true);}else disabled.forEach(({control,was})=>{if(control.isConnected)control.disabled=was;});};
     function unlock(message=''){
       unlocked=null;error.textContent=message;body.innerHTML='<p class="devices-note">Confirm your account password to view and manage signed-in devices.</p><form data-devices-password-form><label>Account password<input type="password" name="password" required maxlength="1024" autocomplete="current-password"></label><button class="devices-primary" type="submit">Continue</button></form>';
       const form=body.querySelector('form');form.onsubmit=async e=>{e.preventDefault();if(busy||!alive())return;const field=form.elements.password,password=field.value;field.value='';error.textContent='';waiting(true);
         try{const data=await localAPI('/api/account/devices/unlock',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({password})});if(!alive())return;unlocked={scope,token:data.grant,until:Date.now()+Number(data.expiresIn)*1000};await load();}
         catch(failure){if(alive())error.textContent=failure.message;}finally{if(alive())waiting(false);}};
-      form.elements.password.focus();
+    }
+    function icon(agent=''){
+      const type=/iPad|Tablet/i.test(agent)?'tablet':/iPhone|Android|Mobile/i.test(agent)?'phone':/Windows|Mac|Linux|CrOS|Chrome OS/i.test(agent)?'monitor':'globe';
+      const shapes={phone:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',tablet:'<rect x="3" y="2" width="18" height="20" rx="2"/><path d="M11 18h2"/>',monitor:'<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/>',globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.5 3.5 5.5 3.5 9S14.4 18.5 12 21c-2.4-2.5-3.5-5.5-3.5-9S9.6 5.5 12 3z"/>'};
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[type]}</svg>`;
     }
     function renderDevices(){
-      error.textContent='';body.innerHTML=`<div class="devices-toolbar"><p class="devices-note">Signed in to your account</p><button type="button" data-devices-refresh>Refresh</button></div><div class="device-list">${devices.map(device=>`<article class="device-row"><div class="device-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M10 18h4"/></svg></div><div class="device-copy"><h3>${escapeHTML(deviceName(device.userAgent))}${device.current?'<span class="device-current">This device</span>':''}</h3><p>Last active · ${escapeHTML(activity(device.lastActiveAt))}</p></div><button type="button" data-device-revoke="${escapeHTML(device.id)}">Sign out</button></article>`).join('')||'<p>No active devices.</p>'}</div><div class="devices-footer"><button type="button" data-devices-others ${devices.some(d=>!d.current)?'':'disabled'}>Sign out all other devices</button><p class="devices-note">Signed-out devices lose account access immediately and leave the app on their next online check—usually within a minute while open.</p></div>`;
-      body.querySelector('[data-devices-refresh]').onclick=()=>void load();body.querySelector('[data-devices-others]').onclick=()=>confirmRevoke(null);
+      error.textContent='';body.setAttribute('aria-busy','false');body.innerHTML=`<div class="device-list">${devices.map(device=>`<article class="device-row"><div class="device-symbol" aria-hidden="true">${icon(device.userAgent)}</div><div class="device-copy"><h3>${escapeHTML(deviceName(device.userAgent))}</h3><p>${device.current?'This device · ':''}Last active · ${escapeHTML(activity(device.lastActiveAt))}</p></div><button type="button" class="devices-signout" data-device-revoke="${escapeHTML(device.id)}">Sign out</button></article>`).join('')||'<p class="devices-note">No active devices.</p>'}</div><div class="devices-footer"><button type="button" data-devices-others ${devices.some(d=>!d.current)?'':'disabled'}>Sign out all other devices</button><p class="devices-note">Signed-out devices lose account access immediately and leave the app on their next online check—usually within a minute while open.</p></div>`;
+      body.querySelector('[data-devices-others]').onclick=()=>confirmRevoke(null);
       body.querySelectorAll('[data-device-revoke]').forEach(button=>button.onclick=()=>confirmRevoke(devices.find(d=>d.id===button.dataset.deviceRevoke)));
     }
-    async function load(){
-      const request=++sequence;if(!alive())return;error.textContent='';body.innerHTML='<p class="devices-note" role="status">Loading devices…</p>';
-      try{const data=await localAPI('/api/account/devices',{headers:headers()});if(!alive()||request!==sequence)return;devices=data.devices||[];renderDevices();}
+    async function load({preserve=false}={}){
+      const request=++sequence;if(!alive())return;error.textContent='';if(!preserve){body.setAttribute('aria-busy','true');body.innerHTML='<p class="devices-note device-loading" role="status"><span aria-hidden="true"></span>Loading devices…</p>';}
+      try{const data=await localAPI('/api/account/devices',{headers:headers()});if(!alive()||request!==sequence)return;devices=data.devices||[];deviceCache={scope,data:devices,updatedAt:Date.now(),pending:null};renderDevices();}
       catch(failure){if(!alive()||request!==sequence)return;if(failure.code==='SEVEN_REAUTH_REQUIRED')unlock('Confirm your password again to continue.');else{error.textContent=failure.message;body.innerHTML='<button type="button" class="devices-retry">Try again</button>';body.querySelector('button').onclick=()=>void load();}}
     }
     function confirmRevoke(device){
@@ -59,10 +76,10 @@
         catch(failure){if(alive()){if(failure.code==='SEVEN_REAUTH_REQUIRED')unlock('Confirm your password again before signing out devices.');else error.textContent=failure.message;}}finally{if(alive())waiting(false);}};
       body.querySelector('[data-devices-cancel]').focus();
     }
-    if(unlocked?.scope===scope&&unlocked.until>Date.now())await load();else unlock();
+    if(unlocked?.scope===scope&&unlocked.until>Date.now()){if(deviceCache.scope===scope&&deviceCache.data){devices=deviceCache.data;renderDevices();void load({preserve:true});}else void load();}else unlock();
   }
   root.addEventListener('focus',()=>void check());document.addEventListener('visibilitychange',()=>{if(!document.hidden)void check();});
   root.addEventListener('storage',event=>{if(typeof state!=='undefined'&&event.key==='cineva.supabase.session'&&!event.newValue&&state.session)rejected({code:'SEVEN_SESSION_REVOKED'});});
-  root.SEVENDevices={isMain,mainId,deviceName,activity,bind,show,start,stop,check,logout,rejected,finishLogout};
+  root.SEVENDevices={isMain,mainId,deviceName,activity,bind,show,prefetch,start,stop,check,logout,rejected,finishLogout};
   root.addEventListener('online',()=>void finishLogout().catch(()=>{}));
 })(window);

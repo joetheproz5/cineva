@@ -1,6 +1,7 @@
 /* Account security UI. All permission checks and verification are also enforced server-side. */
 (function(root){
-  let activeGate=null;
+  let activeGate=null,managePending=false,emailManagePending=false,prefetchKey='';
+  const mfaStatusCache={key:'',data:null,updatedAt:0,pending:null},emailStatusCache={key:'',data:null,updatedAt:0,pending:null};
   const headers=token=>({'Content-Type':'application/json',Authorization:'Bearer '+token,...(typeof activeProfileId==='function'?{'X-Seven-Profile':activeProfileId()}:{})});
   async function api(action,token,body){const send=()=>localAPI('/api/auth/mfa/'+action,{signal:AbortSignal.timeout(20000),method:body===undefined?'GET':'POST',headers:headers(token),...(body===undefined?{}:{body:JSON.stringify(body)})});return ['verify','disable'].includes(action)?withSessionRefreshLock(send):send();}
   function modal(title,copy){
@@ -33,6 +34,31 @@
     return data;
   }
   const emailAPI=(action,token,body)=>localAPI('/api/auth/email/'+action,{signal:AbortSignal.timeout(25000),method:body===undefined?'GET':'POST',headers:headers(token),...(body===undefined?{}:{body:JSON.stringify(body)})});
+  const cacheKey=token=>`${state.user?.id||state.session?.user?.id||''}:${token}`;
+  function cachedStatus(cache,key,request){
+    if(cache.key!==key){cache.key=key;cache.data=null;cache.updatedAt=0;cache.pending=null;}
+    const refresh=()=>{
+      if(cache.pending)return cache.pending;
+      cache.pending=Promise.resolve().then(request).then(data=>{if(cache.key===key){cache.data=data;cache.updatedAt=Date.now();}return data;}).finally(()=>{if(cache.key===key)cache.pending=null;});
+      return cache.pending;
+    };
+    if(!cache.data)return refresh();
+    if(Date.now()-cache.updatedAt>30000)void refresh().catch(()=>{});
+    return Promise.resolve(cache.data);
+  }
+  function invalidateStatuses(){for(const cache of [mfaStatusCache,emailStatusCache]){cache.data=null;cache.updatedAt=0;}}
+  function prefetch(){
+    const token=state.session?.access_token;if(!token||!root.SEVENDevices?.isMain()||prefetchKey===cacheKey(token))return;
+    const key=cacheKey(token);prefetchKey=key;
+    const run=()=>{
+      if(key!==cacheKey(state.session?.access_token||'')||!document.querySelector('.profile-settings-page.settings-screen[data-settings-category="security"]')){if(prefetchKey===key)prefetchKey='';return;}
+      void cachedStatus(mfaStatusCache,key,()=>api('status',token)).catch(()=>{});
+      void cachedStatus(emailStatusCache,key,()=>emailAPI('status',token)).catch(()=>{});
+      void root.SEVENDevices?.prefetch?.()?.catch?.(()=>{});
+    };
+    if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(run,{timeout:1200});else root.setTimeout(run,180);
+  }
+  function loading(dialog,label){dialog.body.innerHTML=`<p class="auth-security-loading" role="status"><span aria-hidden="true"></span>${label}</p>`;dialog.element.querySelector('[data-close]')?.focus({preventScroll:true});}
   async function emailCode(token,purpose,password){
     if(activeGate)throw Error('Finish the current security check first.');
     const dialog=modal('Check your email','Sending your security code…');activeGate=dialog;let done=false,timer=null;
@@ -60,27 +86,38 @@
     });
   }
   async function manageEmail(){
+    if(document.querySelector('.account-security-modal'))return;
     if(!root.SEVENDevices?.isMain())return showToast('Use the main profile to change account security.');
     if(!state.session?.access_token)return showAuth('login');
-    let dialog;
+    if(emailManagePending)return;
+    emailManagePending=true;
+    const dialog=modal('Email verification','Checking your account security…');loading(dialog,'Checking email verification status…');
     try{
       const checked=await complete({session:state.session});persistSession(checked.session);
+      if(!dialog.element.isConnected)return;
       const token=state.session.access_token,status=await emailAPI('status',token),purpose=status.enabled?'disable':'enable';
-      dialog=modal(status.enabled?'Turn off email verification':'Set up email verification',status.enabled?'Confirm your password and a fresh email code. Your authenticator setting will not change.':'After your password, SEVEN will ask for a code sent to your email. If you enable an authenticator too, both checks are required.');
+      if(!dialog.element.isConnected)return;
+      dialog.element.querySelector('h2').textContent=status.enabled?'Turn off email verification':'Set up email verification';
+      dialog.element.querySelector('[data-copy]').textContent=status.enabled?'Confirm your password and a fresh email code. Your authenticator setting will not change.':'After your password, SEVEN will ask for a code sent to your email. If you enable an authenticator too, both checks are required.';
       dialog.body.innerHTML='<form><label>Account password<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="primary auth-submit">Send code</button></form>';
-      dialog.body.querySelector('form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,submit=form.querySelector('button');if(submit.disabled)return;submit.disabled=true;const password=form.elements.password.value;form.elements.password.value='';dialog.close(true);try{const result=await emailCode(token,purpose,password);if(result.restart)return manageEmail();showToast(result.enabled?'Email verification enabled.':'Email verification turned off.');}catch(error){showToast(error.message);}};
+      dialog.body.querySelector('form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,submit=form.querySelector('button');if(submit.disabled)return;submit.disabled=true;const password=form.elements.password.value;form.elements.password.value='';dialog.close(true);try{const result=await emailCode(token,purpose,password);invalidateStatuses();if(result.restart)return manageEmail();showToast(result.enabled?'Email verification enabled.':'Email verification turned off.');}catch(error){showToast(error.message);}};
       dialog.body.querySelector('input').focus();
-    }catch(error){showToast(error.message);}
+    }catch(error){if(dialog.element.isConnected){dialog.close(true);showToast(error.message);}}
+    finally{emailManagePending=false;}
   }
   async function manage(){
+    if(document.querySelector('.account-security-modal'))return;
     if(!root.SEVENDevices?.isMain())return showToast('Use the main profile to change account security.');
     const token=state.session?.access_token;if(!token)return showAuth('login');
-    let dialog;
+    if(managePending)return;
+    managePending=true;let restart=false,dialog=modal('Authenticator app','Checking account security…'),enrollment=null,busy=false,confirmed=false;
+    loading(dialog,'Checking authenticator status…');
     try{
-      const status=await api('status',token);
-      if(status.required){const upgraded=await verify({session:state.session},status.factors);persistSession(upgraded.session);return manage();}
-      if(status.enabled){const upgraded=await verify({session:state.session},status.factors,{disable:true});persistSession(upgraded.session);state.user=upgraded.user||upgraded.session.user||state.user;showToast('Two-step verification turned off.');return;}
-      dialog=modal('Set up two-step verification','Use an authenticator app to protect your SEVEN account.');let enrollment=null,busy=false,confirmed=false;
+      const key=cacheKey(token),status=await cachedStatus(mfaStatusCache,key,()=>api('status',token));
+      if(!dialog.element.isConnected)return;
+      if(status.required){dialog.close(true);const upgraded=await verify({session:state.session},status.factors);persistSession(upgraded.session);invalidateStatuses();restart=true;return;}
+      if(status.enabled){dialog.close(true);const upgraded=await verify({session:state.session},status.factors,{disable:true});persistSession(upgraded.session);state.user=upgraded.user||upgraded.session.user||state.user;invalidateStatuses();showToast('Two-step verification turned off.');return;}
+      dialog.element.querySelector('h2').textContent='Set up two-step verification';dialog.element.querySelector('[data-copy]').textContent='Use an authenticator app to protect your SEVEN account.';
       dialog.body.innerHTML='<form><label>Account password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary auth-submit" type="submit">Continue</button></form>';
       dialog.onClose(()=>{if(enrollment&&!confirmed)void api('cancel',token,{factorId:enrollment.id}).catch(()=>{});});
       dialog.body.querySelector('form').onsubmit=async event=>{event.preventDefault();if(busy)return;busy=true;const form=event.currentTarget,button=form.querySelector('button');button.disabled=true;dialog.error.textContent='';try{
@@ -89,12 +126,13 @@
         dialog.body.querySelector('code').textContent=enrollment.secret;dialog.body.querySelector('[data-copy-key]').onclick=async()=>{try{await navigator.clipboard.writeText(enrollment.secret);showToast('Setup key copied.');}catch{dialog.error.textContent='Select and copy the setup key above.';}};
         dialog.body.querySelector('form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');button.disabled=true;dialog.error.textContent='';try{const result=await api('verify',token,{factorId:enrollment.id,code:form.elements.code.value});if(!result.session?.access_token)throw Error('Verification could not be confirmed.');confirmed=true;persistSession(result.session);state.user=result.user||result.session.user||state.user;enrollment.secret='';dialog.close(true);showToast('Two-step verification enabled.');}catch(error){dialog.error.textContent=error.message;form.elements.code.value='';}finally{button.disabled=false;}};dialog.body.querySelector('input').focus();
       }catch(error){dialog.error.textContent=error.message;}finally{busy=false;button.disabled=false;}};dialog.body.querySelector('input').focus();
-    }catch(error){if(dialog?.element.isConnected)dialog.error.textContent=error.message;else showToast(error.message);}
+    }catch(error){if(dialog.element.isConnected){dialog.error.textContent=error.message;dialog.body.innerHTML='<button type="button" class="secondary" data-auth-retry>Try again</button>';dialog.body.querySelector('[data-auth-retry]').onclick=()=>{dialog.close(true);managePending=false;void manage();};}else showToast(error.message);}
+    finally{managePending=false;if(restart)void manage();}
   }
   function bind(){
     if(typeof state==='undefined')return;
-    document.querySelectorAll('[data-change-password]').forEach(button=>{if(button.parentElement.querySelector('[data-two-step]')||!root.SEVENDevices?.isMain())return;const settings=button.closest('.profile-settings-page.settings-screen'),makeRow=()=>{const row=document.createElement(settings?'a':'button');if(settings)row.href='#settings';else row.type='button';row.className='account-action-card settings-action-row';return row;},row=makeRow();row.dataset.twoStep='';row.innerHTML='<i aria-hidden="true">⌁</i><span><b>Authenticator app</b><small>Two-step verification · recommended</small></span><em>Manage ›</em>';row.onclick=()=>void manage();button.after(row);const email=makeRow();email.dataset.emailSecurity='';email.innerHTML='<i aria-hidden="true">✉</i><span><b>Email verification</b><small>Require an email code after your password</small></span><em>Manage ›</em>';email.onclick=()=>void manageEmail();row.after(email);});
+    document.querySelectorAll('[data-change-password]').forEach(button=>{if(button.parentElement.querySelector('[data-two-step]')||!root.SEVENDevices?.isMain())return;const settings=button.closest('.profile-settings-page.settings-screen'),makeRow=()=>{const row=document.createElement(settings?'a':'button');if(settings)row.href='#settings';else row.type='button';row.className='account-action-card';return row;},row=makeRow();row.dataset.twoStep='';row.innerHTML='<i aria-hidden="true">⌁</i><span><b>Authenticator app</b><small>Two-step verification · recommended</small></span><em>Manage ›</em>';row.onclick=()=>void manage();button.after(row);const email=makeRow();email.dataset.emailSecurity='';email.innerHTML='<i aria-hidden="true">✉</i><span><b>Email verification</b><small>Require an email code after your password</small></span><em>Manage ›</em>';email.onclick=()=>void manageEmail();row.after(email);});
   }
-  root.SEVENAuthSecurity={complete,manage,manageEmail};
+  root.SEVENAuthSecurity={complete,manage,manageEmail,prefetch};
   new MutationObserver(bind).observe(document.querySelector('#app'),{childList:true,subtree:true});
 })(window);

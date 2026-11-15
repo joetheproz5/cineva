@@ -17,6 +17,8 @@ function settingsContext() {
     escapeHTML:value => String(value || "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[char]),
     profileAvatar:() => "<span class=\"profile-avatar\"></span>",
     PLAYER_PROVIDERS:["cinesrc", "vidfast", "multiembed", "vidsrc", "2embed"],
+    DOWNLOAD_URL:"https://seven-9fm.pages.dev/download",
+    isInstalledPWA:false,
     accountAction:() => "",
     hiddenTitles:() => []
   };
@@ -111,5 +113,8 @@ test("privacy settings provide an explicit, device-wide iPhone DNS filtering gui
   assert.match(card, /whole iPhone, not just SEVEN/);
   assert.match(adult, /Profile PIN/);
   assert.match(child, /Parent access code/);
+  assert.match(adult, /href="https:\/\/seven-9fm\.pages\.dev\/download" rel="noopener"/);
+  context.isInstalledPWA=true;
+  assert.doesNotMatch(context.profileSettingsDetail({ id:"main", name:"Joe", kids:false }, "security", {}, false), /data-install-seven/);
   assert.match(source, /category === "security"\) document\.querySelector\("\.profile-settings-detail-page"\)\?\.insertAdjacentHTML\("beforeend", iosDnsProtectionCard\(\)\)/);
 });
