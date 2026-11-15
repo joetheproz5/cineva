@@ -14,8 +14,10 @@ const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
 if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
 const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "searchView", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistView", "trackerWeek", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft", "titleDiscovery", "franchise"];
+const SETTINGS_PAGE_TRANSITION = Object.freeze({ phoneBreakpointPx:768, phoneDurationMs:320, phoneEasing:"cubic-bezier(0.32,0.72,0,1)", desktopDurationMs:220, desktopEasing:"cubic-bezier(0.22,1,0.36,1)", desktopExitDurationMs:100, reducedDurationMs:100, safetyTimeoutMs:400, phoneOutgoingOffset:"-28%", phoneDimOpacity:0.3, desktopOffsetPx:12 });
 const appRouteSnapshots = new Map();
 let appNavigationIndex = 0, appNavigationReady = false, appNavigationRestoring = false, appNavigationIdentity = "";
+let settingsTransitionIntent = null, settingsTransitionActive = null, settingsToastAfterTransition = "";
 let searchRequest = 0;
 let catalogRecoveryScheduled = false;
 let coverflowResizeTimer;
@@ -1194,27 +1196,227 @@ function navigateBackInApp(fallback) {
   return false;
 }
 function resetAppNavigation() { appRouteSnapshots.clear(); appNavigationIndex = 0; appNavigationReady = false; appNavigationIdentity = ""; }
+function settingsPageContent() {
+  return app?.querySelector(":scope > main.settings-screen, :scope > main.settings-subpage, :scope > .settings-transition-stage > main.settings-screen:not(.settings-transition-outgoing), :scope > .settings-transition-stage > main.settings-subpage:not(.settings-transition-outgoing)") || null;
+}
+function settingsPageTransitionSupported() { return Boolean(document.documentElement.animate || Element.prototype.animate); }
+function markSettingsPageTransition(direction) {
+  const request = { direction, sourceIdentity:appRouteIdentity(), sourceScrollX:window.scrollX || 0, sourceScrollY:window.scrollY || 0, restoreScroll:null };
+  settingsTransitionIntent = request;
+  return request;
+}
+function settingsTransitionIsReduced() {
+  return Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || window.SEVEN_REDUCED_MOTION === true || window.SEVEN_NATIVE_ANIMATION_SCALE === 0);
+}
+function settingsTransitionAnnouncer() {
+  let node = document.querySelector(".settings-page-announcer");
+  if (!node) { node = document.createElement("div"); node.className = "settings-page-announcer"; node.setAttribute("role", "status"); node.setAttribute("aria-live", "polite"); node.setAttribute("aria-atomic", "true"); document.body.append(node); }
+  return node;
+}
+function removeDuplicateSettingsPageIds(outgoing, incoming) {
+  const incomingIds = new Set([...(incoming.id ? [incoming.id] : []), ...[...incoming.querySelectorAll("[id]")].map(node => node.id)]);
+  const references = ["for", "aria-labelledby", "aria-describedby", "aria-controls", "aria-owns", "aria-activedescendant", "headers"];
+  const replacements = new Map();
+  const nodes = [outgoing, ...outgoing.querySelectorAll("[id]")];
+  for (const node of nodes) {
+    if (node.id && incomingIds.has(node.id)) {
+      if (node.id === "profile-settings-form") node.classList.add("settings-transition-profile-form");
+      const replacement = `settings-outgoing-${node.id}`;
+      replacements.set(node.id, replacement);
+      node.id = replacement;
+    }
+  }
+  [outgoing, ...outgoing.querySelectorAll("*")].forEach(node => references.forEach(attribute => {
+    const value = node.getAttribute(attribute);
+    if (value) node.setAttribute(attribute, value.split(/\s+/).map(id => replacements.get(id) || id).join(" "));
+  }));
+}
+function finishSettingsPageTransition() {
+  const transition = settingsTransitionActive;
+  if (!transition) return;
+  settingsTransitionActive = null;
+  clearTimeout(transition.timeout);
+  transition.animations.forEach(animation => { try { animation.cancel(); } catch {} });
+  transition.scrim?.remove();
+  if (transition.incoming?.isConnected) {
+    transition.incoming.classList.remove("settings-transition-page", "settings-transition-incoming");
+    if (transition.originalIncomingStyle === null) transition.incoming.removeAttribute("style");
+    else transition.incoming.setAttribute("style", transition.originalIncomingStyle);
+    transition.stage?.replaceWith(transition.incoming);
+  } else transition.stage?.remove();
+  transition.outgoing?.remove();
+  const restore = transition.restoreScroll || { x:0, y:0 };
+  window.scrollTo(restore.x, restore.y);
+  syncHeaderScroll();
+  if (settingsToastAfterTransition) {
+    const notice = settingsToastAfterTransition;
+    settingsToastAfterTransition = "";
+    window.SEVENSettingsUI?.toast(notice);
+  }
+}
+function beginSettingsPageTransition(request, outgoing, incoming, oldGeometry) {
+  const reduced = settingsTransitionIsReduced();
+  const phone = window.innerWidth <= SETTINGS_PAGE_TRANSITION.phoneBreakpointPx || window.matchMedia?.("(pointer: coarse)").matches;
+  const direction = request.direction;
+  const totalDuration = reduced ? SETTINGS_PAGE_TRANSITION.reducedDurationMs : phone ? SETTINGS_PAGE_TRANSITION.phoneDurationMs : SETTINGS_PAGE_TRANSITION.desktopExitDurationMs + SETTINGS_PAGE_TRANSITION.desktopDurationMs;
+  const restoreScroll = request.restoreScroll || { x:0, y:0 };
+  const incomingRect = incoming.getBoundingClientRect();
+  const incomingStyle = getComputedStyle(incoming);
+  const originalIncomingStyle = incoming.getAttribute("style");
+  const parent = incoming.parentElement;
+  const parentStyle = getComputedStyle(parent);
+  const parentWidth = parent.clientWidth - parseFloat(parentStyle.borderLeftWidth || "0") - parseFloat(parentStyle.borderRightWidth || "0") - parseFloat(parentStyle.paddingLeft || "0") - parseFloat(parentStyle.paddingRight || "0");
+  const incomingHeight = Math.max(incomingRect.height, incoming.scrollHeight);
+  const outgoingHeight = Math.max(oldGeometry.height, oldGeometry.scrollHeight || 0);
+  const stage = document.createElement("div");
+  stage.className = "settings-transition-stage";
+  stage.style.width = `${Math.max(0, parentWidth)}px`;
+  stage.style.height = `${Math.max(incomingHeight, outgoingHeight)}px`;
+  stage.style.marginTop = `${parseFloat(incomingStyle.marginTop) || 0}px`;
+  stage.style.marginBottom = `${parseFloat(incomingStyle.marginBottom) || 0}px`;
+  incoming.replaceWith(stage);
+  stage.append(outgoing, incoming);
+
+  const placeLayer = (page, width, height, left, layerClass, zIndex) => {
+    page.classList.add("settings-transition-page", layerClass);
+    page.style.boxSizing = "border-box";
+    page.style.position = "absolute";
+    page.style.top = "0";
+    page.style.left = `${left}px`;
+    page.style.width = `${width}px`;
+    page.style.height = `${height}px`;
+    page.style.margin = "0";
+    page.style.zIndex = String(zIndex);
+    page.style.willChange = "transform, opacity";
+  };
+  const incomingWidth = incomingRect.width || parentWidth;
+  const outgoingWidth = oldGeometry.width || incomingWidth;
+  const stagePageLeft = Math.max(0, (parentWidth - incomingWidth) / 2);
+  placeLayer(outgoing, outgoingWidth, outgoingHeight, Math.max(0, (parentWidth - outgoingWidth) / 2), "settings-transition-outgoing", direction === "forward" ? 1 : 3);
+  placeLayer(incoming, incomingWidth, Math.max(incomingHeight, 1), stagePageLeft, "settings-transition-incoming", direction === "forward" ? 3 : 1);
+  if (phone && !reduced) incoming.style.backgroundColor = "var(--bg, #050505)";
+  outgoing.inert = true;
+  outgoing.setAttribute("aria-hidden", "true");
+  removeDuplicateSettingsPageIds(outgoing, incoming);
+
+  const scrim = phone && !reduced ? document.createElement("div") : null;
+  if (scrim) {
+    scrim.className = "settings-transition-scrim";
+    scrim.setAttribute("aria-hidden", "true");
+    scrim.style.position = "absolute";
+    scrim.style.top = "0";
+    scrim.style.left = "0";
+    scrim.style.width = "100%";
+    scrim.style.height = "100%";
+    scrim.style.zIndex = "2";
+    scrim.style.pointerEvents = "none";
+    scrim.style.background = "#000";
+    scrim.style.opacity = direction === "back" ? String(SETTINGS_PAGE_TRANSITION.phoneDimOpacity) : "0";
+    scrim.style.willChange = "opacity";
+    stage.append(scrim);
+  }
+
+  const transition = { stage, outgoing, incoming, scrim, animations:[], timeout:0, originalIncomingStyle, restoreScroll };
+  settingsTransitionActive = transition;
+  const animate = (element, keyframes, duration, easing, delay = 0) => {
+    if (duration <= 0 || !element?.animate) return;
+    transition.animations.push(element.animate(keyframes, { duration, easing, delay, fill:"both" }));
+  };
+  window.scrollTo(0, 0);
+  const outgoingY = -(request.sourceScrollY || 0);
+  const incomingY = direction === "back" ? -(restoreScroll.y || 0) : 0;
+  if (reduced) {
+    animate(outgoing, [{ opacity:1 }, { opacity:0 }], totalDuration, "ease-out");
+    animate(incoming, [{ opacity:0 }, { opacity:1 }], totalDuration, "ease-out");
+  } else if (phone) {
+    if (direction === "forward") {
+      animate(outgoing, [{ transform:`translate3d(0,${outgoingY}px,0)` }, { transform:`translate3d(${SETTINGS_PAGE_TRANSITION.phoneOutgoingOffset},${outgoingY}px,0)` }], totalDuration, SETTINGS_PAGE_TRANSITION.phoneEasing);
+      animate(incoming, [{ transform:"translate3d(100%,0,0)" }, { transform:"translate3d(0,0,0)" }], totalDuration, SETTINGS_PAGE_TRANSITION.phoneEasing);
+      animate(scrim, [{ opacity:0 }, { opacity:SETTINGS_PAGE_TRANSITION.phoneDimOpacity }], totalDuration, SETTINGS_PAGE_TRANSITION.phoneEasing);
+    } else {
+      animate(incoming, [{ transform:`translate3d(${SETTINGS_PAGE_TRANSITION.phoneOutgoingOffset},${incomingY}px,0)` }, { transform:`translate3d(0,${incomingY}px,0)` }], totalDuration, SETTINGS_PAGE_TRANSITION.phoneEasing);
+      animate(outgoing, [{ transform:`translate3d(0,${outgoingY}px,0)` }, { transform:`translate3d(100%,${outgoingY}px,0)` }], totalDuration, SETTINGS_PAGE_TRANSITION.phoneEasing);
+      animate(scrim, [{ opacity:SETTINGS_PAGE_TRANSITION.phoneDimOpacity }, { opacity:0 }], totalDuration, SETTINGS_PAGE_TRANSITION.phoneEasing);
+    }
+  } else if (direction === "forward") {
+    animate(outgoing, [{ opacity:1, transform:`translate3d(0,${outgoingY}px,0)` }, { opacity:0, transform:`translate3d(0,${outgoingY}px,0)` }], SETTINGS_PAGE_TRANSITION.desktopExitDurationMs, "ease-out");
+    animate(incoming, [{ opacity:0, transform:"translate3d(12px,0,0)" }, { opacity:1, transform:"translate3d(0,0,0)" }], SETTINGS_PAGE_TRANSITION.desktopDurationMs, SETTINGS_PAGE_TRANSITION.desktopEasing, SETTINGS_PAGE_TRANSITION.desktopExitDurationMs);
+  } else {
+    const backOffset = SETTINGS_PAGE_TRANSITION.desktopOffsetPx * -1;
+    animate(outgoing, [{ opacity:1, transform:`translate3d(0,${outgoingY}px,0)` }, { opacity:0, transform:`translate3d(0,${outgoingY}px,0)` }], SETTINGS_PAGE_TRANSITION.desktopExitDurationMs, "ease-out");
+    animate(incoming, [{ opacity:0, transform:`translate3d(${backOffset}px,${incomingY}px,0)` }, { opacity:1, transform:`translate3d(0,${incomingY}px,0)` }], SETTINGS_PAGE_TRANSITION.desktopDurationMs, SETTINGS_PAGE_TRANSITION.desktopEasing, SETTINGS_PAGE_TRANSITION.desktopExitDurationMs);
+  }
+
+  const heading = incoming.querySelector("h1");
+  if (heading) {
+    if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll:true });
+    const title = heading.textContent.trim();
+    if (title) { document.title = `${title} | SEVEN`; settingsTransitionAnnouncer().textContent = title; }
+  }
+  transition.timeout = window.setTimeout(finishSettingsPageTransition, SETTINGS_PAGE_TRANSITION.safetyTimeoutMs);
+  const endDelay = reduced ? totalDuration : phone ? totalDuration : SETTINGS_PAGE_TRANSITION.desktopExitDurationMs + SETTINGS_PAGE_TRANSITION.desktopDurationMs;
+  window.setTimeout(() => { if (settingsTransitionActive === transition) finishSettingsPageTransition(); }, endDelay);
+}
+function renderWithSettingsPageTransition(renderPage) {
+  if (settingsTransitionActive) finishSettingsPageTransition();
+  const request = settingsTransitionIntent;
+  settingsTransitionIntent = null;
+  const outgoing = request ? settingsPageContent() : null;
+  const oldRect = outgoing?.getBoundingClientRect();
+  const oldGeometry = outgoing ? { width:oldRect.width, height:Math.max(oldRect.height, outgoing.scrollHeight) } : null;
+  const sourceIdentity = request?.sourceIdentity;
+  if (outgoing && request) { outgoing.inert = true; outgoing.setAttribute("aria-hidden", "true"); }
+  renderPage();
+  const incoming = request ? settingsPageContent() : null;
+  const destinationIdentity = appRouteIdentity();
+  if (outgoing && incoming && outgoing !== incoming && sourceIdentity !== destinationIdentity && settingsPageTransitionSupported()) beginSettingsPageTransition(request, outgoing, incoming, oldGeometry);
+  else {
+    outgoing?.removeAttribute("aria-hidden");
+    if (outgoing) outgoing.inert = false;
+    if (settingsToastAfterTransition) { const notice = settingsToastAfterTransition; settingsToastAfterTransition = ""; window.SEVENSettingsUI?.toast(notice); }
+  }
+}
+document.addEventListener("click", event => {
+  const control = event.target.closest?.("button, a");
+  if (!control) return;
+  const settingsPage = control.closest(".settings-screen, .settings-subpage");
+  if (!settingsPage) return;
+  if (control.matches("[data-profile-category], [data-manage-profile], [data-profile-stats], [data-my-list], [data-view-history], [data-liked-titles], [data-hidden-titles]")) {
+    const request = markSettingsPageTransition("forward");
+    queueMicrotask(() => { if (settingsTransitionIntent === request) settingsTransitionIntent = null; });
+  }
+}, true);
 document.addEventListener("click", event => {
   const control = event.target.closest?.("button, a");
   if (!control || ![...control.attributes].some(attribute => /^data-(?:back(?:-|$)|.+-back$)/.test(attribute.name))) return;
-  if (history.state?.sevenNavigation?.index !== appNavigationIndex || appNavigationIndex < 1 || !appRouteSnapshots.has(appNavigationIndex - 1)) return;
+  if (control.matches("[data-profile-form-cancel]")) return;
+  const hasPrevious = history.state?.sevenNavigation?.index === appNavigationIndex && appNavigationIndex > 0 && appRouteSnapshots.has(appNavigationIndex - 1);
+  if (control.closest(".settings-screen, .settings-subpage")) {
+    const request = markSettingsPageTransition("back");
+    if (!hasPrevious) queueMicrotask(() => { if (settingsTransitionIntent === request) settingsTransitionIntent = null; });
+  }
+  if (!hasPrevious) return;
   event.preventDefault();
   event.stopImmediatePropagation();
   history.back();
 }, true);
 function restoreAppNavigation(event) {
   const index = event.state?.sevenNavigation?.index;
+  const inAppSettingsBack = settingsTransitionIntent?.direction === "back";
   if (Number.isInteger(state.profileHistoryRepairIndex)) {
     const expected = state.profileHistoryRepairIndex; state.profileHistoryRepairIndex = null;
     if (index === expected) return;
   }
   if (state.profileDiscardConfirmed) { state.profileDiscardConfirmed = false; state.profileDiscardPending = false; }
   else if (state.route === "profile-settings" && state.profileSettingsCategory === "profile" && state.profileEditorDirtyCheck?.() && Number.isInteger(index) && index < appNavigationIndex) {
+    const animateSettingsBack = settingsTransitionIntent?.direction === "back";
+    settingsTransitionIntent = null;
     state.profileHistoryRepairIndex = appNavigationIndex;
     history.forward();
     if (!state.profileDiscardPending) {
       state.profileDiscardPending = true;
-      void confirmProfileEditorDiscard().then(discard => { state.profileDiscardPending = false; if (discard) { state.profileDiscardConfirmed = true; history.back(); } });
+      void confirmProfileEditorDiscard().then(discard => { state.profileDiscardPending = false; if (discard) { state.profileDiscardConfirmed = true; if (animateSettingsBack) markSettingsPageTransition("back"); history.back(); } });
     }
     return;
   }
@@ -1236,14 +1438,17 @@ function restoreAppNavigation(event) {
   }
   appNavigationIndex = index;
   appNavigationIdentity = snapshot.identity;
+  if (inAppSettingsBack) settingsTransitionIntent.restoreScroll = { x:snapshot.scrollX, y:snapshot.scrollY };
   appNavigationRestoring = true;
   Object.assign(state, snapshot.values, { route:snapshot.route });
   render();
   appNavigationRestoring = false;
-  requestAnimationFrame(() => { window.scrollTo(snapshot.scrollX, snapshot.scrollY); syncHeaderScroll(); });
+  if (!inAppSettingsBack) requestAnimationFrame(() => { window.scrollTo(snapshot.scrollX, snapshot.scrollY); syncHeaderScroll(); });
 }
 window.addEventListener("popstate", restoreAppNavigation);
-function render() {
+function render() { return renderWithSettingsPageTransition(renderCurrentRoute); }
+function renderCurrentRoute() {
+  if (!(state.route === "profile-settings" && state.profileSettingsCategory === "profile")) cleanupProfileEditorListeners();
   primeSavedAgeRatings();
   if (state.route !== "profiles" && profileGateLayoutAbortController) { profileGateLayoutAbortController.abort(); profileGateLayoutAbortController = null; }
   if (state.account && !state.user?.id && !activeProfileId()) restoreActiveProfileSelection();
@@ -3563,6 +3768,12 @@ function profileEditorFormMarkup(profile, isNew, canRemove) {
   const counterVisible = String(profile.name || "").length >= 19;
   return `<main class="profile-editor-route profile-settings-redesign" data-profile-editor><div class="profile-editor-column"><header class="profile-editor-topbar"><button type="button" class="profile-editor-cancel" data-profile-form-cancel>Cancel</button><h1>${isNew ? "New profile" : "Edit profile"}</h1></header><form id="profile-settings-form" class="profile-editor-form" novalidate><div class="profile-editor-content"><div class="profile-editor-preview" data-avatar-preview aria-hidden="true"><span class="profile-editor-avatar-face">${profileEditorFaceMarkup(selectedAvatar, profile.name)}</span></div><div class="profile-editor-name"><label class="profile-editor-visually-hidden" for="profile-editor-name">Profile name</label><input id="profile-editor-name" name="name" type="text" required maxlength="24" value="${escapeHTML(profile.name)}" placeholder="Profile name" aria-label="Profile name" aria-describedby="profile-editor-field-error profile-editor-counter" autocapitalize="words" autocomplete="off" enterkeyhint="done"><span class="profile-editor-underline" aria-hidden="true"></span><div class="profile-editor-field-meta"><p id="profile-editor-field-error" class="profile-editor-field-error" role="status" aria-live="polite"></p><span id="profile-editor-counter" class="profile-editor-counter" ${counterVisible ? "" : "hidden"}>${String(profile.name || "").length} / 24</span></div></div><section class="profile-editor-avatar-picker" aria-labelledby="profile-editor-avatar-title" style="--profile-editor-avatar-grid-width:${avatarGridWidth}px"><h2 id="profile-editor-avatar-title">Choose an avatar</h2><div class="profile-editor-avatar-grid" role="radiogroup" aria-labelledby="profile-editor-avatar-title">${avatarTiles}</div></section>${canRemove ? `<button type="button" class="profile-editor-delete" data-remove-profile>Delete profile</button>` : ""}</div><div class="profile-editor-actions"><p class="profile-editor-save-error" role="status" aria-live="polite"></p><button type="submit" class="primary profile-editor-submit" disabled><span class="profile-editor-submit-label">${isNew ? "Create profile" : "Save changes"}</span><i class="profile-editor-submit-progress" aria-hidden="true"></i></button></div></form></div></main>`;
 }
+function profileEditorSettingsMarkup(profile, canRemove, backLabel) {
+  const full = profileEditorFormMarkup(profile, false, canRemove), start = full.indexOf('<form id="profile-settings-form"'), end = full.indexOf("</form>", start) + "</form>".length;
+  const form = full.slice(start, end).replace('class="profile-editor-form"', 'class="profile-editor-form profile-editor-settings-form"');
+  const back = `<button type="button" class="profile-category-back" data-profile-form-cancel data-settings-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>${t(backLabel)}</button>`;
+  return `${header()}<main class="profile-settings-page profile-settings-mobile-first profile-settings-redesign settings-screen profile-settings-edit-page" data-settings-category="profile"><div class="profile-settings-container"><div class="profile-settings-detail-page"><header class="profile-settings-page-heading">${back}<div class="collection-heading-copy"><h1>${t("Edit profile")}</h1></div></header>${form}</div></div></main>`;
+}
 function profileSettingsDetail(profile, category, preferences, isNew) {
   preferences = { ...preferences, maturity:maturityForProfile(profile) };
   const canRemove = !isNew && state.account.profiles.length > 1 && profile.id !== (globalThis.window?.SEVENDevices?.mainId() || "main"), save = `<div class="profile-settings-actions"><button class="primary" type="submit">${t(isNew ? "Create profile" : "Save changes")}</button></div>`;
@@ -3582,9 +3793,32 @@ function cleanupProfileEditorListeners() {
   state.profileEditorViewportCleanup?.(); state.profileEditorViewportCleanup = null;
   state.profileEditorDirtyCheck = null; state.profileEditorSaving = false; state.profileEditorEscapeHandler = null;
 }
-function returnFromProfileEditor() {
+function returnFromProfileEditor(savedNotice = "") {
   const returnCategory = state.profileFormReturnCategory;
+  const settingsEdit = state.profileEditorIsNew !== true && ["home", "profiles"].includes(returnCategory);
   cleanupProfileEditorListeners();
+  if (settingsEdit) {
+    const previousIndex = appNavigationIndex - 1;
+    const previousSnapshot = appRouteSnapshots.get(previousIndex);
+    if (previousSnapshot?.route === "profile-settings" && previousSnapshot.values.profileSettingsCategory === returnCategory) {
+      const active = currentProfile();
+      previousSnapshot.values.profileDraft = active ? { ...active } : previousSnapshot.values.profileDraft;
+      settingsToastAfterTransition = savedNotice;
+      const request = markSettingsPageTransition("back");
+      request.restoreScroll = { x:previousSnapshot.scrollX, y:previousSnapshot.scrollY };
+      history.back();
+      return;
+    }
+    const active = currentProfile();
+    state.profileDraft = active ? { ...active } : state.profileDraft;
+    state.profileEditorIsNew = false;
+    state.profileSettingsCategory = returnCategory;
+    state.profileFormReturnCategory = null;
+    settingsToastAfterTransition = savedNotice;
+    markSettingsPageTransition("back");
+    renderProfileSettings();
+    return;
+  }
   state.profileDraft = null; state.profileEditorIsNew = null; state.profileSettingsCategory = null; state.profileFormReturnCategory = null;
   if (!activeProfileId()) { state.profileSettingsReturn = null; state.route = "profiles"; }
   else if (returnCategory) { state.route = "profile-settings"; state.profileSettingsCategory = returnCategory; }
@@ -3602,7 +3836,12 @@ async function requestProfileEditorCancel() {
   const dirty = Boolean(state.profileEditorDirtyCheck?.());
   if (dirty && !await confirmProfileEditorDiscard()) return;
   if (dirty) state.profileDiscardConfirmed = true;
-  if (!navigateBackInApp(returnFromProfileEditor)) state.profileDiscardConfirmed = false;
+  const settingsEdit = state.profileEditorIsNew !== true && ["home", "profiles"].includes(state.profileFormReturnCategory);
+  if (!settingsEdit) {
+    if (!navigateBackInApp(returnFromProfileEditor)) state.profileDiscardConfirmed = false;
+    return;
+  }
+  returnFromProfileEditor();
 }
 function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
   const form = document.querySelector("#profile-settings-form"), input = form?.elements.name, preview = document.querySelector("[data-avatar-preview]"), fieldError = document.querySelector("#profile-editor-field-error"), counter = document.querySelector("#profile-editor-counter"), saveError = document.querySelector(".profile-editor-save-error"), submit = form?.querySelector("[type=submit]"), group = form?.querySelector("[role=radiogroup]");
@@ -3680,7 +3919,7 @@ function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
   }, { once:false });
   const viewport = window.visualViewport, syncViewport = () => {
     const offset = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
-    document.querySelector(".profile-editor-route")?.style.setProperty("--profile-keyboard-offset", `${offset}px`);
+    document.querySelector(".profile-editor-route, .profile-settings-edit-page")?.style.setProperty("--profile-keyboard-offset", `${offset}px`);
     fitNameInput();
     if (document.activeElement === input && viewport) input.scrollIntoView({ block:"center", behavior:"auto" });
   };
@@ -3701,7 +3940,8 @@ function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
     state.profileDraft = next;
     try {
       await saveAccount(true, { base:initialAccount });
-      returnFromProfileEditor();
+      const savedNotice = window.SEVENSettingsSync?.state().phase === "saved" ? "Settings saved." : "Saved on this device. Waiting to sync.";
+      returnFromProfileEditor(isNew ? "" : savedNotice);
     } catch {
       if (isNew) state.account.profiles = state.account.profiles.filter(item => item.id !== next.id);
       else state.account.profiles = state.account.profiles.map(item => item.id === profile.id ? previous : item);
@@ -3724,7 +3964,8 @@ function bindProfileEditor(profile, isNew, canRemove, initialAccount) {
     else returnFromProfileEditor();
   });
 }
-function renderProfileSettings() {
+function renderProfileSettings() { return renderWithSettingsPageTransition(renderProfileSettingsContent); }
+function renderProfileSettingsContent() {
   globalThis.window?.SEVENSettingsUI?.capture();
   syncAppRouteHistory();
   const profile = state.profileDraft;
@@ -3734,7 +3975,10 @@ function renderProfileSettings() {
   const detailHeading = category === "home" ? "" : `<header class="profile-settings-page-heading"><button class="profile-category-back" data-profile-category-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>${t("Settings")}</button><div class="collection-heading-copy"><h1>${t(titles[category])}</h1></div></header>`;
   if (category === "profile") {
     const canRemove = !isNew && state.account.profiles.length > 1 && profile.id !== (globalThis.window?.SEVENDevices?.mainId() || "main");
-    app.innerHTML = profileEditorFormMarkup(profile, isNew, canRemove);
+    const settingsEdit = !isNew && ["home", "profiles"].includes(state.profileFormReturnCategory);
+    app.innerHTML = settingsEdit
+      ? profileEditorSettingsMarkup(profile, canRemove, state.profileFormReturnCategory === "profiles" ? "Manage profiles" : "Settings")
+      : profileEditorFormMarkup(profile, isNew, canRemove);
     bindCommon(); bindProfileEditor(profile, isNew, canRemove, initialAccount);
     globalThis.window?.SEVENSettingsUI?.enhance();
     return;
@@ -3790,11 +4034,11 @@ function renderProfileSettings() {
       scrollToTop();
     } catch (failure) { error.textContent = failure.message; window.SEVENSettingsUI?.toast(failure.message); }
   });
-  document.querySelector("[data-profile-stats]")?.addEventListener("click", () => { state.route = "stats"; scrollToTop(); render(); });
+  document.querySelector("[data-profile-stats]")?.addEventListener("click", () => { state.route = "stats"; render(); });
   document.querySelector("[data-my-list]")?.addEventListener("click", () => { state.myListReturn = "profile-settings"; state.route = "my-list"; render(); });
   document.querySelector("[data-view-history]")?.addEventListener("click", () => { state.historyReturn = "profile-settings"; state.route = "history"; render(); });
-  document.querySelector("[data-liked-titles]")?.addEventListener("click", () => { state.route = "liked"; scrollToTop(); render(); });
-  document.querySelector("[data-hidden-titles]")?.addEventListener("click", () => { state.route = "hidden"; scrollToTop(); render(); });
+  document.querySelector("[data-liked-titles]")?.addEventListener("click", () => { state.route = "liked"; render(); });
+  document.querySelector("[data-hidden-titles]")?.addEventListener("click", () => { state.route = "hidden"; render(); });
   document.querySelector("[data-clear-history]")?.addEventListener("click", async () => { if (!await window.SEVENSettingsUI.confirm(`Remove viewing activity for ${profile.name || "this profile"}.`, {title:"Clear viewing history?",confirmLabel:"Clear history",danger:true})) return; const profileId = profile.id, prefix = `seven-progress-${profileId}-`; Object.keys(localStorage).filter(key => key.startsWith(prefix)).forEach(key => localStorage.removeItem(key)); forgetProfileProgress(profileId); await clearProfilePlaybackStats(profileId); if (state.session) try { await localAPI(`/api/account/progress?profile=${encodeURIComponent(profileId)}`, { method:"DELETE", headers:authorizedHeaders() }); } catch {} if (state.route === "profile-settings" && state.profileDraft?.id === profileId) renderProfileSettings(); });
   if (category === "security") {
     if(globalThis.window?.SEVENDevices?.isMain(profile)) document.querySelector(".profile-category-actions")?.insertAdjacentHTML("afterbegin", accountAction("▣", "Manage devices", "View signed-in devices and revoke access", "data-manage-devices", "Manage"));

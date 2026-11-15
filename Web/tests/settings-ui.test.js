@@ -33,8 +33,8 @@ test('confirmation dialogs are scoped, cancellable, keyboard accessible and requ
 });
 test('settings assets are versioned and available in the offline app shell',()=>{
  const index=read('index.html'),sw=read('service-worker.js');
- for(const asset of ['settings-ui.js?v=7','settings-ui.css?v=7']){assert.ok(index.includes(asset));assert.ok(sw.includes(asset));}
- assert.ok(index.indexOf('settings-ui.js?v=7')<index.indexOf('app.js?v=445'));assert.match(sw,/seven-v449/);
+ for(const asset of ['settings-ui.js?v=7','settings-ui.css?v=9']){assert.ok(index.includes(asset));assert.ok(sw.includes(asset));}
+ assert.ok(index.indexOf('settings-ui.js?v=7')<index.indexOf('app.js?v=450'));assert.match(sw,/seven-v454/);
  assert.match(css,/@media \(hover: none\), \(pointer: coarse\)[\s\S]*?profile-category-row:hover:not\(:active\)[\s\S]*?background: transparent/);
 });
 test('phone password confirmation stays above the fixed bottom navigation',()=>{
