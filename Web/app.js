@@ -1702,7 +1702,7 @@ function bindProfileGateAvatarLoads(gate) {
   });
 }
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
-function homeSkeleton() { return `<section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
+function homeSkeleton() { return `${collectionSkeletonRail({ home:true })}${collectionSkeletonRail({ home:true })}`; }
 function renderHome() {
   clearTimeout(state.heroTimer);
   if (!Object.keys(state.catalog || {}).length && !state.catalogRequest && !state.error && navigator.onLine && !catalogRecoveryScheduled) {
@@ -1722,9 +1722,11 @@ function renderHome() {
   const continuing = continueWatching();
   const newEpisodes = (state.newEpisodes || []).filter(contentAllowed);
   const otherCatalog = Object.entries(state.catalog).filter(([name]) => name !== "Coming soon");
-  app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : f ? featuredMarkup(f) : ""}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${otherCatalog.map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><button class="play-something-banner" data-trailers><span class="play-something-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play-something-copy"><small>${t("Not sure what to watch?").toUpperCase()}</small><b>${t("Play something")}</b><span>${t("We’ll pick a trailer for you")}</span></span><em>Start shuffling <b>›</b></em></button></section></main>${footer()}`;
+  collectionRailSequence = 0;
+  app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : f ? featuredMarkup(f) : ""}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${otherCatalog.map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><section class="play-something-banner" aria-labelledby="play-something-title"><div class="play-something-copy"><h2 id="play-something-title">${t("Not sure what to watch?")}</h2><p>${t("We’ll pick a trailer for you")}</p></div><div class="play-something-actions"><button type="button" class="primary" data-trailers>${t("Play something")}</button><button type="button" class="play-something-new-picks" data-trailers>New picks</button></div></section></section></main>${footer()}`;
   bindCommon(); window.SEVENHero.mount(); scheduleHero(); syncHeaderScroll();
   document.querySelectorAll("[data-trailers]").forEach(button => button.onclick = openTrailers);
+  bindHomeRails();
   if (continuing.length) void repairContinuePosters(continuing);
   document.querySelectorAll("[data-remove-continue]").forEach(button => button.onclick = async () => {
     const [type, id, season, episode] = button.dataset.removeContinue.split(":"), item = { type, id:Number(id), season:Number(season), episode:Number(episode) };
@@ -1764,8 +1766,16 @@ function scheduleHero() {
   state.heroTimer = setTimeout(advance, 8500);
 }
 function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(t(name === "My List" ? "Favourites" : name))}</h2>`; }
-function rail(name, items) { const visible = items.filter(contentAllowed); if (!visible.length) return ""; const key = `${state.route}:${name}`, displayName = name === "My List" ? "Favourites" : name, ranked = name === "Trending now", upcoming = name === "Coming soon", railItems = ranked ? visible.slice(0, 4) : visible; state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route, sources:collectionSources(name) }; return `<section class="rail ${ranked ? "ranked-rail" : ""} ${upcoming ? "upcoming-rail" : ""}"><div class="rail-title"><div>${railTitle(displayName)}<small>${ranked ? "This week on TMDB" : upcoming ? t("Release dates from TMDB") : "Curated for your screen"}</small></div><button class="explore-all" data-explore="${escapeHTML(key)}">View all <b>›</b></button></div><div class="cards">${railItems.map((item, index) => upcoming ? upcomingCard(item) : card(item, ranked ? index + 1 : 0)).join("")}</div></section>`; }
-function newEpisodeRail(items) { return `<section class="rail new-episode-rail"><div class="rail-title">${railTitle("New episodes")}<span>From followed series</span></div><div class="cards">${items.map(item => `<button class="card" data-open="tv:${item.id}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><i>NEW EPISODE</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(item))}</b><small>S${item.episode.season_number} · E${item.episode.episode_number} · ${escapeHTML(item.episode.name || "New episode")}</small></button>`).join("")}</div></section>`; }
+function rail(name, items) {
+  const visible = items.filter(contentAllowed);
+  if (!visible.length) return "";
+  const key = `${state.route}:${name}`;
+  return posterRail(name, visible, key, { home:true, displayItems:name === "Trending now" ? visible.slice(0, 4) : undefined });
+}
+function newEpisodeRail(items) {
+  const episodes = items.map(item => ({ ...item, type:"tv" }));
+  return posterRail("New episodes", episodes, `${state.route}:New episodes`, { home:true, viewAll:false, cardOptions:() => ({ watchlist:false }) });
+}
 function card(item, rank = 0) { if (!contentAllowed(item)) return ""; return `<article class="card ${rank ? "ranked-card" : ""}"><button class="card-open" data-open="${item.type}:${item.id}" aria-label="More about ${escapeHTML(titleOf(item))}"><span class="poster-wrap"><img src="${posterOf(item)}" alt="" loading="lazy"><span class="card-shade"></span><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em class="card-score">★ ${item.vote_average.toFixed(1)}</em>` : ""}<strong class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></strong></span><span class="card-copy ${rank ? "ranked-copy" : ""}">${rank ? `<em class="card-rank" aria-label="Rank ${rank}">${String(rank).padStart(2, "0")}</em>` : ""}<b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>${watchlistAction(item, "card")}</article>`; }
 function mobileSearchCard(item) { return `<button class="msearch-card" data-open="${item.type}:${item.id}"><span class="msearch-poster"><img src="${posterOf(item)}" alt="" loading="lazy"><i>${item.type === "tv" ? "SERIES" : "MOVIE"}</i>${item.vote_average ? `<em>★ ${item.vote_average.toFixed(1)}</em>` : ""}</span><span class="msearch-copy"><b>${escapeHTML(titleOf(item))}</b><small>${yearOf(item) || "New"} · ${item.type === "tv" ? "Series" : "Movie"}</small></span></button>`; }
 function progressEntries() { const profileId = activeProfileId(); if (!profileId) return []; const prefix = `seven-progress-${profileId}-`; return Object.keys(localStorage).filter(key => key.startsWith(prefix)).map(key => { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return null; } }).filter(Boolean); }
@@ -1816,11 +1826,46 @@ async function repairContinuePosters(items) {
     if (!posterPath) { continuePosterRepairs.delete(repairKey); return; }
     const changed = [];
     state.accountProgress.filter(record => record.key?.startsWith(`seven-progress-${activeProfileId()}-`) && record.type === type && Number(record.id) === id && record.posterPath !== posterPath).forEach(record => { record.posterPath = posterPath; localStorage.setItem(record.key, JSON.stringify(record)); changed.push({ storageKey:record.key, record }); });
-    document.querySelectorAll(`[data-continue^="${type}:${id}:"] img`).forEach(image => { image.src = `${TMDB_IMAGE}${posterPath}`; });
+    const imageBase = TMDB_IMAGE.replace(/\/w\d+$/, ""), imagePath = posterPath.startsWith("/") ? posterPath : `/${posterPath}`;
+    document.querySelectorAll(`[data-continue^="${type}:${id}:"]`).forEach(button => {
+      const frame = button.querySelector(".collection-poster-frame");
+      if (!frame) return;
+      let image = frame.querySelector("img");
+      if (!image) {
+        image = document.createElement("img");
+        image.alt = "";
+        image.loading = "lazy";
+        image.decoding = "async";
+        frame.querySelector(".collection-poster-fallback")?.remove();
+        frame.insertBefore(image, frame.firstChild);
+      }
+      image.sizes = homePosterImageSizes();
+      image.srcset = [185,342,500].map(size => `${imageBase}/w${size}${imagePath} ${size}w`).join(", ");
+      image.src = `${imageBase}/w342${imagePath}`;
+    });
     if (state.session && changed.length) await Promise.allSettled(changed.map(({ storageKey, record }) => localAPI("/api/account/progress", { method:"POST", headers:{ "Content-Type":"application/json", ...authorizedHeaders() }, body:JSON.stringify({ content_key:storageKey, content_type:type, tmdb_id:id, season:record.season || null, episode:record.episode || null, title:record.title || "Untitled", poster_path:posterPath, progress_seconds:Number(record.currentTime) || 0, duration_seconds:Number(record.duration) || 0, is_watched:Boolean(record.watched || Number(record.progress) >= 90), last_watched_at:record.lastWatchedAt || new Date().toISOString() }) })));
   }));
 }
-function continueRail(items) { return `<section class="rail continue-rail"><div class="rail-title">${railTitle("Continue watching")}<span>Pick up where you left off</span></div><div class="cards">${items.map(item => `<div class="continue-item"><button class="card continue-card" data-continue="${escapeHTML(`${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`)}"><span class="poster-wrap"><img src="${item.posterPath ? TMDB_IMAGE + item.posterPath : POSTER_FALLBACK}" alt="" loading="lazy"><i>${item.type === "tv" ? `S${item.season} · E${item.episode}` : "MOVIE"}</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(item.title)}</b><small>Resume from ${timeLabel(Math.floor(item.currentTime || 0))}</small><em class="continue-progress"><i style="width:${Math.min(100, Number(item.progress) || 0)}%"></i></em></button><button class="continue-remove" data-remove-continue="${escapeHTML(`${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`)}" aria-label="Remove ${escapeHTML(item.title)} from Continue watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>`).join("")}</div></section>`; }
+function continueRail(items) {
+  return posterRail("Continue watching", items, `${state.route}:Continue watching`, {
+    home:true,
+    viewAll:false,
+    cardOptions:item => {
+      const resume = `Resume from ${timeLabel(Math.floor(item.currentTime || 0))}`;
+      const episode = item.type === "tv" && item.season && item.episode ? `S${item.season} · E${item.episode}` : "";
+      const identity = `${item.type}:${item.id}:${item.season || 0}:${item.episode || 0}`;
+      return {
+        continueKey:identity,
+        accessibleExtra:[episode, resume].filter(Boolean),
+        overlayMeta:[episode, resume].filter(Boolean).join(" · "),
+        caption:episode,
+        watchlist:false,
+        progress:playbackProgressPercent(item),
+        action:`<button type="button" class="collection-poster-remove home-continue-remove" data-remove-continue="${escapeHTML(identity)}" aria-label="Remove ${escapeHTML(item.title)} from Continue watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>`
+      };
+    }
+  });
+}
 async function openItem(type, id) {
   if (!activeProfileId()) { state.route = "profiles"; render(); return; }
   const scope = `${state.user?.id || "guest"}:${activeProfileId()}:${profileMaturity()}`, request = state.titleOpenRequest = (state.titleOpenRequest || 0) + 1;
@@ -2856,6 +2901,10 @@ function posterImageSizes() {
   const sizes = [...CARDS_PER_VIEW].slice(1).reverse().map(({ min, count }) => `(min-width: ${min}px) calc((min(100vw, 1480px) - clamp(18px, 3vw, 44px) - clamp(18px, 3vw, 44px) - ${(count - 1) * 12}px) / ${count})`);
   return `${sizes.join(", ")}, calc((100vw - 32px - 16px) / 3)`;
 }
+function homePosterImageSizes() {
+  const sizes = [...CARDS_PER_VIEW].slice(1).reverse().map(({ min, count }) => `(min-width: ${min}px) calc((min(100vw, 1200px) - 48px - ${(count - 1) * 12}px) / ${count})`);
+  return `${sizes.join(", ")}, (min-width: 600px) and (max-width: 650px) calc((100vw - 24px - 24px) / 4), calc((100vw - 24px - 16px) / 3)`;
+}
 function collectionPageHeader(title, count = "", actions = "") {
   return `<div class="collection-page-heading"><div class="collection-heading-copy"><h1>${escapeHTML(title)}</h1>${count ? `<span class="collection-title-count">${escapeHTML(count)}</span>` : ""}</div>${actions ? `<div class="collection-header-actions">${actions}</div>` : ""}</div>`;
 }
@@ -2863,29 +2912,38 @@ function collectionEmptyState(title, detail, action = "") {
   return `<section class="collection-empty-state"><b>${escapeHTML(title)}</b><p>${escapeHTML(detail)}</p>${action}</section>`;
 }
 function posterGrid(items, variant = "watchlist") { return `<div class="collection-poster-grid">${items.map(item => posterCard(item, variant)).join("")}</div>`; }
-function posterCard(item, variant = "watchlist") {
-  const type = contentType(item), id = Number(item.id), title = titleOf(item), year = yearOf(item), typeLabel = type === "tv" ? "Series" : "Movie", path = item.poster_path || item.posterPath || "", accessible = [title, year, typeLabel].filter(Boolean).join(", ");
+function posterCard(item, variant = "watchlist", options = {}) {
+  const type = contentType(item), id = Number(item.id), title = titleOf(item), year = yearOf(item), typeLabel = type === "tv" ? "Series" : "Movie", path = item.poster_path || item.posterPath || "", accessible = [title, year, typeLabel, ...(options.accessibleExtra || [])].filter(Boolean).join(", ");
   const imageBase = TMDB_IMAGE.replace(/\/w\d+$/, ""), imagePath = path ? (path.startsWith("/") ? path : `/${path}`) : "";
-  const image = path ? `<img src="${escapeHTML(imageBase)}/w342${escapeHTML(imagePath)}" srcset="${[185,342,500,780].map(size => `${escapeHTML(imageBase)}/w${size}${escapeHTML(imagePath)} ${size}w`).join(", ")}" sizes="${posterImageSizes()}" alt="" loading="lazy" decoding="async">` : `<span class="collection-poster-fallback">${escapeHTML(title)}</span>`;
+  const imageWidths = options.home ? [185,342,500] : [185,342,500,780], imageSizes = options.home ? homePosterImageSizes() : posterImageSizes();
+  const image = path ? `<img src="${escapeHTML(imageBase)}/w342${escapeHTML(imagePath)}" srcset="${imageWidths.map(size => `${escapeHTML(imageBase)}/w${size}${escapeHTML(imagePath)} ${size}w`).join(", ")}" sizes="${imageSizes}" alt="" loading="lazy" decoding="async">` : `<span class="collection-poster-fallback">${escapeHTML(title)}</span>`;
   const score = Number(item.vote_average) > 0 ? ` · ★ ${Number(item.vote_average).toFixed(1)}` : "";
-  const overlay = `<span class="collection-poster-overlay"><span class="collection-poster-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><span class="collection-poster-copy"><b>${escapeHTML(title)}</b><small>${[year, typeLabel].filter(Boolean).join(" · ")}${score}</small></span></span>`;
-  let action;
-  if (variant === "favourites") action = `<button type="button" class="collection-poster-remove" data-remove-list="${type}:${id}" aria-label="Remove ${escapeHTML(title)} from Favourites"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8.2-4.8-9.7-10.2C1.1 6.5 3.6 3.5 7 3.5c2.1 0 3.8 1.1 5 3 1.2-1.9 2.9-3 5-3 3.4 0 5.9 3 4.7 7.3C20.2 16.2 12 21 12 21z"/></svg></button>`;
-  else if (variant === "watchlist") action = `<button type="button" class="collection-poster-remove" data-watchlist-remove="${type}:${id}" aria-label="Remove ${escapeHTML(title)} from Watchlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-3.8-6 3.8z"/></svg></button>`;
-  else action = watchlistAction(item, "card");
-  return `<article class="collection-poster-card"><button type="button" class="collection-poster-open" data-open="${type}:${id}" aria-label="${escapeHTML(accessible)}"><span class="collection-poster-frame">${image}${overlay}</span></button>${action}</article>`;
+  const overlayMeta = options.overlayMeta || `${[year, typeLabel].filter(Boolean).join(" · ")}${score}`;
+  const overlay = `<span class="collection-poster-overlay"><span class="collection-poster-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><span class="collection-poster-copy"><b>${escapeHTML(title)}</b><small>${escapeHTML(overlayMeta)}</small></span></span>`;
+  const progress = options.progress !== undefined ? `<span class="home-poster-progress"${Number(options.progress) > 0 ? ` role="progressbar" aria-label="${escapeHTML(title)} viewing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, Number(options.progress))}"` : ' aria-hidden="true"'}><span style="width:${Math.min(100, Number(options.progress) || 0)}%"></span></span>` : "";
+  const caption = options.caption ? `<span class="home-continue-caption">${escapeHTML(options.caption)}</span>` : "";
+  const openAttributes = options.continueKey ? `data-continue="${escapeHTML(options.continueKey)}"` : `data-open="${type}:${id}"`;
+  let action = options.action || "";
+  if (!action && options.watchlist !== false) {
+    if (variant === "favourites") action = `<button type="button" class="collection-poster-remove" data-remove-list="${type}:${id}" aria-label="Remove ${escapeHTML(title)} from Favourites"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8.2-4.8-9.7-10.2C1.1 6.5 3.6 3.5 7 3.5c2.1 0 3.8 1.1 5 3 1.2-1.9 2.9-3 5-3 3.4 0 5.9 3 4.7 7.3C20.2 16.2 12 21 12 21z"/></svg></button>`;
+    else if (variant === "watchlist") action = `<button type="button" class="collection-poster-remove" data-watchlist-remove="${type}:${id}" aria-label="Remove ${escapeHTML(title)} from Watchlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h12v17l-6-3.8-6 3.8z"/></svg></button>`;
+    else action = watchlistAction(item, "card");
+  }
+  return `<article class="collection-poster-card${options.home ? " home-poster-card" : ""}"><button type="button" class="collection-poster-open" ${openAttributes} aria-label="${escapeHTML(accessible)}"><span class="collection-poster-frame">${image}${overlay}${progress}</span>${caption}</button>${action}</article>`;
 }
-function posterRail(name, items, key = `${state.route}:${name}`) {
+function posterRail(name, items, key = `${state.route}:${name}`, options = {}) {
   const visible = items.filter(contentAllowed);
   if (!visible.length) return "";
   const displayName = name === "My List" ? "Favourites" : name, id = `collection-rail-${String(`${state.route}-${name}`).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${++collectionRailSequence}`;
-  state.explorable ||= {};
-  state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route, sources:collectionSources(name) };
-  const disabled = visible.length <= cardsPerView(window.innerWidth) ? " disabled" : "";
-  return `<section class="collection-poster-rail"><div class="collection-rail-heading"><h2>${escapeHTML(t(displayName))}</h2><button type="button" class="collection-view-all" data-explore="${escapeHTML(key)}">View all</button></div><button type="button" class="collection-rail-arrow collection-rail-prev" data-collection-scroll="${id}" data-direction="-1" data-rail-count="${visible.length}" aria-label="Previous ${escapeHTML(displayName)} titles"${disabled}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button><button type="button" class="collection-rail-arrow collection-rail-next" data-collection-scroll="${id}" data-direction="1" data-rail-count="${visible.length}" aria-label="Next ${escapeHTML(displayName)} titles"${disabled}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button><div class="collection-poster-track" id="${id}" aria-label="${escapeHTML(displayName)}">${visible.map(item => posterCard(item, "rail")).join("")}</div></section>`;
+  if (options.viewAll !== false) { state.explorable ||= {}; state.explorable[key] = { name:displayName, items:visible, fromRoute:state.route, sources:collectionSources(name) }; }
+  const displayItems = options.displayItems || visible;
+  const disabled = displayItems.length <= cardsPerView(window.innerWidth) ? " disabled" : "", home = Boolean(options.home), rowClass = home ? " home-poster-rail" : "", viewAll = options.viewAll === false ? "" : `<button type="button" class="collection-view-all" data-explore="${escapeHTML(key)}">View all</button>`;
+  const cards = displayItems.map(item => posterCard(item, "rail", { home, ...options.cardOptions?.(item) })).join("");
+  return `<section class="collection-poster-rail${rowClass}"><div class="collection-rail-heading"><h2>${escapeHTML(t(displayName))}</h2>${viewAll}</div><button type="button" class="collection-rail-arrow collection-rail-prev" data-collection-scroll="${id}" data-direction="-1" data-rail-count="${displayItems.length}" aria-label="Previous ${escapeHTML(displayName)} titles"${disabled}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button><button type="button" class="collection-rail-arrow collection-rail-next" data-collection-scroll="${id}" data-direction="1" data-rail-count="${displayItems.length}" aria-label="Next ${escapeHTML(displayName)} titles"${disabled}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button><div class="collection-poster-track${home ? " home-poster-track" : ""}" id="${id}" aria-label="${escapeHTML(displayName)}">${cards}</div></section>`;
 }
-function collectionSkeletonRail() {
-  return `<section class="collection-poster-rail collection-loading-rail" aria-busy="true"><div class="collection-rail-heading"><span class="collection-heading-skeleton"></span></div><div class="collection-poster-track">${Array.from({ length:7 }, () => `<span class="collection-poster-skeleton"></span>`).join("")}</div></section>`;
+function collectionSkeletonRail(options = {}) {
+  const home = Boolean(options.home), skeletons = Array.from({ length:home ? cardsPerView() + 1 : 7 }, () => `<span class="collection-poster-skeleton"></span>`).join("");
+  return `<section class="collection-poster-rail collection-loading-rail${home ? " home-poster-rail" : ""}" aria-busy="true"><div class="collection-rail-heading"><span class="collection-heading-skeleton"></span></div><div class="collection-poster-track${home ? " home-poster-track" : ""}">${skeletons}</div></section>`;
 }
 function updateCollectionSizing() {
   const count = cardsPerView(window.innerWidth);
@@ -2909,6 +2967,30 @@ function bindCollectionPage() {
     const track = document.getElementById(button.dataset.collectionScroll), direction = Number(button.dataset.direction) || 1;
     if (track) track.scrollBy({ left:direction * track.clientWidth * .82, behavior:"smooth" });
   });
+}
+let homeRailResizeBound = false;
+function updateHomeRailSizing() {
+  const library = document.querySelector(".home-library");
+  if (!library) return;
+  const count = cardsPerView(window.innerWidth), gap = window.matchMedia("(max-width: 650px)").matches ? 8 : 12;
+  const width = Math.max(0, (library.clientWidth - gap * (count - 1)) / count);
+  library.style.setProperty("--cards-per-view", count);
+  library.style.setProperty("--collection-card-width", `${width}px`);
+  library.style.setProperty("--collection-rail-gap", `${gap}px`);
+  library.querySelectorAll(".collection-rail-arrow[data-rail-count]").forEach(button => { button.disabled = Number(button.dataset.railCount) <= count; });
+}
+function bindHomeRails() {
+  updateHomeRailSizing();
+  if (!homeRailResizeBound) { window.addEventListener("resize", updateHomeRailSizing, { passive:true }); homeRailResizeBound = true; }
+  document.querySelectorAll(".home-poster-rail [data-collection-scroll]").forEach(button => button.onclick = () => {
+    const track = document.getElementById(button.dataset.collectionScroll), direction = Number(button.dataset.direction) || 1;
+    if (track) track.scrollBy({ left:direction * track.clientWidth * .82, behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
+  document.querySelectorAll(".home-poster-track").forEach(track => track.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    track.scrollBy({ left:(event.key === "ArrowLeft" ? -1 : 1) * Math.max(80, track.clientWidth * .82), behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }));
 }
 function forYouRail(name, items) {
   const key = `for-you:${name}`, html = posterRail(name, items.slice(0, 12), key), collection = state.explorable?.[key];

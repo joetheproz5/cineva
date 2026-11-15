@@ -1508,3 +1508,57 @@ html,body { touch-action: pan-x pan-y; }
   .collection-watchlist #series-tracker-slot { margin-top:0; }
   .collection-empty-state { min-height:30vh; }
 }
+
+/* Home-only use of the shared collection rail and poster-card kit. */
+.home-library {
+  --collection-on:var(--text);
+  --collection-secondary:var(--muted);
+  --collection-subtle:color-mix(in srgb,var(--text) 10%,transparent);
+}
+.home-library .home-poster-rail { margin-bottom:40px; }
+.home-library .home-poster-rail .collection-rail-heading { margin-bottom:14px; }
+.home-library .home-poster-rail .collection-rail-heading h2 { font-size:21px; line-height:1.25; font-weight:750; letter-spacing:-.4px; }
+.home-library .home-poster-track { grid-auto-columns:var(--collection-card-width,160px); gap:var(--collection-rail-gap,12px); }
+.home-library .home-poster-card .collection-poster-frame { border:0; box-shadow:none; }
+.home-library .home-poster-card .collection-poster-open { color:var(--collection-on); }
+.home-library .home-poster-card .collection-poster-open:focus-visible,
+.home-library .home-poster-rail .collection-rail-arrow:focus-visible,
+.home-library .home-poster-rail .collection-view-all:focus-visible,
+.home-library .play-something-actions button:focus-visible { outline:2px solid var(--text); outline-offset:3px; }
+.home-library .home-continue-caption { display:block; overflow:hidden; margin-top:8px; color:var(--collection-secondary); font-size:13px; line-height:1.35; white-space:nowrap; text-overflow:ellipsis; }
+.home-library .home-poster-progress { position:absolute; z-index:2; right:0; bottom:0; left:0; display:block; height:3px; overflow:hidden; background:rgba(255,255,255,.2); }
+.home-library .home-poster-progress > span { display:block; width:0; min-width:6px; height:100%; background:var(--red-hi,#e21a26); }
+.home-library .home-poster-progress[aria-hidden="true"] > span { min-width:0; }
+.home-library .play-something-banner { display:flex; align-items:center; justify-content:space-between; gap:24px; margin:56px 0 40px; padding:0; overflow:visible; border:0; border-radius:0; color:var(--text); background:none; box-shadow:none; text-align:left; }
+.home-library .play-something-banner::before { display:none; filter:none; content:none; }
+.home-library .play-something-banner:hover { border:0; background:none; box-shadow:none; }
+.home-library .play-something-copy { flex:1 1 auto; min-width:0; }
+.home-library .play-something-copy h2 { margin:0; color:var(--text); font-size:20px; line-height:1.3; font-weight:560; letter-spacing:0; }
+.home-library .play-something-copy p { max-width:60ch; margin:5px 0 0; color:var(--muted); font-size:14px; line-height:1.45; }
+.home-library .play-something-actions { display:flex; flex:0 0 auto; align-items:center; gap:12px; }
+.home-library .play-something-actions .primary { min-height:44px; padding:0 18px; box-shadow:none; font-size:14px; }
+.home-library .play-something-actions .primary:hover { box-shadow:none; filter:brightness(1.08); }
+.home-library .play-something-new-picks { min-height:44px; padding:0 4px; color:var(--muted); background:transparent; font-size:14px; font-weight:560; }
+.home-library .play-something-new-picks:hover { color:var(--text); }
+@media (max-width:650px) {
+  .home-library .home-poster-rail { margin-bottom:32px; }
+  .home-library .home-poster-rail .collection-rail-heading { margin-bottom:12px; }
+  .home-library .home-poster-rail .collection-rail-heading h2 { font-size:19px; }
+  .home-library .home-poster-track { gap:8px; }
+  .home-library .play-something-banner { align-items:stretch; flex-direction:column; gap:16px; margin-top:56px; margin-bottom:40px; }
+  .home-library .play-something-actions { align-items:stretch; flex-direction:column; gap:8px; }
+  .home-library .play-something-actions .primary { width:100%; }
+  .home-library .play-something-new-picks { align-self:flex-start; }
+}
+@media (hover:none),(pointer:coarse) {
+  .home-library .home-poster-card .collection-poster-overlay { display:none; }
+  .home-library .home-poster-card > .card-watchlist,.home-library .home-poster-card .collection-poster-remove { top:4px; right:4px; width:44px; height:44px; opacity:1; transform:none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .home-library .home-poster-card,.home-library .home-poster-card img,
+  .home-library .home-poster-card .collection-poster-overlay,
+  .home-library .home-poster-card > .card-watchlist,.home-library .home-poster-card .collection-poster-remove,
+  .home-library .home-poster-rail .collection-rail-arrow,
+  .home-library .play-something-actions button { transition:none; scroll-behavior:auto; }
+  .home-library .home-poster-card:hover,.home-library .home-poster-card:focus-within { transform:none; }
+}
