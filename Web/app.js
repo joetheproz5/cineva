@@ -26,7 +26,6 @@ let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, activeProfileSource:null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
 let profileGateLayoutAbortController = null;
-let profileGateEntranceHasRun = false;
 const playbackWatch = { sample:null, buffered:0, bufferType:null, accessToken:null, batch:null, sending:false, timer:null };
 const SESSION_KEY = "cineva.supabase.session";
 const SESSION_REFRESH_LOCK = "seven-auth-session-refresh";
@@ -1246,7 +1245,7 @@ function restoreAppNavigation(event) {
 window.addEventListener("popstate", restoreAppNavigation);
 function render() {
   primeSavedAgeRatings();
-  if (state.route !== "profiles" && profileGateLayoutAbortController) { profileGateLayoutAbortController.abort(); profileGateLayoutAbortController = null; profileGateEntranceHasRun = false; }
+  if (state.route !== "profiles" && profileGateLayoutAbortController) { profileGateLayoutAbortController.abort(); profileGateLayoutAbortController = null; }
   if (state.account && !state.user?.id && !activeProfileId()) restoreActiveProfileSelection();
   if (!state.user?.id && state.route === "profiles") state.route = "home";
   const profileEditorWithoutActive = state.route === "profile-settings" && state.profileSettingsCategory === "profile" && Boolean(state.profileDraft);
@@ -1437,12 +1436,10 @@ function showProfileUnlock(profile) { app.insertAdjacentHTML("beforeend", `<div 
 function profileGateDateKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function renderProfileGate() {
   const account = state.account || defaultAccount(), hasIntro = Boolean(document.querySelector(".seven-intro"));
-  const staticGate = profileGateEntranceHasRun && !hasIntro;
   const profileTiles = account.profiles.map((profile, index) => '<button type="button" class="profile-choice" data-watch-profile="' + escapeHTML(profile.id) + '" aria-label="Profile ' + escapeHTML(profile.name) + '" style="--profile-index:' + index + '">' + profileGateAvatar(profile) + '<b title="' + escapeHTML(profile.name) + '">' + escapeHTML(profile.name) + '</b></button>').join("");
   const addIndex = account.profiles.length;
   const addProfile = account.profiles.length < 5 ? '<button type="button" class="profile-choice profile-gate-add" data-add-profile-gate style="--profile-index:' + addIndex + '" aria-label="Add profile"><span class="profile-gate-add-plus" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4.5v15M4.5 12h15"/></svg></span><span class="profile-gate-add-label">Add profile</span></button>' : "";
-  app.innerHTML = '<main class="profile-gate ' + (hasIntro ? "profile-gate-pending" : "profile-gate-ready") + (staticGate ? " profile-gate-static" : "") + '"><div class="profile-gate-glow" aria-hidden="true"></div><header class="profile-gate-top"><img src="assets/seven-wordmark.svg" alt="SEVEN" width="1544" height="407"></header><section class="profile-gate-content" aria-labelledby="profile-gate-title"><h1 id="profile-gate-title">' + t("Who’s watching?") + '</h1><div class="profile-gate-tile-area"><div class="profile-gate-tile-stack"><div class="profile-chooser" aria-label="Profiles">' + profileTiles + '</div>' + addProfile + '</div></div></section></main>';
-  if (!hasIntro) profileGateEntranceHasRun = true;
+  app.innerHTML = '<main class="profile-gate ' + (hasIntro ? "profile-gate-pending" : "profile-gate-ready") + '"><div class="profile-gate-glow" aria-hidden="true"></div><header class="profile-gate-top"><img src="assets/seven-wordmark.svg" alt="SEVEN" width="1544" height="407"></header><section class="profile-gate-content" aria-labelledby="profile-gate-title"><h1 id="profile-gate-title">' + t("Who’s watching?") + '</h1><div class="profile-gate-tile-area"><div class="profile-gate-tile-stack"><div class="profile-chooser" aria-label="Profiles">' + profileTiles + '</div>' + addProfile + '</div></div></section></main>';
   const gate = document.querySelector(".profile-gate");
   profileGateLayoutAbortController?.abort();
   const layoutAbortController = new AbortController();
@@ -1969,8 +1966,7 @@ function dismissIntro() {
     appScreen.style.removeProperty("transform");
     appScreen.style.removeProperty("pointer-events");
   }
-  const profileGateRevealed = document.querySelector(".profile-gate")?.classList.replace("profile-gate-pending", "profile-gate-ready");
-  if (profileGateRevealed) profileGateEntranceHasRun = true;
+  document.querySelector(".profile-gate")?.classList.replace("profile-gate-pending", "profile-gate-ready");
   appScreen?.focus?.({ preventScroll:true });
 }
 function maybeFinishIntro(skip = false) {

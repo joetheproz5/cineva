@@ -113,18 +113,18 @@ test("profile panel waits for the SEVEN ident, then rises into a curved lower sh
 });
 
 test("the redesigned selector assets are versioned for installed PWAs", () => {
-  assert.match(index, /auth\.css\?v=298/);
-  assert.match(index, /app\.js\?v=446/);
-  assert.match(serviceWorker, /seven-v450/);
-  assert.match(serviceWorker, /auth\.css\?v=298/);
-  assert.match(serviceWorker, /app\.js\?v=446/);
+  assert.match(index, /auth\.css\?v=299/);
+  assert.match(index, /app\.js\?v=447/);
+  assert.match(serviceWorker, /seven-v451/);
+  assert.match(serviceWorker, /auth\.css\?v=299/);
+  assert.match(serviceWorker, /app\.js\?v=447/);
   assert.doesNotMatch(serviceWorker, /assets\/profile-person\.svg/);
 });
 
-test("the profile selector does not replay its entrance when profiles refresh", () => {
-  assert.match(app, /let profileGateEntranceHasRun = false/);
-  assert.match(app, /const staticGate = profileGateEntranceHasRun && !hasIntro/);
-  assert.match(app, /profile-gate-static/);
-  assert.match(styles, /\.profile-gate-static \.profile-choice,[\s\S]*?animation:none; opacity:1; translate:none/);
+test("the profile selector does not dim tiles in a staggered entrance", () => {
+  assert.doesNotMatch(styles, /profile-choice-arrive|animation-delay:calc\(var\(--profile-index/);
+  assert.match(styles, /\.profile-gate \.profile-choice \{[^}]*transition:transform 200ms ease;/);
+  assert.match(styles, /\.profile-gate-pending \.profile-choice \{ opacity:0; \}/);
+  assert.match(styles, /\.profile-gate-selecting \.profile-choice \{ opacity:0;[^}]*transition:opacity 200ms ease,transform 200ms ease;/);
   assert.match(app, /image\.decode\(\)\.then\(reveal/);
 });
