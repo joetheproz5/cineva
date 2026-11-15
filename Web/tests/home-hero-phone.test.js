@@ -32,8 +32,12 @@ test('mobile hero sizing, contrast layers, copy placement and poster cross-fade 
   assert.match(spotlight,/phonePoster\.loading = "eager"/);
   assert.match(spotlight,/phonePoster\.addEventListener\("error", failPoster\)/);
   assert.match(spotlight,/phoneArtwork\(item\)/);
+  assert.match(spotlight,/function cssSlideFallback\(outgoing, incoming, offset\)/);
+  assert.match(spotlight,/await cssSlideFallback\(outgoing, incoming, offset\)/);
+  assert.match(spotlight,/root\.requestAnimationFrame\.call\(root, callback\)/);
   assert.match(css,/\.home-page \.hero \.home-hero-phone-art \{ display:none; \}/);
-  assert.match(spotlight,/duration:620, easing:"cubic-bezier\(\.22,\.72,\.22,1\)"/);
+  assert.match(spotlight,/const TRANSITION_DURATION = 620/);
+  assert.match(spotlight,/const TRANSITION_EASING = "cubic-bezier\(\.22,\.72,\.22,1\)"/);
 });
 
 test('home rerenders do not restart the mobile autoplay countdown',()=>{
@@ -49,4 +53,15 @@ test('home rerenders do not restart the mobile autoplay countdown',()=>{
   assert.equal(state.heroTimer,firstTimer);
   assert.equal(timers.size,1);
   assert.equal(timers.get(firstTimer).delay,8500);
+  assert.match(source,/Promise\.resolve\(\)\.then\(\(\) => window\.SEVENHero\?\.move/);
+  assert.match(source,/const arm = delay => \{/);
+});
+
+test('autoplay keeps rotating if a mobile slide transition never settles',()=>{
+  const source=app.match(/function scheduleHero\(\) \{[\s\S]*?\n\}/)?.[0],timers=new Map();let nextTimer=0;
+  const state={route:'home',featuredPool:[{},{}],heroTimer:null};
+  const context={state,currentPreferences:()=>({autoplayPreviews:true}),document:{hidden:false},window:{SEVENHero:{move:()=>new Promise(()=>{})}},clearTimeout:id=>timers.delete(id),setTimeout:(callback,delay)=>{const id=++nextTimer;timers.set(id,{callback,delay});return id;}};
+  vm.runInNewContext(`${source};globalThis.scheduleHeroTest=scheduleHero;`,context);
+  context.scheduleHeroTest();const initial=timers.get(state.heroTimer);timers.delete(state.heroTimer);initial.callback();
+  assert.equal(timers.size,1);assert.equal([...timers.values()][0].delay,8500);
 });

@@ -43,6 +43,8 @@
     return { load, first };
   }
   const loader = createImageLoader();
+  const TRANSITION_DURATION = 620;
+  const TRANSITION_EASING = "cubic-bezier(.22,.72,.22,1)";
   let active = null;
   const artwork = item => [item.backdrop_path ? `${TMDB_BACKDROP}${item.backdrop_path}` : "", posterOf(item), STILL_FALLBACK];
   const phoneArtwork = item => {
@@ -98,6 +100,34 @@
     view.loading = value;
     if (value) view.element.setAttribute("aria-busy", "true"); else view.element.removeAttribute("aria-busy");
   }
+  function cssSlideFallback(outgoing, incoming, offset) {
+    const entries = [...outgoing.map(element => [element, -offset]), ...incoming.map(element => [element, 0])];
+    const saved = entries.map(([element]) => [element, element.style.transition, element.style.transform, element.style.willChange]);
+    const frame = callback => root.requestAnimationFrame
+      ? root.requestAnimationFrame.call(root, callback)
+      : setTimeout(callback, 16);
+    entries.forEach(([element, destination], index) => {
+      element.style.transition = "none";
+      element.style.transform = index < outgoing.length ? "translateX(0px)" : `translateX(${offset}px)`;
+      element.style.willChange = "transform";
+    });
+    // Commit the start positions before asking CSS to animate to the other side.
+    void incoming[0]?.getBoundingClientRect();
+    return new Promise(resolve => frame(() => {
+      entries.forEach(([element, destination]) => {
+        element.style.transition = `transform ${TRANSITION_DURATION}ms ${TRANSITION_EASING}`;
+        element.style.transform = `translateX(${destination}px)`;
+      });
+      setTimeout(() => {
+        saved.forEach(([element, transition, transform, willChange]) => {
+          element.style.transition = transition;
+          element.style.transform = transform;
+          element.style.willChange = willChange;
+        });
+        resolve();
+      }, TRANSITION_DURATION + 50);
+    }));
+  }
   function updateHeroControls(view) {
     if (!valid(view)) return;
     view.element.querySelectorAll("[data-hero-index]").forEach(button => {
@@ -150,32 +180,35 @@
     }).catch(() => {});
 
     const reduced = root.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (!previous || reduced || typeof next.animate !== "function") {
+    if (!previous || reduced) {
       previous?.remove();
       return;
     }
     previous.setAttribute("aria-hidden", "true"); previous.inert = true;
     const offset = view.element.getBoundingClientRect().width * (direction < 0 ? -1 : 1);
-    const options = { duration:620, easing:"cubic-bezier(.22,.72,.22,1)", fill:"both" };
+    const options = { duration:TRANSITION_DURATION, easing:TRANSITION_EASING, fill:"both" };
     const outgoing = [...previous.querySelectorAll(".home-hero-backdrop, .home-hero-layout")];
     const incoming = [...next.querySelectorAll(".home-hero-backdrop, .home-hero-layout")];
-    let animations;
+    let animations = [];
     try {
+      if (typeof next.animate !== "function") throw new Error("Web Animations API unavailable");
       animations = [
         ...outgoing.map(element => element.animate([{ transform:"translateX(0px)" }, { transform:`translateX(${-offset}px)` }], options)),
         ...incoming.map(element => element.animate([{ transform:`translateX(${offset}px)` }, { transform:"translateX(0px)" }], options))
       ];
     } catch {
-      previous.remove();
-      return;
+      animations.forEach(animation => animation.cancel());
+      animations = [];
     }
-    view.animations = animations;
-    let safetyTimer;
-    await Promise.race([
-      Promise.allSettled(animations.map(animation => animation.finished)),
-      new Promise(resolve => { safetyTimer = setTimeout(resolve, 900); })
-    ]);
-    clearTimeout(safetyTimer);
+    if (animations.length) {
+      view.animations = animations;
+      let safetyTimer;
+      await Promise.race([
+        Promise.allSettled(animations.map(animation => animation.finished)),
+        new Promise(resolve => { safetyTimer = setTimeout(resolve, 900); })
+      ]);
+      clearTimeout(safetyTimer);
+    } else await cssSlideFallback(outgoing, incoming, offset);
     if (!valid(view) || ticket !== view.ticket) return;
     previous.remove();
     animations.forEach(animation => animation.cancel());

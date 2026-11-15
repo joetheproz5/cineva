@@ -1762,18 +1762,24 @@ function scheduleHero() {
     return;
   }
   if (state.heroTimer !== null) return;
-  const advance = () => {
+  let advance;
+  const arm = delay => {
+    clearTimeout(state.heroTimer);
+    state.heroTimer = setTimeout(advance, delay);
+  };
+  advance = () => {
     state.heroTimer = null;
     if (state.route !== "home") return;
     if (document.hidden) {
-      state.heroTimer = setTimeout(advance, 1000);
+      arm(1000);
       return;
     }
-    void window.SEVENHero.move(1, { automatic:true }).finally(() => {
-      if (state.route === "home") state.heroTimer = setTimeout(advance, 8500);
-    });
+    void Promise.resolve().then(() => window.SEVENHero?.move(1, { automatic:true })).catch(() => false);
+    // Keep the rotation clock independent of artwork loading or a transition
+    // promise that a mobile browser may leave pending while backgrounded.
+    arm(8500);
   };
-  state.heroTimer = setTimeout(advance, 8500);
+  arm(8500);
 }
 function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(t(name === "My List" ? "Favourites" : name))}</h2>`; }
 function rail(name, items) {
@@ -4318,7 +4324,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=459", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=460", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
