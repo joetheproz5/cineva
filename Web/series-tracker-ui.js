@@ -70,15 +70,15 @@
   }
   function episodeLabel(episode){return `S${Number(episode.season_number)} · E${Number(episode.episode_number)}`;}
   function dateLabel(value){return tracker().validDate(value)?new Date(value+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"}):"Date not announced";}
-  function toolbar(){
+  function toolbar({includeImport=true}={}){
     const mode=state.watchlistView||"saved";
-    return '<div class="tracker-toolbar"><div class="tracker-tabs" role="group" aria-label="Watchlist views">'+[["saved","Saved"],["shows","Up next"],["calendar","Calendar"]].map(([value,label])=>`<button type="button" data-tracker-view="${value}" aria-pressed="${mode===value}">${label}</button>`).join("")+`</div><div class="tracker-tools"><button type="button" data-progress-import>Import history</button><button type="button" data-progress-undo ${hasUndo()?"":"hidden"}>Undo last change</button></div></div><div id="series-tracker-slot"></div>`;
+    return '<div class="tracker-toolbar"><div class="tracker-tabs" role="group" aria-label="Watchlist views">'+[["saved","Saved"],["shows","Up next"],["calendar","Calendar"]].map(([value,label])=>`<button type="button" data-tracker-view="${value}" aria-pressed="${mode===value}">${label}</button>`).join("")+`</div><div class="tracker-tools">${includeImport?'<button type="button" data-progress-import>Import history</button>':''}<button type="button" data-progress-undo ${hasUndo()?"":"hidden"}>Undo last change</button></div></div><div id="series-tracker-slot"></div>`;
   }
   function markup(){
     const view=state.seriesTracker,mode=state.watchlistView||"saved";
     if(mode==="saved")return "";
     const items=follows();
-    if(!items.length)return '<p class="tracker-empty">Save a series to Watchlist or Favourites to follow it here.</p>';
+    if(!items.length)return '<section class="collection-empty-state"><b>Nothing here</b><p>Save a series to Watchlist or Favourites to follow it here.</p></section>';
     const usable=view?.scope===identity(),shows=usable?view.shows.filter(entry=>contentAllowed(entry.show)):[],loading=!usable||view.loading;
     const alerts=`<div class="tracker-heading"><h2>${mode==="calendar"?"Release calendar":"Your series"}</h2><button type="button" data-tracker-alerts>${currentPreferences().episodeAlerts&&alertScope===identity()?"Alerts on · Turn off":"Enable alerts"}</button></div>${alertError?`<p class="tracker-warning" role="status">${escapeHTML(alertError)}</p>`:""}`;
     const errors=(usable&&view.errors.length?`<p class="tracker-warning" role="status">${view.errors.length} series couldn’t load. <button type="button" data-tracker-refresh>Try again</button></p>`:"")+(usable&&view.progressError?`<p class="tracker-warning" role="status">${escapeHTML(view.progressError)} <button type="button" data-tracker-refresh>Try again</button></p>`:"");
