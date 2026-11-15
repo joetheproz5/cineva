@@ -1462,7 +1462,11 @@ function renderCurrentRoute() {
   }
   syncAppRouteHistory();
   document.documentElement.classList.toggle("seven-collection-view", state.route === "franchise");
-  if (state.route !== "home") window.SEVENHero?.cancel();
+  if (state.route !== "home") {
+    window.SEVENHero?.cancel();
+    clearTimeout(state.heroTimer);
+    state.heroTimer = null;
+  }
   state.watchlistTargets = new Map();
   if (state.route !== "player") stopPlayerProgressPolling();
   if (state.route !== "player" && party.code && !party.following && !state.pendingWatch) partyLeave();
@@ -1704,7 +1708,6 @@ function bindProfileGateAvatarLoads(gate) {
 function renderLoading() { app.innerHTML = `<header><span class="wordmark logo-only"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></span></header><section class="hero skeleton"></section><section class="rail"><div class="skeleton-line wide"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section><section class="rail"><div class="skeleton-line"></div><div class="cards">${Array.from({length:7}, () => `<div class="card-skeleton skeleton"></div>`).join("")}</div></section>`; }
 function homeSkeleton() { return `${collectionSkeletonRail({ home:true })}${collectionSkeletonRail({ home:true })}`; }
 function renderHome() {
-  clearTimeout(state.heroTimer);
   if (!Object.keys(state.catalog || {}).length && !state.catalogRequest && !state.error && navigator.onLine && !catalogRecoveryScheduled) {
     catalogRecoveryScheduled = true;
     setTimeout(() => {
@@ -1753,10 +1756,14 @@ function featuredMarkup(f = state.featured) {
   return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')">${phonePoster}</div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-layout"><div class="home-hero-content${description ? " has-synopsis" : ""}"><h1>${escapeHTML(titleOf(f))}</h1>${meta ? `<div class="hero-meta">${escapeHTML(meta)}</div>` : ""}${description ? `<p class="hero-synopsis">${escapeHTML(description)}</p>` : ""}<div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg class="hero-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>${t("Watch now")}</span></button><button type="button" class="hero-info-link" data-open="${type}:${f.id}"><span>More info</span></button></div></div></div>${heroNavigation()}`;
 }
 function scheduleHero() {
-  clearTimeout(state.heroTimer);
-  state.heroTimer = null;
-  if (state.featuredPool.length < 2 || currentPreferences().autoplayPreviews === false) return;
+  if (state.featuredPool.length < 2 || currentPreferences().autoplayPreviews === false) {
+    clearTimeout(state.heroTimer);
+    state.heroTimer = null;
+    return;
+  }
+  if (state.heroTimer !== null) return;
   const advance = () => {
+    state.heroTimer = null;
     if (state.route !== "home") return;
     if (document.hidden) {
       state.heroTimer = setTimeout(advance, 1000);
@@ -4311,7 +4318,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=439", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=458", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

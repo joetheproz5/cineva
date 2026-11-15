@@ -38,10 +38,10 @@ test('Home switches artwork and copy together only after readiness, and uses hor
  assert.match(js,/translateX\(/);assert.doesNotMatch(js,/translateY\(/);assert.match(css,/animation: none !important/);
  assert.match(js,/previous.setAttribute\("aria-hidden", "true"\); previous.inert = true/);
  assert.match(js,/automatic && \(view.loading \|\| document.hidden\)/);assert.match(app,/window.SEVENHero.preload\(state.featuredPool\)/);
- assert.match(app,/state.route !== "home"\) window.SEVENHero\?\.cancel\(\)/);
+ assert.match(app,/if \(state.route !== "home"\) \{\s*window\.SEVENHero\?\.cancel\(\);\s*clearTimeout\(state\.heroTimer\);\s*state\.heroTimer = null;/);
 });
 test('spotlight assets load before the app and are available in the offline shell',()=>{
  const web=path.resolve(__dirname,'..'),index=fs.readFileSync(path.join(web,'index.html'),'utf8'),worker=fs.readFileSync(path.join(web,'service-worker.js'),'utf8');
  for(const file of ['hero-spotlight.js?v=6','hero-spotlight.css?v=2']){assert.ok(index.includes(file));assert.ok(worker.includes(file));}
- assert.ok(index.indexOf('hero-spotlight.js?v=6')<index.indexOf('app.js?v=452'));
+ assert.ok(index.indexOf('hero-spotlight.js?v=6')<index.indexOf('app.js?v=458'));
 });
