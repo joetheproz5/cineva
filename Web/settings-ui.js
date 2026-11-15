@@ -31,7 +31,8 @@
   }
   function decorateActions(page){
     const icons=[["[data-change-parent-code]","shield"],["[data-change-password]","password"],["[data-manage-devices]","devices"],["[data-install-seven]","download"],["[data-clear-history]","history"],["[data-signout]","exit"],["[data-remove-profile]","trash"],["[data-profile-stats]","stats"],["[data-my-list]","heart"],["[data-view-history]","history"],["[data-liked-titles]","heart"],["[data-hidden-titles]","eye"]];
-    page.querySelectorAll(".account-action-card:not(.settings-action-row)").forEach(button=>{button.type="button";button.classList.add("settings-action-row");const name=button.matches('[data-watchlist]')?"titles":icons.find(([selector])=>button.matches(selector))?.[1]||"lock",icon=button.querySelector(":scope > i");if(icon)icon.innerHTML=svg(name);});
+    page.querySelectorAll(".account-action-card:not(.settings-action-row)").forEach(button=>{if(button.tagName==="BUTTON")button.type="button";button.classList.add("settings-action-row");const name=button.matches('[data-watchlist]')?"titles":icons.find(([selector])=>button.matches(selector))?.[1]||"lock",icon=button.querySelector(":scope > i");if(icon)icon.innerHTML=svg(name);});
+    if(page.matches(".settings-screen"))page.querySelectorAll(".settings-action-row").forEach(row=>{const value=row.querySelector(":scope > em");if(!value)return;const label=value.textContent.replace(/[›\s]+$/g,"").trim();if(row.dataset.settingsValue===label)return;const show=label&&!/^(open|view)$/i.test(label);value.innerHTML=`${show?`<span>${label}</span>`:""}${svg("arrow")}`;row.dataset.settingsValue=label;});
   }
   function disclosure(card,key,title,description,icon,value="",keepCopy=false){
     const details=root.document.createElement("details");details.className="settings-disclosure";details.dataset.settingsDisclosure=key;
@@ -57,6 +58,73 @@
       button.querySelector('b').textContent=translate(title);button.querySelector('small').textContent=translate(description);button.querySelector('em').textContent=translate(hasCode?"Change":"Set")+" ›";
     });
   }
+  function section(title,heading=true){
+    const block=root.document.createElement("section");block.className="settings-section";block.dataset.settingsSection=title;
+    if(heading){const label=root.document.createElement("h2");label.textContent=translate(title);block.append(label);}
+    const rows=root.document.createElement("div");rows.className="settings-section-rows";block.append(rows);return {block,rows};
+  }
+  function put(page,group,node){if(node&&node.isConnected)group.rows.append(node);}
+  function controlA11y(page){
+    page.querySelectorAll(".profile-mobile-toggle,.profile-mobile-select").forEach(row=>{
+      const field=row.querySelector("input[type=checkbox],select"),description=row.querySelector("small");if(!field)return;
+      if(description){if(!description.id)description.id=`settings-description-${Math.random().toString(36).slice(2,9)}`;field.setAttribute("aria-describedby",description.id);}
+      if(field.type==="checkbox"){field.setAttribute("role","switch");field.setAttribute("aria-label",row.querySelector("b")?.textContent?.trim()||"");row.setAttribute("aria-disabled",String(field.disabled));const thumb=row.querySelector("em");thumb?.setAttribute("aria-hidden","true");}
+      else{
+        if(!row.dataset.settingsSelect){row.dataset.settingsSelect="true";const value=root.document.createElement("span");value.className="settings-select-value";value.setAttribute("aria-hidden","true");const icon=root.document.createElementNS("http://www.w3.org/2000/svg","svg");icon.setAttribute("viewBox","0 0 24 24");icon.setAttribute("fill","none");icon.setAttribute("stroke","currentColor");icon.setAttribute("stroke-width","1.5");icon.setAttribute("stroke-linecap","round");icon.setAttribute("stroke-linejoin","round");icon.setAttribute("aria-hidden","true");icon.classList.add("settings-select-chevron");const path=root.document.createElementNS("http://www.w3.org/2000/svg","path");path.setAttribute("d","m7 10 5 5 5-5");icon.append(path);row.insertBefore(value,field);row.append(icon);field.addEventListener("change",()=>{value.textContent=field.selectedOptions[0]?.textContent||field.value;});}
+        row.querySelector(".settings-select-value").textContent=field.selectedOptions[0]?.textContent||field.value;
+      }
+    });
+  }
+  function layoutFamily(page){
+    const form=page.querySelector("#profile-settings-form"),old=form?.querySelector(".family-controls");if(!form||!old)return;
+    const find=name=>form.querySelector(`[name="${name}"]`)?.closest("label.profile-mobile-row");
+    const kids=find("kids"),maturity=find("maturity"),screen=form.querySelector(".screen-time-rows"),familySafe=find("familySafe"),scary=find("blockScary"),search=find("searchEnabled");
+    const parentCard=form.querySelector(".family-parent-code"),parent=parentCard?.querySelector(".settings-action-row"),restriction=form.querySelector(".family-restrictions"),blocked=restriction?.querySelector(".settings-disclosure");
+    const type=section("Profile type"),time=section("Screen time"),filters=section("Content filters"),access=section("Access");
+    put(page,type,kids);put(page,type,maturity);put(page,time,screen);put(page,filters,familySafe);put(page,filters,scary);put(page,filters,search);put(page,access,parent);put(page,access,blocked);
+    old.replaceWith(type.block,time.block,filters.block,access.block);parentCard?.remove();restriction?.remove();
+  }
+  function layoutPlayback(page){
+    const form=page.querySelector("#profile-settings-form"),card=form?.querySelector(".profile-detail-card");if(!form||!card||form.dataset.settingsOrganized)return;
+    const playback=section("Playback behavior"),source=section("Preferred video source");
+    for(const name of ["autoplayNext","introEnabled","autoplayPreviews","episodeAlerts"])put(page,playback,form.querySelector(`[name="${name}"]`)?.closest("label.profile-mobile-row"));
+    put(page,source,form.querySelector('[name="playerProvider"]')?.closest("label.profile-mobile-row"));
+    const error=form.querySelector(".profile-settings-error"),actions=form.querySelector(".profile-settings-actions");
+    card.replaceWith(playback.block,source.block);form.replaceChildren(playback.block,source.block);if(error)form.append(error);if(actions)form.append(actions);form.dataset.settingsOrganized="true";
+  }
+  function layoutLanguage(page){
+    const form=page.querySelector("#profile-settings-form"),card=form?.querySelector(".profile-detail-card");if(!form||!card||form.dataset.settingsOrganized)return;
+    const language=section("App language"),browse=section("Browse preferences");
+    put(page,language,form.querySelector('[name="language"]')?.closest("label.profile-mobile-row"));
+    for(const name of ["moviesEnabled","seriesEnabled"])put(page,browse,form.querySelector(`[name="${name}"]`)?.closest("label.profile-mobile-row"));
+    const error=form.querySelector(".profile-settings-error"),actions=form.querySelector(".profile-settings-actions");card.replaceWith(language.block,browse.block);form.replaceChildren(language.block,browse.block);if(error)form.append(error);if(actions)form.append(actions);form.dataset.settingsOrganized="true";
+  }
+  function layoutSecurity(page){
+    const form=page.querySelector("#profile-settings-form"),detail=form?.closest(".profile-detail-card");if(!form||!detail||form.dataset.settingsOrganized)return;
+    const profileSection=section("This profile"),pin=form.querySelector('details[data-settings-disclosure="profile-pin"]'),parent=form.querySelector(".settings-parent-row .settings-action-row, .settings-parent-row > [data-change-parent-code], [data-change-parent-code]");
+    put(page,profileSection,pin);put(page,profileSection,parent);form.replaceChildren(profileSection.block);form.dataset.settingsOrganized="true";
+    const actions=detail.querySelector(":scope > .profile-category-actions");if(!actions)return;
+    const account=section("Account"),device=section("This device and data"),more=section("More");
+    const accountRow=el=>el.matches("[data-change-password],[data-two-step],[data-email-security],[data-manage-devices]");
+    const deviceRow=el=>el.matches("[data-privacy-settings],[data-install-seven],[data-clear-history],[data-watchlist]");
+    [...actions.children].forEach(row=>{if(accountRow(row))account.rows.append(row);else if(deviceRow(row))device.rows.append(row);else more.rows.append(row);});
+    actions.className="profile-category-actions settings-section-rows";account.block.dataset.settingsSection="Account";device.block.dataset.settingsSection="This device and data";more.block.dataset.settingsSection="More";
+    actions.replaceWith(account.block,device.block,more.block);
+    const dns=page.querySelector(".dns-filtering-card");if(dns){const disclosure=dns.querySelector("details");if(disclosure)more.rows.append(disclosure);dns.remove();}
+  }
+  function layoutSettingsPage(page){
+    if(!page.matches(".settings-screen")||page.dataset.settingsLayout)return;
+    page.dataset.settingsLayout="true";const category=page.dataset.settingsCategory;
+    if(category==="family")layoutFamily(page);else if(category==="playback")layoutPlayback(page);else if(category==="language")layoutLanguage(page);else if(category==="security")layoutSecurity(page);
+    const detail=page.querySelector(".profile-detail-card");if(detail&&["activity","security"].includes(category))detail.classList.add("settings-unboxed");
+    if(category==="profiles")page.querySelector(".profile-manager")?.classList.add("settings-unboxed");
+    controlA11y(page);
+    page.addEventListener("click",event=>{if(event.target.closest("a[data-settings-action],a.profile-category-row,a.settings-action-row"))event.preventDefault();},true);
+  }
+  function toast(message){
+    if(!message||!root.document?.querySelector(".profile-settings-page.settings-screen"))return;
+    root.document.querySelector(".settings-toast")?.remove();const node=root.document.createElement("div");node.className="settings-toast";node.setAttribute("role","status");node.setAttribute("aria-live","polite");node.textContent=translate(message);(root.document.querySelector("#app")||root.document.body).append(node);root.setTimeout(()=>{if(node.isConnected){node.classList.add("is-leaving");root.setTimeout(()=>node.remove(),180);}},2500);
+  }
   function enhance(){
     const page=root.document.querySelector(".profile-settings-redesign");if(!page)return;
     page.dataset.settingsScope=scope();
@@ -81,10 +149,10 @@
       for(const saved of draft.fields){const field=[...page.querySelectorAll("#profile-settings-form input,#profile-settings-form select,#profile-settings-form textarea")].find(field=>saved.name?field.name===saved.name:field.id===saved.id);if(!field||secret(field))continue;if(["checkbox","radio"].includes(saved.type))field.checked=saved.checked;else field.value=saved.value;}
       page.querySelectorAll("details[data-settings-disclosure]").forEach(el=>el.open=draft.open.includes(el.dataset.settingsDisclosure));
     }
-    syncLimits(page);page.querySelector('[name="kids"]')?.addEventListener("change",()=>syncLimits(page));draft=null;
+    syncLimits(page);page.querySelector('[name="kids"]')?.addEventListener("change",()=>{syncLimits(page);controlA11y(page);});draft=null;
     // A Kids security page has only a parent-code action, not a second empty save form.
     page.querySelectorAll("#profile-settings-form").forEach(form=>{if(!form.querySelector("input[name],select[name],textarea[name]"))form.querySelector(".profile-settings-actions")?.setAttribute("hidden","");});
-    watchDialogs();
+    layoutSettingsPage(page);watchDialogs();
   }
   function scanDialogs(){
     const page=root.document.querySelector('.profile-settings-redesign');if(page)decorateActions(page);
@@ -94,15 +162,17 @@
       pane.setAttribute("role","dialog");pane.setAttribute("aria-modal","true");pane.setAttribute("aria-label",pane.querySelector("h2,h3")?.textContent||translate("Settings"));
       pane.querySelectorAll('input[inputmode="numeric"]').forEach(field=>field.type="password");
       modal.querySelectorAll("[data-close],[data-devices-close],[data-close-install]").forEach(button=>button.setAttribute("aria-label",translate("Close")));
+      const settingsConfirm=modal.matches(".settings-confirmation")&&Boolean(root.document.querySelector(".profile-settings-page.settings-screen"));if(settingsConfirm){modal.dataset.settingsScreen="true";modal.querySelector("[data-close]")?.remove();}
       const entry={trigger:trigger?.isConnected?trigger:null};dialogs.set(modal,entry);
       modal.addEventListener("keydown",event=>{
         if(modal.classList.contains("devices-modal"))return; // This modal already has a busy-aware focus trap.
-        if(event.key==="Escape"){event.preventDefault();modal.querySelector("[data-close]:not(:disabled),[data-close-install]:not(:disabled)")?.click();}
+        if(event.key==="Escape"){event.preventDefault();(settingsConfirm?modal.querySelector("[data-cancel]:not(:disabled)"):modal.querySelector("[data-close]:not(:disabled),[data-close-install]:not(:disabled)"))?.click();}
         if(event.key!=="Tab")return;
         const controls=[...pane.querySelectorAll("button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]")].filter(el=>el.getClientRects().length);if(!controls.length)return;
         if(event.shiftKey&&root.document.activeElement===controls[0]){event.preventDefault();controls.at(-1).focus();}else if(!event.shiftKey&&root.document.activeElement===controls.at(-1)){event.preventDefault();controls[0].focus();}
       });
-      if(!pane.contains(root.document.activeElement))pane.querySelector('input:not(:disabled),button:not(:disabled)')?.focus({preventScroll:true});
+      if(!pane.contains(root.document.activeElement))(settingsConfirm?pane.querySelector('[data-cancel]:not(:disabled)'):pane.querySelector('input:not(:disabled),button:not(:disabled)'))?.focus({preventScroll:true});
+      if(settingsConfirm)modal.addEventListener("click",event=>{if(event.target===modal)modal.querySelector("[data-cancel]")?.click();});
     });
     for(const [modal,entry]of dialogs)if(!modal.isConnected){dialogs.delete(modal);entry.onRemoved?.();syncParentActions(root.document.querySelector('.profile-settings-redesign'));const remaining=[...root.document.querySelectorAll(".modal")].at(-1);if(entry.trigger?.isConnected&&root.document.activeElement===root.document.body&&(!remaining||remaining.contains(entry.trigger)))entry.trigger.focus({preventScroll:true});}else if(root.document.activeElement===root.document.body&&[...root.document.querySelectorAll(".modal")].at(-1)===modal){modal.querySelector('input:not(:disabled),button:not(:disabled)')?.focus({preventScroll:true});}
   }
@@ -110,13 +180,13 @@
   function confirmAction(message,{title="Are you sure?",confirmLabel="Confirm",cancelLabel="Cancel",danger=false,confirmAfterSeconds=0}={}){
     if(!root.document?.querySelector(".profile-settings-redesign"))return Promise.resolve(root.confirm(message));
     const before=scope();return new Promise(resolve=>{
-      const modal=root.document.createElement("div");modal.className="modal settings-confirmation";modal.innerHTML=`<section class="settings-confirmation-panel"><button class="modal-close" type="button" data-close aria-label="Close">×</button><h2></h2><p></p><div class="settings-confirmation-actions"><button type="button" class="settings-cancel" data-cancel></button><button type="button" class="primary" data-confirm></button></div></section>`;
+      const modal=root.document.createElement("div");modal.className="modal settings-confirmation";const isSettings=Boolean(root.document.querySelector(".profile-settings-page.settings-screen"));modal.innerHTML=`<section class="settings-confirmation-panel">${isSettings?"":'<button class="modal-close" type="button" data-close aria-label="Close">×</button>'}<h2></h2><p></p><div class="settings-confirmation-actions"><button type="button" class="settings-cancel" data-cancel></button><button type="button" class="primary" data-confirm></button></div></section>`;
       modal.querySelector("h2").textContent=translate(title);modal.querySelector("p").textContent=message;modal.querySelector("[data-cancel]").textContent=translate(cancelLabel);modal.querySelector("[data-confirm]").textContent=translate(confirmLabel);modal.classList.toggle("settings-confirm-danger",danger);
       const confirmButton=modal.querySelector("[data-confirm]"),delay=Math.max(0,Math.floor(Number(confirmAfterSeconds)||0));let remaining=delay,timer=null;
       if(remaining){confirmButton.disabled=true;confirmButton.textContent=`Confirm in ${remaining}`;confirmButton.setAttribute("aria-label",`Confirm sign out in ${remaining} seconds`);timer=root.setInterval(()=>{remaining-=1;if(remaining>0){confirmButton.textContent=`Confirm in ${remaining}`;confirmButton.setAttribute("aria-label",`Confirm sign out in ${remaining} seconds`);}else{root.clearInterval(timer);timer=null;confirmButton.disabled=false;confirmButton.textContent=translate(confirmLabel);confirmButton.removeAttribute("aria-label");}},1000);}
-      const finish=value=>{if(timer)root.clearInterval(timer);resolve(value&&before===scope());modal.remove();};modal.querySelector("[data-close]").onclick=()=>finish(false);modal.querySelector("[data-cancel]").onclick=()=>finish(false);confirmButton.onclick=()=>finish(true);
+      const finish=value=>{if(timer)root.clearInterval(timer);resolve(value&&before===scope());modal.remove();};modal.querySelector("[data-close]")?.addEventListener("click",()=>finish(false));modal.querySelector("[data-cancel]").onclick=()=>finish(false);confirmButton.onclick=()=>finish(true);
       root.document.querySelector("#app").append(modal);watchDialogs();scanDialogs();dialogs.get(modal).onRemoved=()=>resolve(false);modal.querySelector("[data-cancel]").focus();
     });
   }
-  return {capture,enhance,confirm:confirmAction,isSecretField:secret};
+  return {capture,enhance,confirm:confirmAction,isSecretField:secret,toast};
 });
