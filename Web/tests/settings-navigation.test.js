@@ -48,9 +48,9 @@ test("last-row hairlines include single-row Settings surfaces, including Sign ou
 });
 
 test("the updated Settings assets are available to online and offline app loads", () => {
-  for (const asset of ["settings-ui.css?v=9", "app.js?v=451"]) {
+  for (const asset of ["settings-ui.css?v=9", "app.js?v=452"]) {
     assert.ok(index.includes(asset), `index.html includes ${asset}`);
     assert.ok(worker.includes(asset), `service worker includes ${asset}`);
   }
-  assert.match(worker, /seven-v456/);
+  assert.match(worker, /seven-v457/);
 });

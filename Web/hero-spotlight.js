@@ -69,6 +69,14 @@
     slide.className = "spotlight-slide"; slide.dataset.spotlightTitle = `${contentType(item)}:${item.id}`;
     const backdrop = template.content.querySelector(".home-hero-backdrop");
     backdrop.style.backgroundImage = `url(${JSON.stringify(url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
+    const phonePoster = template.content.querySelector(".home-hero-phone-art img");
+    if (phonePoster) {
+      const revealPoster = () => {
+        if (root.matchMedia?.("(max-width: 767px)").matches && phonePoster.complete && phonePoster.naturalWidth > 1) slide.classList.add("phone-poster-loaded");
+      };
+      phonePoster.addEventListener("load", revealPoster);
+      revealPoster();
+    }
     slide.append(backdrop, template.content.querySelector(".home-hero-layout"));
     return slide;
   }

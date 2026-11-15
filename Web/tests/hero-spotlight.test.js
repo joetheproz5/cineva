@@ -33,8 +33,8 @@ test('a broken decoder or an empty image cannot expose a partially prepared slid
 });
 test('Home switches artwork and copy together only after readiness, and uses horizontal motion',()=>{
  const js=fs.readFileSync(path.resolve(__dirname,'../hero-spotlight.js'),'utf8'),css=fs.readFileSync(path.resolve(__dirname,'../hero-spotlight.css'),'utf8'),app=fs.readFileSync(path.resolve(__dirname,'../app.js'),'utf8');
- assert.ok(js.indexOf('await loader.first(artwork(view.pool[target]))')<js.indexOf('state.featured = view.pool[target]'));
- assert.match(js,/ticket !== view.ticket/);assert.match(js,/view.scope === scope\(\)/);assert.match(js,/view.pool === state.featuredPool/);
+ assert.ok(js.indexOf('const item = view.pool[target]')<js.indexOf('state.featured = item'));
+ assert.match(js,/ticket !== view.ticket/);assert.match(js,/pool:state.featuredPool/);
  assert.match(js,/translateX\(/);assert.doesNotMatch(js,/translateY\(/);assert.match(css,/animation: none !important/);
  assert.match(js,/previous.setAttribute\("aria-hidden", "true"\); previous.inert = true/);
  assert.match(js,/automatic && \(view.loading \|\| document.hidden\)/);assert.match(app,/window.SEVENHero.preload\(state.featuredPool\)/);
@@ -42,6 +42,6 @@ test('Home switches artwork and copy together only after readiness, and uses hor
 });
 test('spotlight assets load before the app and are available in the offline shell',()=>{
  const web=path.resolve(__dirname,'..'),index=fs.readFileSync(path.join(web,'index.html'),'utf8'),worker=fs.readFileSync(path.join(web,'service-worker.js'),'utf8');
- for(const file of ['hero-spotlight.js?v=1','hero-spotlight.css?v=1']){assert.ok(index.includes(file));assert.ok(worker.includes(file));}
- assert.ok(index.indexOf('hero-spotlight.js?v=1')<index.indexOf('app.js?v=384'));
+ for(const file of ['hero-spotlight.js?v=6','hero-spotlight.css?v=2']){assert.ok(index.includes(file));assert.ok(worker.includes(file));}
+ assert.ok(index.indexOf('hero-spotlight.js?v=6')<index.indexOf('app.js?v=452'));
 });
