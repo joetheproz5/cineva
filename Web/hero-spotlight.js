@@ -4,6 +4,11 @@
   if (typeof module === "object" && module.exports) module.exports = spotlight;
   root.SEVENHero = spotlight;
 })(typeof window === "undefined" ? globalThis : window, function (root) {
+  // Flip this one value to restore the existing portrait-poster phone layout.
+  const HERO_PHONE_STYLE = "backdrop";
+  const isPhoneViewport = () => root.matchMedia?.("(max-width: 767px)").matches;
+  const isBackdropPhoneMode = () => HERO_PHONE_STYLE === "backdrop" && isPhoneViewport();
+  const isPosterPhoneMode = () => HERO_PHONE_STYLE === "poster" && isPhoneViewport();
   function createImageLoader({ ImageClass = root.Image, limit = 5, timeout = 15000 } = {}) {
     const entries = new Map();
     function load(url) {
@@ -84,18 +89,19 @@
   const artwork = item => [item.backdrop_path ? `${TMDB_BACKDROP}${item.backdrop_path}` : "", posterOf(item), STILL_FALLBACK];
   const phoneArtwork = item => {
     const posterPath = item.poster_path || item.posterPath;
-    return root.matchMedia?.("(max-width: 767px)").matches && posterPath
+    if (isBackdropPhoneMode()) return item.backdrop_path ? [`${TMDB_BACKDROP}${item.backdrop_path}`] : [posterOf(item), STILL_FALLBACK];
+    return isPhoneViewport() && posterPath
       ? [`${TMDB_IMAGE.replace(/\/w\d+$/, "/w780")}${posterPath}`, ...artwork(item)]
       : artwork(item);
   };
   function valid(view) { return active === view && document.querySelector("#featured") === view.element; }
   function syncPhoneTitleFade(slide) {
     const view = active;
-    if (!view || view.current !== slide || !root.matchMedia?.("(max-width: 767px)").matches) return;
+    if (!view || view.current !== slide || !isPosterPhoneMode()) return;
     view.element.style.setProperty("--phone-hero-title-fade-start", slide.classList.contains("phone-poster-textless-loaded") || slide.classList.contains("phone-poster-textless-already") ? "40%" : "35%");
   }
   function installTextlessPoster(slide, item) {
-    if (!root.matchMedia?.("(max-width: 767px)").matches) return;
+    if (!isPosterPhoneMode()) return;
     const picture = slide.querySelector(".home-hero-phone-art"), regular = picture?.querySelector("img");
     if (!regular) { slide.classList.add("phone-poster-no-textless"); return; }
     const currentPosterPath = item.poster_path || item.posterPath;
@@ -133,14 +139,17 @@
     }).catch(fail);
   }
   function warmTextlessPoster(item) {
-    if (root.matchMedia?.("(max-width: 767px)").matches) void textlessPosterLoader.load(item);
+    if (isPosterPhoneMode()) void textlessPosterLoader.load(item);
   }
   function preload(pool = []) {
+    // Backdrop mode lets the responsive picture load the first visible slide
+    // directly; poster mode retains the existing two-slide warm-up behavior.
+    if (isBackdropPhoneMode()) return;
     // Keep the decoded working set small; do not decode a dozen full-size backdrops on phones.
     pool.slice(0, 2).forEach(item => { void loader.first(phoneArtwork(item)).catch(() => {}); warmTextlessPoster(item); });
   }
   function warmNeighbours(view) {
-    if (!valid(view) || view.pool.length < 2) return;
+    if (!valid(view) || view.pool.length < 2 || isBackdropPhoneMode()) return;
     const next = view.pool[(view.index + 1) % view.pool.length];
     void loader.first(phoneArtwork(next)).catch(() => {});
     warmTextlessPoster(next);
@@ -173,6 +182,19 @@
       phonePoster.addEventListener("load", revealPoster);
       phonePoster.addEventListener("error", failPoster);
       revealPoster();
+    }
+    const phoneBackdropImage = template.content.querySelector(".home-hero-phone-backdrop-art img");
+    if (phoneBackdropImage && isPhoneViewport()) {
+      slide.classList.add("has-phone-backdrop-art");
+      phoneBackdropImage.loading = "eager";
+      phoneBackdropImage.fetchPriority = "high";
+      const revealBackdrop = async () => {
+        try { if (typeof phoneBackdropImage.decode === "function") await phoneBackdropImage.decode(); } catch { /* Keep a loaded frame when decode() is unavailable. */ }
+        if (phoneBackdropImage.naturalWidth > 1) slide.classList.add("phone-backdrop-loaded");
+      };
+      phoneBackdropImage.addEventListener("load", revealBackdrop, { once:true });
+      phoneBackdropImage.addEventListener("error", () => slide.classList.add("phone-backdrop-failed"), { once:true });
+      if (phoneBackdropImage.complete && phoneBackdropImage.naturalWidth > 1) void revealBackdrop();
     }
     slide.append(backdrop, template.content.querySelector(".home-hero-layout"));
     installTextlessPoster(slide, item);
@@ -258,10 +280,12 @@
     warmNeighbours(view);
 
     const backdrop = next.querySelector(".home-hero-backdrop");
-    void loader.first(phoneArtwork(item)).then(ready => {
-      if (!valid(view) || ticket !== view.ticket || view.current !== next || !backdrop) return;
-      backdrop.style.backgroundImage = `url(${JSON.stringify(ready.url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
-    }).catch(() => {});
+    if (!isBackdropPhoneMode()) {
+      void loader.first(phoneArtwork(item)).then(ready => {
+        if (!valid(view) || ticket !== view.ticket || view.current !== next || !backdrop) return;
+        backdrop.style.backgroundImage = `url(${JSON.stringify(ready.url)}), url(${JSON.stringify(STILL_FALLBACK)})`;
+      }).catch(() => {});
+    }
 
     const reduced = root.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (!previous || reduced) {
@@ -334,6 +358,7 @@
     cancel();
     const element = document.querySelector("#featured");
     if (!element || state.route !== "home" || !state.featured) return;
+    element.classList.toggle("phone-hero-backdrop", HERO_PHONE_STYLE === "backdrop");
     const pool = state.featuredPool.length ? state.featuredPool : [state.featured];
     // Keep the arrows and grading stationary; artwork and its copy move as one horizontal slide.
     element.classList.remove("hero-refresh"); element.classList.add("spotlight-ready");
@@ -345,5 +370,5 @@
     void select(active.index);
     warmNeighbours(active);
   }
-  return { createImageLoader, createTextlessPosterLoader, chooseTextlessPoster, mount, cancel, preload, select, move };
+  return { HERO_PHONE_STYLE, createImageLoader, createTextlessPosterLoader, chooseTextlessPoster, mount, cancel, preload, select, move };
 });

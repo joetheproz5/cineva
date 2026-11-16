@@ -41,6 +41,9 @@ test("textless image metadata uses the existing proxy and is cached for this ses
 
 test("the helper only warms the two visible carousel positions and keeps the swap time bounded", () => {
   const source = fs.readFileSync(path.join(web,"hero-spotlight.js"),"utf8");
+  assert.match(source,/const HERO_PHONE_STYLE = "backdrop"/);
+  assert.match(source,/function warmTextlessPoster\(item\) \{\s*if \(isPosterPhoneMode\(\)\)/);
+  assert.match(source,/if \(isBackdropPhoneMode\(\)\) return;[\s\S]*?pool\.slice\(0, 2\)/);
   assert.match(source,/pool\.slice\(0, 2\)[\s\S]*?warmTextlessPoster\(item\)/);
   assert.match(source,/warmTextlessPoster\(next\)/);
   assert.match(source,/const deadline = performance\.now\(\) \+ 1500/);

@@ -1749,11 +1749,24 @@ function heroNavigation() {
 function featuredMarkup(f = state.featured) {
   if (!f) return `<div class="hero-skeleton skeleton"></div>`;
   const backdrop = f.backdrop_path ? `${TMDB_BACKDROP}${f.backdrop_path}` : posterOf(f), type = contentType(f), year = yearOf(f), description = String(f.overview || "").trim();
-  const posterPath = String(f.poster_path || f.posterPath || "").trim(), posterBase = TMDB_IMAGE.replace(/\/w\d+$/, "");
+  const posterPath = String(f.poster_path || f.posterPath || "").trim(), backdropPath = String(f.backdrop_path || "").trim(), posterBase = TMDB_IMAGE.replace(/\/w\d+$/, "");
   const posterLoading = f === state.featured ? "eager" : "lazy";
-  const phonePoster = posterPath ? `<picture class="home-hero-phone-art"><source media="(max-width: 767px)" srcset="${escapeHTML(posterBase)}/w500${escapeHTML(posterPath)} 500w, ${escapeHTML(posterBase)}/w780${escapeHTML(posterPath)} 780w" sizes="100vw"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="${posterLoading}" fetchpriority="${posterLoading === "eager" ? "high" : "auto"}" decoding="async"></picture>` : "";
+  const phoneStyle = window.SEVENHero?.HERO_PHONE_STYLE === "poster" ? "poster" : "backdrop";
+  const phoneBackdropMode = phoneStyle === "backdrop";
+  const phoneArtPath = backdropPath || posterPath;
+  const phoneArtSrcset = backdropPath
+    ? `${posterBase}/w780${escapeHTML(backdropPath)} 780w, ${posterBase}/w1280${escapeHTML(backdropPath)} 1280w`
+    : posterPath ? `${posterBase}/w500${escapeHTML(posterPath)} 500w, ${posterBase}/w780${escapeHTML(posterPath)} 780w` : "";
+  const phoneBackdropArt = phoneBackdropMode
+    ? `<picture class="home-hero-phone-backdrop-art${backdropPath ? "" : " is-poster-fallback"}">${phoneArtSrcset ? `<source media="(max-width: 767px)" srcset="${phoneArtSrcset}" sizes="100vw">` : ""}<img src="${phoneArtPath ? "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" : escapeHTML(posterOf(f))}" alt="" loading="${posterLoading}" fetchpriority="${posterLoading === "eager" ? "high" : "auto"}" decoding="async"></picture>`
+    : "";
+  const phonePoster = phoneStyle === "poster" && posterPath ? `<picture class="home-hero-phone-art"><source media="(max-width: 767px)" srcset="${escapeHTML(posterBase)}/w500${escapeHTML(posterPath)} 500w, ${escapeHTML(posterBase)}/w780${escapeHTML(posterPath)} 780w" sizes="100vw"><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" loading="${posterLoading}" fetchpriority="${posterLoading === "eager" ? "high" : "auto"}" decoding="async"></picture>` : "";
+  const reservePhoneSynopsis = phoneBackdropMode && !description ? `<p class="hero-synopsis phone-hero-synopsis-reserve" aria-hidden="true"></p>` : "";
+  const backdropStyle = phoneBackdropMode && window.matchMedia?.("(max-width: 767px)").matches
+    ? `style="background-color:var(--bg,#050505)"`
+    : `style="background-image:url('${escapeHTML(backdrop)}')"`;
   const meta = [year, type === "tv" ? "Series" : "Movie"].filter(Boolean).join(" · ");
-  return `<div class="home-hero-backdrop" style="background-image:url('${escapeHTML(backdrop)}')">${phonePoster}</div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-layout"><div class="home-hero-content${description ? " has-synopsis" : ""}"><h1>${escapeHTML(titleOf(f))}</h1>${meta ? `<div class="hero-meta">${escapeHTML(meta)}</div>` : ""}${description ? `<p class="hero-synopsis">${escapeHTML(description)}</p>` : ""}<div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg class="hero-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>${t("Watch now")}</span></button><button type="button" class="hero-info-link" data-open="${type}:${f.id}"><span>More info</span></button></div></div></div>${heroNavigation()}`;
+  return `<div class="home-hero-backdrop" ${backdropStyle}>${phoneBackdropArt}${phonePoster}</div><div class="home-hero-grade" aria-hidden="true"></div><div class="home-hero-shade"></div><div class="home-hero-layout"><div class="home-hero-content${description ? " has-synopsis" : ""}"><h1>${escapeHTML(titleOf(f))}</h1>${meta ? `<div class="hero-meta">${escapeHTML(meta)}</div>` : ""}${description ? `<p class="hero-synopsis">${escapeHTML(description)}</p>` : reservePhoneSynopsis}<div class="hero-actions"><button class="hero-play" data-open="${type}:${f.id}"><svg class="hero-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>${t("Watch now")}</span></button><button type="button" class="hero-info-link" data-open="${type}:${f.id}"><span>More info</span></button></div></div></div>${heroNavigation()}`;
 }
 function scheduleHero() {
   if (state.featuredPool.length < 2 || currentPreferences().autoplayPreviews === false) {
@@ -4324,7 +4337,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=464", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=465", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

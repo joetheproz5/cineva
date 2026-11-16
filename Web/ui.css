@@ -507,6 +507,7 @@ body:has(.home-page) .app-header { margin-bottom: 0; }
 .home-page .hero::after { display: block; position: absolute; z-index: 1; right: 14%; bottom: -35%; width: 58%; height: 47%; border-radius: 50%; background: rgba(208,17,31,.1); filter: blur(120px); content: ""; pointer-events: none; }
 .home-hero-backdrop { position: absolute; z-index: -2; inset: -2%; background-position: center 24%; background-size: cover; animation: home-hero-image .75s cubic-bezier(.2,.7,.2,1) both, home-hero-drift 26s 1s ease-in-out infinite alternate; will-change: transform; }
 .home-page .hero .home-hero-phone-art { display:none; }
+.home-page .hero .home-hero-phone-backdrop-art { display:none; }
 .home-hero-grade { position: absolute; z-index: -1; inset: 0; overflow: hidden; background: radial-gradient(56% 68% at 75% 28%, hsl(var(--hero-hue,352) 92% 58% / .2) 0%, transparent 72%), radial-gradient(46% 52% at 16% 78%, hsl(calc(var(--hero-hue,352) + 34) 88% 48% / .12) 0%, transparent 72%); animation: grade-in 1.1s ease both; pointer-events: none; }
 .home-hero-grade::before { position: absolute; inset: 0; background: radial-gradient(ellipse at 74% 34%, rgba(255,255,255,.09), transparent 39%); mix-blend-mode: screen; content: ""; }
 .home-hero-grade::after { position: absolute; top: -30%; bottom: -30%; left: -32%; width: 27%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.055), rgba(255,255,255,.13), transparent); opacity: 0; transform: skewX(-18deg); animation: hero-light-sweep 17s 2.5s ease-in-out infinite; content: ""; }
@@ -1703,6 +1704,91 @@ html,body { touch-action: pan-x pan-y; }
     box-shadow:0 12px 34px rgba(0,0,0,.58),0 0 25px rgba(79,125,190,.14),inset 0 1px rgba(174,198,232,.06);
   }
 }
+@media (max-width:767px) {
+  /* The alternate phone treatment keeps the existing poster layout available
+     behind HERO_PHONE_STYLE in hero-spotlight.js. */
+  #featured.phone-hero-backdrop {
+    --phone-backdrop-height:clamp(300px,82vw,400px);
+    height:auto;
+    min-height:0;
+    max-height:none;
+    margin-top:calc(0px - var(--home-hero-extension));
+    padding:0 0 68px;
+    overflow:hidden;
+    background:var(--bg,#050505);
+  }
+  #featured.phone-hero-backdrop::before { background:none; }
+  #featured.phone-hero-backdrop .home-hero-backdrop {
+    inset:auto 0 auto;
+    top:var(--home-hero-top-overscan);
+    width:100%;
+    height:var(--phone-backdrop-height);
+    aspect-ratio:100 / 82;
+    overflow:hidden;
+    background-color:var(--bg,#050505);
+    background-position:58% 30%;
+    background-size:cover;
+    animation:none;
+  }
+  #featured.phone-hero-backdrop .home-hero-phone-backdrop-art {
+    position:absolute;
+    z-index:0;
+    inset:0;
+    display:block;
+    overflow:hidden;
+  }
+  #featured.phone-hero-backdrop .home-hero-phone-backdrop-art img {
+    display:block;
+    width:100%;
+    height:100%;
+    aspect-ratio:100 / 82;
+    object-fit:cover;
+    object-position:58% 30%;
+    background:var(--bg,#050505);
+    opacity:0;
+    transition:opacity 200ms ease;
+  }
+  #featured.phone-hero-backdrop .home-hero-phone-backdrop-art.is-poster-fallback img { object-position:center 20%; }
+  #featured.phone-hero-backdrop .spotlight-slide.phone-backdrop-loaded .home-hero-phone-backdrop-art img { opacity:1; }
+  #featured.phone-hero-backdrop .home-hero-backdrop::after {
+    position:absolute;
+    z-index:1;
+    inset:0;
+    background:linear-gradient(180deg,transparent 55%,color-mix(in srgb,var(--bg,#050505) 50%,transparent) 70%,color-mix(in srgb,var(--bg,#050505) 94%,transparent) 82%,var(--bg,#050505) 100%);
+    content:"";
+    pointer-events:none;
+  }
+  #featured.phone-hero-backdrop .home-hero-layout {
+    position:relative;
+    inset:auto;
+    display:block;
+    width:100%;
+    margin:calc(var(--home-hero-top-overscan) + var(--phone-backdrop-height) - 40px) auto 0;
+    padding:0 20px;
+  }
+  #featured.phone-hero-backdrop .home-hero-content { width:100%; }
+  #featured.phone-hero-backdrop .home-hero-content h1 {
+    min-height:calc(2 * 1.02em);
+    margin:0;
+  }
+  #featured.phone-hero-backdrop .hero-meta { min-height:1.25em; margin-top:12px; }
+  #featured.phone-hero-backdrop .home-hero-content .hero-synopsis {
+    width:100%;
+    max-width:none;
+    min-height:calc(2 * 1.55em);
+    margin:12px 0 0 !important;
+    font-size:12px;
+    line-height:1.55;
+    -webkit-line-clamp:2 !important;
+  }
+  #featured.phone-hero-backdrop .home-hero-content .phone-hero-synopsis-reserve { display:block; visibility:hidden; }
+  #featured.phone-hero-backdrop .hero-actions,
+  #featured.phone-hero-backdrop .home-hero-content:not(.has-synopsis) .hero-actions { margin-top:20px; }
+  #featured.phone-hero-backdrop .hero-nav { z-index:4; }
+  #featured.phone-hero-backdrop .hero-indicators { bottom:24px; }
+  .home-page:has(#featured.phone-hero-backdrop) .home-library { margin-top:0; }
+}
 @media (max-width:767px) and (prefers-reduced-motion:reduce) {
   .home-page .hero .home-hero-phone-art img { transition:none; }
+  #featured.phone-hero-backdrop .home-hero-phone-backdrop-art img { transition:none; }
 }
