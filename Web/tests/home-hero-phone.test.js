@@ -24,7 +24,7 @@ test('phone hero exposes backdrop and poster variants with backdrop as the defau
 
 test('backdrop phone layout overlays copy on the wide art and leaves the poster variant untouched',()=>{
   const backdropHero=css.slice(css.lastIndexOf('@media (max-width:767px) {'));
-  assert.match(backdropHero,/--phone-backdrop-height:clamp\(300px,82vw,400px\)/);
+  assert.match(backdropHero,/--phone-backdrop-height:clamp\(400px,112vw,520px\)/);
   assert.match(backdropHero,/height:auto;[\s\S]*?min-height:calc\(var\(--home-hero-top-overscan\) \+ var\(--phone-backdrop-height\) \+ 48px\);[\s\S]*?max-height:none/);
   assert.match(backdropHero,/margin-top:calc\(0px - var\(--home-hero-extension\)\)/);
   assert.match(backdropHero,/top:var\(--home-hero-top-overscan\)/);

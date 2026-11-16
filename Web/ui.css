@@ -1708,7 +1708,7 @@ html,body { touch-action: pan-x pan-y; }
   /* The alternate phone treatment keeps the existing poster layout available
      behind HERO_PHONE_STYLE in hero-spotlight.js. */
   #featured.phone-hero-backdrop {
-    --phone-backdrop-height:clamp(300px,82vw,400px);
+    --phone-backdrop-height:clamp(400px,112vw,520px);
     height:auto;
     min-height:calc(var(--home-hero-top-overscan) + var(--phone-backdrop-height) + 48px);
     max-height:none;
