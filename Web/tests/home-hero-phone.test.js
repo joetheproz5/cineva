@@ -30,6 +30,7 @@ test('backdrop phone layout overlays copy on the wide art and leaves the poster 
   assert.match(backdropHero,/top:var\(--home-hero-top-overscan\)/);
   assert.match(backdropHero,/object-fit:cover;[\s\S]*?object-position:58% 30%/);
   assert.match(backdropHero,/is-poster-fallback img \{ object-position:center 20%/);
+  assert.match(backdropHero,/\.home-hero-backdrop::after \{[\s\S]*?height:clamp\(140px,38vw,210px\);[\s\S]*?linear-gradient\(180deg,var\(--bg,#050505\) 0%[\s\S]*?transparent 100%\)/);
   assert.match(backdropHero,/#featured\.phone-hero-backdrop \.home-hero-shade \{[\s\S]*?linear-gradient\(90deg[\s\S]*?linear-gradient\(180deg,transparent 38%[\s\S]*?var\(--bg,#050505\) 100%\)/);
   assert.match(backdropHero,/\.home-hero-layout \{\s*position:absolute;\s*inset:var\(--home-hero-top-overscan\) 0 auto;\s*display:flex;\s*height:var\(--phone-backdrop-height\);\s*align-items:flex-end/);
   assert.match(backdropHero,/padding:0 20px 20px/);
