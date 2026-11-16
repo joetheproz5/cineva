@@ -35,3 +35,17 @@ test("title-page related posters use existing catalog data and lazy w185/w342 im
   assert.match(app, /\[185, 342\]/);
   assert.match(app, /data-title-show-more/);
 });
+
+test("opening a title renders before optional trailer and episode requests finish", () => {
+  const openItem = app.match(/async function openItem\(type, id, trigger = null\) \{[\s\S]*?(?=\nfunction titleOpenRequestIsCurrent\()/)?.[0];
+  assert.ok(openItem, "openItem is present");
+  assert.doesNotMatch(openItem, /await\s+(?:loadTrailer|loadEpisodes|loadSeriesNext)\(/);
+  assert.match(app, /function titleOpenPreview\(type, id, trigger\)/);
+  assert.match(app, /function renderTitleLoading\(item, type\)/);
+  assert.match(openItem, /state\.movie = preview; state\.series = null; state\.route = "movie"/);
+  assert.match(openItem, /state\.series = preview; state\.movie = null;[\s\S]*?state\.route = "series";\s*\}\s*render\(\); scrollToTop\(\);/);
+  assert.match(openItem, /loadSeriesTitleExtras\(item\.id/);
+  assert.match(app, /function loadSeriesTitleExtras\(/);
+  assert.match(app, /function loadTitleTrailerInBackground\(/);
+  assert.match(app, /openItem\(type, id, button\)/);
+});

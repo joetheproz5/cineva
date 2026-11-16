@@ -2012,3 +2012,10 @@ html,body { touch-action: pan-x pan-y; }
 @media (prefers-reduced-motion:reduce) {
   .title-detail-page *, .title-detail-page *::before, .title-detail-page *::after, .title-portal-layer *, .title-portal-layer *::before, .title-portal-layer *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
+
+.title-opening-page .title-hero-copy { max-width:760px; }
+.title-opening-page .title-opening-status { margin:14px 0 0; color:var(--title-secondary); font-size:15px; }
+.title-opening-bars { display:grid; gap:9px; width:min(440px,70vw); margin-top:24px; }
+.title-opening-bars i { display:block; height:9px; border-radius:99px; background:linear-gradient(90deg,rgba(255,255,255,.16),rgba(255,255,255,.07)); }
+.title-opening-bars i:nth-child(2) { width:72%; }
+.title-opening-bars i:nth-child(3) { width:48%; }
