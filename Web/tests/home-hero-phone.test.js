@@ -22,20 +22,21 @@ test('phone hero exposes backdrop and poster variants with backdrop as the defau
   assert.match(spotlight,/phonePoster\.naturalWidth > 1/);
 });
 
-test('backdrop phone layout is content-driven and leaves the poster variant untouched',()=>{
+test('backdrop phone layout overlays copy on the wide art and leaves the poster variant untouched',()=>{
   const backdropHero=css.slice(css.lastIndexOf('@media (max-width:767px) {'));
   assert.match(backdropHero,/--phone-backdrop-height:clamp\(300px,82vw,400px\)/);
-  assert.match(backdropHero,/height:auto;[\s\S]*?min-height:0;[\s\S]*?max-height:none/);
+  assert.match(backdropHero,/height:auto;[\s\S]*?min-height:calc\(var\(--home-hero-top-overscan\) \+ var\(--phone-backdrop-height\) \+ 48px\);[\s\S]*?max-height:none/);
   assert.match(backdropHero,/margin-top:calc\(0px - var\(--home-hero-extension\)\)/);
   assert.match(backdropHero,/top:var\(--home-hero-top-overscan\)/);
   assert.match(backdropHero,/object-fit:cover;[\s\S]*?object-position:58% 30%/);
   assert.match(backdropHero,/is-poster-fallback img \{ object-position:center 20%/);
-  assert.match(backdropHero,/linear-gradient\(180deg,transparent 55%,color-mix\(in srgb,var\(--bg,#050505\) 50%,transparent\) 70%[\s\S]*?var\(--bg,#050505\) 100%\)/);
-  assert.match(backdropHero,/margin:calc\(var\(--home-hero-top-overscan\) \+ var\(--phone-backdrop-height\) - 40px\)/);
+  assert.match(backdropHero,/#featured\.phone-hero-backdrop \.home-hero-shade \{[\s\S]*?linear-gradient\(90deg[\s\S]*?linear-gradient\(180deg,transparent 38%[\s\S]*?var\(--bg,#050505\) 100%\)/);
+  assert.match(backdropHero,/\.home-hero-layout \{\s*position:absolute;\s*inset:var\(--home-hero-top-overscan\) 0 auto;\s*display:flex;\s*height:var\(--phone-backdrop-height\);\s*align-items:flex-end/);
+  assert.match(backdropHero,/padding:0 20px 20px/);
   assert.match(backdropHero,/home-hero-content h1 \{[\s\S]*?min-height:calc\(2 \* 1\.02em\)/);
   assert.match(backdropHero,/phone-hero-synopsis-reserve \{ display:block; visibility:hidden; \}/);
-  assert.match(backdropHero,/hero-actions,[\s\S]*?margin-top:20px/);
-  assert.match(backdropHero,/hero-indicators \{ bottom:24px/);
+  assert.match(backdropHero,/hero-actions,[\s\S]*?margin-top:14px/);
+  assert.match(backdropHero,/hero-indicators \{ top:calc\(var\(--home-hero-top-overscan\) \+ var\(--phone-backdrop-height\)\); bottom:auto/);
   assert.match(backdropHero,/home-library \{ margin-top:0/);
   assert.match(css,/height:66svh;[\s\S]*?min-height:480px;[\s\S]*?max-height:640px/);
   assert.match(css,/linear-gradient\(180deg,transparent var\(--phone-hero-title-fade-start,40%\)[\s\S]*?var\(--bg,#050505\) 100%\)/);
