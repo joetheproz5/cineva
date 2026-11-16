@@ -10,6 +10,7 @@ const css = fs.readFileSync(path.join(web, "ui.css"), "utf8");
 test("movie and series detail pages share the scoped title-page hero and action kit", () => {
   assert.match(app, /function titleHero\(item, type, primary/);
   assert.match(app, /function titlePageMoreAction\(item, extraActions = ""\)/);
+  assert.match(app, /let titleMenuSequence = 0;/);
   assert.match(app, /aria-haspopup="dialog" aria-expanded="false"/);
   assert.match(app, /data-toggle-my-list/);
   assert.match(app, /data-trailer/);

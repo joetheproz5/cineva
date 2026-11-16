@@ -1,5 +1,6 @@
 const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP = "https://image.tmdb.org/t/p/original";
+let titleMenuSequence = 0;
 const TMDB_STILL = "https://image.tmdb.org/t/p/w780";
 const POSTER_FALLBACK = "/assets/poster-placeholder.svg";
 const STILL_FALLBACK = "/assets/still-placeholder.svg";
