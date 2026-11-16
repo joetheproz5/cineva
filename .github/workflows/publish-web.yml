@@ -26,6 +26,14 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+      - name: Set up Node for shell checks
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Verify every app stylesheet and script is precached
+        run: node Web/scripts/check-shell.mjs
+      - name: Smoke test built web app in headless Chrome
+        run: node Web/tests/browser-smoke.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload web app

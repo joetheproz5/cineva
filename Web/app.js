@@ -1134,7 +1134,7 @@ function header() {
   const homeLink = `<button class="nav-link ${activeNav === "home" ? "active" : ""}" data-home><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg><span>${t("Home")}</span></button>`;
   const forYouLink = `<button class="nav-link ${activeNav === "for-you" ? "active" : ""}" data-for-you><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></svg><span>${t("For You")}</span></button>`;
   const moviesLink = `<button class="nav-link ${activeNav === "movies" ? "active" : ""}" data-movies><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4Z M4 9h16 M8 5l3 4m2-4 3 4M8 20l3-4m2 4 3-4"/></svg><span>${t("Movies")}</span></button>`;
-  const seriesLink = `<button class="nav-link ${activeNav === "shows" ? "active" : ""}" data-shows><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 2 5m11-3 3 3m-7 4 4 3-4 3Z"/></svg><span>${t("Series")}</span></button>`;
+  const seriesLink = `<button class="nav-link ${activeNav === "shows" ? "active" : ""}" data-shows><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 2l3 3m5-3-3 3"/></svg><span>${t("Series")}</span></button>`;
   const navigation = `<nav aria-label="Main navigation">${homeLink}${forYouLink}${moviesLink}${seriesLink}</nav>`;
   const browseActive = ["catalog", "all-catalog", "movie", "series", "franchise"].includes(state.route);
   const mobileNavigation = `<nav class="app-mobile-nav" aria-label="Mobile main navigation">${homeLink}${forYouLink}<button class="nav-link ${browseActive ? "active" : ""}" data-mobile-browse><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4Z M4 9h16 M8 5l3 4m2-4 3 4"/></svg><span>${t("Browse")}</span></button></nav>`;
@@ -4389,7 +4389,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=469", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=470", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
