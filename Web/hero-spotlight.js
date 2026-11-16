@@ -42,7 +42,42 @@
     }
     return { load, first };
   }
+  function chooseTextlessPoster(posters, regularPosterPath) {
+    if (!Array.isArray(posters) || !regularPosterPath) return null;
+    const regular = posters.find(image => image?.file_path === regularPosterPath && Number(image.width) > 0 && Number(image.height) > 0);
+    // TMDB may return only null-language images for include_image_language=null,
+    // so fall back to the catalog's standard 2:3 poster ratio when needed.
+    const ratio = regular ? Number(regular.width) / Number(regular.height) : 2 / 3;
+    return posters
+      .filter(image => image?.iso_639_1 == null && typeof image.file_path === "string" && image.file_path.startsWith("/") && Number(image.width) > 0 && Number(image.height) > 0)
+      .filter(image => Math.abs(Number(image.width) / Number(image.height) - ratio) <= 0.01)
+      .sort((a, b) => (Number(b.vote_average) || 0) - (Number(a.vote_average) || 0) || (Number(b.vote_count) || 0) - (Number(a.vote_count) || 0))[0]?.file_path || null;
+  }
+  function createTextlessPosterLoader({ fetchImpl = (...args) => root.fetch(...args), timeout = 9000 } = {}) {
+    const entries = new Map();
+    function load(item) {
+      const type = item?.type === "tv" || item?.media_type === "tv" || item?.first_air_date ? "tv" : "movie";
+      const id = Number(item?.id), posterPath = item?.poster_path || item?.posterPath;
+      if (!Number.isSafeInteger(id) || id < 1 || typeof posterPath !== "string" || !posterPath.startsWith("/")) return Promise.resolve(null);
+      const key = `${type}:${id}`;
+      if (entries.has(key)) return entries.get(key);
+      const pending = (async () => {
+        const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
+        try {
+          const response = await fetchImpl(`/api/tmdb/${type}/${id}/images?include_image_language=null`, { signal:controller.signal, credentials:"same-origin" });
+          if (!response?.ok) return null;
+          const images = await response.json();
+          return chooseTextlessPoster(images?.posters, posterPath);
+        } catch { return null; }
+        finally { clearTimeout(timer); }
+      })();
+      entries.set(key, pending);
+      return pending;
+    }
+    return { load };
+  }
   const loader = createImageLoader();
+  const textlessPosterLoader = createTextlessPosterLoader();
   const TRANSITION_DURATION = 620;
   const TRANSITION_EASING = "cubic-bezier(.22,.72,.22,1)";
   let active = null;
@@ -54,14 +89,61 @@
       : artwork(item);
   };
   function valid(view) { return active === view && document.querySelector("#featured") === view.element; }
+  function syncPhoneTitleFade(slide) {
+    const view = active;
+    if (!view || view.current !== slide || !root.matchMedia?.("(max-width: 767px)").matches) return;
+    view.element.style.setProperty("--phone-hero-title-fade-start", slide.classList.contains("phone-poster-textless-loaded") || slide.classList.contains("phone-poster-textless-already") ? "40%" : "35%");
+  }
+  function installTextlessPoster(slide, item) {
+    if (!root.matchMedia?.("(max-width: 767px)").matches) return;
+    const picture = slide.querySelector(".home-hero-phone-art"), regular = picture?.querySelector("img");
+    if (!regular) { slide.classList.add("phone-poster-no-textless"); return; }
+    const currentPosterPath = item.poster_path || item.posterPath;
+    const image = document.createElement("img");
+    image.className = "home-hero-textless-poster";
+    image.alt = ""; image.setAttribute("aria-hidden", "true"); image.loading = "eager"; image.decoding = "async";
+    let status = "pending", decoded = false;
+    const deadline = performance.now() + 1500;
+    let timer;
+    const fail = () => {
+      if (status !== "pending") return;
+      status = "failed"; clearTimeout(timer); image.remove(); slide.classList.add("phone-poster-no-textless"); syncPhoneTitleFade(slide);
+    };
+    const reveal = () => {
+      if (status !== "pending") return;
+      if (performance.now() >= deadline) { fail(); return; }
+      if (!decoded || !slide.classList.contains("phone-poster-loaded")) return;
+      status = "loaded"; clearTimeout(timer); slide.classList.add("phone-poster-textless-loaded"); syncPhoneTitleFade(slide);
+    };
+    image.addEventListener("load", async () => {
+      try { if (typeof image.decode === "function") await image.decode(); } catch { /* A loaded image can still be painted if decode() is unsupported. */ }
+      if (!image.naturalWidth) { fail(); return; }
+      decoded = true; reveal();
+    }, { once:true });
+    regular.addEventListener("load", reveal);
+    picture.after(image);
+    timer = setTimeout(fail, Math.max(0, deadline - performance.now()));
+    void textlessPosterLoader.load(item).then(path => {
+      if (!path) { fail(); return; }
+      if (status !== "pending" || performance.now() >= deadline) { fail(); return; }
+      if (path === currentPosterPath) {
+        status = "loaded"; clearTimeout(timer); slide.classList.add("phone-poster-textless-already"); syncPhoneTitleFade(slide); return;
+      }
+      image.src = `${TMDB_IMAGE.replace(/\/w\d+$/, "/w780")}${path}`;
+    }).catch(fail);
+  }
+  function warmTextlessPoster(item) {
+    if (root.matchMedia?.("(max-width: 767px)").matches) void textlessPosterLoader.load(item);
+  }
   function preload(pool = []) {
     // Keep the decoded working set small; do not decode a dozen full-size backdrops on phones.
-    pool.slice(0, 2).forEach(item => { void loader.first(phoneArtwork(item)).catch(() => {}); });
+    pool.slice(0, 2).forEach(item => { void loader.first(phoneArtwork(item)).catch(() => {}); warmTextlessPoster(item); });
   }
   function warmNeighbours(view) {
     if (!valid(view) || view.pool.length < 2) return;
     const next = view.pool[(view.index + 1) % view.pool.length];
     void loader.first(phoneArtwork(next)).catch(() => {});
+    warmTextlessPoster(next);
   }
   function cancel() {
     if (!active) return;
@@ -93,6 +175,7 @@
       revealPoster();
     }
     slide.append(backdrop, template.content.querySelector(".home-hero-layout"));
+    installTextlessPoster(slide, item);
     return slide;
   }
   function busy(view, value) {
@@ -169,6 +252,7 @@
     view.element.append(next);
     view.current = next; view.index = target; view.target = target;
     state.featuredIndex = target; state.featured = item;
+    syncPhoneTitleFade(next);
     view.element.querySelector(".spotlight-placeholder")?.remove();
     updateHeroControls(view);
     warmNeighbours(view);
@@ -261,5 +345,5 @@
     void select(active.index);
     warmNeighbours(active);
   }
-  return { createImageLoader, mount, cancel, preload, select, move };
+  return { createImageLoader, createTextlessPosterLoader, chooseTextlessPoster, mount, cancel, preload, select, move };
 });

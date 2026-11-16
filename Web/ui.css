@@ -1622,35 +1622,44 @@ html,body { touch-action: pan-x pan-y; }
 }
 
 @media (max-width:767px) {
+  html:has(.home-page),body:has(.home-page) { background:var(--bg,#050505); }
   .home-page .hero {
+    --home-hero-header-flow:62px;
+    --home-hero-top-overscan:calc(120px + env(safe-area-inset-top,0px));
+    --home-hero-extension:calc(var(--home-hero-header-flow) + var(--home-hero-top-overscan));
     height:66vh;
     height:66svh;
     min-height:480px;
     max-height:640px;
+    height:calc(66vh + var(--home-hero-extension));
+    height:calc(66svh + var(--home-hero-extension));
+    min-height:calc(480px + var(--home-hero-extension));
+    max-height:calc(640px + var(--home-hero-extension));
+    margin-top:calc(0px - var(--home-hero-extension));
     background:var(--bg,#050505);
   }
   .home-page .hero::before {
-    background:linear-gradient(180deg,rgba(5,8,13,.22) 0%,rgba(5,8,13,.08) 13%,transparent 30%,transparent 40%,color-mix(in srgb,var(--bg,#050505) 72%,transparent) 55%,color-mix(in srgb,var(--bg,#050505) 94%,transparent) 80%,var(--bg,#050505) 100%);
+    background:linear-gradient(180deg,transparent var(--phone-hero-title-fade-start,40%),color-mix(in srgb,var(--bg,#050505) 72%,transparent) 55%,color-mix(in srgb,var(--bg,#050505) 94%,transparent) 80%,var(--bg,#050505) 100%);
   }
   .home-page .hero::after {
     display:block;
-    inset:0 0 auto;
+    inset:var(--home-hero-top-overscan) 0 auto;
     width:auto;
-    height:120px;
+    height:160px;
     border-radius:0;
-    background:linear-gradient(180deg,rgba(6,10,16,.2),rgba(6,10,16,.1) 48%,transparent 100%);
+    background:linear-gradient(180deg,color-mix(in srgb,var(--bg,#050505) 65%,transparent) 0%,transparent 100%);
     filter:none;
-    -webkit-backdrop-filter:blur(8px);
-    backdrop-filter:blur(8px);
-    -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.65) 52%,transparent 100%);
-    mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.65) 52%,transparent 100%);
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+    -webkit-mask-image:none;
+    mask-image:none;
   }
   .home-page .hero .home-hero-grade { background:none; animation:none; }
   .home-page .hero .home-hero-grade::before,
   .home-page .hero .home-hero-grade::after { display:none; }
   .home-page .hero .home-hero-shade { background:rgba(0,0,0,.08); }
   .home-page .hero .home-hero-backdrop { background-position:65% 20%; background-color:var(--bg,#050505); }
-  .home-page .hero .home-hero-phone-art { position:absolute; inset:0; display:block; }
+  .home-page .hero .home-hero-phone-art { position:absolute; inset:0; display:block; overflow:hidden; }
   .home-page .hero .home-hero-phone-art img {
     display:block;
     width:100%;
@@ -1662,6 +1671,9 @@ html,body { touch-action: pan-x pan-y; }
     opacity:0;
     transition:opacity 200ms ease;
   }
+  .home-page .hero .home-hero-textless-poster { position:absolute; z-index:1; inset:0; display:block; width:100%; height:100%; background:var(--bg,#050505); object-fit:cover; object-position:center top; opacity:0; pointer-events:none; transition:opacity 200ms ease; }
+  #featured.spotlight-ready .spotlight-slide.phone-poster-textless-loaded .home-hero-phone-art img { opacity:0; }
+  #featured.spotlight-ready .spotlight-slide.phone-poster-textless-loaded .home-hero-textless-poster { opacity:1; }
   /* Keep the wide backdrop from flashing as a different image before this
      slide's portrait poster has decoded. Titles without posters still use it. */
   #featured.spotlight-ready .spotlight-slide.has-phone-poster:not(.phone-poster-failed) .home-hero-backdrop { background-image:none !important; }
@@ -1672,15 +1684,10 @@ html,body { touch-action: pan-x pan-y; }
   .home-page .hero .hero-indicators { bottom:20px; }
 }
 @media (max-width:650px) {
-  /* Extend the artwork behind the SEVEN bar without pulling it into the
-     safe-area strip above the bar. */
+  /* Preserve the flow height of the sticky phone bar while extending only
+     the art above the viewport; the hero's bottom edge remains fixed. */
   body:has(.home-page) .home-page .hero {
-    --home-hero-underlap:55px;
-    height:calc(66vh + var(--home-hero-underlap));
-    height:calc(66svh + var(--home-hero-underlap));
-    min-height:calc(480px + var(--home-hero-underlap));
-    max-height:calc(640px + var(--home-hero-underlap));
-    margin-top:calc(0px - var(--home-hero-underlap));
+    --home-hero-header-flow:66px;
   }
   body:has(.home-page) header.main-header.app-header {
     z-index:90;

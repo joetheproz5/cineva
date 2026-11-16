@@ -18,7 +18,7 @@ test('phone hero uses the title poster responsively while keeping the backdrop f
 test('mobile hero sizing, contrast layers, copy placement and poster cross-fade are phone scoped',()=>{
   const mobileHero=css.slice(css.lastIndexOf('@media (max-width:767px) {'));
   assert.match(mobileHero,/height:66svh;[\s\S]*?min-height:480px;[\s\S]*?max-height:640px/);
-  assert.match(mobileHero,/linear-gradient\(180deg,transparent 40%[\s\S]*?var\(--bg,#050505\) 100%\)/);
+  assert.match(mobileHero,/linear-gradient\(180deg,transparent var\(--phone-hero-title-fade-start,40%\)[\s\S]*?var\(--bg,#050505\) 100%\)/);
   assert.doesNotMatch(mobileHero,/linear-gradient\(90deg/);
   assert.match(mobileHero,/background:rgba\(0,0,0,\.08\)/);
   assert.match(mobileHero,/background-position:65% 20%/);
@@ -27,6 +27,15 @@ test('mobile hero sizing, contrast layers, copy placement and poster cross-fade 
   assert.match(mobileHero,/hero-synopsis \{ -webkit-line-clamp:2 !important/);
   assert.match(mobileHero,/hero-indicators \{ bottom:20px/);
   assert.match(mobileHero,/transition:opacity 200ms ease/);
+  assert.match(mobileHero,/\.home-hero-textless-poster \{ position:absolute; z-index:1; inset:0;/);
+  assert.match(mobileHero,/phone-poster-textless-loaded[\s\S]*?home-hero-textless-poster \{ opacity:1; \}/);
+  assert.match(mobileHero,/html:has\(\.home-page\),body:has\(\.home-page\) \{ background:var\(--bg,#050505\); \}/);
+  assert.match(mobileHero,/--home-hero-top-overscan:calc\(120px \+ env\(safe-area-inset-top,0px\)\)/);
+  assert.match(mobileHero,/height:calc\(66svh \+ var\(--home-hero-extension\)\);[\s\S]*?margin-top:calc\(0px - var\(--home-hero-extension\)\)/);
+  assert.match(mobileHero,/background:linear-gradient\(180deg,color-mix\(in srgb,var\(--bg,#050505\) 65%,transparent\) 0%,transparent 100%\)/);
+  const topScrim=mobileHero.match(/\.home-page \.hero::after \{([\s\S]*?)\n  \}/)?.[1];
+  assert.ok(topScrim,'the phone-only hero top scrim exists');
+  assert.doesNotMatch(topScrim,/backdrop-filter:blur/);
   assert.match(mobileHero,/spotlight-slide\.has-phone-poster:not\(\.phone-poster-failed\) \.home-hero-backdrop \{ background-image:none !important; \}/);
   assert.match(spotlight,/slide\.classList\.add\("has-phone-poster"\)/);
   assert.match(spotlight,/phonePoster\.loading = "eager"/);
