@@ -2019,3 +2019,65 @@ html,body { touch-action: pan-x pan-y; }
 .title-opening-bars i { display:block; height:9px; border-radius:99px; background:linear-gradient(90deg,rgba(255,255,255,.16),rgba(255,255,255,.07)); }
 .title-opening-bars i:nth-child(2) { width:72%; }
 .title-opening-bars i:nth-child(3) { width:48%; }
+
+/* Person detail page — scoped so shared cards and controls stay unchanged elsewhere. */
+.person-page { --person-bio-lines:6; width:100%; max-width:1400px; margin:-4px auto 48px; color:var(--text); }
+.person-page-back { position:static; top:auto; left:auto; display:inline-flex; margin:0 0 16px; color:var(--text); text-shadow:none; }
+.person-page-back:hover { color:var(--text); }
+.person-header { display:grid; grid-template-columns:200px minmax(0,1fr); grid-template-rows:auto auto; align-items:center; column-gap:32px; row-gap:20px; }
+.person-photo-wrap { grid-column:1; grid-row:1 / span 2; width:200px; height:250px; }
+.person-page .person-photo { display:grid; width:200px; height:250px; aspect-ratio:4 / 5; place-items:center; margin:0; border:1px solid color-mix(in srgb,var(--text) 8%,transparent); border-radius:12px; color:var(--text); background:color-mix(in srgb,var(--text) 6%,transparent); box-shadow:none; object-fit:cover; }
+.person-page .person-photo-fallback { font-size:48px; font-weight:560; }
+.person-summary { grid-column:2; grid-row:1; align-self:center; min-width:0; }
+.person-summary h1 { display:-webkit-box; max-width:100%; margin:0; overflow:hidden; color:var(--text); font-size:30px; font-weight:760; line-height:1.15; letter-spacing:-.8px; overflow-wrap:anywhere; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.person-department { margin:8px 0 14px; color:var(--muted); font-size:15px; line-height:1.4; }
+.person-links { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.person-department + .person-links { margin-top:0; }
+.person-link.secondary { display:inline-flex; min-height:40px; align-items:center; justify-content:center; gap:8px; padding:0 12px; border:0; border-radius:10px; color:var(--text); background:color-mix(in srgb,var(--text) 10%,transparent); font-size:14px; font-weight:560; text-decoration:none; }
+.person-link.secondary:hover { color:var(--text); background:color-mix(in srgb,var(--text) 16%,transparent); }
+.person-link svg { width:14px; height:14px; flex:none; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.person-page-back:focus-visible,.person-link:focus-visible,.person-text-button:focus-visible,.person-credit-open:focus-visible,.person-show-more:focus-visible { outline:2px solid var(--text); outline-offset:3px; }
+.person-biography { grid-column:2; grid-row:2; max-width:68ch; min-width:0; }
+.person-bio-copy { position:relative; color:var(--muted); font-size:16px; line-height:1.6; }
+.person-bio-copy p { margin:0 0 12px; }
+.person-bio-copy p:last-child { margin-bottom:0; }
+.person-bio-copy.is-collapsed p:first-child { max-height:calc(var(--person-bio-lines) * 1.6em); overflow:hidden; }
+.person-bio-copy.is-collapsed p:not(:first-child) { display:none; }
+.person-bio-copy.is-collapsed::after { position:absolute; right:0; bottom:0; left:0; height:24px; background:linear-gradient(to bottom,transparent,var(--bg)); content:""; pointer-events:none; }
+.person-bio-copy.is-expanded::after { display:none; }
+.person-text-button { display:inline-flex; min-width:44px; min-height:44px; align-items:center; justify-content:flex-start; margin:4px 0 0; padding:0; border:0; border-radius:6px; color:var(--text); background:transparent; font-size:14px; font-weight:560; text-align:left; }
+.person-text-button:hover { color:var(--text); background:color-mix(in srgb,var(--text) 6%,transparent); }
+.person-details { margin-top:48px; }
+.person-details h2 { margin:0 0 18px; color:var(--text); font-size:20px; line-height:1.3; font-weight:560; }
+.person-facts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px; margin:0; padding:0; border:0; }
+.person-facts > div { min-width:0; }
+.person-facts dt { margin:0 0 5px; color:var(--muted); font-size:13px; line-height:1.35; }
+.person-facts dd { min-width:0; margin:0; color:var(--text); font-size:15px; line-height:1.4; overflow-wrap:anywhere; }
+.person-fact-value { display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.person-fact-value.is-expanded { display:block; overflow:visible; }
+.person-fact-toggle { display:flex; }
+.person-loading { min-height:250px; align-items:center; }
+.person-loading .person-summary { grid-row:1 / span 2; }
+.person-loading .person-photo { animation:none; }
+@media(max-width:650px) {
+  .person-page { --person-bio-lines:5; margin-top:3px; margin-bottom:34px; }
+  .person-page-back { margin-bottom:16px; }
+  .person-header { grid-template-columns:104px minmax(0,1fr); column-gap:16px; row-gap:20px; }
+  .person-photo-wrap { grid-row:1; }
+  .person-photo-wrap,.person-page .person-photo { width:104px; height:130px; }
+  .person-page .person-photo-fallback { font-size:34px; }
+  .person-summary h1 { font-size:28px; line-height:1.15; letter-spacing:-.8px; }
+  .person-department { margin:6px 0 10px; font-size:14px; }
+  .person-links { gap:6px; margin-top:10px; }
+  .person-link.secondary { min-height:40px; gap:6px; padding:0 9px; font-size:13px; }
+  .person-link svg { width:13px; height:13px; }
+  .person-biography { grid-column:1 / -1; grid-row:auto; }
+  .person-bio-copy { font-size:16px; }
+  .person-details { margin-top:40px; }
+  .person-details h2 { margin-bottom:16px; }
+  .person-facts { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+  .person-loading { min-height:170px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .person-page *, .person-page *::before, .person-page *::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; }
+}

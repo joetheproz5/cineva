@@ -1977,7 +1977,25 @@ function creditYear(credit) { return (credit.release_date || credit.first_air_da
 function personCreditCard(credit) { const type = creditType(credit), role = credit.character || credit.job || credit.department || ""; return `<button class="card person-credit" data-open="${type}:${credit.id}"><span class="poster-wrap"><img src="${posterOf(credit)}" alt="" loading="lazy"><i>${type === "movie" ? "MOVIE" : "SERIES"}</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(credit))}</b><small>${creditYear(credit) || "TBA"}${role ? ` · ${escapeHTML(role)}` : ""}</small></button>`; }
 function personRail(title, credits) { return credits.length ? `<section class="rail person-rail"><div class="rail-title">${railTitle(title)}<span>${credits.length} titles</span></div><div class="cards">${credits.map(personCreditCard).join("")}</div></section>` : ""; }
 function safeExternalURL(value) { try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch { return ""; } }
-function personFacts(person) { const gender = ({ 1:"Female", 2:"Male", 3:"Non-binary" })[person.gender] || "Not listed"; return [["Known for", person.known_for_department || "—"], ["Born", person.birthday || "—"], ["Place of birth", person.place_of_birth || "—"], ["Gender", gender], ["Died", person.deathday || "—"], ["Also known as", (person.also_known_as || []).slice(0, 3).join(", ") || "—"]]; }
+function personFacts(person) { const gender = ({ 1:"Female", 2:"Male", 3:"Non-binary" })[person.gender] || ""; return [["Known for", person.known_for_department], ["Born", person.birthday], ["Place of birth", person.place_of_birth], ["Gender", gender], ["Died", person.deathday], ["Also known as", (person.also_known_as || []).join(", ")]].filter(([, value]) => String(value || "").trim()); }
+function personInitials(name) { const parts = String(name || "").trim().split(/\s+/).filter(Boolean); return parts.length > 1 ? `${[...parts[0]][0]}${[...parts.at(-1)][0]}` : [...(parts[0] || "?")][0]; }
+function personPhotoMarkup(person) { const photo = person.profile_path; if (!photo) return `<div class="person-photo person-photo-fallback" role="img" aria-label="${escapeHTML(person.name)}">${escapeHTML(personInitials(person.name))}</div>`; const base = TMDB_IMAGE.replace(/\/w\d+$/, ""), path = photo.startsWith("/") ? photo : `/${photo}`, profile = (person.images?.profiles || []).find(image => image.file_path === photo), h632Width = profile?.width && profile?.height ? Math.max(1, Math.round(profile.width * Math.min(1, 632 / profile.height))) : 421, sources = [`${base}/w185${path} 185w`, `${base}/h632${path} ${h632Width}w`].join(", "); return `<img class="person-photo" src="${escapeHTML(base)}/w185${escapeHTML(path)}" srcset="${escapeHTML(sources)}" sizes="(max-width: 650px) 104px, 200px" width="200" height="250" alt="${escapeHTML(person.name)}" fetchpriority="high" loading="eager" decoding="async">`; }
+function personLinkMarkup(person) { const external = person.external_ids || {}, links = [[safeExternalURL(person.homepage), "Official site"], [external.imdb_id ? `https://www.imdb.com/name/${encodeURIComponent(external.imdb_id)}/` : "", "IMDb"], [external.instagram_id ? `https://www.instagram.com/${encodeURIComponent(external.instagram_id)}/` : "", "Instagram"], [external.facebook_id ? `https://www.facebook.com/${encodeURIComponent(external.facebook_id)}` : "", "Facebook"]].filter(([url]) => url); if (!links.length) return ""; const icon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M10 6H6a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4"/></svg>`; return `<nav class="person-links" aria-label="External links">${links.map(([url, label]) => `<a class="secondary person-link" href="${escapeHTML(url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHTML(`${label} (opens in a new tab)`)}"><span>${escapeHTML(label)}</span>${icon}</a>`).join("")}</nav>`; }
+function personBiographyMarkup(person) { if (!String(person.biography || "").trim()) return ""; const paragraphs = String(person.biography).trim().split(/\n\s*\n+/).map(value => value.trim()).filter(Boolean); return `<section class="person-biography" aria-label="Biography"><div class="person-bio-copy is-collapsed" id="person-biography-copy">${paragraphs.map(paragraph => `<p>${escapeHTML(paragraph).replace(/\n/g, "<br>")}</p>`).join("")}</div><button class="person-text-button person-bio-toggle" type="button" data-person-bio-toggle aria-controls="person-biography-copy" aria-expanded="false" hidden>More</button></section>`; }
+function personFactsMarkup(person) { const facts = personFacts(person); if (!facts.length) return ""; return `<section class="person-details" aria-labelledby="person-details-heading"><h2 id="person-details-heading">Details</h2><dl class="person-facts">${facts.map(([label, value]) => `<div><dt>${escapeHTML(label)}</dt><dd>${label === "Also known as" ? `<span class="person-fact-value is-collapsed" id="person-fact-aliases" data-person-fact-value>${escapeHTML(value)}</span><button class="person-text-button person-fact-toggle" type="button" data-person-fact-toggle aria-controls="person-fact-aliases" aria-expanded="false" hidden>Show all</button>` : escapeHTML(value)}</dd></div>`).join("")}</dl></section>`; }
+function bindPersonTextControls() {
+  const bio = document.querySelector(".person-bio-copy"), bioToggle = document.querySelector("[data-person-bio-toggle]");
+  if (bio && bioToggle) {
+    const firstParagraph = bio.querySelector("p");
+    requestAnimationFrame(() => { bioToggle.hidden = Boolean(firstParagraph) && bio.children.length === 1 && firstParagraph.scrollHeight <= firstParagraph.clientHeight + 1; });
+    bioToggle.onclick = () => { const expanded = bio.classList.toggle("is-expanded"); bio.classList.toggle("is-collapsed", !expanded); bioToggle.setAttribute("aria-expanded", String(expanded)); bioToggle.textContent = expanded ? "Less" : "More"; };
+  }
+  const aliases = document.querySelector("[data-person-fact-value]"), aliasesToggle = document.querySelector("[data-person-fact-toggle]");
+  if (aliases && aliasesToggle) {
+    requestAnimationFrame(() => { aliasesToggle.hidden = aliases.scrollHeight <= aliases.clientHeight + 1; });
+    aliasesToggle.onclick = () => { const expanded = aliases.classList.toggle("is-expanded"); aliases.classList.toggle("is-collapsed", !expanded); aliasesToggle.setAttribute("aria-expanded", String(expanded)); aliasesToggle.textContent = expanded ? "Show less" : "Show all"; };
+  }
+}
 async function openPerson(id) {
   state.personBackRoute = state.route;
   state.person = null;
@@ -1992,7 +2010,7 @@ async function openPerson(id) {
 function renderPerson() {
   const person = state.person;
   if (!person) {
-    app.innerHTML = `${header()}<button class="back" data-person-back>‹ Back</button><section class="person-hero person-loading"><div class="person-photo skeleton"></div><div><span class="brand">CAST & CREW</span><div class="skeleton-line wide"></div><p>${escapeHTML(state.personError || "Loading person details from TMDB…")}</p></div></section>${footer()}`;
+    app.innerHTML = `${header()}<main class="person-page"><button class="title-back person-page-back" type="button" data-person-back><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button><section class="person-header person-loading" aria-busy="true"><div class="person-photo skeleton"></div><div class="person-summary"><div class="skeleton-line wide"></div><p>${escapeHTML(state.personError || "Loading person details from TMDB…")}</p></div></section></main>${footer()}`;
     bindCommon();
     document.querySelector("[data-person-back]").onclick = () => navigateBackInApp(() => { state.route = state.personBackRoute || "home"; render(); });
     return;
@@ -2004,13 +2022,13 @@ function renderPerson() {
   const crew = dedupe(credits.crew || []);
   const movieCredits = acting.filter(credit => creditType(credit) === "movie");
   const seriesCredits = acting.filter(credit => creditType(credit) === "tv");
-  const homepage = safeExternalURL(person.homepage);
-  const external = person.external_ids || {};
-  const links = [homepage ? `<a href="${escapeHTML(homepage)}" target="_blank" rel="noreferrer">Official site ↗</a>` : "", external.imdb_id ? `<a href="https://www.imdb.com/name/${encodeURIComponent(external.imdb_id)}/" target="_blank" rel="noreferrer">IMDb ↗</a>` : "", external.instagram_id ? `<a href="https://www.instagram.com/${encodeURIComponent(external.instagram_id)}/" target="_blank" rel="noreferrer">Instagram ↗</a>` : "", external.facebook_id ? `<a href="https://www.facebook.com/${encodeURIComponent(external.facebook_id)}" target="_blank" rel="noreferrer">Facebook ↗</a>` : ""].filter(Boolean).join("");
-  const biography = person.biography ? escapeHTML(person.biography).replace(/\n/g, "<br>") : "TMDB does not have a biography for this person yet.";
-  app.innerHTML = `${header()}<button class="back" data-person-back>‹ Back</button><section class="person-hero"><img class="person-photo" src="${person.profile_path ? TMDB_IMAGE + person.profile_path : PROFILE_FALLBACK}" alt="${escapeHTML(person.name)}"><div class="person-main"><span class="brand">CAST & CREW</span><h1>${escapeHTML(person.name)}</h1><div class="person-links">${links}</div><p class="person-biography">${biography}</p><div class="person-facts">${personFacts(person).map(([label, value]) => `<div><small>${escapeHTML(label)}</small><b>${escapeHTML(value)}</b></div>`).join("")}</div></div></section><section class="person-filmography"><div class="rail-title"><div><span class="brand">FILMOGRAPHY</span><h2>On SEVEN</h2></div><span>${acting.length + crew.length} TMDB credits</span></div>${personRail("Movies", movieCredits)}${personRail("Series", seriesCredits)}${personRail("Behind the scenes", crew)}</section>${footer()}`;
+  document.title = person.name || "SEVEN";
+  const department = person.known_for_department ? `<p class="person-department">${escapeHTML(person.known_for_department)}</p>` : "";
+  const links = personLinkMarkup(person), biography = personBiographyMarkup(person), facts = personFactsMarkup(person);
+  app.innerHTML = `${header()}<main class="person-page"><button class="title-back person-page-back" type="button" data-person-back><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button><section class="person-header"><div class="person-photo-wrap">${personPhotoMarkup(person)}</div><div class="person-summary"><h1>${escapeHTML(person.name || "")}</h1>${department}${links}</div>${biography}</section>${facts}<section class="person-filmography"><div class="rail-title"><div><span class="brand">FILMOGRAPHY</span><h2>On SEVEN</h2></div><span>${acting.length + crew.length} TMDB credits</span></div>${personRail("Movies", movieCredits)}${personRail("Series", seriesCredits)}${personRail("Behind the scenes", crew)}</section></main>${footer()}`;
   bindCommon();
   document.querySelector("[data-person-back]").onclick = () => navigateBackInApp(() => { state.route = state.personBackRoute || "home"; render(); });
+  bindPersonTextControls();
 }
 function renderMovie() {
   if (state.movie?.titleLoading) return renderTitleLoading(state.movie, "movie");
@@ -4389,7 +4407,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=471", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=472", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
