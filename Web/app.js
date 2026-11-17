@@ -460,7 +460,9 @@ async function restoreSession() {
 }
 function accountProgressRecord(row) { const duration = Number(row.duration_seconds) || 0, currentTime = Number(row.progress_seconds) || 0; return { key:row.content_key, currentTime, duration, progress:duration > 0 ? Math.min(100, currentTime / duration * 100) : 0, watched:Boolean(row.is_watched), type:row.content_type, id:Number(row.tmdb_id), season:Number(row.season) || null, episode:Number(row.episode) || null, title:row.title || "Untitled", posterPath:row.poster_path || null, lastWatchedAt:row.last_watched_at || new Date().toISOString() }; }
 function upsertAccountProgress(row) { const profileId = activeProfileId(); if (!state.session || !profileId || !row.content_key?.startsWith(`seven-progress-${profileId}-`)) return; const record = accountProgressRecord(row); state.accountProgress = [record, ...state.accountProgress.filter(item => item.key !== record.key)].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
-async function loadCloudProgress() { const profileId = activeProfileId(); if (!profileId) return []; const prefix = `seven-progress-${profileId}-`, rows = await localAPI("/api/account/progress", { headers:authorizedHeaders() }); state.accountProgress = (Array.isArray(rows) ? rows : []).map(accountProgressRecord).filter(row => row.key?.startsWith(prefix) && row.type && row.id); state.accountProgress.forEach(row => localStorage.setItem(row.key, JSON.stringify(row))); return state.accountProgress; }
+function localProgressForProfile(profileId) { const prefix = `seven-progress-${profileId}-`; return Object.keys(localStorage).filter(key => key.startsWith(prefix)).map(key => { try { const record = JSON.parse(localStorage.getItem(key) || "null"); return record && typeof record === "object" ? { ...record, key } : null; } catch { return null; } }).filter(row => row?.type && Number(row.id) > 0); }
+function mergeProfileProgress(profileId, ...lists) { const prefix = `seven-progress-${profileId}-`, merged = new Map(); for (const row of lists.flat()) { if (!row?.key?.startsWith(prefix) || !row.type || !Number(row.id)) continue; const previous = merged.get(row.key), previousAt = Date.parse(previous?.lastWatchedAt || "") || 0, rowAt = Date.parse(row.lastWatchedAt || "") || 0; if (!previous || rowAt >= previousAt) merged.set(row.key, row); } const rows = [...merged.values()].sort((a, b) => (Date.parse(b.lastWatchedAt || "") || 0) - (Date.parse(a.lastWatchedAt || "") || 0)); rows.forEach(row => { try { localStorage.setItem(row.key, JSON.stringify(row)); } catch {} }); return rows; }
+async function loadCloudProgress() { const profileId = activeProfileId(); if (!profileId) return []; const ownerId = state.user?.id || state.session?.user?.id || null, prefix = `seven-progress-${profileId}-`; state.accountProgress = mergeProfileProgress(profileId, state.accountProgress.filter(row => row.key?.startsWith(prefix)), localProgressForProfile(profileId)); let rows; try { rows = await localAPI("/api/account/progress", { headers:authorizedHeaders() }); } catch (error) { if (activeProfileId() === profileId && state.route === "home") refreshHomeContinueRail(); throw error; } if (activeProfileId() !== profileId || (state.user?.id || state.session?.user?.id || null) !== ownerId) return []; const cloudRows = (Array.isArray(rows) ? rows : []).map(accountProgressRecord).filter(row => row.key?.startsWith(prefix) && row.type && row.id); state.accountProgress = mergeProfileProgress(profileId, localProgressForProfile(profileId), cloudRows); if (state.route === "home") refreshHomeContinueRail(); return state.accountProgress; }
 function listKey(item) { return `${item.profileId}:${item.type}:${item.id}`; }
 function listRecord(row) { return { profileId:row.profileId || row.profile_id || "main", type:row.type || row.content_type, id:Number(row.id || row.tmdb_id), title:row.title || "Untitled", poster_path:row.poster_path || row.posterPath || null, backdrop_path:row.backdrop_path || row.backdropPath || null, release_date:row.release_date || row.releaseDate || null, vote_average:Number(row.vote_average || row.voteAverage) || 0, addedAt:row.addedAt || row.added_at || new Date().toISOString() }; }
 function hydrateMyList() { if (!activeProfileId()) { state.myList = []; return; } const owner = localStorage.getItem(ACCOUNT_OWNER_KEY); if (owner && (!state.user?.id || owner !== state.user.id)) { state.myList = []; return; } try { state.myList = JSON.parse(localStorage.getItem(MY_LIST_KEY) || "[]").map(listRecord).filter(item => item.type && item.id); } catch { state.myList = []; } }
@@ -1728,19 +1730,11 @@ function renderHome() {
   const newEpisodes = (state.newEpisodes || []).filter(contentAllowed);
   const otherCatalog = Object.entries(state.catalog).filter(([name]) => name !== "Coming soon");
   collectionRailSequence = 0;
-  app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : f ? featuredMarkup(f) : ""}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library">${continuing.length ? continueRail(continuing) : ""}${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${otherCatalog.map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><section class="play-something-banner" aria-labelledby="play-something-title"><div class="play-something-copy"><h2 id="play-something-title">${t("Not sure what to watch?")}</h2><p>${t("We’ll pick a trailer for you")}</p></div><div class="play-something-actions"><button type="button" class="primary" data-trailers>${t("Play something")}</button><button type="button" class="play-something-new-picks" data-trailers>New picks</button></div></section></section></main>${footer()}`;
-  bindCommon(); window.SEVENHero.mount(); scheduleHero(); syncHeaderScroll();
+  app.innerHTML = `${header()}<main class="home-page ${animateProfileEntry ? "home-page-profile-entry" : ""}"><section class="hero" id="featured">${loadingCatalog ? `<div class="hero-skeleton skeleton"></div>` : f ? featuredMarkup(f) : ""}</section>${state.error ? `<p class="setup">TMDB setup needed: ${escapeHTML(state.error)}. See README.</p>` : ""}<section class="home-library"><div id="continue-watching-slot">${continuing.length ? continueRail(continuing) : ""}</div>${newEpisodes.length ? newEpisodeRail(newEpisodes) : ""}<div id="rails">${otherCatalog.map(([name, items]) => rail(name, items)).join("") || (loadingCatalog ? homeSkeleton() : "")}</div><section class="play-something-banner" aria-labelledby="play-something-title"><div class="play-something-copy"><h2 id="play-something-title">${t("Not sure what to watch?")}</h2><p>${t("We’ll pick a trailer for you")}</p></div><div class="play-something-actions"><button type="button" class="primary" data-trailers>${t("Play something")}</button><button type="button" class="play-something-new-picks" data-trailers>New picks</button></div></section></section></main>${footer()}`;
+  bindCommon(); bindContinueRailActions(document); window.SEVENHero.mount(); scheduleHero(); syncHeaderScroll();
   document.querySelectorAll("[data-trailers]").forEach(button => button.onclick = openTrailers);
   bindHomeRails();
   if (continuing.length) void repairContinuePosters(continuing);
-  document.querySelectorAll("[data-remove-continue]").forEach(button => button.onclick = async () => {
-    const [type, id, season, episode] = button.dataset.removeContinue.split(":"), item = { type, id:Number(id), season:Number(season), episode:Number(episode) };
-    const key = watchKey(item);
-    localStorage.removeItem(key);
-    forgetAccountProgress(key);
-    if (state.session) void localAPI(`/api/account/progress?key=${encodeURIComponent(key)}`, { method:"DELETE", headers:authorizedHeaders() }).catch(() => {});
-    render();
-  });
 }
 function heroNavigation() {
   const count = state.featuredPool.length;
@@ -1844,7 +1838,7 @@ function continueWatching() {
   const profileId = activeProfileId(); if (!state.session || !profileId) return [];
   const prefix = `seven-progress-${profileId}-`, latest = new Map();
   state.accountProgress.filter(item => item.key?.startsWith(prefix) && item.type && item.id && item.title).sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)).forEach(item => { const key = `${item.type}:${item.id}`; if (!latest.has(key)) latest.set(key, item); });
-  return [...latest.values()].filter(item => contentAllowed(item) && Number(item.duration) > 0 && Number(item.duration) - Number(item.currentTime) >= 600 && !item.watched).slice(0, 16);
+  return [...latest.values()].filter(item => { if (!contentAllowed(item)) return false; const duration = Number(item.duration) || 0, currentTime = Number(item.currentTime) || 0; if (currentTime < 5 || duration > 0 && currentTime >= duration - 5) return false; return item.type === "movie" || item.type === "tv" && duration > 0 && !item.watched && playbackProgressPercent(item) < 90; }).slice(0, 16);
 }
 function catalogPoster(type, id) { for (const items of Object.values(state.catalog || {})) { const match = items.find(item => contentType(item) === type && Number(item.id) === Number(id) && item.poster_path); if (match) return match.poster_path; } return null; }
 async function repairContinuePosters(items) {
@@ -1896,6 +1890,11 @@ function continueRail(items) {
       };
     }
   });
+}
+function refreshHomeContinueRail() { const slot = document.querySelector("#continue-watching-slot"); if (!slot) return; const items = continueWatching(); slot.innerHTML = items.length ? continueRail(items) : ""; bindHomeRails(slot); bindContinueRailActions(slot); if (items.length) void repairContinuePosters(items); }
+function bindContinueRailActions(root = document) {
+  root.querySelectorAll("[data-continue]").forEach(button => button.onclick = () => { if (!activeProfileId()) { state.route = "profiles"; render(); return; } const [type, id, season, episode] = button.dataset.continue.split(":"), item = { type, id:Number(id), season:Number(season) || undefined, episode:Number(episode) || undefined }, saved = JSON.parse(localStorage.getItem(watchKey(item)) || "{}"); state.player = { ...item, title:saved.title, overview:"", posterPath:saved.posterPath, genreIds:saved.genreIds || [], startAt:savedStart(item) }; state.route = "player"; render(); scrollToTop(); });
+  root.querySelectorAll("[data-remove-continue]").forEach(button => button.onclick = async () => { const [type, id, season, episode] = button.dataset.removeContinue.split(":"), item = { type, id:Number(id), season:Number(season), episode:Number(episode) }, key = watchKey(item); localStorage.removeItem(key); forgetAccountProgress(key); if (state.session) void localAPI(`/api/account/progress?key=${encodeURIComponent(key)}`, { method:"DELETE", headers:authorizedHeaders() }).catch(() => {}); render(); });
 }
 function titleOpenPreview(type, id, trigger) {
   const cached = [
@@ -3177,14 +3176,14 @@ function updateHomeRailSizing() {
   library.style.setProperty("--collection-rail-gap", `${gap}px`);
   library.querySelectorAll(".collection-rail-arrow[data-rail-count]").forEach(button => { button.disabled = Number(button.dataset.railCount) <= count; });
 }
-function bindHomeRails() {
+function bindHomeRails(root = document) {
   updateHomeRailSizing();
   if (!homeRailResizeBound) { window.addEventListener("resize", updateHomeRailSizing, { passive:true }); homeRailResizeBound = true; }
-  document.querySelectorAll(".home-poster-rail [data-collection-scroll]").forEach(button => button.onclick = () => {
+  root.querySelectorAll(".home-poster-rail [data-collection-scroll]").forEach(button => button.onclick = () => {
     const track = document.getElementById(button.dataset.collectionScroll), direction = Number(button.dataset.direction) || 1;
     if (track) track.scrollBy({ left:direction * track.clientWidth * .82, behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   });
-  document.querySelectorAll(".home-poster-track").forEach(track => track.addEventListener("keydown", event => {
+  root.querySelectorAll(".home-poster-track").forEach(track => track.addEventListener("keydown", event => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     track.scrollBy({ left:(event.key === "ArrowLeft" ? -1 : 1) * Math.max(80, track.clientWidth * .82), behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
@@ -4506,7 +4505,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=478", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=479", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
