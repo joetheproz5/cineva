@@ -92,7 +92,20 @@ async function connectCdp(wsUrl) {
     if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") {
       consoleErrors.push(message.params.args.map(arg => arg.value || arg.description || "").join(" "));
     }
+    if (message.method === "Fetch.requestPaused") {
+      const { requestId, request } = message.params;
+      const command = request.url.startsWith("https://cinesrc.st/")
+        ? cdpSend("Fetch.fulfillRequest", { requestId, responseCode:200, responseHeaders:[{ name:"Content-Type", value:"text/html; charset=utf-8" }], body:Buffer.from("<!doctype html><title>Player smoke stub</title>").toString("base64") })
+        : cdpSend("Fetch.continueRequest", { requestId });
+      command.catch(error => consoleErrors.push(`Player request interception failed: ${error.message}`));
+    }
   });
+}
+
+async function evaluate(expression) {
+  const result = await cdpSend("Runtime.evaluate", { expression, awaitPromise:true, returnByValue:true });
+  if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text || "Browser evaluation failed.");
+  return result.result?.value;
 }
 
 try {
@@ -139,7 +152,78 @@ try {
   if (!pageState?.nav) throw new Error("Headless smoke check failed: main navigation is missing.");
   if (failedCss.length || notSeen.length) throw new Error(`Headless smoke check failed for stylesheets: ${JSON.stringify({ failedCss, notSeen, cssResponses:[...cssResponses] })}`);
   if (consoleErrors.length) throw new Error(`Headless smoke check saw console errors: ${consoleErrors.join("\n")}`);
-  console.log(`Headless browser smoke passed: nav present, ${pageState.links.length} stylesheets returned 200 text/css, no console errors.`);
+  await cdpSend("Emulation.setDeviceMetricsOverride", { width:390, height:844, deviceScaleFactor:1, mobile:true });
+  const primitiveCheck = await evaluate(`(async()=>{
+    const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    const opener=document.createElement("button");opener.type="button";opener.textContent="Open sheet";document.body.append(opener);opener.focus();
+    const makeSheet=()=>{document.body.insertAdjacentHTML("beforeend",'<div class="modal seven-bottom-sheet"><section class="auth-card seven-bottom-sheet-panel" tabindex="-1"><button type="button" id="sheet-first">First</button><button type="button" id="sheet-last">Last</button></section></div>');return document.querySelector(".seven-bottom-sheet")};
+    let overlay=makeSheet(),panel=overlay.querySelector(".seven-bottom-sheet-panel");
+    window.SEVENBottomSheet.open({overlay,panel,opener,initialFocus:"#sheet-first"});await wait(40);
+    const duration=getComputedStyle(panel).transitionDuration;
+    const openingOpacity=parseFloat(getComputedStyle(panel).opacity);
+    const safePadding=parseFloat(getComputedStyle(panel).paddingBottom)||0;
+    document.activeElement.dispatchEvent(new KeyboardEvent("keydown",{key:"Tab",shiftKey:true,bubbles:true,cancelable:true}));
+    const trapped=document.activeElement.id==="sheet-last";
+    document.activeElement.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}));await wait(260);
+    const escaped=!document.querySelector(".seven-bottom-sheet")&&document.activeElement===opener;
+    overlay=makeSheet();panel=overlay.querySelector(".seven-bottom-sheet-panel");window.SEVENBottomSheet.open({overlay,panel,opener,initialFocus:"#sheet-first"});await wait(40);
+    overlay.dispatchEvent(new MouseEvent("click",{bubbles:true}));await wait(260);
+    const backdrop=!document.querySelector(".seven-bottom-sheet")&&document.activeElement===opener;
+    opener.remove();
+    return {trapped,escaped,backdrop,duration,openingOpacity,safePadding};
+  })()`);
+  if (!primitiveCheck?.trapped || !primitiveCheck?.escaped || !primitiveCheck?.backdrop || !primitiveCheck.duration.includes("0.2") || !(primitiveCheck.openingOpacity > 0 && primitiveCheck.openingOpacity < 1) || primitiveCheck.safePadding < 24) {
+    throw new Error(`Shared bottom-sheet smoke check failed: ${JSON.stringify(primitiveCheck)}`);
+  }
+
+  await cdpSend("Fetch.enable", { patterns:[{ urlPattern:"https://cinesrc.st/*", requestStage:"Request" }] });
+  const watchPageCheck = await evaluate(`(async()=>{
+    const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    const until=async test=>{for(let i=0;i<80;i++){if(test())return true;await wait(50)}return false};
+    state.user=null;state.account=defaultAccount();state.account.activeProfileId="main";
+    state.series={id:901,name:"Smoke Series",overview:"Local smoke fixture",number_of_episodes:2,seasons:[{season_number:1},{season_number:2}]};
+    state.selectedSeason=1;state.episodes={episodes:[{episode_number:1,name:"Pilot",overview:"First episode",still_path:null,vote_average:8.1}]};state.episodesSeriesId=901;state.episodesSeason=1;
+    state.player={type:"tv",id:901,season:1,episode:1,title:"Pilot",overview:"First episode",posterPath:null,genreIds:[],startAt:0};state.route="player";render();
+    const frame=document.querySelector("iframe.player");if(!frame)throw Error("watch smoke could not render iframe");
+    const tracked=window.__sevenWatchFrameTracking={node:frame,src:frame.src,loads:0};frame.addEventListener("load",()=>tracked.loads++);
+    api=async path=>({episodes:[{episode_number:1,name:"Season "+state.selectedSeason+" pilot",overview:"Season fixture",still_path:null,vote_average:8.2}]});
+    partyConnect=async(code,role)=>{party.code=code;party.role=role;party.error="";party.pollError="";party.sendError="";party.members={};party.socket={close(){}}};
+    partySend=async()=>true;partyBroadcastState=()=>{};
+    await until(()=>tracked.loads>0);await wait(100);
+    const stable=()=>document.querySelector("iframe.player")===tracked.node&&tracked.node.src===tracked.src;
+    const baselineLoads=tracked.loads;
+    document.querySelector("[data-party-modal]")?.click();await wait(30);
+    const modalOpened=Boolean(document.querySelector(".party-modal"))&&stable();
+    document.querySelector("[data-party-modal-close]")?.click();await until(()=>!document.querySelector(".party-modal"));await wait(30);
+    const modalClosed=stable();
+    document.querySelector("[data-party-modal]")?.click();await wait(20);
+    document.querySelector("[data-party-start-modal]")?.click();await until(()=>Boolean(party.code));await wait(30);
+    const hosted=Boolean(party.code)&&party.role==="host"&&Boolean(document.querySelector(".party-panel"))&&stable();
+    showPartyModal();await wait(20);document.querySelector("[data-party-modal-close]")?.click();await until(()=>!document.querySelector(".party-modal"));
+    party.code=null;party.role=null;party.socket=null;party.error="";
+    showPartyModal();await wait(20);
+    const joinInput=document.querySelector(".party-join-row input");joinInput.value="SMOKE42";joinInput.dispatchEvent(new Event("input",{bubbles:true}));
+    document.querySelector("[data-party-join-modal]")?.click();await until(()=>party.role==="guest");await wait(30);
+    const joined=party.role==="guest"&&Boolean(document.querySelector(".party-panel"))&&stable();
+    const seasonButton=document.querySelector('[data-player-season="2"]');seasonButton?.click();
+    const seasonChanged=await until(()=>state.selectedSeason===2&&document.querySelector('[data-player-season="2"]')?.getAttribute("aria-current")==="true");await wait(60);
+    const seasonStable=stable();
+    const afterActionsLoads=tracked.loads;
+    const geometry=()=>{const rect=tracked.node.parentElement.getBoundingClientRect();return {width:rect.width,height:rect.height,ratio:rect.width/rect.height,left:rect.left,right:rect.right}};
+    const hitTest=()=>{const rect=tracked.node.getBoundingClientRect(),hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);return Boolean(hit&&tracked.node.parentElement.contains(hit))};
+    return {src:tracked.src,baselineLoads,afterActionsLoads,stable:modalOpened&&modalClosed&&hosted&&joined&&seasonChanged&&seasonStable&&stable(),modalOpened,modalClosed,hosted,joined,seasonChanged,seasonStable,identity:document.querySelector("iframe.player")===tracked.node,hitTest:hitTest(),geometry:geometry()};
+  })()`);
+  if (!watchPageCheck?.stable || !watchPageCheck?.identity || !watchPageCheck?.hitTest || watchPageCheck.afterActionsLoads !== watchPageCheck.baselineLoads || Math.abs(watchPageCheck.geometry.ratio - 16 / 9) > .03) {
+    throw new Error(`Watch-page iframe smoke check failed: ${JSON.stringify(watchPageCheck)}`);
+  }
+  for (const width of [768, 1440]) {
+    await cdpSend("Emulation.setDeviceMetricsOverride", { width, height:900, deviceScaleFactor:1, mobile:false });
+    const stableAtWidth = await evaluate(`(()=>{const frame=window.__sevenWatchFrameTracking?.node,rect=frame?.parentElement?.getBoundingClientRect();return Boolean(frame&&document.querySelector("iframe.player")===frame&&frame.src===window.__sevenWatchFrameTracking.src&&rect&&Math.abs(rect.width/rect.height-16/9)<.03)})()`);
+    if (!stableAtWidth) throw new Error(`Watch-page iframe changed or lost 16:9 sizing at ${width}px.`);
+  }
+  await cdpSend("Emulation.clearDeviceMetricsOverride");
+  if (consoleErrors.length) throw new Error(`Headless smoke check saw console errors: ${consoleErrors.join("\n")}`);
+  console.log(`Headless browser smoke passed: nav present, ${pageState.links.length} stylesheets returned 200 text/css, no console errors; shared bottom sheet keyboard/backdrop/focus checks passed; watch-page iframe identity and src stayed stable (${watchPageCheck.afterActionsLoads} load events) through modal, host/join panel, season switch, and 390/768/1440px sizing.`);
 } finally {
   try { socket?.close(); } catch { /* already closed */ }
   if (browser && browser.exitCode === null) {

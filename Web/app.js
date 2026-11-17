@@ -14,6 +14,75 @@ const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
   || navigator.standalone === true;
 if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
+window.SEVENBottomSheet = (() => {
+  const focusableSelector = "a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex='-1'])";
+  const transitionTime = element => {
+    const style = getComputedStyle(element);
+    const durations = style.transitionDuration.split(",").map(value => value.trim());
+    const delays = style.transitionDelay.split(",").map(value => value.trim());
+    const ms = value => value.endsWith("ms") ? Number.parseFloat(value) || 0 : (Number.parseFloat(value) || 0) * 1000;
+    return Math.max(0, ...durations.map((duration, index) => ms(duration) + ms(delays[index % Math.max(1, delays.length)] || "0s")));
+  };
+  const visibleFocusable = panel => [...panel.querySelectorAll(focusableSelector)].filter(element => element.getClientRects().length && getComputedStyle(element).visibility !== "hidden");
+  function open({ overlay, panel = overlay?.querySelector(".seven-bottom-sheet-panel"), opener = document.activeElement, initialFocus } = {}) {
+    if (!overlay || !panel) return null;
+    let closing = false, closed = false, timer = 0;
+    const returnFocus = opener instanceof HTMLElement ? opener : null;
+    if (!panel.hasAttribute("role")) panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    overlay.classList.remove("is-closing");
+    overlay.classList.remove("is-open");
+    overlay.removeAttribute("aria-hidden");
+    overlay.inert = false;
+    const finish = () => {
+      if (closed) return;
+      closed = true;
+      clearTimeout(timer);
+      overlay.removeEventListener("click", onBackdrop);
+      overlay.removeEventListener("keydown", onKeydown);
+      overlay.remove();
+      if (returnFocus?.isConnected && !returnFocus.disabled) returnFocus.focus({ preventScroll:true });
+    };
+    const close = () => {
+      if (closing) return;
+      closing = true;
+      overlay.classList.add("is-closing");
+      overlay.classList.remove("is-open");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.inert = true;
+      const wait = transitionTime(panel);
+      if (!wait) { finish(); return; }
+      const onTransitionEnd = event => {
+        if (event.target !== panel) return;
+        panel.removeEventListener("transitionend", onTransitionEnd);
+        finish();
+      };
+      panel.addEventListener("transitionend", onTransitionEnd);
+      timer = window.setTimeout(() => { panel.removeEventListener("transitionend", onTransitionEnd); finish(); }, wait + 60);
+    };
+    const onBackdrop = event => { if (event.target === overlay) close(); };
+    const onKeydown = event => {
+      if (event.key === "Escape") { event.preventDefault(); close(); return; }
+      if (event.key !== "Tab") return;
+      const elements = visibleFocusable(panel);
+      if (!elements.length) { event.preventDefault(); panel.focus(); return; }
+      const first = elements[0], last = elements[elements.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    };
+    overlay.addEventListener("click", onBackdrop);
+    overlay.addEventListener("keydown", onKeydown);
+    requestAnimationFrame(() => {
+      if (closing || closed) return;
+      getComputedStyle(panel).transform;
+      overlay.classList.add("is-open");
+      const target = typeof initialFocus === "string" ? panel.querySelector(initialFocus) : initialFocus;
+      (target || visibleFocusable(panel)[0] || panel).focus({ preventScroll:true });
+    });
+    return { close, overlay, panel };
+  }
+  return { open };
+})();
 const APP_ROUTE_STATE_KEYS = ["movie", "series", "person", "personBackRoute", "player", "selectedSeason", "episodes", "episodesSeriesId", "episodesSeason", "seriesNext", "trailer", "search", "searchResults", "searchFilter", "searchView", "browse", "allCatalog", "exploreView", "mSearch", "mSearchReturn", "forYou", "historyReturn", "historyFilter", "myListReturn", "myListFilter", "myListSort", "watchlistReturn", "watchlistView", "trackerWeek", "watchlistFilter", "watchlistSort", "accountReturn", "profileDraft", "profileEditorIsNew", "profileSettingsCategory", "profileSettingsReturn", "onboardingStep", "onboardingDraft", "titleDiscovery", "franchise"];
 const SETTINGS_PAGE_TRANSITION = Object.freeze({ phoneBreakpointPx:768, phoneDurationMs:320, phoneEasing:"cubic-bezier(0.32,0.72,0,1)", desktopDurationMs:220, desktopEasing:"cubic-bezier(0.22,1,0.36,1)", desktopExitDurationMs:100, reducedDurationMs:100, safetyTimeoutMs:400, phoneOutgoingOffset:"-28%", phoneDimOpacity:0.3, desktopOffsetPx:12 });
 const appRouteSnapshots = new Map();
@@ -4527,7 +4596,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=484", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=485", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

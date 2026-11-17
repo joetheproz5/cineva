@@ -1,0 +1,73 @@
+/* Shared primitives for the watch page. These classes are opt-in and do not
+   alter existing screens until they are explicitly used. */
+.tonal {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  font-size: 14px;
+  font-weight: 560;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+}
+.tonal:hover { background: color-mix(in srgb, var(--text) 15%, transparent); }
+.tonal:active { opacity: .88; }
+.text-button {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 560;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+}
+.text-button:hover { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); }
+.text-button:active { opacity: .88; }
+.tonal:focus-visible,.text-button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+.modal.seven-bottom-sheet.is-closing { pointer-events: none; }
+.seven-bottom-sheet-panel { color: var(--text); background: var(--panel); }
+@media (max-width: 650px) {
+  .modal.seven-bottom-sheet {
+    align-items: end;
+    padding: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .seven-bottom-sheet-panel {
+    width: 100%;
+    max-width: none;
+    max-height: min(90dvh, 760px);
+    margin: 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: transform 200ms ease-out, opacity 200ms ease-out;
+  }
+  .seven-bottom-sheet.is-open .seven-bottom-sheet-panel { opacity: 1; transform: translateY(0); }
+  .seven-bottom-sheet:not(.is-open) { pointer-events: none; }
+  .seven-bottom-sheet.is-closing .seven-bottom-sheet-panel { opacity: 0; transform: translateY(16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tonal,.text-button,.seven-bottom-sheet-panel { transition-duration: 0ms; }
+}
