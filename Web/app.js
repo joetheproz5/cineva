@@ -25,7 +25,7 @@ let coverflowResizeTimer;
 let coverflowViewportWidth = window.innerWidth;
 let sessionRefreshTimer;
 let sessionRefreshPromise;
-let sessionRestorePromise = Promise.resolve();
+let sessionRestorePromise = null;
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, activeProfileSource:null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
@@ -460,13 +460,23 @@ async function restoreSession() {
   if(state.session){if(!accessTokenExpiresSoon())await Promise.allSettled([loadCloudProgress(),loadMyList(),loadAccountWatchlist()]);migrateLegacyProgress();scheduleSessionRefresh();}
 }
 function beginSessionRestore() {
-  const pending = sessionRestorePromise.catch(() => {}).then(() => restoreSession());
+  if (sessionRestorePromise) return sessionRestorePromise;
+  // Start synchronously so boot can route from the cached identity before the splash releases.
+  const pending = restoreSession();
   sessionRestorePromise = pending;
+  pending.then(
+    () => { if (sessionRestorePromise === pending) sessionRestorePromise = null; },
+    () => { if (sessionRestorePromise === pending) sessionRestorePromise = null; }
+  );
   return pending;
 }
 async function waitForSessionRestore() {
   let pending;
-  do { pending = sessionRestorePromise; await pending.catch(() => {}); } while (pending !== sessionRestorePromise);
+  do {
+    pending = sessionRestorePromise;
+    if (!pending) return;
+    await pending.catch(() => {});
+  } while (pending !== sessionRestorePromise);
 }
 function accountProgressRecord(row) { const duration = Number(row.duration_seconds) || 0, currentTime = Number(row.progress_seconds) || 0; return { key:row.content_key, currentTime, duration, progress:duration > 0 ? Math.min(100, currentTime / duration * 100) : 0, watched:Boolean(row.is_watched), type:row.content_type, id:Number(row.tmdb_id), season:Number(row.season) || null, episode:Number(row.episode) || null, title:row.title || "Untitled", posterPath:row.poster_path || null, lastWatchedAt:row.last_watched_at || new Date().toISOString() }; }
 function upsertAccountProgress(row) { const profileId = activeProfileId(); if (!state.session || !profileId || !row.content_key?.startsWith(`seven-progress-${profileId}-`)) return; const record = accountProgressRecord(row); state.accountProgress = [record, ...state.accountProgress.filter(item => item.key !== record.key)].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
@@ -4517,7 +4527,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=483", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=484", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
