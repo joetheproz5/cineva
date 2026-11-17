@@ -1838,7 +1838,7 @@ function continueWatching() {
   const profileId = activeProfileId(); if (!state.session || !profileId) return [];
   const prefix = `seven-progress-${profileId}-`, latest = new Map();
   state.accountProgress.filter(item => item.key?.startsWith(prefix) && item.type && item.id && item.title).sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)).forEach(item => { const key = `${item.type}:${item.id}`; if (!latest.has(key)) latest.set(key, item); });
-  return [...latest.values()].filter(item => { if (!contentAllowed(item)) return false; const duration = Number(item.duration) || 0, currentTime = Number(item.currentTime) || 0; if (currentTime < 5 || duration > 0 && currentTime >= duration - 5) return false; return item.type === "movie" || item.type === "tv" && duration > 0 && !item.watched && playbackProgressPercent(item) < 90; }).slice(0, 16);
+  return [...latest.values()].filter(item => contentAllowed(item) && Number(item.duration) > 0 && Number(item.currentTime) >= 5 && Number(item.duration) - Number(item.currentTime) >= 600 && !item.watched && playbackProgressPercent(item) < 90).slice(0, 16);
 }
 function catalogPoster(type, id) { for (const items of Object.values(state.catalog || {})) { const match = items.find(item => contentType(item) === type && Number(item.id) === Number(id) && item.poster_path); if (match) return match.poster_path; } return null; }
 async function repairContinuePosters(items) {
@@ -4505,7 +4505,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=479", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=480", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
