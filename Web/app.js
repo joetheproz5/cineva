@@ -1801,7 +1801,7 @@ function rail(name, items) {
   const visible = items.filter(contentAllowed);
   if (!visible.length) return "";
   const key = `${state.route}:${name}`;
-  return posterRail(name, visible, key, { home:true, displayItems:name === "Trending now" ? visible.slice(0, 4) : undefined });
+  return posterRail(name, visible, key, { home:true });
 }
 function newEpisodeRail(items) {
   const episodes = items.map(item => ({ ...item, type:"tv" }));
@@ -4506,7 +4506,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=477", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=478", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

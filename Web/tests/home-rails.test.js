@@ -12,7 +12,7 @@ test("Home rows render through the shared rail, card and skeleton kit", () => {
   assert.match(app, /function newEpisodeRail\(items\)[\s\S]*?posterRail\("New episodes"/);
   assert.match(app, /function homeSkeleton\(\)[\s\S]*?collectionSkeletonRail\(\{ home:true \}\)/);
   assert.match(app, /CARDS_PER_VIEW = \[\{ min:0, count:3 \}, \{ min:600, count:4 \}, \{ min:900, count:5 \}, \{ min:1200, count:6 \}, \{ min:1600, count:7 \}\]/);
-  assert.match(app, /displayItems:name === "Trending now" \? visible\.slice\(0, 4\) : undefined/);
+  assert.match(app, /function rail\(name, items\)[\s\S]*?posterRail\(name, visible, key, \{ home:true \}\)/);
   assert.match(css, /\.home-library \.home-poster-rail \.collection-rail-heading/);
 });
 
