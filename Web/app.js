@@ -1606,9 +1606,9 @@ async function activateProfile(id, { handoff = false } = {}) {
   hydrateMyList(); hydrateWatchlist();
   void saveAccount();
   const enterHome = () => { state.route = "home"; if (handoff) state.profileGateHomeEntry = true; scrollToTop(); render(); tickScreenTime(); };
-  if (!handoff) exitProfileGate(enterHome);
   if (catalogStale) state.catalogRequest = null;
   try { migrateLegacyProgress(); await Promise.allSettled([loadCloudProgress(), loadMyList(), loadAccountWatchlist()]); await refreshCatalogForLanguage(); } catch {}
+  if (activeProfileId() !== id) return;
   if (handoff) {
     const gate = document.querySelector(".profile-gate");
     const startedAt = Number(gate?.dataset.selectionStartedAt) || performance.now();
@@ -1619,7 +1619,7 @@ async function activateProfile(id, { handoff = false } = {}) {
     gate?.classList.add("profile-gate-selection-exit");
     await new Promise(resolve => setTimeout(resolve, reducedMotion ? 0 : 280));
     if (state.route === "profiles") enterHome();
-  } else if (state.route === "home") render();
+  } else exitProfileGate(enterHome);
 }
 function beginProfileGateSelection(id) {
   const gate = document.querySelector(".profile-gate"), account = state.account || defaultAccount(), profile = account.profiles.find(item => item.id === id);
@@ -1776,19 +1776,19 @@ function scheduleHero() {
     clearTimeout(state.heroTimer);
     state.heroTimer = setTimeout(advance, delay);
   };
-  advance = () => {
+  advance = async () => {
     state.heroTimer = null;
     if (state.route !== "home") return;
     if (document.hidden) {
       arm(1000);
       return;
     }
-    void Promise.resolve().then(() => window.SEVENHero?.move(1, { automatic:true })).catch(() => false);
-    // Keep the rotation clock independent of artwork loading or a transition
-    // promise that a mobile browser may leave pending while backgrounded.
-    arm(8500);
+    try {
+      const moved = await window.SEVENHero?.move(1, { automatic:true });
+      if (state.route === "home") arm(moved ? 4000 : 1000);
+    } catch { if (state.route === "home") arm(1000); }
   };
-  arm(8500);
+  arm(4000);
 }
 function railTitle(name) { return `<h2 class="rail-heading">${escapeHTML(t(name === "My List" ? "Favourites" : name))}</h2>`; }
 function rail(name, items) {
@@ -4505,7 +4505,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=480", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=481", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
