@@ -25,6 +25,7 @@ let coverflowResizeTimer;
 let coverflowViewportWidth = window.innerWidth;
 let sessionRefreshTimer;
 let sessionRefreshPromise;
+let sessionRestorePromise = Promise.resolve();
 let deferredInstallPrompt;
 const continuePosterRepairs = new Set();
 const state = { featured: null, featuredPool: [], featuredIndex: 0, heroTimer: null, catalog: {}, newEpisodes: [], releaseReminders: new Set(), releaseRemindersLoaded: false, releaseVapidKey: null, releaseVapidKeyPromise: null, route: "home", search: "", user: null, session: null, account: null, activeProfileSource:null, accountProgress: [], myList: [], watchlist: [], watchlistOwnerId: null, watchlistProfileId: null, watchlistLoaded: false, watchlistLoading: false, watchlistLoadSequence:0, watchlistMutationVersion:0, watchlistError: null, watchlistFilter: "all", watchlistSort: "recent", watchlistPending: new Set(), watchlistTargets:new Map(), movie: null, person: null, personBackRoute: "home", trailer: null, progressTimer: null, pendingProgress: null, playerContextKey: null, pendingEpisodeCompletion: null, startupReady: false, introAnimationComplete: false, introExitStarted: false, introSkipRequested:false, introHandle: null, introSafetyTimer: null, introScreenFadeTimer: null, footerScrollFrame: 0, watchStatsSyncTimer: null, watchStatsSyncPromise: null, watchStatsSyncPending: false };
@@ -444,7 +445,7 @@ window.addEventListener("storage",event=>{
   if(!event.newValue){if(state.session){clearSession();state.route="home";render();}return;}
   let incoming;try{incoming=JSON.parse(event.newValue);}catch{return;}
   if(state.user?.id&&incoming?.user?.id&&state.user.id!==incoming.user.id){location.reload();return;}
-  if(incoming?.cookie_session&&(!state.session||accessTokenExpiresSoon()))void restoreSession();
+  if(incoming?.cookie_session&&(!state.session||accessTokenExpiresSoon()))void beginSessionRestore();
 });
 async function restoreSession() {
   if(localStorage.getItem('seven.auth.logout.pending')){try{await window.SEVENDevices?.finishLogout();}catch{}hydrateAccount();hydrateMyList();hydrateWatchlist();return;}
@@ -457,6 +458,15 @@ async function restoreSession() {
   catch(error){if([400,401,403].includes(error.status)){clearSession();}else if(error.message==="Verification cancelled."){clearSession();void fetch("/api/auth/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}).catch(()=>{});}}
   hydrateAccount();await refreshParentAccessStatus();hydrateMyList();hydrateWatchlist();
   if(state.session){if(!accessTokenExpiresSoon())await Promise.allSettled([loadCloudProgress(),loadMyList(),loadAccountWatchlist()]);migrateLegacyProgress();scheduleSessionRefresh();}
+}
+function beginSessionRestore() {
+  const pending = sessionRestorePromise.catch(() => {}).then(() => restoreSession());
+  sessionRestorePromise = pending;
+  return pending;
+}
+async function waitForSessionRestore() {
+  let pending;
+  do { pending = sessionRestorePromise; await pending.catch(() => {}); } while (pending !== sessionRestorePromise);
 }
 function accountProgressRecord(row) { const duration = Number(row.duration_seconds) || 0, currentTime = Number(row.progress_seconds) || 0; return { key:row.content_key, currentTime, duration, progress:duration > 0 ? Math.min(100, currentTime / duration * 100) : 0, watched:Boolean(row.is_watched), type:row.content_type, id:Number(row.tmdb_id), season:Number(row.season) || null, episode:Number(row.episode) || null, title:row.title || "Untitled", posterPath:row.poster_path || null, lastWatchedAt:row.last_watched_at || new Date().toISOString() }; }
 function upsertAccountProgress(row) { const profileId = activeProfileId(); if (!state.session || !profileId || !row.content_key?.startsWith(`seven-progress-${profileId}-`)) return; const record = accountProgressRecord(row); state.accountProgress = [record, ...state.accountProgress.filter(item => item.key !== record.key)].sort((a, b) => new Date(b.lastWatchedAt || 0) - new Date(a.lastWatchedAt || 0)); }
@@ -984,7 +994,7 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   state.pendingWatch = params.get("watch") || null;
   const deep = (params.get("title") || "").match(/^(movie|tv):(\d+)(?::(\d+):(\d+))?$/);
-  const restoring = restoreSession();
+  const restoring = beginSessionRestore();
   let initialAccountRender = null;
   // The saved identity and profiles are safe to show locally while the renewable
   // session is checked. This keeps a slow refresh from exposing the splash's
@@ -1607,6 +1617,8 @@ async function activateProfile(id, { handoff = false } = {}) {
   void saveAccount();
   const enterHome = () => { state.route = "home"; if (handoff) state.profileGateHomeEntry = true; scrollToTop(); render(); tickScreenTime(); };
   if (catalogStale) state.catalogRequest = null;
+  await waitForSessionRestore();
+  if (activeProfileId() !== id) return;
   try { migrateLegacyProgress(); await Promise.allSettled([loadCloudProgress(), loadMyList(), loadAccountWatchlist()]); await refreshCatalogForLanguage(); } catch {}
   if (activeProfileId() !== id) return;
   if (handoff) {
@@ -4505,7 +4517,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=481", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=482", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
