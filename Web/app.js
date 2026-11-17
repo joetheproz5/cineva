@@ -1974,8 +1974,96 @@ function openSeasonMenu(trigger, seasons) { closeTitleMenus(); const seriesId = 
 function bindSeriesTitlePage(series) { const seasons = (series.seasons || []).filter(season => season.season_number > 0); document.querySelectorAll("[data-series-season]").forEach(button => button.onclick = async () => { state.selectedSeason = Number(button.dataset.seriesSeason); await loadEpisodes(); renderSeries(); document.querySelector('[data-series-season][aria-current="true"]')?.scrollIntoView({ block:"nearest", inline:"nearest" }); }); const picker = document.querySelector("[data-season-picker]"); if (picker) picker.onclick = () => openSeasonMenu(picker, seasons); document.querySelectorAll("[data-play-episode]").forEach(button => button.onclick = () => playEpisode(Number(button.dataset.playEpisode), false)); document.querySelectorAll("[data-toggle-episode]").forEach(button => button.onclick = () => { const episode = (state.episodes?.episodes || []).find(value => Number(value.episode_number) === Number(button.dataset.toggleEpisode)); if (episode) setEpisodeStatus(episode, !isWatched({ type:"tv", id:series.id, season:state.selectedSeason, episode:episode.episode_number })); }); document.querySelectorAll("[data-play-series]").forEach(button => button.onclick = () => playSeriesEpisode(Number(button.dataset.season), Number(button.dataset.episode), false)); document.querySelector("[data-play-up-next]")?.addEventListener("click", button => playSeriesEpisode(Number(button.currentTarget.dataset.season), Number(button.currentTarget.dataset.episode), button.currentTarget.dataset.resume === "true")); document.querySelector("[data-resume-series]")?.addEventListener("click", () => resumeSeries(seriesTracking(series).resume)); }
 function creditType(credit) { return credit.media_type === "movie" || credit.title ? "movie" : "tv"; }
 function creditYear(credit) { return (credit.release_date || credit.first_air_date || "").slice(0, 4); }
-function personCreditCard(credit) { const type = creditType(credit), role = credit.character || credit.job || credit.department || ""; return `<button class="card person-credit" data-open="${type}:${credit.id}"><span class="poster-wrap"><img src="${posterOf(credit)}" alt="" loading="lazy"><i>${type === "movie" ? "MOVIE" : "SERIES"}</i><strong class="card-play" aria-hidden="true">▶</strong></span><b>${escapeHTML(titleOf(credit))}</b><small>${creditYear(credit) || "TBA"}${role ? ` · ${escapeHTML(role)}` : ""}</small></button>`; }
-function personRail(title, credits) { return credits.length ? `<section class="rail person-rail"><div class="rail-title">${railTitle(title)}<span>${credits.length} titles</span></div><div class="cards">${credits.map(personCreditCard).join("")}</div></section>` : ""; }
+function personCreditData(person) {
+  const credits = person?.combined_credits || {}, dedupe = list => [...new Map(list.filter(credit => contentAllowed(credit) && credit?.id && (credit.title || credit.name)).map(credit => [`${creditType(credit)}:${credit.id}`, credit])).values()].sort((a, b) => String(b.release_date || b.first_air_date || "").localeCompare(String(a.release_date || a.first_air_date || "")));
+  const acting = dedupe(credits.cast || []), crew = dedupe(credits.crew || []), movies = acting.filter(credit => creditType(credit) === "movie"), series = acting.filter(credit => creditType(credit) === "tv");
+  return { acting, crew, groups:[["Movies", "movies", movies], ["Series", "series", series], ["Behind the scenes", "crew", crew]], total:acting.length + crew.length };
+}
+const personCreditExpandedRows = new Map();
+let personGridResizeBound = false, personGridResizeTimer = null;
+let personCreditImageObserver = null;
+function personCreditRole(credit) { return String(credit.character || credit.job || credit.department || "").trim(); }
+function personCreditImageMarkup(path) {
+  const sizes = "(max-width: 650px) calc((100vw - 56px) / 3), (min-width: 1200px) 180px, 20vw", src = titleImageAt(path, 342), srcset = [185,342].map(width => `${titleImageAt(path,width)} ${width}w`).join(", ");
+  return `<img class="person-credit-image" data-person-src="${escapeHTML(src)}" data-person-srcset="${escapeHTML(srcset)}" data-person-sizes="${escapeHTML(sizes)}" alt="" loading="lazy" decoding="async">`;
+}
+function bindPersonCreditImages() {
+  const images = [...document.querySelectorAll(".person-credit-image:not([data-person-observed])")];
+  if (!images.length) return;
+  const load = image => {
+    image.dataset.personObserved = "true";
+    image.addEventListener("load", () => { image.dataset.personLoaded = "true"; }, { once:true });
+    image.addEventListener("error", () => image.remove(), { once:true });
+    image.sizes = image.dataset.personSizes;
+    image.srcset = image.dataset.personSrcset;
+    image.src = image.dataset.personSrc;
+  };
+  if (!("IntersectionObserver" in window)) { images.forEach(load); return; }
+  if (!personCreditImageObserver) personCreditImageObserver = new IntersectionObserver(entries => entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    load(entry.target);
+    personCreditImageObserver.unobserve(entry.target);
+  }), { rootMargin:"0px" });
+  images.forEach(image => personCreditImageObserver.observe(image));
+}
+function personCreditCard(credit) {
+  const type = creditType(credit), title = titleOf(credit) || "Untitled", year = creditYear(credit), role = personCreditRole(credit), kind = type === "movie" ? "Movie" : "Series", key = `${type}:${Number(credit.id)}`;
+  const accessibleName = [title, year, role, kind].filter(Boolean).join(", ");
+  const meta = [year, role].filter(Boolean).join(" · ");
+  const poster = credit.poster_path ? `<span class="collection-poster-fallback" aria-hidden="true">${escapeHTML(title)}</span>${personCreditImageMarkup(credit.poster_path)}` : `<span class="collection-poster-fallback">${escapeHTML(title)}</span>`;
+  const overlay = `<span class="collection-poster-overlay" aria-hidden="true"><span class="collection-poster-copy"><b>${escapeHTML(title)}</b>${meta ? `<small>${escapeHTML(meta)}</small>` : ""}</span></span>`;
+  return `<article class="collection-poster-card person-credit-card"><button type="button" class="collection-poster-open" data-open="${key}" aria-label="${escapeHTML(accessibleName)}"><span class="collection-poster-frame">${poster}${overlay}</span><span class="person-credit-copy"><b>${escapeHTML(title)}</b>${meta ? `<small>${escapeHTML(meta)}</small>` : ""}</span></button>${watchlistAction({ ...credit, type, id:Number(credit.id) }, "card")}</article>`;
+}
+function personColumns(width = window.innerWidth) { return width < 650 ? 3 : cardsPerView(width); }
+function personRail(title, group, credits, personId) {
+  if (!credits.length) return "";
+  const columns = personColumns(), key = `${Number(personId)}:${group}`, extraRows = personCreditExpandedRows.get(key) || 0, visible = Math.min(credits.length, columns * (2 + extraRows)), gridId = `person-credit-grid-${Number(personId)}-${group}`;
+  return `<section class="person-credit-group" aria-labelledby="${gridId}-heading"><div class="collection-rail-heading"><h3 id="${gridId}-heading">${escapeHTML(title)}</h3><span class="person-credit-count">${credits.length} titles</span></div><div class="person-credit-grid" id="${gridId}" style="--person-credit-columns:${columns}">${credits.slice(0, visible).map(personCreditCard).join("")}</div><span class="visually-hidden" aria-live="polite" data-person-grid-status>Showing ${visible} of ${credits.length} ${escapeHTML(title.toLowerCase())}</span>${visible < credits.length ? `<button type="button" class="collection-action-button person-show-more" data-person-show-more="${escapeHTML(key)}" aria-controls="${gridId}" aria-expanded="${extraRows > 0}">Show more</button>` : ""}</section>`;
+}
+function personFilmographyMarkup(person, groups, total) {
+  const columns = personColumns(), skeletons = Array.from({ length:columns * 2 }, () => `<div class="person-credit-skeleton-card" aria-hidden="true"><span class="collection-poster-skeleton"></span><span class="person-credit-skeleton-copy"><i></i><i></i></span></div>`).join("");
+  if (!person) return `<section class="person-filmography person-filmography-loading" aria-busy="true"><div class="person-filmography-heading"><h2>Filmography</h2></div><div class="person-credit-grid" style="--person-credit-columns:${columns}">${skeletons}</div></section>`;
+  const content = groups.map(([title, group, credits]) => personRail(title, group, credits, person.id)).join("");
+  return `<section class="person-filmography"><div class="person-filmography-heading"><h2>Filmography</h2><p>${total} TMDB credits</p></div>${content}</section>`;
+}
+function refreshPersonFilmography(focusKey = "", fallbackOpenKey = "") {
+  const section = document.querySelector(".person-filmography"), person = state.person;
+  if (!section || !person) return;
+  const { groups, total } = personCreditData(person);
+  personCreditImageObserver?.disconnect(); personCreditImageObserver = null;
+  section.outerHTML = personFilmographyMarkup(person, groups, total);
+  bindPersonFilmography();
+  if (focusKey) {
+    const next = [...document.querySelectorAll("[data-person-show-more]")].find(button => button.dataset.personShowMore === focusKey);
+    (next || [...document.querySelectorAll(".person-credit-card .collection-poster-open")].find(button => button.dataset.open === fallbackOpenKey))?.focus({ preventScroll:true });
+  }
+}
+function bindPersonFilmography() {
+  document.querySelectorAll(".person-credit-card [data-open]").forEach(button => button.onclick = () => { const [type, id] = button.dataset.open.split(":"); openItem(type, id, button); });
+  document.querySelectorAll("[data-person-show-more]").forEach(button => button.onclick = () => {
+    const key = button.dataset.personShowMore, nextRows = (personCreditExpandedRows.get(key) || 0) + 2, page = window.scrollY;
+    personCreditExpandedRows.set(key, nextRows);
+    const lastOpenKey = button.closest(".person-credit-group")?.querySelector(".person-credit-card:last-child .collection-poster-open")?.dataset?.open || "";
+    refreshPersonFilmography(key, lastOpenKey);
+    window.scrollTo({ top:page, behavior:"instant" });
+  });
+  document.querySelectorAll(".person-credit-card [data-toggle-watchlist]").forEach(button => button.onclick = event => { event.stopPropagation(); const item = state.watchlistTargets.get(button.dataset.toggleWatchlist); if (item) void toggleWatchlist(item); });
+  bindPersonCreditImages();
+}
+function bindPersonGridResize() {
+  if (personGridResizeBound) return;
+  personGridResizeBound = true;
+  window.addEventListener("resize", () => {
+    clearTimeout(personGridResizeTimer);
+    personGridResizeTimer = setTimeout(() => {
+      if (state.route !== "person" || !state.person) return;
+      const columns = String(personColumns()), grids = [...document.querySelectorAll(".person-credit-grid")];
+      if (!grids.some(grid => grid.style.getPropertyValue("--person-credit-columns") !== columns)) return;
+      const active = document.activeElement, showMoreKey = active?.dataset?.personShowMore || "", openKey = active?.closest?.(".person-credit-card")?.querySelector(".collection-poster-open")?.dataset?.open || "";
+      refreshPersonFilmography(showMoreKey, openKey);
+    }, 120);
+  }, { passive:true });
+}
 function safeExternalURL(value) { try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch { return ""; } }
 function personFacts(person) { const gender = ({ 1:"Female", 2:"Male", 3:"Non-binary" })[person.gender] || ""; return [["Known for", person.known_for_department], ["Born", person.birthday], ["Place of birth", person.place_of_birth], ["Gender", gender], ["Died", person.deathday], ["Also known as", (person.also_known_as || []).join(", ")]].filter(([, value]) => String(value || "").trim()); }
 function personInitials(name) { const parts = String(name || "").trim().split(/\s+/).filter(Boolean); return parts.length > 1 ? `${[...parts[0]][0]}${[...parts.at(-1)][0]}` : [...(parts[0] || "?")][0]; }
@@ -2010,25 +2098,22 @@ async function openPerson(id) {
 function renderPerson() {
   const person = state.person;
   if (!person) {
-    app.innerHTML = `${header()}<main class="person-page"><button class="title-back person-page-back" type="button" data-person-back><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button><section class="person-header person-loading" aria-busy="true"><div class="person-photo skeleton"></div><div class="person-summary"><div class="skeleton-line wide"></div><p>${escapeHTML(state.personError || "Loading person details from TMDB…")}</p></div></section></main>${footer()}`;
+    app.innerHTML = `${header()}<main class="person-page"><button class="title-back person-page-back" type="button" data-person-back><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button><section class="person-header person-loading" aria-busy="true"><div class="person-photo skeleton"></div><div class="person-summary"><div class="skeleton-line wide"></div><p>${escapeHTML(state.personError || "Loading person details from TMDB…")}</p></div></section>${personFilmographyMarkup(null, [], 0)}</main>${footer()}`;
     bindCommon();
     document.querySelector("[data-person-back]").onclick = () => navigateBackInApp(() => { state.route = state.personBackRoute || "home"; render(); });
     return;
   }
 
-  const credits = person.combined_credits || {};
-  const dedupe = list => [...new Map(list.filter(credit => contentAllowed(credit) && credit?.id && (credit.title || credit.name)).map(credit => [`${creditType(credit)}:${credit.id}`, credit])).values()].sort((a, b) => String(b.release_date || b.first_air_date || "").localeCompare(String(a.release_date || a.first_air_date || "")));
-  const acting = dedupe(credits.cast || []);
-  const crew = dedupe(credits.crew || []);
-  const movieCredits = acting.filter(credit => creditType(credit) === "movie");
-  const seriesCredits = acting.filter(credit => creditType(credit) === "tv");
+  const { groups, total } = personCreditData(person), filmography = personFilmographyMarkup(person, groups, total);
   document.title = person.name || "SEVEN";
   const department = person.known_for_department ? `<p class="person-department">${escapeHTML(person.known_for_department)}</p>` : "";
   const links = personLinkMarkup(person), biography = personBiographyMarkup(person), facts = personFactsMarkup(person);
-  app.innerHTML = `${header()}<main class="person-page"><button class="title-back person-page-back" type="button" data-person-back><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button><section class="person-header"><div class="person-photo-wrap">${personPhotoMarkup(person)}</div><div class="person-summary"><h1>${escapeHTML(person.name || "")}</h1>${department}${links}</div>${biography}</section>${facts}<section class="person-filmography"><div class="rail-title"><div><span class="brand">FILMOGRAPHY</span><h2>On SEVEN</h2></div><span>${acting.length + crew.length} TMDB credits</span></div>${personRail("Movies", movieCredits)}${personRail("Series", seriesCredits)}${personRail("Behind the scenes", crew)}</section></main>${footer()}`;
+  app.innerHTML = `${header()}<main class="person-page"><button class="title-back person-page-back" type="button" data-person-back><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Back</span></button><section class="person-header"><div class="person-photo-wrap">${personPhotoMarkup(person)}</div><div class="person-summary"><h1>${escapeHTML(person.name || "")}</h1>${department}${links}</div>${biography}</section>${facts}${filmography}</main>${footer()}`;
   bindCommon();
   document.querySelector("[data-person-back]").onclick = () => navigateBackInApp(() => { state.route = state.personBackRoute || "home"; render(); });
   bindPersonTextControls();
+  bindPersonFilmography();
+  bindPersonGridResize();
 }
 function renderMovie() {
   if (state.movie?.titleLoading) return renderTitleLoading(state.movie, "movie");
@@ -4407,7 +4492,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=472", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=473", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
