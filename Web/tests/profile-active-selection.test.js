@@ -80,7 +80,7 @@ test("deleting the active profile clears device choice and cached per-profile da
 
 test("active-profile writes require a recognized selection source and data helpers are guarded",()=>{
   assert.match(activeSource,/console\.assert\(allowedSources\.has\(source\)/);
-  assert.match(activeSource,/allowedSources = new Set\(\["explicit tap", "restored from storage"\]\)/);
+  assert.match(activeSource,/allowedSources = new Set\(\["explicit tap", "restored from storage", "guest default"\]\)/);
   assert.match(activeSource,/const watchKey = item => activeProfileId\(\) \? `seven-progress-/);
   assert.match(app,/async function openForYou\(\) \{\s*if \(!activeProfileId\(\)\) \{ state\.route = "profiles"; render\(\); return; \}\s*state\.route = "for-you";/);
   assert.match(app,/function currentProfile\(\) \{ const id = activeProfileId\(\); return id \? state\.account\?\.profiles\?\.find\(profile => profile\.id === id\) \|\| null : null; \}/);

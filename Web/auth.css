@@ -1591,6 +1591,9 @@
 .profile-gate .profile-gate-add:is(:hover,:focus-visible,:active) .profile-gate-add-label { color:var(--profile-on-background); }
 .profile-gate .profile-gate-add:focus-visible .profile-gate-add-plus { outline:2px solid var(--profile-focus-ring); outline-offset:3px; border-radius:50%; }
 .profile-gate-pending .profile-gate-add { opacity:0; }
+@media (max-width:599px) {
+  .profile-gate .profile-gate-tile-area { padding-top:16px; }
+}
 @media (min-width:600px) {
   .profile-gate .profile-gate-content { top:43%; }
   .profile-gate .profile-gate-tile-area { width:min(calc(100vw - 54px),1090px); }
