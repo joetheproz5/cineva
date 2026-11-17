@@ -1128,6 +1128,7 @@ function upcomingTitles(movieResults, seriesResults) {
 }
 function header() {
   const profile = currentProfile();
+  const titleRoute = ["movie", "series"].includes(state.route);
   const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : "";
   const account = state.user ? `<button class="account signed-in" data-account title="Account" aria-label="Account">${profile ? `${profileAvatar(profile)}<i class="account-caret" aria-hidden="true">▾</i>` : "Account"}</button>` : `<button class="account account-guest" data-auth aria-label="Guest profile. Sign in or create an account" title="Guest profile"><svg class="account-guest-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.65-3.55 2.82-5.4 6.5-5.4s5.85 1.85 6.5 5.4"/></svg></button>`;
   const search = currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="Titles, actors, directors" autocomplete="off" enterkeyhint="search" maxlength="160" aria-label="Search titles, actors and directors"><div class="search-suggestions" hidden></div></div><button class="msearch-open" data-msearch aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>` : "";
@@ -1138,7 +1139,7 @@ function header() {
   const navigation = `<nav aria-label="Main navigation">${homeLink}${forYouLink}${moviesLink}${seriesLink}</nav>`;
   const browseActive = ["catalog", "all-catalog", "movie", "series", "franchise"].includes(state.route);
   const mobileNavigation = `<nav class="app-mobile-nav" aria-label="Mobile main navigation">${homeLink}${forYouLink}<button class="nav-link ${browseActive ? "active" : ""}" data-mobile-browse><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4Z M4 9h16 M8 5l3 4m2-4 3 4"/></svg><span>${t("Browse")}</span></button></nav>`;
-  return `<header class="main-header app-header"><button class="wordmark logo-only" data-home aria-label="SEVEN home"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>${mobileNavigation}`;
+  return `<header class="main-header app-header"><button class="wordmark logo-only${titleRoute ? " title-route-wordmark" : ""}" data-home aria-label="SEVEN home"><img src="assets/seven-wordmark-v2.png" alt="SEVEN"></button>${navigation}${search}${account}</header>${mobileNavigation}`;
 }
 function footer() { return `<footer class="site-footer"><div class="footer-shell"><div class="footer-main"><div class="footer-brand"><button class="footer-wordmark" data-home aria-label="SEVEN home">SEVEN</button><span>${t("Stories worth finding.")}</span></div><nav class="footer-links" aria-label="Footer navigation"><button data-home>${t("Home")}</button><button data-for-you>${t("For You")}</button><button data-movies>${t("Movies")}</button><button data-shows>${t("Series")}</button><button data-favourites>${t("Favourites")}</button><button data-watchlist>${t("Watchlist")}</button></nav><a class="footer-top" href="#app" aria-label="${t("Back to top")}"><span aria-hidden="true">↑</span></a></div><div class="footer-bottom"><small class="footer-disclaimer">Title details, artwork, and trailers are powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>. SEVEN uses the TMDB API but is not endorsed or certified by TMDB. TMDB provides metadata only, not playback rights.</small><span class="footer-copyright">© 2026 SEVEN. All rights reserved.</span></div></div></footer>`; }
 function appRouteIdentity() {
@@ -4492,7 +4493,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=474", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=475", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {

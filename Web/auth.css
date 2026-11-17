@@ -1592,6 +1592,7 @@
 .profile-gate .profile-gate-add:focus-visible .profile-gate-add-plus { outline:2px solid var(--profile-focus-ring); outline-offset:3px; border-radius:50%; }
 .profile-gate-pending .profile-gate-add { opacity:0; }
 @media (min-width:600px) {
+  .profile-gate .profile-gate-content { top:43%; }
   .profile-gate .profile-gate-tile-area { width:min(calc(100vw - 54px),1090px); }
   .profile-gate .profile-chooser { gap:32px; }
   .profile-gate .profile-choice { width:144px; flex-basis:144px; }

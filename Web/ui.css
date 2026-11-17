@@ -54,6 +54,7 @@
 .wordmark img { display: block; width: 88px; height: auto; object-fit: contain; }
 .wordmark.logo-only { width: 92px; height: 32px; padding: 0; }
 .main-header .wordmark { animation: seven-wordmark-return .34s cubic-bezier(.2,.8,.2,1); }
+.main-header .wordmark.title-route-wordmark { animation:none; }
 .settings-header { position: relative; justify-content: flex-start; }
 .settings-header .wordmark { position: absolute; z-index: 2; left: 50%; transform: translateX(-50%); animation: seven-wordmark-center .38s cubic-bezier(.2,.8,.2,1); }
 .settings-header .wordmark:hover img { filter: drop-shadow(0 0 8px #e5091475); transform: scale(1.055); }
