@@ -1128,7 +1128,7 @@ function upcomingTitles(movieResults, seriesResults) {
 }
 function header() {
   const profile = currentProfile();
-  const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : state.route === "series" ? "shows" : ["movie", "franchise"].includes(state.route) ? "movies" : "";
+  const activeNav = state.route === "home" ? "home" : state.route === "for-you" ? "for-you" : state.route === "catalog" ? (state.browse?.type === "tv" ? "shows" : "movies") : "";
   const account = state.user ? `<button class="account signed-in" data-account title="Account" aria-label="Account">${profile ? `${profileAvatar(profile)}<i class="account-caret" aria-hidden="true">▾</i>` : "Account"}</button>` : `<button class="account account-guest" data-auth aria-label="Guest profile. Sign in or create an account" title="Guest profile"><svg class="account-guest-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.65-3.55 2.82-5.4 6.5-5.4s5.85 1.85 6.5 5.4"/></svg></button>`;
   const search = currentPreferences().searchEnabled !== false ? `<div class="search" role="search"><span>⌕</span><input id="search" value="${escapeHTML(state.search)}" placeholder="Titles, actors, directors" autocomplete="off" enterkeyhint="search" maxlength="160" aria-label="Search titles, actors and directors"><div class="search-suggestions" hidden></div></div><button class="msearch-open" data-msearch aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>` : "";
   const homeLink = `<button class="nav-link ${activeNav === "home" ? "active" : ""}" data-home><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg><span>${t("Home")}</span></button>`;
@@ -1904,7 +1904,7 @@ function titleOpenPreview(type, id, trigger) {
     ...Object.values(state.browse?.rails || {}).flat(),
     ...(Array.isArray(state.allCatalog?.items) ? state.allCatalog.items : [])
   ].filter(Boolean).find(item => contentType(item) === type && Number(item.id) === Number(id));
-  if (cached) return { ...normalize(cached, type), titleLoading:true };
+  if (cached) return { ...normalize(cached, type), titleLoading:false, titlePending:true };
   const cardTitle = trigger?.querySelector(".card-copy b, .msearch-copy b, .collection-poster-copy b, .upcoming-copy b, .my-list-open b, .stats-title-copy b")?.textContent?.trim();
   const labelTitle = trigger?.getAttribute("aria-label")?.replace(/^More about\s+/i, "").split(/,\s*(?:\d{4}|Movie|Series)$/i)[0]?.trim();
   const imageURL = trigger?.querySelector("img")?.currentSrc || trigger?.querySelector("img")?.src || "";
@@ -1919,7 +1919,7 @@ async function openItem(type, id, trigger = null) {
   state.trailer = null;
   if (type === "movie") { state.movie = preview; state.series = null; state.route = "movie"; }
   else { state.series = preview; state.movie = null; state.episodes = null; state.episodesSeriesId = null; state.episodesSeason = null; state.seriesNext = null; state.selectedSeason = 1; state.route = "series"; }
-  render(); scrollToTop();
+  if (!preview.titleLoading) { render(); scrollToTop(); }
   try {
     const item = normalize(await api(`${type}/${id}`, { append_to_response:"credits,keywords,videos" }), type);
     if (!titleOpenRequestIsCurrent(request, scope, type, id)) return;
@@ -4492,7 +4492,7 @@ if ("serviceWorker" in navigator) {
   // A newly activated worker can take control a few seconds after launch.
   // Never reload on controllerchange: that restarted the startup ident over
   // the already-rendered Home/auth screen and could cut the first ident short.
-  navigator.serviceWorker.register("service-worker.js?v=473", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
+  navigator.serviceWorker.register("service-worker.js?v=474", { updateViaCache:"none" }).then(registration => registration.update()).catch(() => { /* The app keeps working from the network when registration fails. */ });
 }
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; });
 window.addEventListener("resize", () => {
