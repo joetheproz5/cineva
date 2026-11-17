@@ -363,6 +363,7 @@
 @media(max-width:600px){
   .profile-settings-page.settings-screen .profile-category-list,
   .profile-settings-page.settings-screen .settings-section-rows { margin-inline: 16px; }
+  .profile-settings-page.settings-screen .profile-hub-hero { margin-inline: 16px; }
   .profile-settings-page.settings-screen .profile-settings-signout .settings-signout-row { width: calc(100% - 32px); margin-inline: 16px; }
   .profile-settings-page.settings-screen .profile-settings-group + .profile-settings-group,
   .profile-settings-page.settings-screen .profile-settings-signout { margin-top: 28px; }
