@@ -1557,6 +1557,11 @@ html,body { touch-action: pan-x pan-y; }
   .home-library .home-poster-card .collection-poster-overlay { display:none; }
   .home-library .home-poster-card > .card-watchlist,.home-library .home-poster-card .collection-poster-remove { top:4px; right:4px; width:44px; height:44px; opacity:1; transform:none; }
 }
+.home-library .home-poster-card .home-continue-remove { border:0; border-radius:50%; color:#fff; background:transparent; filter:none; }
+.home-library .home-poster-card .home-continue-remove::before { position:absolute; inset:5px; border:1px solid rgba(255,255,255,.18); border-radius:50%; background:rgba(7,8,10,.78); box-shadow:0 2px 9px rgba(0,0,0,.38); content:""; transition:background-color .15s ease,border-color .15s ease; }
+.home-library .home-poster-card .home-continue-remove svg { position:relative; z-index:1; width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; filter:none; }
+.home-library .home-poster-card .home-continue-remove:hover::before { border-color:rgba(255,255,255,.34); background:rgba(7,8,10,.94); }
+.home-library .home-poster-card .home-continue-remove:focus-visible { opacity:1; transform:none; outline:2px solid var(--text); outline-offset:2px; }
 @media (prefers-reduced-motion:reduce) {
   .home-library .home-poster-card,.home-library .home-poster-card img,
   .home-library .home-poster-card .collection-poster-overlay,
