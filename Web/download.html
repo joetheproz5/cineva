@@ -204,15 +204,6 @@
         }, { threshold: 0.08, rootMargin: "0px 0px -24px 0px" });
         document.querySelectorAll(".reveal").forEach(function (item) { observer.observe(item); });
       } else { document.querySelectorAll(".reveal").forEach(function (item) { item.classList.add("is-visible"); }); }
-      var androidButton = document.getElementById("androidBtn");
-      fetch("/downloads/seven.apk", { method: "HEAD", cache: "no-store" }).then(function (response) {
-        if (!response.ok) throw new Error("Android install unavailable");
-      }).catch(function () {
-        androidButton.removeAttribute("href");
-        androidButton.setAttribute("aria-disabled", "true");
-        androidButton.setAttribute("aria-label", "Install SEVEN on Android is temporarily unavailable");
-        document.getElementById("androidNote").textContent = "Android install is temporarily unavailable.";
-      });
     })();
   </script>
 </body>

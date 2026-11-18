@@ -6,6 +6,8 @@ const test = require("node:test");
 const repository = path.resolve(__dirname, "../..");
 const readme = fs.readFileSync(path.join(repository, "README.md"), "utf8");
 const downloadPage = fs.readFileSync(path.join(repository, "Web/download.html"), "utf8");
+const androidBuildWorkflow = fs.readFileSync(path.join(repository, ".github/workflows/android-build.yml"), "utf8");
+const webBuildWorkflow = fs.readFileSync(path.join(repository, ".github/workflows/publish-web.yml"), "utf8");
 const responseHeaders = fs.readFileSync(path.join(repository, "Web/_headers"), "utf8");
 const releaseWorkflow = fs.readFileSync(path.join(repository, ".github/workflows/desktop-build.yml"), "utf8");
 const installerScript = fs.readFileSync(path.join(repository, "Windows/Seven.Desktop/installer.iss"), "utf8");
@@ -155,11 +157,18 @@ test("the long-form install page keeps motion accessible and every platform inst
     assert.match(action, /aria-label="Install SEVEN on /);
   }
 
-  assert.match(downloadPage, /androidButton\.setAttribute\("aria-label", "Install SEVEN on Android is temporarily unavailable"\)/);
+  assert.match(downloadPage, /id="androidBtn"[^>]*href="\/api\/install\/android"[^>]*download="seven\.apk"/);
+  assert.doesNotMatch(downloadPage, /fetch\("\/downloads\/seven\.apk",\s*\{\s*method:\s*"HEAD"/);
+  assert.doesNotMatch(downloadPage, /androidButton\.removeAttribute\("href"\)/);
   assert.match(downloadPage, /id="iosBtn"[^>]*href="\/api\/install\/ios"/);
-  assert.match(downloadPage, /if \(!response\.ok\) throw new Error\("Android install unavailable"\)/);
   assert.match(downloadPage, /Install SEVEN/);
   assert.doesNotMatch(downloadPage, /Download for Mac|Download APK/);
+});
+
+test("Android install serves the versioned APK and its build is deployed to the download page", () => {
+  assert.match(androidBuildWorkflow, /cp Android\/app\/build\/outputs\/apk\/release\/app-release\.apk Web\/downloads\/seven\.apk/);
+  assert.match(webBuildWorkflow, /workflow_run:[\s\S]*?workflows:\s*\["Build Android APK"\][\s\S]*?types:\s*\[completed\][\s\S]*?branches:\s*\[master\]/);
+  assert.match(webBuildWorkflow, /github\.event\.workflow_run\.conclusion == 'success'/);
 });
 
 test("the desktop wrapper confines embedded navigation to SEVEN and opens web links externally", () => {
