@@ -27,20 +27,17 @@ test("account dialogs scroll within the keyboard-adjusted viewport", () => {
   assert.match(authCss, /\.auth-flow\s*\{[^}]*overflow-x:\s*hidden;\s*overflow-y:\s*auto;/);
 });
 
-test("the Android app has no pull-to-refresh wrapper", () => {
+test("the Android WebView disables native overscroll effects", () => {
   assert.doesNotMatch(android, /SwipeRefreshLayout|refreshLayout|\.reload\(\)/);
   assert.doesNotMatch(androidGradle, /swiperefreshlayout/i);
+  assert.match(android, /overScrollMode\s*=\s*View\.OVER_SCROLL_NEVER/);
   assert.match(android, /root\.addView\(web,/);
 });
 
-test("pull-to-refresh is disabled only for installed PWAs, not browser pages", () => {
-  const rules = [...mobileCss.matchAll(/([^{}]+)\{([^{}]*overscroll-behavior-y\s*:[^{}]*)\}/g)];
-
-  assert.equal(rules.length, 1);
-  assert.match(rules[0][1], /html\.seven-installed-pwa/);
-  assert.match(rules[0][2], /overscroll-behavior-y:\s*none/);
-  assert.match(appJs, /display-mode:\s*standalone[\s\S]*navigator\.standalone\s*===\s*true/);
-  assert.match(appJs, /classList\.add\("seven-installed-pwa"\)/);
+test("pull-to-refresh is disabled on the app page in every browser and app shell", () => {
+  assert.match(mobileCss, /html\s*,\s*body\s*\{[^}]*overscroll-behavior-y:\s*none/);
+  assert.doesNotMatch(mobileCss, /html\.seven-installed-pwa/);
+  assert.doesNotMatch(appJs, /seven-installed-pwa/);
 });
 
 test("Android keyboard viewport resize cannot redraw away the signup dialog", () => {

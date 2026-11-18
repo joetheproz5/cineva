@@ -152,6 +152,8 @@ try {
   if (!pageState?.nav) throw new Error("Headless smoke check failed: main navigation is missing.");
   if (failedCss.length || notSeen.length) throw new Error(`Headless smoke check failed for stylesheets: ${JSON.stringify({ failedCss, notSeen, cssResponses:[...cssResponses] })}`);
   if (consoleErrors.length) throw new Error(`Headless smoke check saw console errors: ${consoleErrors.join("\n")}`);
+  const rootOverscroll = await evaluate(`({html:getComputedStyle(document.documentElement).overscrollBehaviorY,body:getComputedStyle(document.body).overscrollBehaviorY})`);
+  if (rootOverscroll.html !== "none" || rootOverscroll.body !== "none") throw new Error(`Pull-to-refresh prevention is missing from the root scroll surfaces: ${JSON.stringify(rootOverscroll)}`);
   await cdpSend("Emulation.setDeviceMetricsOverride", { width:390, height:844, deviceScaleFactor:1, mobile:true });
   const primitiveCheck = await evaluate(`(async()=>{
     const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));

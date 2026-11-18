@@ -1,4 +1,4 @@
-const VERSION = "seven-v487";const DATA_CACHE = "seven-data-v1";
+const VERSION = "seven-v488";const DATA_CACHE = "seven-data-v1";
 const IMAGE_CACHE = "seven-images-v2";
 const SECURITY_SHELL=["password-policy.js?v=1","auth-security.js?v=5","auth-security.css?v=2"];
 const PRIVACY_SHELL=["privacy.html","privacy.js?v=2","privacy.css?v=1","metrics.js?v=2"];

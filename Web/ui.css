@@ -1119,8 +1119,8 @@ header.main-header.app-header .account.account-guest b { display: none; }
   header.main-header.app-header, header.main-header.app-header.scroll-hidden { transition-duration: .01ms; }
 }
 
-html.seven-installed-pwa,
-html.seven-installed-pwa body { overscroll-behavior-y: none; }
+html,
+body { overscroll-behavior-y: none; }
 
 /* Keep title pages focused: play, save, then tuck the rest behind More. */
 .title-actions { position: relative; z-index: 12; display: flex !important; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 0; }

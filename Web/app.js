@@ -9,10 +9,6 @@ const FEATURED_ID = 71712;
 const DOWNLOAD_URL = "https://seven-9fm.pages.dev/download";
 const RELEASE_ALERTS_API = "https://seven-release-alerts.trexghaoui.workers.dev";
 const RELEASE_DEVICE_TOKEN_KEY = "seven.release-alerts.device-token";
-const isInstalledPWA = window.matchMedia?.("(display-mode: standalone)").matches
-  || window.matchMedia?.("(display-mode: fullscreen)").matches
-  || navigator.standalone === true;
-if (isInstalledPWA) document.documentElement.classList.add("seven-installed-pwa");
 const app = document.querySelector("#app");
 window.SEVENBottomSheet = (() => {
   const focusableSelector = "a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex='-1'])";
