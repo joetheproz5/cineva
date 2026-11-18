@@ -8,10 +8,13 @@ import { setTimeout as delay } from "node:timers/promises";
 const repoRoot = process.cwd();
 const webRoot = path.join(repoRoot, "Web");
 const previousFiles = new Map(["index.html", "app.js", "service-worker.js"].map(name => [name, execFileSync("git", ["show", `HEAD:Web/${name}`], { cwd:repoRoot })]));
+const currentIndexHtml = fs.readFileSync(path.join(webRoot, "index.html"), "utf8");
+const currentWatchCssHref = currentIndexHtml.match(/href="([^"]*watch-page\.css[^"]*)"/)?.[1];
+const currentWatchCssRequest = currentWatchCssHref ? new URL(currentWatchCssHref, "http://seven.invalid/").pathname + new URL(currentWatchCssHref, "http://seven.invalid/").search : null;
 const currentServiceWorker = fs.readFileSync(path.join(webRoot, "service-worker.js"), "utf8");
 const previousCacheVersion = previousFiles.get("service-worker.js").toString("utf8").match(/const VERSION = "([^"]+)"/)?.[1];
 const currentCacheVersion = currentServiceWorker.match(/const VERSION = "([^"]+)"/)?.[1];
-if (!previousCacheVersion || !currentCacheVersion || previousCacheVersion === currentCacheVersion) throw new Error("The prior and current service-worker cache versions must both exist and differ.");
+if (!previousCacheVersion || !currentCacheVersion || !currentWatchCssRequest || previousCacheVersion === currentCacheVersion) throw new Error("The prior and current service-worker cache versions and the current watch-page stylesheet URL must exist and differ.");
 const contentTypes = new Map([[".css", "text/css; charset=utf-8"], [".html", "text/html; charset=utf-8"], [".js", "text/javascript; charset=utf-8"], [".json", "application/json; charset=utf-8"], [".svg", "image/svg+xml"], [".webp", "image/webp"], [".png", "image/png"], [".jpg", "image/jpeg"]]);
 const browserPath = [process.env.CHROME_BIN, process.env.CHROME_PATH, "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "/usr/bin/google-chrome", "/usr/bin/chromium"].filter(Boolean).find(candidate => fs.existsSync(candidate));
 if (!browserPath) throw new Error("Headless Chrome or Edge was not found; set CHROME_BIN to its executable.");
@@ -107,13 +110,13 @@ try {
   await send("Page.navigate", { url:`http://127.0.0.1:${port}/` });
   await until(`!!navigator.serviceWorker.controller && !!document.querySelector('nav[aria-label="Main navigation"]') && !!document.querySelector('link[href*="watch-page.css"]')`);
   await delay(1500);
-  const newState = JSON.parse(await evaluate(`(async()=>JSON.stringify({nav:!!document.querySelector('nav[aria-label="Main navigation"]'),newCss:!!document.querySelector('link[href*="watch-page.css"]'),stylesReady:document.documentElement.classList.contains('seven-styles-ready'),links:[...document.querySelectorAll('link[rel="stylesheet"]')].map(link=>link.href),tokens:getComputedStyle(document.documentElement).getPropertyValue('--text').trim(),optInNodes:document.querySelectorAll('.tonal,.text-button,.seven-bottom-sheet').length,controller:!!navigator.serviceWorker.controller,caches:await caches.keys(),newCssCached:!!(await caches.open(${JSON.stringify(currentCacheVersion)})).match(location.origin+'/watch-page.css?v=1')}))()`));
+  const newState = JSON.parse(await evaluate(`(async()=>JSON.stringify({nav:!!document.querySelector('nav[aria-label="Main navigation"]'),newCss:!!document.querySelector('link[href*="watch-page.css"]'),stylesReady:document.documentElement.classList.contains('seven-styles-ready'),links:[...document.querySelectorAll('link[rel="stylesheet"]')].map(link=>link.href),tokens:getComputedStyle(document.documentElement).getPropertyValue('--text').trim(),optInNodes:document.querySelectorAll('.tonal,.text-button,.seven-bottom-sheet').length,controller:!!navigator.serviceWorker.controller,caches:await caches.keys(),newCssCached:!!(await caches.open(${JSON.stringify(currentCacheVersion)})).match(location.origin+${JSON.stringify(currentWatchCssRequest)})}))()`));
   const failedStylesheets = [...stylesheetResponses].filter(([url, result]) => (url.endsWith(".css") || url.includes(".css?")) && (result.status !== 200 || !result.type?.toLowerCase().includes("text/css")));
   const unobservedStylesheets = newState.links.filter(url => !stylesheetResponses.has(url));
   if (!newState.nav || !newState.newCss || !newState.stylesReady || !newState.controller || !newState.caches.includes(currentCacheVersion) || !newState.newCssCached || newState.optInNodes !== 0 || failedStylesheets.length || unobservedStylesheets.length || browserErrors.length) {
     throw new Error(JSON.stringify({ newState, failedStylesheets, unobservedStylesheets, browserErrors, oldState }));
   }
-  console.log("Upgrade smoke passed: a prior shell was cached and controlled the page, the update activated seven-v486, the upgraded page is styled and controlled, CSS returned 200 text/css, and no existing DOM opts into the new primitives.");
+  console.log(`Upgrade smoke passed: a prior shell was cached and controlled the page, the update activated ${currentCacheVersion}, the upgraded page is styled and controlled, CSS returned 200 text/css, and no existing DOM opts into the new primitives.`);
   console.log(`Previous install cache keys: ${oldState.caches.join(", ")}`);
 } finally {
   try { socket?.close(); } catch { /* already closed */ }

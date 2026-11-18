@@ -95,7 +95,7 @@ async function connectCdp(wsUrl) {
     if (message.method === "Fetch.requestPaused") {
       const { requestId, request } = message.params;
       const command = request.url.startsWith("https://cinesrc.st/")
-        ? cdpSend("Fetch.fulfillRequest", { requestId, responseCode:200, responseHeaders:[{ name:"Content-Type", value:"text/html; charset=utf-8" }], body:Buffer.from("<!doctype html><title>Player smoke stub</title>").toString("base64") })
+        ? cdpSend("Fetch.fulfillRequest", { requestId, responseCode:200, responseHeaders:[{ name:"Content-Type", value:"text/html; charset=utf-8" }], body:Buffer.from("<!doctype html><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>html,body{margin:0;width:100%;height:100%;background:#000}</style><title>Player smoke stub</title>").toString("base64") })
         : cdpSend("Fetch.continueRequest", { requestId });
       command.catch(error => consoleErrors.push(`Player request interception failed: ${error.message}`));
     }
@@ -209,21 +209,29 @@ try {
     const seasonChanged=await until(()=>state.selectedSeason===2&&document.querySelector('[data-player-season="2"]')?.getAttribute("aria-current")==="true");await wait(60);
     const seasonStable=stable();
     const afterActionsLoads=tracked.loads;
-    const geometry=()=>{const rect=tracked.node.parentElement.getBoundingClientRect();return {width:rect.width,height:rect.height,ratio:rect.width/rect.height,left:rect.left,right:rect.right}};
-    const hitTest=()=>{const rect=tracked.node.getBoundingClientRect(),hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);return Boolean(hit&&tracked.node.parentElement.contains(hit))};
-    return {src:tracked.src,baselineLoads,afterActionsLoads,stable:modalOpened&&modalClosed&&hosted&&joined&&seasonChanged&&seasonStable&&stable(),modalOpened,modalClosed,hosted,joined,seasonChanged,seasonStable,identity:document.querySelector("iframe.player")===tracked.node,hitTest:hitTest(),geometry:geometry()};
+    window.scrollTo(0,0);await wait(30);
+    const geometry=()=>{const rect=tracked.node.parentElement.getBoundingClientRect();return {width:rect.width,height:rect.height,ratio:rect.width/rect.height,left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,innerHeight:innerHeight,scrollY:scrollY}};
+    const hitTest=()=>{const rect=tracked.node.getBoundingClientRect(),hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);return {ok:Boolean(hit&&tracked.node.parentElement.contains(hit)),tag:hit?.tagName||null,className:hit?.className||null}};
+    return {src:tracked.src,title:tracked.node.title,baselineLoads,afterActionsLoads,stable:modalOpened&&modalClosed&&hosted&&joined&&seasonChanged&&seasonStable&&stable(),modalOpened,modalClosed,hosted,joined,seasonChanged,seasonStable,identity:document.querySelector("iframe.player")===tracked.node,hitTest:hitTest(),geometry:geometry()};
   })()`);
-  if (!watchPageCheck?.stable || !watchPageCheck?.identity || !watchPageCheck?.hitTest || watchPageCheck.afterActionsLoads !== watchPageCheck.baselineLoads || Math.abs(watchPageCheck.geometry.ratio - 16 / 9) > .03) {
+  if (!watchPageCheck?.stable || !watchPageCheck?.identity || watchPageCheck.title !== "Video player: Pilot" || !watchPageCheck?.hitTest?.ok || watchPageCheck.afterActionsLoads !== watchPageCheck.baselineLoads || Math.abs(watchPageCheck.geometry.ratio - 16 / 9) > .03) {
     throw new Error(`Watch-page iframe smoke check failed: ${JSON.stringify(watchPageCheck)}`);
   }
-  for (const width of [768, 1440]) {
-    await cdpSend("Emulation.setDeviceMetricsOverride", { width, height:900, deviceScaleFactor:1, mobile:false });
-    const stableAtWidth = await evaluate(`(()=>{const frame=window.__sevenWatchFrameTracking?.node,rect=frame?.parentElement?.getBoundingClientRect();return Boolean(frame&&document.querySelector("iframe.player")===frame&&frame.src===window.__sevenWatchFrameTracking.src&&rect&&Math.abs(rect.width/rect.height-16/9)<.03)})()`);
-    if (!stableAtWidth) throw new Error(`Watch-page iframe changed or lost 16:9 sizing at ${width}px.`);
+  const screenshotDir = process.env.SEVEN_SCREENSHOT_DIR ? path.resolve(process.env.SEVEN_SCREENSHOT_DIR) : null;
+  if (screenshotDir) await fs.promises.mkdir(screenshotDir, { recursive:true });
+  for (const width of [390, 360, 486, 768, 1024, 1440]) {
+    const mobile = width < 651, height = width === 390 ? 844 : width === 360 ? 740 : width === 486 ? 830 : width === 768 ? 1024 : width === 1024 ? 768 : 900;
+    await cdpSend("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor:1, mobile });
+    const sizeAtWidth = await evaluate(`(()=>{const frame=window.__sevenWatchFrameTracking?.node,rect=frame?.parentElement?.getBoundingClientRect();return Boolean(frame&&document.querySelector("iframe.player")===frame&&frame.src===window.__sevenWatchFrameTracking.src&&rect&&Math.abs(rect.width/rect.height-16/9)<.03&&document.documentElement.scrollWidth<=innerWidth+1&&(!${mobile}||Math.abs(rect.width-innerWidth)<1))})()`);
+    if (!sizeAtWidth) throw new Error(`Watch-page iframe changed, overflowed, or lost full-bleed 16:9 sizing at ${width}px.`);
+    if (screenshotDir) {
+      const screenshot = await cdpSend("Page.captureScreenshot", { format:"png", fromSurface:true, captureBeyondViewport:false });
+      await fs.promises.writeFile(path.join(screenshotDir, `watch-${width}.png`), Buffer.from(screenshot.data, "base64"));
+    }
   }
   await cdpSend("Emulation.clearDeviceMetricsOverride");
   if (consoleErrors.length) throw new Error(`Headless smoke check saw console errors: ${consoleErrors.join("\n")}`);
-  console.log(`Headless browser smoke passed: nav present, ${pageState.links.length} stylesheets returned 200 text/css, no console errors; shared bottom sheet keyboard/backdrop/focus checks passed; watch-page iframe identity and src stayed stable (${watchPageCheck.afterActionsLoads} load events) through modal, host/join panel, season switch, and 390/768/1440px sizing.`);
+  console.log(`Headless browser smoke passed: nav present, ${pageState.links.length} stylesheets returned 200 text/css, no console errors; shared bottom sheet keyboard/backdrop/focus checks passed; watch-page iframe identity and src stayed stable (${watchPageCheck.afterActionsLoads} load events) through modal, host/join panel, season switch, and 360/390/486/768/1024/1440px sizing.${screenshotDir ? ` Screenshots: ${screenshotDir}` : ""}`);
 } finally {
   try { socket?.close(); } catch { /* already closed */ }
   if (browser && browser.exitCode === null) {
