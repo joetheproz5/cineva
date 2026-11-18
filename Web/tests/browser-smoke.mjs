@@ -244,6 +244,6 @@ try {
   const resolvedTemp = path.resolve(tempRoot);
   const tempBase = path.resolve(os.tmpdir());
   if (resolvedTemp.startsWith(`${tempBase}${path.sep}`) && resolvedTemp.includes("seven-browser-smoke-")) {
-    await fs.promises.rm(resolvedTemp, { recursive: true, force: true });
+    await fs.promises.rm(resolvedTemp, { recursive: true, force: true, maxRetries:10, retryDelay:100 });
   }
 }
